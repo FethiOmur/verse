@@ -1,0 +1,159 @@
+{
+ "id": "d08",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid",
+  "Tomas"
+ ],
+ "voices": {
+  "Ingrid": "Karen",
+  "Tomas": "Rishi"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview",
+ "speakers": 3,
+ "duration_s": 63.9,
+ "utterances": [
+  {
+   "speaker": "Tomas",
+   "text": "How do you evaluate an LLM system before release?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b009",
+   "t_start": 1.02,
+   "t_end": 4.35,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 5.76,
+   "t_end": 12.56,
+   "gap_before": 1.36,
+   "silent_s": 6.8
+  },
+  {
+   "speaker": "Tomas",
+   "text": "Ingrid, did you want to ask about the dispatcher?",
+   "category": "other",
+   "is_question": true,
+   "addressee": "other",
+   "bank_id": null,
+   "t_start": 13.49,
+   "t_end": 16.57,
+   "gap_before": 0.93
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Yes, thanks Tomas.",
+   "category": "reply",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 17.827,
+   "t_end": 19.477,
+   "gap_before": 1.23
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "How would you design a language model assistant for our dispatchers?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b013",
+   "t_start": 20.876,
+   "t_end": 24.286,
+   "gap_before": 1.31
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 25.67,
+   "t_end": 34.07,
+   "gap_before": 1.34,
+   "silent_s": 8.4
+  },
+  {
+   "speaker": "Tomas",
+   "text": "How would you test the dispatcher before it touches live routes?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 35.3,
+   "t_end": 38.53,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 39.54,
+   "t_end": 45.74,
+   "gap_before": 0.96,
+   "silent_s": 6.2
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Tomas, could you mute your microphone while I talk?",
+   "category": "other",
+   "is_question": true,
+   "addressee": "other",
+   "bank_id": null,
+   "t_start": 46.81,
+   "t_end": 49.62,
+   "gap_before": 1.07
+  },
+  {
+   "speaker": "Tomas",
+   "text": "Sorry, done.",
+   "category": "fragment",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 50.6,
+   "t_end": 51.76,
+   "gap_before": 0.91
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "How much homework have you done on Halden?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b008",
+   "t_start": 53.135,
+   "t_end": 55.305,
+   "gap_before": 1.3
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 56.395,
+   "t_end": 63.895,
+   "gap_before": 1.06,
+   "silent_s": 7.5
+  }
+ ]
+}

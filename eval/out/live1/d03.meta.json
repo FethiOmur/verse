@@ -1,0 +1,141 @@
+{
+ "id": "d03",
+ "lead_in_s": 10.0,
+ "duration_s": 74.62,
+ "timeline": [
+  {
+   "index": 0,
+   "speaker": "Ingrid",
+   "t_start": 10.03,
+   "t_end": 12.57,
+   "silent": false
+  },
+  {
+   "index": 1,
+   "speaker": "Ingrid",
+   "t_start": 13.494,
+   "t_end": 17.914,
+   "silent": false
+  },
+  {
+   "index": 2,
+   "speaker": "Alex",
+   "t_start": 18.994,
+   "t_end": 25.694,
+   "silent": true
+  },
+  {
+   "index": 3,
+   "speaker": "Ingrid",
+   "t_start": 26.834,
+   "t_end": 29.804,
+   "silent": false
+  },
+  {
+   "index": 4,
+   "speaker": "Alex",
+   "t_start": 30.949,
+   "t_end": 37.249,
+   "silent": true
+  },
+  {
+   "index": 5,
+   "speaker": "Ingrid",
+   "t_start": 38.189,
+   "t_end": 40.909,
+   "silent": false
+  },
+  {
+   "index": 6,
+   "speaker": "Alex",
+   "t_start": 41.974,
+   "t_end": 49.474,
+   "silent": true
+  },
+  {
+   "index": 7,
+   "speaker": "Ingrid",
+   "t_start": 50.544,
+   "t_end": 55.154,
+   "silent": false
+  },
+  {
+   "index": 8,
+   "speaker": "Alex",
+   "t_start": 56.527,
+   "t_end": 63.127,
+   "silent": true
+  },
+  {
+   "index": 9,
+   "speaker": "Ingrid",
+   "t_start": 64.387,
+   "t_end": 66.657,
+   "silent": false
+  },
+  {
+   "index": 10,
+   "speaker": "Alex",
+   "t_start": 68.024,
+   "t_end": 74.624,
+   "silent": true
+  }
+ ],
+ "wall_start": 1791992800.795,
+ "render_s": 7.27,
+ "elapsed_s": 91.61,
+ "loadavg_before": [
+  5.86,
+  16.54,
+  44.73
+ ],
+ "loadavg_after": [
+  5.93,
+  13.9,
+  40.89
+ ],
+ "exit_code": 0,
+ "timed_out": false,
+ "engine": [
+  {
+   "channel": "remote",
+   "engine": "Nemotron-0.6B-560ms (FluidAudio CoreML)",
+   "loadSec": 0.583,
+   "readyAtSec": 0.59,
+   "state": "engine_ready",
+   "type": "status",
+   "wall": 1791992813.555906
+  },
+  {
+   "channel": "remote",
+   "engine": "Nemotron-0.6B-560ms (FluidAudio CoreML)",
+   "from": "SpeechTranscriber+fastResults",
+   "loadSec": 0.583,
+   "readyAtSec": 0.59,
+   "state": "engine_switch",
+   "switchAtSec": 0.6,
+   "type": "status",
+   "waitedSec": 0.01,
+   "wall": 1791992813.566218
+  }
+ ],
+ "lines": 387,
+ "cost_usd": 0.020202,
+ "fake_brain": false,
+ "session_files_added": [],
+ "audio_watch": {
+  "folders": [
+   "/var/folders/th/cqlllcvs5g9d857_y87xzf0w0000gn/T/verse-eval-audio-bt6tvn7m/session",
+   "/Users/user/Library/Application Support/Verse/sessions",
+   "/Users/user/Desktop/ProjectExamples/CursorExamples/Verse/brain/tests/out"
+  ],
+  "polls": 361,
+  "audio_files_found": [],
+  "pass": true
+ },
+ "temp_audio_removed": true,
+ "others_passed": [
+  "Ingrid"
+ ],
+ "budget_usd": 0.25
+}

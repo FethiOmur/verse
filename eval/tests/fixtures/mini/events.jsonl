@@ -1,0 +1,28 @@
+{"wall":1000.2,"line":{"type":"metric","turn_id":"","stage":"session_t0","t":1000.0,"origin_remote":0.5,"source":"verse-run","lang":"en","fake_brain":false}}
+{"wall":1002.7,"line":{"type":"bank_hit","turn_id":"r1","bank_id":"b002","score":0.6,"dir":"to_brain"}}
+{"wall":1003.3,"line":{"type":"bank_hit","turn_id":"r1","bank_id":"b001","score":0.9,"dir":"to_brain"}}
+{"wall":1003.4,"line":{"type":"chip","turn_id":"r1","kind":"name","text":"Halden","source_ref":"prep:L7","fact_id":"f004"}}
+{"wall":1003.9,"line":{"type":"turn","turn_id":"r1","speaker":"remote","text":"Can you tell me about yourself and your background","addressee":"unknown","kind":"question","t_audio_end":3.6,"dir":"to_brain"}}
+{"wall":1003.9,"line":{"type":"metric","turn_id":"r1","stage":"turn_sent","t":1003.9,"source":"verse-run"}}
+{"wall":1003.95,"line":{"type":"bank_verdict","turn_id":"r1","bank_id":"b001","agree":true}}
+{"wall":1004.1,"line":{"type":"delta","id":"s0001","turn_id":"r1","tier":"S","text":"SAY: Sure, ","line_done":false}}
+{"wall":1004.11,"line":{"type":"delta","id":"s0001","turn_id":"r1","tier":"S","text":"short version.","line_done":true}}
+{"wall":1005.0,"line":{"type":"delta","id":"d0002","turn_id":"r1","tier":"D","text":"- I led Lantern, cutting entry from 11 minutes to 2 minutes.","line_done":true}}
+{"wall":1011.4,"line":{"type":"bank_hit","turn_id":"r2","bank_id":"b003","score":0.7,"dir":"to_brain"}}
+{"wall":1011.9,"line":{"type":"turn","turn_id":"r2","speaker":"remote","text":"What drew you to Halden in the first place","addressee":"unknown","kind":"question","t_audio_end":11.6,"dir":"to_brain"}}
+{"wall":1011.9,"line":{"type":"metric","turn_id":"r2","stage":"turn_sent","t":1011.9,"source":"verse-run"}}
+{"wall":1013.0,"line":{"type":"delta","id":"f0003","turn_id":"r2","tier":"F","text":"SAY: The direction of the product.","line_done":true}}
+{"wall":1019.9,"line":{"type":"turn","turn_id":"r3","speaker":"remote","text":"Tomas can you share the slide with everyone","addressee":"other","kind":"question","t_audio_end":19.6,"dir":"to_brain"}}
+{"wall":1019.9,"line":{"type":"metric","turn_id":"r3","stage":"turn_sent","t":1019.9,"source":"verse-run"}}
+{"wall":1022.7,"line":{"type":"turn","turn_id":"r4","speaker":"remote","text":"Sure sharing it","addressee":"unknown","kind":"statement","t_audio_end":22.0,"dir":"to_brain"}}
+{"wall":1022.7,"line":{"type":"metric","turn_id":"r4","stage":"turn_sent","t":1022.7,"source":"verse-run"}}
+{"wall":1025.6,"line":{"type":"turn","turn_id":"r5","speaker":"remote","text":"How big is the team you work in","addressee":"me","kind":"question","t_audio_end":25.0,"dir":"to_brain"}}
+{"wall":1025.6,"line":{"type":"metric","turn_id":"r5","stage":"turn_sent","t":1025.6,"source":"verse-run"}}
+{"wall":1026.2,"line":{"type":"delta","id":"f0004","turn_id":"r5","tier":"F","text":"SAY: It is a team of six.","line_done":true}}
+{"wall":1033.6,"line":{"type":"turn","turn_id":"r6","speaker":"remote","text":"Okay that's helpful","addressee":"unknown","kind":"statement","t_audio_end":33.0,"dir":"to_brain"}}
+{"wall":1033.6,"line":{"type":"metric","turn_id":"r6","stage":"turn_sent","t":1033.6,"source":"verse-run"}}
+{"wall":1036.9,"line":{"type":"turn","turn_id":"r7","speaker":"remote","text":"Thomas are you still there","addressee":"me","kind":"question","t_audio_end":36.6,"dir":"to_brain"}}
+{"wall":1036.9,"line":{"type":"metric","turn_id":"r7","stage":"turn_sent","t":1036.9,"source":"verse-run"}}
+{"wall":1037.5,"line":{"type":"delta","id":"f0005","turn_id":"r7","tier":"F","text":"SAY: I am still here.","line_done":true}}
+{"wall":1050.5,"line":{"type":"turn","turn_id":"r8","speaker":"remote","text":"What is the","addressee":"unknown","kind":"question","t_audio_end":50.2,"dir":"to_brain"}}
+{"wall":1050.5,"line":{"type":"metric","turn_id":"r8","stage":"turn_sent","t":1050.5,"source":"verse-run"}}

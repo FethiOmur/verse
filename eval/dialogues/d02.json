@@ -1,0 +1,158 @@
+{
+ "id": "d02",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid"
+ ],
+ "voices": {
+  "Ingrid": "Karen"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview",
+ "speakers": 2,
+ "duration_s": 60.2,
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "Can you tell me about the Lantern project?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b003",
+   "t_start": 1.01,
+   "t_end": 3.17,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 4.429,
+   "t_end": 11.229,
+   "gap_before": 1.21,
+   "silent_s": 6.8
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "What percentage of fields did it get right?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b011",
+   "t_start": 12.449,
+   "t_end": 14.749,
+   "gap_before": 1.21
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 16.049,
+   "t_end": 22.549,
+   "gap_before": 1.25,
+   "silent_s": 6.5
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "We have a company offsite planned in Lisbon next spring.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 23.679,
+   "t_end": 26.679,
+   "gap_before": 1.12
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Which programming languages do you use day to day?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 27.637,
+   "t_end": 30.437,
+   "gap_before": 0.92
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 31.465,
+   "t_end": 37.265,
+   "gap_before": 1.01,
+   "silent_s": 5.8
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "What is your biggest weakness?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b005",
+   "t_start": 38.565,
+   "t_end": 40.085,
+   "gap_before": 1.29
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 41.24,
+   "t_end": 46.74,
+   "gap_before": 1.11,
+   "silent_s": 5.5
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "What was the running cost, and did it pay off?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b012",
+   "t_start": 47.93,
+   "t_end": 50.37,
+   "gap_before": 1.18
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 51.66,
+   "t_end": 58.36,
+   "gap_before": 1.24,
+   "silent_s": 6.7
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "And then the",
+   "category": "fragment",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 59.65,
+   "t_end": 60.2,
+   "gap_before": 1.28
+  }
+ ]
+}

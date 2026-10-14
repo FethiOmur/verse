@@ -1,0 +1,159 @@
+{
+ "id": "d10",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid",
+  "Tomas"
+ ],
+ "voices": {
+  "Ingrid": "Moira",
+  "Tomas": "Rishi"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview",
+ "speakers": 3,
+ "duration_s": 64.6,
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "Why do you want to join Halden Freight Systems?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b002",
+   "t_start": 1.0,
+   "t_end": 3.72,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 4.889,
+   "t_end": 12.189,
+   "gap_before": 1.12,
+   "silent_s": 7.3
+  },
+  {
+   "speaker": "Tomas",
+   "text": "Ingrid, should I take the technical round now?",
+   "category": "other",
+   "is_question": true,
+   "addressee": "other",
+   "bank_id": null,
+   "t_start": 13.169,
+   "t_end": 15.999,
+   "gap_before": 0.98
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Yes, please.",
+   "category": "fragment",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 17.143,
+   "t_end": 18.313,
+   "gap_before": 1.12
+  },
+  {
+   "speaker": "Tomas",
+   "text": "What is the difference between a process and a thread?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 19.623,
+   "t_end": 22.563,
+   "gap_before": 1.26
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 23.603,
+   "t_end": 31.603,
+   "gap_before": 1.0,
+   "silent_s": 8.0
+  },
+  {
+   "speaker": "Tomas",
+   "text": "Looking back, which architectural calls do you consider the smartest, and what did they cost you?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b006",
+   "t_start": 32.933,
+   "t_end": 38.733,
+   "gap_before": 1.32
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 39.925,
+   "t_end": 45.825,
+   "gap_before": 1.15,
+   "silent_s": 5.9
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Tomas, would you stop sharing your screen?",
+   "category": "other",
+   "is_question": true,
+   "addressee": "other",
+   "bank_id": null,
+   "t_start": 46.974,
+   "t_end": 49.575,
+   "gap_before": 1.15
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "How did the vehicle routing system you wrote perform in the pilot?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b007",
+   "t_start": 51.028,
+   "t_end": 54.458,
+   "gap_before": 1.4
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 55.698,
+   "t_end": 60.998,
+   "gap_before": 1.19,
+   "silent_s": 5.3
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "We are running about ten minutes behind schedule.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 61.968,
+   "t_end": 64.528,
+   "gap_before": 0.97
+  }
+ ]
+}

@@ -1,0 +1,147 @@
+{
+ "id": "d04",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid"
+ ],
+ "voices": {
+  "Ingrid": "Moira"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview",
+ "speakers": 2,
+ "duration_s": 66.6,
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "How do you handle cases where the model is unsure or wrong?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b010",
+   "t_start": 1.02,
+   "t_end": 4.15,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 5.18,
+   "t_end": 11.68,
+   "gap_before": 0.99,
+   "silent_s": 6.5
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "If we asked you to put an LLM into our dispatching, where would you start?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b013",
+   "t_start": 13.0,
+   "t_end": 17.35,
+   "gap_before": 1.32
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 18.72,
+   "t_end": 27.12,
+   "gap_before": 1.32,
+   "silent_s": 8.4
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "How would you measure success for the dispatcher pilot?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 28.14,
+   "t_end": 30.98,
+   "gap_before": 1.0
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 32.26,
+   "t_end": 39.36,
+   "gap_before": 1.23,
+   "silent_s": 7.1
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Our AI team has six people at the moment.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 40.62,
+   "t_end": 43.06,
+   "gap_before": 1.25
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Give us a figure for the pay you would expect.",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b016",
+   "t_start": 44.37,
+   "t_end": 46.65,
+   "gap_before": 1.26
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 48.0,
+   "t_end": 55.4,
+   "gap_before": 1.3,
+   "silent_s": 7.4
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Why are you leaving your current company?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 56.72,
+   "t_end": 58.69,
+   "gap_before": 1.32
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 59.802,
+   "t_end": 66.602,
+   "gap_before": 1.08,
+   "silent_s": 6.8
+  }
+ ]
+}

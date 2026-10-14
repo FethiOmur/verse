@@ -1,0 +1,160 @@
+{
+ "id": "d13",
+ "suite": "short",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid"
+ ],
+ "voices": {
+  "Ingrid": "Samantha"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview",
+ "speakers": 2,
+ "duration_s": 64.4,
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "Why this company?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b002",
+   "t_start": 1.01,
+   "t_end": 1.99,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 3.216,
+   "t_end": 11.415,
+   "gap_before": 1.18,
+   "silent_s": 8.2
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "What's your weakness?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b005",
+   "t_start": 12.335,
+   "t_end": 13.205,
+   "gap_before": 0.91
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 14.585,
+   "t_end": 22.285,
+   "gap_before": 1.33,
+   "silent_s": 7.7
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Describe Lantern.",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b003",
+   "t_start": 23.215,
+   "t_end": 24.226,
+   "gap_before": 0.93
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 25.288,
+   "t_end": 32.688,
+   "gap_before": 1.02,
+   "silent_s": 7.4
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Notice period?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b015",
+   "t_start": 33.718,
+   "t_end": 34.558,
+   "gap_before": 1.03
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 35.828,
+   "t_end": 43.328,
+   "gap_before": 1.22,
+   "silent_s": 7.5
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Why Halden?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b002",
+   "t_start": 44.278,
+   "t_end": 45.048,
+   "gap_before": 0.94
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 46.214,
+   "t_end": 54.114,
+   "gap_before": 1.12,
+   "silent_s": 7.9
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Tell us more.",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 55.184,
+   "t_end": 55.924,
+   "gap_before": 1.07
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 56.972,
+   "t_end": 64.372,
+   "gap_before": 1.01,
+   "silent_s": 7.4
+  }
+ ]
+}

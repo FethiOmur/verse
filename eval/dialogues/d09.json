@@ -1,0 +1,170 @@
+{
+ "id": "d09",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid",
+  "Tomas"
+ ],
+ "voices": {
+  "Ingrid": "Kathy",
+  "Tomas": "Mara"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview",
+ "speakers": 3,
+ "duration_s": 63.8,
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "Tomas, please go ahead with your first question.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 1.0,
+   "t_end": 4.55,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "Tomas",
+   "text": "How did you choose between small and large models?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b019",
+   "t_start": 5.967,
+   "t_end": 8.687,
+   "gap_before": 1.36
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 10.077,
+   "t_end": 15.677,
+   "gap_before": 1.34,
+   "silent_s": 5.6
+  },
+  {
+   "speaker": "Tomas",
+   "text": "What do you do when the model gives a bad or uncertain answer?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b010",
+   "t_start": 16.837,
+   "t_end": 20.177,
+   "gap_before": 1.15
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 21.518,
+   "t_end": 28.218,
+   "gap_before": 1.31,
+   "silent_s": 6.7
+  },
+  {
+   "speaker": "Tomas",
+   "text": "Ingrid, anything you want to add here?",
+   "category": "other",
+   "is_question": true,
+   "addressee": "other",
+   "bank_id": null,
+   "t_start": 29.518,
+   "t_end": 31.628,
+   "gap_before": 1.3
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Not right now.",
+   "category": "reply",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 32.667,
+   "t_end": 33.747,
+   "gap_before": 1.01
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "What would you change about Compass if you joined?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 34.7,
+   "t_end": 37.77,
+   "gap_before": 0.94
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 38.79,
+   "t_end": 44.09,
+   "gap_before": 1.0,
+   "silent_s": 5.3
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Tomas, can you pull up the evaluation notes?",
+   "category": "other",
+   "is_question": true,
+   "addressee": "other",
+   "bank_id": null,
+   "t_start": 45.28,
+   "t_end": 48.76,
+   "gap_before": 1.19
+  },
+  {
+   "speaker": "Tomas",
+   "text": "One second, I have them.",
+   "category": "reply",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 50.017,
+   "t_end": 51.717,
+   "gap_before": 1.24
+  },
+  {
+   "speaker": "Tomas",
+   "text": "How much did it cost to run, and was it worth it?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b012",
+   "t_start": 52.787,
+   "t_end": 55.637,
+   "gap_before": 0.98
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 56.957,
+   "t_end": 63.757,
+   "gap_before": 1.27,
+   "silent_s": 6.8
+  }
+ ]
+}

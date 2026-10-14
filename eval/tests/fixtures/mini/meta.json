@@ -1,0 +1,12 @@
+{
+ "id": "dmini",
+ "engine": [
+  {
+   "state": "engine_ready",
+   "readyAtSec": 0.2
+  }
+ ],
+ "cost_usd": 0.02,
+ "duration_s": 45.0,
+ "lead_in_s": 1.0
+}
