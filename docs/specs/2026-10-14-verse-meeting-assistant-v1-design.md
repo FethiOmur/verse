@@ -155,8 +155,8 @@ is a later option.
 - **Remote side:** captured with Core Audio process taps (`AudioHardwareCreateProcessTap`) on all processes of
   the meeting app (Brave helpers, Zoom, Teams). This needs the audio-recording permission and gives one remote
   stream. ScreenCaptureKit is the fallback. Proving the Brave route is spike item #1.
-- **the owner's mic:** AVAudioEngine with voice processing (`setVoiceProcessingEnabled`) for echo suppression, plus
-  a bleed gate: mic speech whose energy envelope correlates with the remote channel shifted by 0–80 ms is
+- **the owner's mic:** AVAudioEngine **without voice processing** (P1-3 measured it ducking the meeting audio by
+  −30 dB by default and −8 dB at the minimum setting), plus a bleed gate: mic speech whose energy envelope correlates with the remote channel shifted by 0–80 ms is
   discarded. When output goes to the speakers, a chip suggests headphones.
 - **Audio format** comes from `SpeechAnalyzer.bestAvailableAudioFormat` rather than a fixed 16 kHz. The
   language is chosen per session (en, it or tr); no automatic language ID is assumed.
