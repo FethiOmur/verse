@@ -103,6 +103,26 @@ public struct FactIndex: Sendable {
         return out
     }
 
+    /// A fact or glossary entry as a topic the topic trigger can match by similarity (plan F4): `phrase` is what the
+    /// matcher indexes, `label` is what the chip shows.
+    struct TopicDoc: Sendable, Equatable {
+        var id: String, phrase: String, label: String, sourceRef: String
+    }
+
+    /// Every fact (by its sentence) and every glossary term that has a definition line, when long enough to be a
+    /// topic rather than a bare word. Bare names, numbers and terms are the exact chips' job.
+    var topicDocs: [TopicDoc] {
+        let minChars = 12
+        var out: [TopicDoc] = []
+        for f in facts where f.text.count >= minChars {
+            out.append(TopicDoc(id: f.id, phrase: f.text, label: f.text, sourceRef: f.sourceRef))
+        }
+        for t in terms where !t.line.isEmpty && t.term.count + t.line.count >= minChars {
+            out.append(TopicDoc(id: t.id, phrase: "\(t.term) \(t.line)", label: "\(t.term): \(t.line)", sourceRef: t.sourceRef))
+        }
+        return out
+    }
+
     static func contains(_ hay: [String], _ needle: [String]) -> Bool {
         guard !needle.isEmpty, hay.count >= needle.count else { return false }
         for i in 0...(hay.count - needle.count) where Array(hay[i..<(i + needle.count)]) == needle { return true }
