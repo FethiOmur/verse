@@ -73,12 +73,14 @@ final class TurnLogicTests: XCTestCase {
         XCTAssertEqual(b.turns.first?.at ?? 0, 20.6, accuracy: 0.05)
         XCTAssertEqual(b.turns.first?.id, "r2")
 
-        // A cue question that is not finished ("... walk me through") also waits 600 ms.
+        // A cue question that is not finished ("... walk me through") ends in a preposition: a fragment, which
+        // neither uses the fast endpoint nor the 600 ms one but waits for 1.2 s of silence.
         _ = await engine.ingestTimed(ev("Can you walk me through", at: 30.0, start: 29))
-        let c = await engine.advance(to: 30.4)
-        XCTAssertTrue(c.turns.isEmpty, "an unfinished clause must not use the fast endpoint")
-        let d = await engine.advance(to: 30.65)
-        XCTAssertEqual(d.turns.first?.at ?? 0, 30.6, accuracy: 0.05)
+        let c = await engine.advance(to: 30.65)
+        XCTAssertTrue(c.turns.isEmpty, "an unfinished clause must not use the fast or the plain endpoint")
+        let d = await engine.advance(to: 31.25)
+        XCTAssertEqual(d.turns.first?.at ?? 0, 31.2, accuracy: 0.05)
+        XCTAssertEqual(d.turnKinds, [.fragment])
     }
 
     func testTextChangeResetsEndpoint() async {

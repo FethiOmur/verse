@@ -43,7 +43,21 @@ func ev(_ text: String, at t: Double, channel: Channel = .remote, final: Bool = 
 extension Array where Element == TurnEngine.Timed {
     var turns: [(at: Double, id: String, speaker: Speaker, text: String, addressee: Addressee)] {
         compactMap {
-            if case .turn(let id, let sp, let text, let who, _) = $0.event { return ($0.at, id, sp, text, who) }
+            if case .turn(let id, let sp, let text, let who, _, _) = $0.event { return ($0.at, id, sp, text, who) }
+            return nil
+        }
+    }
+    /// The `kind` of every turn event, in order.
+    var turnKinds: [TurnKind] {
+        compactMap {
+            if case .turn(_, _, _, _, _, let kind) = $0.event { return kind }
+            return nil
+        }
+    }
+    /// The `t_audio_end` of every turn event, in order.
+    var turnAudioEnds: [Double] {
+        compactMap {
+            if case .turn(_, _, _, _, let t, _) = $0.event { return t }
             return nil
         }
     }

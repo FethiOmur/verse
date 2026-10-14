@@ -48,9 +48,9 @@ final class BrainWireTests: XCTestCase {
     func testWireFormat() throws {
         let events: [OutboundEvent] = [
             .partial(turnID: "r1", speaker: .remote, text: "Can you walk me through \"Lantern\" — übung", cue: true, tAudioEnd: 12.346),
-            .turn(turnID: "r1", speaker: .remote, text: "Can you walk me through it", addressee: .me, tAudioEnd: 13.0),
+            .turn(turnID: "r1", speaker: .remote, text: "Can you walk me through it", addressee: .me, tAudioEnd: 13.0, kind: .question),
             .turn(turnID: "m1", speaker: .me, text: "Sure", addressee: .unknown, tAudioEnd: 14.2),
-            .turn(turnID: "r2", speaker: .remote, text: "Marco, can you", addressee: .other, tAudioEnd: 15),
+            .turn(turnID: "r2", speaker: .remote, text: "Marco, can you", addressee: .other, tAudioEnd: 15, kind: .fragment),
             .bankHit(turnID: "r1", bankID: "b004", score: 0.712),
         ]
         var lines = events.map { $0.jsonLine() }
@@ -86,8 +86,12 @@ final class BrainWireTests: XCTestCase {
         XCTAssertEqual(msgs[0]["cue"] as? Bool, true)
         XCTAssertEqual(msgs[0]["t_audio_end"] as? Double, 12.346)
         XCTAssertEqual(msgs[0]["text"] as? String, "Can you walk me through \"Lantern\" — übung")
-        XCTAssertEqual(Set(msgs[1].keys), ["type", "turn_id", "speaker", "text", "addressee", "t_audio_end"])
+        // `kind` is an extra field for the brain's later use; `parse_line` passes unknown keys through.
+        XCTAssertEqual(Set(msgs[1].keys), ["type", "turn_id", "speaker", "text", "addressee", "t_audio_end", "kind"])
         XCTAssertEqual(msgs[1]["addressee"] as? String, "me")
+        XCTAssertEqual(msgs[1]["kind"] as? String, "question")
+        XCTAssertEqual(msgs[2]["kind"] as? String, "statement")
+        XCTAssertEqual(msgs[3]["kind"] as? String, "fragment")
         XCTAssertEqual(msgs[2]["speaker"] as? String, "me")
         XCTAssertEqual(msgs[3]["addressee"] as? String, "other")
         XCTAssertEqual(Set(msgs[4].keys), ["type", "turn_id", "bank_id", "score"])

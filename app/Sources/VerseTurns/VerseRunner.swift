@@ -261,7 +261,7 @@ public final class VerseRunner: @unchecked Sendable {
             } else if case .chip = ev {
                 if let d = try? JSONSerialization.jsonObject(with: Data(ev.jsonLine().utf8)) as? [String: Any] { emitJSON(d) }
             }
-            if case .turn(let id, let speaker, _, _, let audioEnd) = ev, speaker == .remote {
+            if case .turn(let id, let speaker, _, _, let audioEnd, _) = ev, speaker == .remote {
                 let wall = Date().timeIntervalSince1970
                 let wall0 = state.withLock { s -> Double in
                     s.turnsSent += 1

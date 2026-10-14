@@ -100,4 +100,45 @@ public enum Cues {
         if lang == "en", last == "you" { return t.count >= 4 }
         return !(incomplete[lang] ?? incomplete["en"]!).contains(last)
     }
+
+    // MARK: fragment / kind
+
+    /// Words a finished clause does not end on: conjunctions, articles and determiners, prepositions and subject
+    /// pronouns. A turn that ends on one is cut off mid-clause ("... and we").
+    private static let fragmentEnders: [String: Set<String>] = [
+        "en": ["and", "or", "but", "so", "because", "although", "though", "while", "if", "unless", "whether", "since", "until",
+               "as", "than", "which", "who", "whom", "whose", "when", "where", "also", "then", "not",
+               "the", "a", "an", "my", "your", "our", "their", "his", "her", "its", "any", "some", "each", "every",
+               "of", "to", "in", "on", "at", "by", "for", "with", "from", "about", "into", "over", "under", "through", "during",
+               "between", "among", "after", "before", "like", "around", "against", "without", "within", "toward", "towards",
+               "i", "we", "they", "he", "she", "i'm", "we're", "they're", "i've", "we've", "they've", "i'd", "we'd", "i'll", "we'll"],
+        "it": ["e", "ed", "o", "ma", "che", "di", "da", "del", "della", "dei", "delle", "nel", "nella", "nei", "in", "con", "per", "su",
+               "tra", "fra", "il", "lo", "la", "i", "gli", "le", "un", "una", "uno", "se", "perché", "perche", "a", "io", "noi", "loro", "lui", "lei"],
+        "tr": ["ve", "ile", "ama", "fakat", "ki", "için", "gibi", "kadar", "bir", "veya", "ya", "çünkü", "ben", "biz", "onlar"],
+    ]
+
+    /// Prepositions that may end a finished wh-question ("Where are you from", "What are you working on").
+    private static let strandedPrepositions: Set<String> = ["from", "on", "with", "about", "for", "at"]
+
+    /// True when the text is not a finished turn yet: fewer than `minWords` words, a filler at the end, or a last word
+    /// that no finished clause ends on ("... and we", "... to the"). Sentence-final punctuation from the recognizer
+    /// ("." "?" "!") counts as the speaker having finished the clause, but not as enough words.
+    public static func isFragment(_ text: String, lang: String = "en", minWords: Int = 3) -> Bool {
+        let t = Text.tokens(text, lang: lang)
+        guard let last = t.last else { return true }
+        if t.count < minWords { return true }
+        if isHesitation(last, lang: lang) { return true }
+        if let c = text.trimmingCharacters(in: .whitespacesAndNewlines).last, ".?!".contains(c) { return false }
+        // "Why should we hire you" is finished, "And you" is not.
+        if lang == "en", last == "you" { return t.count < 4 }
+        if lang == "en", strandedPrepositions.contains(last), t.count >= 4, enWh.contains(t[0]) { return false }
+        return (fragmentEnders[lang] ?? fragmentEnders["en"]!).contains(last)
+    }
+
+    /// The kind of a finished turn: fragment (see `isFragment`), question (a question cue or a closing "?"), or statement.
+    public static func kind(of text: String, lang: String = "en", minWords: Int = 3) -> TurnKind {
+        if isFragment(text, lang: lang, minWords: minWords) { return .fragment }
+        if hasCue(text, lang: lang) || text.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("?") { return .question }
+        return .statement
+    }
 }

@@ -28,18 +28,34 @@ public struct TurnConfig: Sendable {
     public var speechAboveFloorDb: Double
     public var speechCeilingDbfs: Double
     /// With audio levels: the longest the endpoint waits (after the last text change) for the audio to go quiet or the
-    /// recognizer to catch up with it. Without levels the endpoint is purely text based and this is not used.
+    /// recognizer to catch up with it. Without levels the endpoint is purely text based and this is not used. It only
+    /// matters for audio that never goes quiet (music under the voice), so it must stay longer than the longest gap
+    /// between two recognizer results inside one sentence: Nemotron delivered results 1.13 s apart in a recorded run
+    /// (a 1.0 s cap split that sentence).
     public var audioWaitCapMs: Int
     /// With audio levels: a turn is never closed sooner than this after its last text change, so the rest of a burst of
     /// recognizer results (several events in the same millisecond) still lands in it.
     public var burstSettleMs: Int
+    /// With audio levels: the recognizer has caught up with the audio once it delivered any result (also one without
+    /// new words, e.g. a final) at least this long after the remote audio went quiet. Its chunks are decoded whole, so
+    /// a result that comes after the quiet began has seen the end of the speech (38 recorded Nemotron utterances: the
+    /// words of a result 0.1 s after the quiet never changed afterwards; at 0.0 s two of them did).
+    public var recognizerSettleMs: Int
+    /// With audio levels, when no such result arrives: close this long after the audio went quiet anyway (the 560 ms
+    /// chunk of the recognizer plus its compute time), instead of waiting out `audioWaitCapMs`.
+    public var recognizerCatchUpMs: Int
+    /// A remote turn with fewer words than this, or one cut off in the middle of a clause (it ends on a conjunction,
+    /// article, preposition or subject pronoun), is only closed after `fragmentHoldMs` of silence.
+    public var minTurnWords: Int
+    public var fragmentHoldMs: Int
 
     public init(ownerName: String = "Alex", ownerAliases: [String] = [], otherNames: [String] = [],
                 cueEndpointMs: Int = 300, plainEndpointMs: Int = 600,
                 matchThreshold: Double = 0.55, matchMargin: Double = 0.08,
                 lang: String = "en", newTurnSilenceMs: Int = 600, meFollowSeconds: Double = 3.0, matchConsecutive: Int = 2,
                 speechFloorDbfs: Double = -55, speechAboveFloorDb: Double = 10, speechCeilingDbfs: Double = -42,
-                audioWaitCapMs: Int = 1500, burstSettleMs: Int = 80) {
+                audioWaitCapMs: Int = 1500, burstSettleMs: Int = 80,
+                recognizerSettleMs: Int = 100, recognizerCatchUpMs: Int = 800, minTurnWords: Int = 3, fragmentHoldMs: Int = 1200) {
         self.ownerName = ownerName
         self.ownerAliases = ownerAliases
         self.otherNames = otherNames
@@ -56,6 +72,10 @@ public struct TurnConfig: Sendable {
         self.speechCeilingDbfs = speechCeilingDbfs
         self.audioWaitCapMs = audioWaitCapMs
         self.burstSettleMs = burstSettleMs
+        self.recognizerSettleMs = recognizerSettleMs
+        self.recognizerCatchUpMs = recognizerCatchUpMs
+        self.minTurnWords = minTurnWords
+        self.fragmentHoldMs = fragmentHoldMs
     }
 }
 
@@ -83,6 +103,8 @@ public actor TurnEngine {
         var segments: [Segment] = []
         var startedAt: Double
         var lastChange: Double
+        /// Session time of the last recognizer result that went into this turn, also one that changed nothing.
+        var lastResult: Double
         var text = ""
         var cue = false
         var audioEnd = 0.0
@@ -166,7 +188,7 @@ public actor TurnEngine {
         now = max(now, t)
         var out: [Timed] = []
         if let r = remote, deadline(r, remote: true) <= now {
-            out += closeRemote(at: max(deadline(r, remote: true), r.lastChange))
+            out += closeRemote(at: max(deadline(r, remote: true), r.lastChange), byQuiet: true)
         }
         if let m = me, deadline(m, remote: false) <= now {
             out += closeMe(at: max(deadline(m, remote: false), m.lastChange))
@@ -198,16 +220,29 @@ public actor TurnEngine {
         t.cue && Cues.endsComplete(t.text, lang: config.lang) ? config.cueEndpointMs : config.plainEndpointMs
     }
 
+    /// A remote turn that is not finished yet: too short or cut off in the middle of a clause.
+    private func isFragment(_ t: Turn) -> Bool {
+        Cues.isFragment(t.text, lang: config.lang, minWords: config.minTurnWords)
+    }
+
     /// When the turn is over. Text only: `T` after the last text change. With audio levels: `T` after the remote audio
-    /// went quiet, once the recognizer has processed that audio (its result range reaches the end of the speech), and
-    /// never later than `audioWaitCapMs` after the last text change.
+    /// went quiet, once the recognizer has processed that audio, and never later than `audioWaitCapMs` after the last
+    /// text change. A fragment waits `fragmentHoldMs` instead of `T` (and its cap moves out by the same amount).
+    ///
+    /// "The recognizer has processed the audio" is not "its result range reaches the end of the audio": the range ends
+    /// at the last token, which for an RNN-T decoder lies up to half a second before the end of the sound, so that
+    /// condition never held and every turn waited out the cap. The recognizer decodes whole chunks and delivers a result
+    /// per chunk (a final too), so a result that arrived `recognizerSettleMs` after the quiet began has seen the end of
+    /// the speech. When none arrives, `recognizerCatchUpMs` after the quiet is long enough for one chunk.
     private func deadline(_ t: Turn, remote isRemote: Bool) -> TimeInterval {
-        let T = Double(isRemote ? endpointMs(t) : config.plainEndpointMs) / 1000
+        var T = Double(isRemote ? endpointMs(t) : config.plainEndpointMs) / 1000
+        let fragment = isRemote && isFragment(t)
+        if fragment { T = max(T, Double(config.fragmentHoldMs) / 1000) }
         let textDue = t.lastChange + T
         guard isRemote, levelsSeen, lastActive.isFinite, lastActive >= t.startedAt - 3 else { return textDue }
-        let cap = t.lastChange + max(T, Double(config.audioWaitCapMs) / 1000)
-        let caughtUp = t.audioEnd >= lastActive - 0.05
-        var due = lastActive + (caughtUp ? T : max(T, Double(config.audioWaitCapMs) / 1000))
+        let cap = t.lastChange + (fragment ? T : 0) + max(T, Double(config.audioWaitCapMs) / 1000)
+        let caughtUp = t.audioEnd >= lastActive - 0.05 || t.lastResult >= lastActive + Double(config.recognizerSettleMs) / 1000
+        var due = lastActive + (caughtUp ? T : max(T, Double(config.recognizerCatchUpMs) / 1000))
         due = max(due, t.lastChange + Double(config.burstSettleMs) / 1000)
         return min(due, cap)
     }
@@ -242,7 +277,7 @@ public actor TurnEngine {
 
         if remote == nil {
             remoteCount += 1
-            var t = Turn(id: "r\(remoteCount)", startedAt: now, lastChange: now)
+            var t = Turn(id: "r\(remoteCount)", startedAt: now, lastChange: now, lastResult: now)
             t.followsMe = remoteSinceMe == 0 && lastMeEnd.map { now - $0 <= config.meFollowSeconds } == true
             if let p = stripped { t.stripPrefix = p.tokens; t.stripBelow = p.below }
             remote = t
@@ -250,12 +285,14 @@ public actor TurnEngine {
         guard var turn = remote else { return out }
 
         // A long gap before non-overlapping audio: the previous words were a turn of their own.
+        // (A cut-off turn only splits after the longer fragment silence: "Okay so we" + 0.8 s + "shipped it" is one turn.)
+        let gapNeeded = Double(isFragment(turn) ? max(config.newTurnSilenceMs, config.fragmentHoldMs) : config.newTurnSilenceMs) / 1000
         if !turn.segments.isEmpty, config.newTurnSilenceMs > 0,
-           start - turn.audioEnd >= Double(config.newTurnSilenceMs) / 1000,
+           start - turn.audioEnd >= gapNeeded,
            !turn.segments.contains(where: { Self.replaces($0, start: start, end: end) }) {
             out += closeRemote(at: now)
             remoteCount += 1
-            var t = Turn(id: "r\(remoteCount)", startedAt: now, lastChange: now)
+            var t = Turn(id: "r\(remoteCount)", startedAt: now, lastChange: now, lastResult: now)
             t.followsMe = false
             remote = t
             turn = t
@@ -266,6 +303,7 @@ public actor TurnEngine {
     private func applyRemote(_ turn: inout Turn, start: Double, end: Double, body: String, e: TranscriptEvent) -> [Timed] {
         let lang = config.lang
         let changed = Self.apply(&turn, start: start, end: end, text: body, isFinal: e.isFinal, now: now)
+        turn.lastResult = max(turn.lastResult, e.emittedAt)
         remote = turn
         guard changed || !e.isFinal else { return [] }
         var out: [Timed] = []
@@ -311,7 +349,9 @@ public actor TurnEngine {
         return first
     }
 
-    private func closeRemote(at t: TimeInterval) -> [Timed] {
+    /// `byQuiet`: the turn ended because the audio went quiet (not because the owner or a new utterance started), so
+    /// the end of the sound is known and becomes the turn's `t_audio_end`.
+    private func closeRemote(at t: TimeInterval, byQuiet: Bool = false) -> [Timed] {
         guard let turn = remote else { return [] }
         remote = nil
         let tokens = Text.tokens(turn.text, lang: config.lang)
@@ -322,7 +362,12 @@ public actor TurnEngine {
         if tokens.isEmpty || Cues.isOnlyHesitation(turn.text, lang: config.lang) { return [] }
         remoteSinceMe += 1
         let who = classify(turn)
-        return [Timed(at: t, event: .turn(turnID: turn.id, speaker: .remote, text: turn.text, addressee: who, tAudioEnd: turn.audioEnd))]
+        // The recognizer's range ends at its last token, up to half a second before the sound ended. Half the 100 ms
+        // level window is the uncertainty of `lastActive`.
+        var audioEnd = turn.audioEnd
+        if byQuiet, levelsSeen, lastActive.isFinite, lastActive >= turn.startedAt - 3 { audioEnd = max(audioEnd, lastActive - 0.05) }
+        return [Timed(at: t, event: .turn(turnID: turn.id, speaker: .remote, text: turn.text, addressee: who, tAudioEnd: audioEnd,
+                                          kind: Cues.kind(of: turn.text, lang: config.lang, minWords: config.minTurnWords)))]
     }
 
     // MARK: me channel
@@ -333,7 +378,7 @@ public actor TurnEngine {
         if remote != nil { out += closeRemote(at: now) }
         if me == nil {
             meCount += 1
-            me = Turn(id: "m\(meCount)", startedAt: now, lastChange: now)
+            me = Turn(id: "m\(meCount)", startedAt: now, lastChange: now, lastResult: now)
         }
         guard var turn = me else { return out }
         _ = Self.apply(&turn, start: e.audioStart, end: e.audioEnd, text: text, isFinal: e.isFinal, now: now)
@@ -347,7 +392,8 @@ public actor TurnEngine {
         lastMeEnd = turn.lastChange
         remoteSinceMe = 0
         guard !Text.tokens(turn.text, lang: config.lang).isEmpty else { return [] }
-        return [Timed(at: t, event: .turn(turnID: turn.id, speaker: .me, text: turn.text, addressee: .unknown, tAudioEnd: turn.audioEnd))]
+        return [Timed(at: t, event: .turn(turnID: turn.id, speaker: .me, text: turn.text, addressee: .unknown, tAudioEnd: turn.audioEnd,
+                                          kind: Cues.kind(of: turn.text, lang: config.lang, minWords: config.minTurnWords)))]
     }
 
     // MARK: addressee

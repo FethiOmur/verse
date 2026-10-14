@@ -8,12 +8,18 @@ public enum Addressee: String, Sendable, Codable, Equatable {
     case me, other, unknown
 }
 
+/// What a finished turn is, for the brain to weigh: a question (cue or wh/auxiliary question form), a plain
+/// statement, or a fragment (a cut-off clause or fewer than three words).
+public enum TurnKind: String, Sendable, Codable, Equatable {
+    case question, statement, fragment
+}
+
 /// What the turn engine tells the outside world. `partial`, `turn` and `bankHit` encode to exactly the JSON lines
 /// the brain reads (plan P1-2, `brain/verse_brain/runtime/protocol.py`); `chip` is for the overlay and never goes to
 /// the brain.
 public enum OutboundEvent: Codable, Sendable, Equatable {
     case partial(turnID: String, speaker: Speaker, text: String, cue: Bool, tAudioEnd: Double)
-    case turn(turnID: String, speaker: Speaker, text: String, addressee: Addressee, tAudioEnd: Double)
+    case turn(turnID: String, speaker: Speaker, text: String, addressee: Addressee, tAudioEnd: Double, kind: TurnKind = .statement)
     case bankHit(turnID: String, bankID: String, score: Double)
     case chip(turnID: String, kind: String, text: String, sourceRef: String, factID: String)
 
@@ -23,7 +29,7 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
 
     public var turnID: String {
         switch self {
-        case .partial(let id, _, _, _, _), .turn(let id, _, _, _, _), .bankHit(let id, _, _), .chip(let id, _, _, _, _): return id
+        case .partial(let id, _, _, _, _), .turn(let id, _, _, _, _, _), .bankHit(let id, _, _), .chip(let id, _, _, _, _): return id
         }
     }
 
@@ -52,12 +58,13 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
             try c.encode(text, forKey: .text)
             try c.encode(cue, forKey: .cue)
             try c.encode(Text.ms(t), forKey: .t_audio_end)
-        case .turn(let id, let speaker, let text, let addressee, let t):
+        case .turn(let id, let speaker, let text, let addressee, let t, let kind):
             try c.encode(id, forKey: .turn_id)
             try c.encode(speaker, forKey: .speaker)
             try c.encode(text, forKey: .text)
             try c.encode(addressee, forKey: .addressee)
             try c.encode(Text.ms(t), forKey: .t_audio_end)
+            try c.encode(kind, forKey: .kind)
         case .bankHit(let id, let bank, let score):
             try c.encode(id, forKey: .turn_id)
             try c.encode(bank, forKey: .bank_id)
@@ -80,7 +87,8 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
                             cue: try c.decode(Bool.self, forKey: .cue), tAudioEnd: try c.decode(Double.self, forKey: .t_audio_end))
         case "turn":
             self = .turn(turnID: id, speaker: try c.decode(Speaker.self, forKey: .speaker), text: try c.decode(String.self, forKey: .text),
-                         addressee: try c.decode(Addressee.self, forKey: .addressee), tAudioEnd: try c.decode(Double.self, forKey: .t_audio_end))
+                         addressee: try c.decode(Addressee.self, forKey: .addressee), tAudioEnd: try c.decode(Double.self, forKey: .t_audio_end),
+                         kind: try c.decodeIfPresent(TurnKind.self, forKey: .kind) ?? .statement)
         case "bank_hit":
             self = .bankHit(turnID: id, bankID: try c.decode(String.self, forKey: .bank_id), score: try c.decode(Double.self, forKey: .score))
         case "chip":
