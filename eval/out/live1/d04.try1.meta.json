@@ -1,0 +1,119 @@
+{
+ "id": "d04",
+ "lead_in_s": 10.0,
+ "duration_s": 75.6,
+ "timeline": [
+  {
+   "index": 0,
+   "speaker": "Ingrid",
+   "t_start": 10.02,
+   "t_end": 13.15,
+   "silent": false
+  },
+  {
+   "index": 1,
+   "speaker": "Alex",
+   "t_start": 14.18,
+   "t_end": 20.68,
+   "silent": true
+  },
+  {
+   "index": 2,
+   "speaker": "Ingrid",
+   "t_start": 22.0,
+   "t_end": 26.35,
+   "silent": false
+  },
+  {
+   "index": 3,
+   "speaker": "Alex",
+   "t_start": 27.72,
+   "t_end": 36.12,
+   "silent": true
+  },
+  {
+   "index": 4,
+   "speaker": "Ingrid",
+   "t_start": 37.14,
+   "t_end": 39.98,
+   "silent": false
+  },
+  {
+   "index": 5,
+   "speaker": "Alex",
+   "t_start": 41.26,
+   "t_end": 48.36,
+   "silent": true
+  },
+  {
+   "index": 6,
+   "speaker": "Ingrid",
+   "t_start": 49.62,
+   "t_end": 52.06,
+   "silent": false
+  },
+  {
+   "index": 7,
+   "speaker": "Ingrid",
+   "t_start": 53.37,
+   "t_end": 55.65,
+   "silent": false
+  },
+  {
+   "index": 8,
+   "speaker": "Alex",
+   "t_start": 57.0,
+   "t_end": 64.4,
+   "silent": true
+  },
+  {
+   "index": 9,
+   "speaker": "Ingrid",
+   "t_start": 65.72,
+   "t_end": 67.69,
+   "silent": false
+  },
+  {
+   "index": 10,
+   "speaker": "Alex",
+   "t_start": 68.802,
+   "t_end": 75.602,
+   "silent": true
+  }
+ ],
+ "wall_start": 1791992895.832,
+ "render_s": 3.42,
+ "elapsed_s": 83.03,
+ "loadavg_before": [
+  6.34,
+  13.86,
+  40.72
+ ],
+ "loadavg_after": [
+  23.09,
+  17.39,
+  39.65
+ ],
+ "exit_code": 0,
+ "timed_out": false,
+ "engine": [],
+ "lines": 556,
+ "cost_usd": 0.025361,
+ "fake_brain": false,
+ "session_files_added": [],
+ "audio_watch": {
+  "folders": [
+   "/var/folders/th/cqlllcvs5g9d857_y87xzf0w0000gn/T/verse-eval-audio-3bk_7v62/session",
+   "/Users/user/Library/Application Support/Verse/sessions",
+   "/Users/user/Desktop/ProjectExamples/CursorExamples/Verse/brain/tests/out"
+  ],
+  "polls": 325,
+  "audio_files_found": [],
+  "pass": true
+ },
+ "temp_audio_removed": true,
+ "others_passed": [
+  "Ingrid"
+ ],
+ "budget_usd": 0.25
+}

@@ -1,0 +1,27 @@
+{
+ "run": "live1",
+ "dialogues": [
+  "d01",
+  "d02",
+  "d03",
+  "d04",
+  "d05",
+  "d06",
+  "d07",
+  "d08",
+  "d09",
+  "d10",
+  "d11",
+  "d12",
+  "d13"
+ ],
+ "invocations": [
+  "d01-d06 (stopped during d07 to fix the engine-load retry; the first attempt of d04-d06 ran on the Apple fallback and is kept as .try1)",
+  "d04-d12",
+  "d13"
+ ],
+ "dialogue_spend_usd": 0.2038,
+ "ledger_total_usd_all_live_calls": 0.492972,
+ "fake_brain": false,
+ "notes": "d07.try1.* is a partial recording of a run that was stopped; it is not scored. scores.json is from the last scoring pass."
+}

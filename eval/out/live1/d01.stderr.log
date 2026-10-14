@@ -1,0 +1,2 @@
+{"channel":"remote","engine":"Nemotron-0.6B-560ms (FluidAudio CoreML)","loadSec":12.805,"readyAtSec":12.81,"state":"engine_ready","type":"status"}
+{"channel":"remote","engine":"Nemotron-0.6B-560ms (FluidAudio CoreML)","from":"SpeechTranscriber+fastResults","loadSec":12.805,"readyAtSec":12.81,"state":"engine_switch","switchAtSec":12.81,"type":"status","waitedSec":0}
