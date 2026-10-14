@@ -6,12 +6,15 @@ public struct BankEntry: Sendable, Equatable {
     public var lang: String
     public var question: String
     public var paraphrases: [String: [String]]
+    /// The first source ref of the entry (`prep:L14`); "" when it has none. Shown on topic chips.
+    public var sourceRef: String
 
-    public init(id: String, lang: String = "en", question: String, paraphrases: [String: [String]] = [:]) {
+    public init(id: String, lang: String = "en", question: String, paraphrases: [String: [String]] = [:], sourceRef: String = "") {
         self.id = id
         self.lang = lang
         self.question = question
         self.paraphrases = paraphrases
+        self.sourceRef = sourceRef
     }
 
     /// The question plus the paraphrases in `lang` (all languages when `lang` has none).
@@ -45,7 +48,8 @@ public struct Bank: Sendable {
             if let p = obj["paraphrases"] as? [String: Any] {
                 for (k, v) in p { para[k] = (v as? [Any])?.compactMap { $0 as? String } ?? [] }
             }
-            entries.append(BankEntry(id: id, lang: obj["lang"] as? String ?? "en", question: q, paraphrases: para))
+            let ref = ((obj["sources"] as? [[String: Any]])?.first?["ref"] as? String) ?? ""
+            entries.append(BankEntry(id: id, lang: obj["lang"] as? String ?? "en", question: q, paraphrases: para, sourceRef: ref))
         }
         return Bank(entries: entries.sorted { $0.id < $1.id })
     }

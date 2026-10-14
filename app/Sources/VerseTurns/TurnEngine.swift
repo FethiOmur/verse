@@ -48,6 +48,19 @@ public struct TurnConfig: Sendable {
     /// article, preposition or subject pronoun), is only closed after `fragmentHoldMs` of silence.
     public var minTurnWords: Int
     public var fragmentHoldMs: Int
+    /// Topic trigger (plan F4): remote speech without a question cue that comes close to a bank entry or a fact/glossary
+    /// topic becomes a `chip{kind:"topic"}`. Similarity is the bank's n-gram matcher over the last `topicWindowSeconds`
+    /// of remote speech with its own, lower threshold and margin.
+    public var topicThreshold: Double
+    public var topicMargin: Double
+    public var topicWindowSeconds: Double
+    /// At most one topic chip per this many seconds ...
+    public var topicCooldownSeconds: Double
+    /// ... and the same id (bank entry, fact or glossary term) at most once per this many seconds.
+    public var topicSameIDSeconds: Double
+    /// A bank question is shortened to this many characters for the chip label.
+    public var topicLabelMax: Int
+    public var topicEnabled: Bool
 
     public init(ownerName: String = "Alex", ownerAliases: [String] = [], otherNames: [String] = [],
                 cueEndpointMs: Int = 300, plainEndpointMs: Int = 600,
@@ -55,7 +68,10 @@ public struct TurnConfig: Sendable {
                 lang: String = "en", newTurnSilenceMs: Int = 600, meFollowSeconds: Double = 3.0, matchConsecutive: Int = 2,
                 speechFloorDbfs: Double = -55, speechAboveFloorDb: Double = 10, speechCeilingDbfs: Double = -42,
                 audioWaitCapMs: Int = 1500, burstSettleMs: Int = 80,
-                recognizerSettleMs: Int = 100, recognizerCatchUpMs: Int = 800, minTurnWords: Int = 3, fragmentHoldMs: Int = 1200) {
+                recognizerSettleMs: Int = 100, recognizerCatchUpMs: Int = 800, minTurnWords: Int = 3, fragmentHoldMs: Int = 1200,
+                topicThreshold: Double = 0.30, topicMargin: Double = 0.05, topicWindowSeconds: Double = 12,
+                topicCooldownSeconds: Double = 12, topicSameIDSeconds: Double = 300, topicLabelMax: Int = 60,
+                topicEnabled: Bool = true) {
         self.ownerName = ownerName
         self.ownerAliases = ownerAliases
         self.otherNames = otherNames
@@ -76,6 +92,13 @@ public struct TurnConfig: Sendable {
         self.recognizerCatchUpMs = recognizerCatchUpMs
         self.minTurnWords = minTurnWords
         self.fragmentHoldMs = fragmentHoldMs
+        self.topicThreshold = topicThreshold
+        self.topicMargin = topicMargin
+        self.topicWindowSeconds = topicWindowSeconds
+        self.topicCooldownSeconds = topicCooldownSeconds
+        self.topicSameIDSeconds = topicSameIDSeconds
+        self.topicLabelMax = topicLabelMax
+        self.topicEnabled = topicEnabled
     }
 }
 
@@ -96,6 +119,8 @@ public actor TurnEngine {
         var start: Double, end: Double
         var text: String
         var isFinal: Bool
+        /// Session time of the result that last set this segment (the topic trigger's window runs on it).
+        var at: Double
     }
 
     private struct Turn {
@@ -125,8 +150,9 @@ public actor TurnEngine {
     }
 
     private let config: TurnConfig
-    private let matcher: BankMatcher
+    private let matcher: MatchCache
     private let facts: FactIndex
+    private var topic: TopicTrigger
 
     private var now: TimeInterval = 0
     private var remote: Turn?
@@ -143,8 +169,9 @@ public actor TurnEngine {
 
     public init(config: TurnConfig, bank: Bank, facts: FactIndex) {
         self.config = config
-        self.matcher = BankMatcher(bank: bank, lang: config.lang)
+        self.matcher = MatchCache(BankMatcher(bank: bank, lang: config.lang))
         self.facts = facts
+        self.topic = TopicTrigger(config: config, bank: bank, bankMatches: matcher, facts: facts)
     }
 
     // MARK: public API
@@ -328,8 +355,18 @@ public actor TurnEngine {
             turn.hitCandidate = nil
             turn.hitCount = 0
         }
+        // Topic chip: a statement near a prepared topic. Never in a turn that has a question cue or a bank hit (or a
+        // hit candidate that may become one): those already produce a card.
+        if !turn.cue, turn.hitCandidate == nil, turn.sentHitID == nil,
+           let hit = topic.evaluate(now: now, current: Self.pieces(of: turn), skip: turn.chipIDs) {
+            out.append(Timed(at: now, event: .chip(turnID: turn.id, kind: "topic", text: hit.text, sourceRef: hit.sourceRef, factID: hit.id)))
+        }
         remote = turn
         return out
+    }
+
+    private static func pieces(of turn: Turn) -> [TopicTrigger.Piece] {
+        turn.segments.map { TopicTrigger.Piece(at: $0.at, text: $0.text) }
     }
 
     /// The best bank entry for the turn text (whole text or its last sentence, whichever matches better), or nil
@@ -354,6 +391,7 @@ public actor TurnEngine {
     private func closeRemote(at t: TimeInterval, byQuiet: Bool = false) -> [Timed] {
         guard let turn = remote else { return [] }
         remote = nil
+        if !turn.cue, turn.sentHitID == nil { topic.noteClosed(Self.pieces(of: turn), now: now) }
         let tokens = Text.tokens(turn.text, lang: config.lang)
         // A turn that was opened by stripping an earlier turn's words keeps them in front, so the chain of turns of one
         // cumulative recognizer result can be stripped again.
@@ -439,7 +477,7 @@ public actor TurnEngine {
     /// Returns whether the assembled text changed.
     private static func apply(_ turn: inout Turn, start: Double, end: Double, text: String, isFinal: Bool, now: Double) -> Bool {
         turn.segments.removeAll { replaces($0, start: start, end: end) }
-        turn.segments.append(Segment(start: start, end: end, text: text, isFinal: isFinal))
+        turn.segments.append(Segment(start: start, end: end, text: text, isFinal: isFinal, at: now))
         turn.segments.sort { $0.start < $1.start }
         let joined = turn.segments.map(\.text).joined(separator: " ")
             .split(whereSeparator: \.isWhitespace).joined(separator: " ")
