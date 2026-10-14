@@ -18,6 +18,8 @@ let package = Package(
         .library(name: "VerseSpeech", targets: ["VerseSpeech"]),
         .library(name: "VerseTurns", targets: ["VerseTurns"]),
         .library(name: "VerseMeet", targets: ["VerseMeet"]),
+        // S3: interview-simulation voices (Apple / ElevenLabs / OpenAI / text) behind one protocol.
+        .library(name: "VerseVoice", targets: ["VerseVoice"]),
         .executable(name: "verse-listen", targets: ["verse-listen"]),
         .executable(name: "verse-run", targets: ["verse-run"]),
         // P1-5: the menu-bar app (bundled into app/build/Verse.app by scripts/bundle-app.sh).
@@ -125,6 +127,17 @@ let package = Package(
         .testTarget(
             name: "VerseAudioTests",
             dependencies: ["VerseAudio", "VerseSpeech", "verse-listen"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        // S3: voices. No dependency on other Verse targets; AVFoundation only.
+        .target(
+            name: "VerseVoice",
+            swiftSettings: [.swiftLanguageMode(.v6)],
+            linkerSettings: [.linkedFramework("AVFoundation")]
+        ),
+        .testTarget(
+            name: "VerseVoiceTests",
+            dependencies: ["VerseVoice"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
