@@ -12,6 +12,7 @@ public struct MeetingApp: Sendable, Equatable {
 
     public static let known: [MeetingApp] = [
         MeetingApp(name: "Brave", bundleIDs: ["com.brave.Browser"]),
+        MeetingApp(name: "Comet", bundleIDs: ["ai.perplexity.comet"]),
         MeetingApp(name: "Chrome", bundleIDs: ["com.google.Chrome"]),
         // Safari's page processes are WebKit helpers; unverified on a live Safari call.
         MeetingApp(name: "Safari", bundleIDs: ["com.apple.Safari", "com.apple.WebKit.GPU", "com.apple.WebKit.WebContent"]),
