@@ -209,6 +209,11 @@ public struct OverlayReducer: Sendable {
 
     private var lines: [String: Lines] = [:]
     private var turns: [String: TurnInfo] = [:]
+    /// Remote `statement` turns not addressed to someone else, by turn id: (text, addressee). The brain may still
+    /// answer one as a question; its first S/F SAY line then opens the card.
+    private var statements: [String: (text: String, addressee: String)] = [:]
+    /// The newest remote turn: only that one may open a card late.
+    private var lastRemoteTurnID: String?
     private var lastContent: TimeInterval = 0
     /// When each topic chip (by text) was last seen.
     private var topicSeen: [String: TimeInterval] = [:]
@@ -223,6 +228,8 @@ public struct OverlayReducer: Sendable {
         state.lang = lang
         lines = [:]
         turns = [:]
+        statements = [:]
+        lastRemoteTurnID = nil
         topicSeen = [:]
     }
 
@@ -308,23 +315,42 @@ public struct OverlayReducer: Sendable {
             let who = o[string: "addressee"] ?? "unknown"
             let kind = o[string: "kind"] ?? "question"
             let text = o[string: "text"] ?? ""
+            lastRemoteTurnID = tid
             if who == "other" {
                 state.addresseeTag = "for " + (otherName(in: text) ?? "someone else")
                 state.tagDimmed = true
                 return
             }
-            guard kind == "question" else { return }   // fragments and statements never open a card
-            state.addresseeTag = who == "me" ? "for you" : nil
-            state.tagDimmed = false
-            state.card = OverlayCard(turnID: tid, question: text)
-            state.topics = []
-            topicSeen = [:]
-            state.activity = .thinking
-            touch(now)
-            refreshCard(now: now)
+            guard kind == "question" else {
+                // Fragments never open a card. A statement waits: the brain may answer it as a question.
+                if kind == "statement" { statements[tid] = (text, who) }
+                return
+            }
+            openCard(turnID: tid, question: text, addressee: who, now: now)
         default:
             break
         }
+    }
+
+    private mutating func openCard(turnID tid: String, question: String, addressee who: String, now: TimeInterval) {
+        statements[tid] = nil
+        state.addresseeTag = who == "me" ? "for you" : nil
+        state.tagDimmed = false
+        state.card = OverlayCard(turnID: tid, question: question)
+        state.topics = []
+        topicSeen = [:]
+        state.activity = .thinking
+        touch(now)
+        refreshCard(now: now)
+    }
+
+    /// A statement the brain answers anyway: an S or F stream with a complete `SAY:` prefix means it took the turn
+    /// as a question. Only the newest remote turn qualifies, so a late answer never takes over a newer card.
+    private mutating func openReclassifiedStatement(turnID tid: String, tier: String, lines l: Lines, now: TimeInterval) {
+        guard state.card?.turnID != tid, tid == lastRemoteTurnID, let st = statements[tid],
+              tier == "S" || tier == "F",
+              l.all.contains(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("SAY:") }) else { return }
+        openCard(turnID: tid, question: st.text, addressee: st.addressee, now: now)
     }
 
     private func otherName(in text: String) -> String? {
@@ -367,6 +393,7 @@ public struct OverlayReducer: Sendable {
             if tier == "F", info.fID == nil { info.fID = id }
             if tier == "D", info.dID == nil { info.dID = id }
             turns[tid] = info
+            openReclassifiedStatement(turnID: tid, tier: tier, lines: l, now: now)
             if state.card?.turnID == tid { refreshCard(now: now) }
         case "select":
             guard let tid = o[string: "turn_id"], let id = o[string: "id"] else { return }

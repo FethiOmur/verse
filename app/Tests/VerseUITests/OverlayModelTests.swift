@@ -142,6 +142,55 @@ final class OverlayModelTests: XCTestCase {
         XCTAssertNil(m.state.card)
     }
 
+    /// The brain reclassified a `statement` turn as a question: its S/F stream carries a SAY line, so the card opens
+    /// on the first delta that has one.
+    func testOverlayStatementReclassifiedByBrain() throws {
+        let c = Clock()
+        let m = model(c)
+        m.apply(turn("r1", "So you have run Postgres at that scale.", kind: "statement"))
+        XCTAssertNil(m.state.card, "a statement opens no card on its own")
+
+        // a non-SAY line from the brain does not open it
+        for e in stream("s0001", "r1", "S", "- just a note") { m.apply(e) }
+        XCTAssertNil(m.state.card)
+
+        // the first delta that completes a SAY prefix opens the card
+        m.apply(delta("s0002", "r1", "S", "SA"))
+        XCTAssertNil(m.state.card, "a partial prefix is not a SAY line yet")
+        m.apply(delta("s0002", "r1", "S", "Y:"))
+        let opened = try XCTUnwrap(m.state.card, "card opens on the first delta with a SAY line")
+        XCTAssertEqual(opened.turnID, "r1")
+        XCTAssertEqual(opened.question, "So you have run Postgres at that scale.")
+        XCTAssertEqual(m.state.addresseeTag, "for you")
+        XCTAssertEqual(m.state.activity, .thinking)
+
+        m.apply(.brain(obj(["type": "select", "turn_id": "r1", "id": "s0002"])))
+        m.apply(delta("s0002", "r1", "S", " Yes, about 2 TB on one primary.", done: true))
+        XCTAssertEqual(m.state.card?.say, "Yes, about 2 TB on one primary.")
+        XCTAssertEqual(m.state.card?.sayTier, "S")
+        XCTAssertEqual(m.state.activity, .listening)
+
+        // F works the same way; D (deep) alone never opens a card
+        m.apply(turn("r2", "And that was the hard part.", kind: "statement"))
+        for e in stream("d0003", "r2", "D", "SAY: deep only") { m.apply(e) }
+        XCTAssertEqual(m.state.card?.turnID, "r1", "a D stream does not open a card for a statement")
+        for e in stream("f0004", "r2", "F", "SAY: It was the migration window.") { m.apply(e) }
+        XCTAssertEqual(m.state.card?.turnID, "r2")
+        XCTAssertEqual(m.state.card?.say, "It was the migration window.")
+
+        // a late SAY for an older statement does not take over the card of a newer turn
+        m.apply(turn("r3", "We also use Redis.", kind: "statement"))
+        m.apply(turn("r4", "What did you cache in Redis?"))
+        for e in stream("f0005", "r3", "F", "SAY: stale answer") { m.apply(e) }
+        XCTAssertEqual(m.state.card?.turnID, "r4")
+
+        // a statement for someone else stays closed whatever the brain streams
+        let m2 = model(Clock(), others: ["Marco"])
+        m2.apply(turn("r9", "Marco handled the Postgres side.", addressee: "other", kind: "statement"))
+        for e in stream("f0009", "r9", "F", "SAY: should not show") { m2.apply(e) }
+        XCTAssertNil(m2.state.card)
+    }
+
     func testOverlayStatusChips() {
         let c = Clock()
         let m = model(c)
