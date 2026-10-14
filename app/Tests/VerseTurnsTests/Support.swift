@@ -88,6 +88,9 @@ struct TempSession {
 }
 
 /// The repo's `brain/` folder, found the way the product finds it.
-func brainDir() throws -> URL {
-    try BrainProcess.locateBrainDir()
+func brainDir(file: StaticString = #filePath) throws -> URL {
+    // Tests resolve brain/ from this source file's location (repo/app/Tests/VerseTurnsTests/ → repo/brain).
+    let repo = URL(fileURLWithPath: "\(file)").deletingLastPathComponent().deletingLastPathComponent()
+        .deletingLastPathComponent().deletingLastPathComponent()
+    return try BrainProcess.locateBrainDir(explicit: repo.appendingPathComponent("brain"))
 }

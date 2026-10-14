@@ -33,8 +33,9 @@ public final class BrainProcess: @unchecked Sendable {
     private var exited = false
     private let onStderr: @Sendable (String) -> Void
 
-    /// Finds `brain/` the way the tools are laid out in the repo: `VERSE_BRAIN_DIR`, then upward from the executable,
-    /// then upward from the working directory.
+    /// Finds `brain/` the way the tools are laid out in the repo: `VERSE_BRAIN_DIR`, then upward from the executable.
+    /// The working directory is deliberately not searched: a planted `brain/.venv/bin/python` there would run with
+    /// Keychain access.
     public static func locateBrainDir(explicit: URL? = nil) throws -> URL {
         let fm = FileManager.default
         func isBrain(_ u: URL) -> Bool { fm.fileExists(atPath: u.appendingPathComponent("verse_brain").path) }
@@ -49,7 +50,6 @@ public final class BrainProcess: @unchecked Sendable {
         }
         var starts: [URL] = []
         if let exe = Bundle.main.executableURL { starts.append(exe.resolvingSymlinksInPath().deletingLastPathComponent()) }
-        starts.append(URL(fileURLWithPath: fm.currentDirectoryPath))
         for s in starts {
             var dir = s
             for _ in 0..<12 {
