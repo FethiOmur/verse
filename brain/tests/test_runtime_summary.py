@@ -259,6 +259,7 @@ def test_skipped_when_bucket_low_or_budget_nearly_spent(tmp_path):
         low = len(rolling_calls(t))
         reasons = [e.get("reason") for e in make_events(b) if e["stage"] == "summary_deferred"]
         lim.level = full
+        b.config.budget_usd = 3.0                                        # an explicit cap (the default is none)
         b.spend = b.config.budget_usd * 0.95                             # budget almost gone: keep it for S/F/D
         await exchange(b, 4)
         await settle(b)
@@ -422,3 +423,16 @@ def test_rolling_failure_is_silent(tmp_path):
     t, em = run(go())
     assert len(rolling_calls(t)) == 1
     assert not em.of("status", state="error") and not em.of("summary")
+
+
+def test_no_cap_by_default(tmp_path):
+    """Alex (2026-10-14): no spend limits; the Max credit pays. A large spend must not halt the brain."""
+    async def go():
+        b, t, em = make(responder_for())
+        await start(b, session_copy(tmp_path))
+        assert b.config.budget_usd is None
+        b.spend = 500.0
+        await exchange(b, 1)
+        await settle(b)
+        return b.halted
+    assert not asyncio.run(go())

@@ -122,11 +122,6 @@ public struct SettingsView: View {
             Section {
                 LabeledContent("This session", value: controller.sessionSpend, format: Self.usd)
                 LabeledContent("This month", value: controller.monthSpend, format: Self.usd)
-                LabeledContent("Budget per session") {
-                    TextField("", value: $settings.budgetUSD, format: .number.precision(.fractionLength(2)))
-                        .frame(width: 70)
-                        .multilineTextAlignment(.trailing)
-                }
             } header: {
                 Text("Spend")
             } footer: {

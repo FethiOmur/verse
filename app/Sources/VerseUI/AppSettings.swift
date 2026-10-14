@@ -34,7 +34,6 @@ public final class AppSettings: ObservableObject {
     @Published public var cueEndpointMs: Int { didSet { defaults.set(cueEndpointMs, forKey: "cueEndpointMs") } }
     @Published public var plainEndpointMs: Int { didSet { defaults.set(plainEndpointMs, forKey: "plainEndpointMs") } }
     @Published public var matchThreshold: Double { didSet { defaults.set(matchThreshold, forKey: "matchThreshold") } }
-    @Published public var budgetUSD: Double { didSet { defaults.set(budgetUSD, forKey: "budgetUSD") } }
     @Published public var textScale: TextScale { didSet { defaults.set(textScale.rawValue, forKey: "textScale") } }
     @Published public var cardTimeout: Double { didSet { defaults.set(cardTimeout, forKey: "cardTimeout") } }
     @Published public var cardWidth: Double { didSet { defaults.set(cardWidth, forKey: "cardWidth") } }
@@ -57,7 +56,6 @@ public final class AppSettings: ObservableObject {
         cueEndpointMs = d.object(forKey: "cueEndpointMs") as? Int ?? 300
         plainEndpointMs = d.object(forKey: "plainEndpointMs") as? Int ?? 600
         matchThreshold = d.object(forKey: "matchThreshold") as? Double ?? 0.55
-        budgetUSD = d.object(forKey: "budgetUSD") as? Double ?? 3.0
         textScale = TextScale(rawValue: d.string(forKey: "textScale") ?? "") ?? .medium
         cardTimeout = d.object(forKey: "cardTimeout") as? Double ?? 45
         cardWidth = (d.object(forKey: "cardWidth") as? Double ?? 560).clamped(to: Self.cardWidthRange)

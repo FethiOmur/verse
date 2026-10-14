@@ -28,7 +28,7 @@ func usage() -> Never {
       --drain N           wait at most N s for the brain after the audio ends (default 15)
       --brain-dir DIR     the brain/ folder (default: found next to the repo, or VERSE_BRAIN_DIR)
       --fake-brain        brain with canned replies (no network, no key)
-      --budget-usd N      hard spend cap passed to the brain (default 3)
+      --budget-usd N      optional spend cap passed to the brain (default: none)
     """)
     exit(2)
 }

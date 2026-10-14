@@ -67,7 +67,7 @@ async def amain(args) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -u -m verse_brain.runtime", description=__doc__)
-    ap.add_argument("--budget-usd", type=float, default=3.0, help="hard spend cap for this process")
+    ap.add_argument("--budget-usd", type=float, default=None, help="optional hard spend cap for this process (default: none)")
     ap.add_argument("--fake", action="store_true", help="canned fake transport (tests)")
     ap.add_argument("--log-level", default="WARNING")
     args = ap.parse_args(argv)

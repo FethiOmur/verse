@@ -107,7 +107,6 @@ public final class VerseController: ObservableObject {
         o.lang = settings.language
         o.turn = settings.turnConfig
         o.fakeBrain = fakeBrain
-        o.budgetUSD = settings.budgetUSD
         o.brainDir = Self.brainDir()
         if let f = testFile { o.file = URL(fileURLWithPath: (f as NSString).expandingTildeInPath) }
         o.transcriptURL = dir.appendingPathComponent("transcript.jsonl")

@@ -467,7 +467,7 @@ class Brain:
                 probe: bool = False) -> Call | None:
         if self.halted or self.session is None:
             return None
-        if self.spend >= self.config.budget_usd:
+        if self.config.budget_usd is not None and self.spend >= self.config.budget_usd:
             self._halt("error", f"budget cap ${self.config.budget_usd:.2f} reached")
             return None
         route = {"R": "S", "A": "D"}.get(tier, tier)   # summaries ride the S/F and D tuples (and their caches)
@@ -595,7 +595,7 @@ class Brain:
             self._status("refusal", f"{call.tier} declined this turn", turn_id=call.turn_id, id=call.id)
         if call.tier == "R":
             self._rolling_done(call)
-        if self.spend >= self.config.budget_usd and not self.halted:
+        if self.config.budget_usd is not None and self.spend >= self.config.budget_usd and not self.halted:
             self._halt("error", f"budget cap ${self.config.budget_usd:.2f} reached")
         self._maybe_roll()
 
@@ -912,7 +912,7 @@ class Brain:
             return self._defer("turn_in_flight")
         if self.limiters[HAIKU].fraction_left() < cfg.summary_bucket_min:
             return self._defer("bucket_low")
-        if self.spend >= cfg.budget_usd * cfg.summary_budget_frac:
+        if cfg.budget_usd is not None and self.spend >= cfg.budget_usd * cfg.summary_budget_frac:
             return self._defer("budget")
         self._defer_reason = None
         n = len(self.turns)

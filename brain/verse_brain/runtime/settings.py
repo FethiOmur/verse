@@ -83,4 +83,4 @@ class Config:
     final_max_tokens: int = 1500        # the Sonnet merge writes a whole summary; 600 (D) would truncate it
     final_timeout_s: float = 45.0       # `control stop` waits this long for the merge, then closes with the draft
     # spend
-    budget_usd: float = 3.0
+    budget_usd: float | None = None    # None = no cap (Alex: the Max credit pays, no limits)
