@@ -1,0 +1,872 @@
+{
+ "meta": {
+  "timestamp": "20261014-030835",
+  "python": "3.14.7",
+  "anthropic": "1.13.0",
+  "httpx2": "2.13.1",
+  "models": {
+   "haiku": "claude-haiku-5-5",
+   "sonnet": "claude-sonnet-5-5"
+  },
+  "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "client": "AsyncAnthropic + DefaultAsyncHttpxClient(http2=True, keepalive_expiry=300), max_retries=0",
+  "organization_id": "00000000-0000-0000-0000-000000000000",
+  "http_version": "HTTP/2"
+ },
+ "cases": {
+  "idle6m_haiku": {
+   "config": "haiku as warm_haiku; one call after each idle gap on the same client (keepalive_expiry 300 s); the last gap (390 s) outlives both the 5 min cache TTL and the client's 300 s keepalive",
+   "ladder": {
+    "30s": {
+     "calls": [
+      {
+       "label": "after 30 s idle",
+       "model": "claude-haiku-5-5",
+       "ok": true,
+       "t_headers": 1152.5,
+       "http_version": "HTTP/2",
+       "headers": {
+        "anthropic-ratelimit-input-tokens-limit": "2000000",
+        "anthropic-ratelimit-input-tokens-remaining": "1997000",
+        "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:09:08Z",
+        "anthropic-ratelimit-output-tokens-limit": "400000",
+        "anthropic-ratelimit-output-tokens-remaining": "400000",
+        "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:09:08Z",
+        "anthropic-ratelimit-requests-limit": "1000",
+        "anthropic-ratelimit-requests-remaining": "999",
+        "anthropic-ratelimit-requests-reset": "2026-10-14T01:09:08Z",
+        "anthropic-ratelimit-tokens-limit": "2400000",
+        "anthropic-ratelimit-tokens-remaining": "2397000",
+        "anthropic-ratelimit-tokens-reset": "2026-10-14T01:09:08Z",
+        "request-id": "req_000000000000000000000000",
+        "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+        "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+        "cf-ray": "0000000000000000-FRA"
+       },
+       "request_id": "req_000000000000000000000000",
+       "t_first_event": 1158.0,
+       "message_start_usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 6245,
+        "input_tokens": 36,
+        "output_tokens": 6
+       },
+       "t_first_block": 1158.3,
+       "t_first_text": 1158.4,
+       "t_say": 1595.9,
+       "t_point1": 1596.1,
+       "stop_reason": "end_turn",
+       "t_done": 1945.9,
+       "block_types": [
+        "text"
+       ],
+       "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 6245,
+        "input_tokens": 36,
+        "output_tokens": 182
+       },
+       "text_chars": 324,
+       "text_head": "SAY: Nice deposunun Q2 carrier rebate değeri 14.6; bunu F034'e göre söyleyebilirim.\n- Nice deposunun Q2 carrier rebate değeri 14.6 olarak kayıtlı [F034].\n- Bu kayıt Risk Register, s.31 kaynağından geliyor ve sahibi Giuli",
+       "cost_usd": 0.000157,
+       "out_tok_per_s": 231.1
+      }
+     ],
+     "summary": {
+      "n_requested": 1,
+      "n_ok": 1,
+      "n_errors": 0,
+      "n_cache_read_gt0": 1,
+      "n_in_stats": 1,
+      "t_headers": {
+       "n": 1,
+       "p50": 1152.5,
+       "p90": 1152.5,
+       "p90_interp": 1152.5,
+       "min": 1152.5,
+       "max": 1152.5,
+       "mean": 1152.5
+      },
+      "t_first_event": {
+       "n": 1,
+       "p50": 1158.0,
+       "p90": 1158.0,
+       "p90_interp": 1158.0,
+       "min": 1158.0,
+       "max": 1158.0,
+       "mean": 1158.0
+      },
+      "t_first_block": {
+       "n": 1,
+       "p50": 1158.3,
+       "p90": 1158.3,
+       "p90_interp": 1158.3,
+       "min": 1158.3,
+       "max": 1158.3,
+       "mean": 1158.3
+      },
+      "t_first_text": {
+       "n": 1,
+       "p50": 1158.4,
+       "p90": 1158.4,
+       "p90_interp": 1158.4,
+       "min": 1158.4,
+       "max": 1158.4,
+       "mean": 1158.4
+      },
+      "t_say": {
+       "n": 1,
+       "p50": 1595.9,
+       "p90": 1595.9,
+       "p90_interp": 1595.9,
+       "min": 1595.9,
+       "max": 1595.9,
+       "mean": 1595.9
+      },
+      "t_point1": {
+       "n": 1,
+       "p50": 1596.1,
+       "p90": 1596.1,
+       "p90_interp": 1596.1,
+       "min": 1596.1,
+       "max": 1596.1,
+       "mean": 1596.1
+      },
+      "t_done": {
+       "n": 1,
+       "p50": 1945.9,
+       "p90": 1945.9,
+       "p90_interp": 1945.9,
+       "min": 1945.9,
+       "max": 1945.9,
+       "mean": 1945.9
+      },
+      "out_tok_per_s": {
+       "n": 1,
+       "p50": 231.1,
+       "p90": 231.1,
+       "p90_interp": 231.1,
+       "min": 231.1,
+       "max": 231.1,
+       "mean": 231.1
+      },
+      "cost_usd": 0.00016
+     }
+    },
+    "60s": {
+     "calls": [
+      {
+       "label": "after 60 s idle",
+       "model": "claude-haiku-5-5",
+       "ok": true,
+       "t_headers": 1165.3,
+       "http_version": "HTTP/2",
+       "headers": {
+        "anthropic-ratelimit-input-tokens-limit": "2000000",
+        "anthropic-ratelimit-input-tokens-remaining": "1997000",
+        "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:10:10Z",
+        "anthropic-ratelimit-output-tokens-limit": "400000",
+        "anthropic-ratelimit-output-tokens-remaining": "400000",
+        "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:10:10Z",
+        "anthropic-ratelimit-requests-limit": "1000",
+        "anthropic-ratelimit-requests-remaining": "999",
+        "anthropic-ratelimit-requests-reset": "2026-10-14T01:10:10Z",
+        "anthropic-ratelimit-tokens-limit": "2400000",
+        "anthropic-ratelimit-tokens-remaining": "2397000",
+        "anthropic-ratelimit-tokens-reset": "2026-10-14T01:10:10Z",
+        "request-id": "req_000000000000000000000000",
+        "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+        "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+        "cf-ray": "0000000000000000-FRA"
+       },
+       "request_id": "req_000000000000000000000000",
+       "t_first_event": 1168.8,
+       "message_start_usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 6245,
+        "input_tokens": 37,
+        "output_tokens": 8
+       },
+       "t_first_block": 1169.9,
+       "t_first_text": 1169.9,
+       "t_say": 1184.4,
+       "stop_reason": "end_turn",
+       "t_done": 1612.5,
+       "t_point1": 1612.5,
+       "block_types": [
+        "text"
+       ],
+       "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 6245,
+        "input_tokens": 37,
+        "output_tokens": 107
+       },
+       "text_chars": 262,
+       "text_head": "SAY: Let me check and come back to you.\n- The pack has customer complaints per 1000 drops for Milano only as a pilot-period or last-quarter figure in the fact sheet, and the Q2 Milano figure is in F041 at 81.6 (unit as i",
+       "cost_usd": 0.00012,
+       "out_tok_per_s": 241.8
+      }
+     ],
+     "summary": {
+      "n_requested": 1,
+      "n_ok": 1,
+      "n_errors": 0,
+      "n_cache_read_gt0": 1,
+      "n_in_stats": 1,
+      "t_headers": {
+       "n": 1,
+       "p50": 1165.3,
+       "p90": 1165.3,
+       "p90_interp": 1165.3,
+       "min": 1165.3,
+       "max": 1165.3,
+       "mean": 1165.3
+      },
+      "t_first_event": {
+       "n": 1,
+       "p50": 1168.8,
+       "p90": 1168.8,
+       "p90_interp": 1168.8,
+       "min": 1168.8,
+       "max": 1168.8,
+       "mean": 1168.8
+      },
+      "t_first_block": {
+       "n": 1,
+       "p50": 1169.9,
+       "p90": 1169.9,
+       "p90_interp": 1169.9,
+       "min": 1169.9,
+       "max": 1169.9,
+       "mean": 1169.9
+      },
+      "t_first_text": {
+       "n": 1,
+       "p50": 1169.9,
+       "p90": 1169.9,
+       "p90_interp": 1169.9,
+       "min": 1169.9,
+       "max": 1169.9,
+       "mean": 1169.9
+      },
+      "t_say": {
+       "n": 1,
+       "p50": 1184.4,
+       "p90": 1184.4,
+       "p90_interp": 1184.4,
+       "min": 1184.4,
+       "max": 1184.4,
+       "mean": 1184.4
+      },
+      "t_point1": {
+       "n": 1,
+       "p50": 1612.5,
+       "p90": 1612.5,
+       "p90_interp": 1612.5,
+       "min": 1612.5,
+       "max": 1612.5,
+       "mean": 1612.5
+      },
+      "t_done": {
+       "n": 1,
+       "p50": 1612.5,
+       "p90": 1612.5,
+       "p90_interp": 1612.5,
+       "min": 1612.5,
+       "max": 1612.5,
+       "mean": 1612.5
+      },
+      "out_tok_per_s": {
+       "n": 1,
+       "p50": 241.8,
+       "p90": 241.8,
+       "p90_interp": 241.8,
+       "min": 241.8,
+       "max": 241.8,
+       "mean": 241.8
+      },
+      "cost_usd": 0.00012
+     }
+    },
+    "120s": {
+     "calls": [
+      {
+       "label": "after 120 s idle",
+       "model": "claude-haiku-5-5",
+       "ok": true,
+       "t_headers": 1342.2,
+       "http_version": "HTTP/2",
+       "headers": {
+        "anthropic-ratelimit-input-tokens-limit": "2000000",
+        "anthropic-ratelimit-input-tokens-remaining": "1997000",
+        "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:12:11Z",
+        "anthropic-ratelimit-output-tokens-limit": "400000",
+        "anthropic-ratelimit-output-tokens-remaining": "400000",
+        "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:12:11Z",
+        "anthropic-ratelimit-requests-limit": "1000",
+        "anthropic-ratelimit-requests-remaining": "999",
+        "anthropic-ratelimit-requests-reset": "2026-10-14T01:12:11Z",
+        "anthropic-ratelimit-tokens-limit": "2400000",
+        "anthropic-ratelimit-tokens-remaining": "2397000",
+        "anthropic-ratelimit-tokens-reset": "2026-10-14T01:12:11Z",
+        "request-id": "req_000000000000000000000000",
+        "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+        "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+        "cf-ray": "0000000000000000-FRA"
+       },
+       "request_id": "req_000000000000000000000000",
+       "t_first_event": 1348.1,
+       "message_start_usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 6245,
+        "input_tokens": 40,
+        "output_tokens": 8
+       },
+       "t_first_block": 1350.0,
+       "t_first_text": 1350.0,
+       "t_say": 1358.8,
+       "stop_reason": "end_turn",
+       "t_done": 1920.5,
+       "t_point1": 1920.5,
+       "block_types": [
+        "text"
+       ],
+       "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 6245,
+        "input_tokens": 40,
+        "output_tokens": 131
+       },
+       "text_chars": 363,
+       "text_head": "SAY: Let me check and come back to you.\n- The pack has on-time delivery rate figures for Milano only for \"last quarter\" (F036: 29.8) and Q1 (F048: 61.3), so the Q1 figure is F048, but the pack gives no unit and no check ",
+       "cost_usd": 0.000132,
+       "out_tok_per_s": 229.6
+      }
+     ],
+     "summary": {
+      "n_requested": 1,
+      "n_ok": 1,
+      "n_errors": 0,
+      "n_cache_read_gt0": 1,
+      "n_in_stats": 1,
+      "t_headers": {
+       "n": 1,
+       "p50": 1342.2,
+       "p90": 1342.2,
+       "p90_interp": 1342.2,
+       "min": 1342.2,
+       "max": 1342.2,
+       "mean": 1342.2
+      },
+      "t_first_event": {
+       "n": 1,
+       "p50": 1348.1,
+       "p90": 1348.1,
+       "p90_interp": 1348.1,
+       "min": 1348.1,
+       "max": 1348.1,
+       "mean": 1348.1
+      },
+      "t_first_block": {
+       "n": 1,
+       "p50": 1350.0,
+       "p90": 1350.0,
+       "p90_interp": 1350.0,
+       "min": 1350.0,
+       "max": 1350.0,
+       "mean": 1350.0
+      },
+      "t_first_text": {
+       "n": 1,
+       "p50": 1350.0,
+       "p90": 1350.0,
+       "p90_interp": 1350.0,
+       "min": 1350.0,
+       "max": 1350.0,
+       "mean": 1350.0
+      },
+      "t_say": {
+       "n": 1,
+       "p50": 1358.8,
+       "p90": 1358.8,
+       "p90_interp": 1358.8,
+       "min": 1358.8,
+       "max": 1358.8,
+       "mean": 1358.8
+      },
+      "t_point1": {
+       "n": 1,
+       "p50": 1920.5,
+       "p90": 1920.5,
+       "p90_interp": 1920.5,
+       "min": 1920.5,
+       "max": 1920.5,
+       "mean": 1920.5
+      },
+      "t_done": {
+       "n": 1,
+       "p50": 1920.5,
+       "p90": 1920.5,
+       "p90_interp": 1920.5,
+       "min": 1920.5,
+       "max": 1920.5,
+       "mean": 1920.5
+      },
+      "out_tok_per_s": {
+       "n": 1,
+       "p50": 229.6,
+       "p90": 229.6,
+       "p90_interp": 229.6,
+       "min": 229.6,
+       "max": 229.6,
+       "mean": 229.6
+      },
+      "cost_usd": 0.00013
+     }
+    },
+    "240s": {
+     "calls": [
+      {
+       "label": "after 240 s idle",
+       "model": "claude-haiku-5-5",
+       "ok": true,
+       "t_headers": 917.2,
+       "http_version": "HTTP/2",
+       "headers": {
+        "anthropic-ratelimit-input-tokens-limit": "2000000",
+        "anthropic-ratelimit-input-tokens-remaining": "1997000",
+        "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:16:13Z",
+        "anthropic-ratelimit-output-tokens-limit": "400000",
+        "anthropic-ratelimit-output-tokens-remaining": "400000",
+        "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:16:13Z",
+        "anthropic-ratelimit-requests-limit": "1000",
+        "anthropic-ratelimit-requests-remaining": "999",
+        "anthropic-ratelimit-requests-reset": "2026-10-14T01:16:13Z",
+        "anthropic-ratelimit-tokens-limit": "2400000",
+        "anthropic-ratelimit-tokens-remaining": "2397000",
+        "anthropic-ratelimit-tokens-reset": "2026-10-14T01:16:13Z",
+        "request-id": "req_000000000000000000000000",
+        "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+        "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+        "cf-ray": "0000000000000000-FRA"
+       },
+       "request_id": "req_000000000000000000000000",
+       "t_first_event": 921.6,
+       "message_start_usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 6245,
+        "input_tokens": 38,
+        "output_tokens": 8
+       },
+       "t_first_block": 923.3,
+       "t_first_text": 923.4,
+       "t_say": 1119.2,
+       "t_point1": 1325.7,
+       "stop_reason": "end_turn",
+       "t_done": 2017.1,
+       "block_types": [
+        "text"
+       ],
+       "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 6245,
+        "input_tokens": 38,
+        "output_tokens": 255
+       },
+       "text_chars": 601,
+       "text_head": "SAY: Let me check and come back to you.\n- The pack has route re-plans per day for Lyon in Q3 as F055 (89.2), but the question asks about \"Lyon\" as a depot; F055 is the Lyon Q3 figure, so the answer is available.\n\nCorrect",
+       "cost_usd": 0.000194,
+       "out_tok_per_s": 233.2
+      }
+     ],
+     "summary": {
+      "n_requested": 1,
+      "n_ok": 1,
+      "n_errors": 0,
+      "n_cache_read_gt0": 1,
+      "n_in_stats": 1,
+      "t_headers": {
+       "n": 1,
+       "p50": 917.2,
+       "p90": 917.2,
+       "p90_interp": 917.2,
+       "min": 917.2,
+       "max": 917.2,
+       "mean": 917.2
+      },
+      "t_first_event": {
+       "n": 1,
+       "p50": 921.6,
+       "p90": 921.6,
+       "p90_interp": 921.6,
+       "min": 921.6,
+       "max": 921.6,
+       "mean": 921.6
+      },
+      "t_first_block": {
+       "n": 1,
+       "p50": 923.3,
+       "p90": 923.3,
+       "p90_interp": 923.3,
+       "min": 923.3,
+       "max": 923.3,
+       "mean": 923.3
+      },
+      "t_first_text": {
+       "n": 1,
+       "p50": 923.4,
+       "p90": 923.4,
+       "p90_interp": 923.4,
+       "min": 923.4,
+       "max": 923.4,
+       "mean": 923.4
+      },
+      "t_say": {
+       "n": 1,
+       "p50": 1119.2,
+       "p90": 1119.2,
+       "p90_interp": 1119.2,
+       "min": 1119.2,
+       "max": 1119.2,
+       "mean": 1119.2
+      },
+      "t_point1": {
+       "n": 1,
+       "p50": 1325.7,
+       "p90": 1325.7,
+       "p90_interp": 1325.7,
+       "min": 1325.7,
+       "max": 1325.7,
+       "mean": 1325.7
+      },
+      "t_done": {
+       "n": 1,
+       "p50": 2017.1,
+       "p90": 2017.1,
+       "p90_interp": 2017.1,
+       "min": 2017.1,
+       "max": 2017.1,
+       "mean": 2017.1
+      },
+      "out_tok_per_s": {
+       "n": 1,
+       "p50": 233.2,
+       "p90": 233.2,
+       "p90_interp": 233.2,
+       "min": 233.2,
+       "max": 233.2,
+       "mean": 233.2
+      },
+      "cost_usd": 0.00019
+     }
+    },
+    "390s": {
+     "calls": [
+      {
+       "label": "after 390 s idle",
+       "model": "claude-haiku-5-5",
+       "ok": true,
+       "t_headers": 1687.2,
+       "http_version": "HTTP/2",
+       "headers": {
+        "anthropic-ratelimit-input-tokens-limit": "2000000",
+        "anthropic-ratelimit-input-tokens-remaining": "1997000",
+        "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:22:46Z",
+        "anthropic-ratelimit-output-tokens-limit": "400000",
+        "anthropic-ratelimit-output-tokens-remaining": "400000",
+        "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:22:46Z",
+        "anthropic-ratelimit-requests-limit": "1000",
+        "anthropic-ratelimit-requests-remaining": "999",
+        "anthropic-ratelimit-requests-reset": "2026-10-14T01:22:46Z",
+        "anthropic-ratelimit-tokens-limit": "2400000",
+        "anthropic-ratelimit-tokens-remaining": "2397000",
+        "anthropic-ratelimit-tokens-reset": "2026-10-14T01:22:46Z",
+        "request-id": "req_000000000000000000000000",
+        "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+        "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+        "cf-ray": "0000000000000000-FRA"
+       },
+       "request_id": "req_000000000000000000000000",
+       "t_first_event": 1691.3,
+       "message_start_usage": {
+        "cache_creation_input_tokens": 6245,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 33,
+        "output_tokens": 5
+       },
+       "t_first_block": 1692.0,
+       "t_first_text": 1692.0,
+       "t_say": 1790.7,
+       "t_point1": 2165.6,
+       "stop_reason": "end_turn",
+       "t_done": 2228.9,
+       "block_types": [
+        "text"
+       ],
+       "usage": {
+        "cache_creation_input_tokens": 6245,
+        "cache_read_input_tokens": 0,
+        "input_tokens": 33,
+        "output_tokens": 158
+       },
+       "text_chars": 347,
+       "text_head": "SAY: In Q1 the Marseille depot's route re-plans per day were 46.5.\n- Route re-plans per day at the Marseille depot, Q1: 46.5 (unit as in the source sheet), owner Marco Rinaldi [F007].\n- Source for this figure is the Depo",
+       "cost_usd": 0.000863,
+       "out_tok_per_s": 294.3
+      },
+      {
+       "label": "after 390 s idle",
+       "model": "claude-haiku-5-5",
+       "ok": true,
+       "t_headers": 872.5,
+       "http_version": "HTTP/2",
+       "headers": {
+        "anthropic-ratelimit-input-tokens-limit": "2000000",
+        "anthropic-ratelimit-input-tokens-remaining": "1997000",
+        "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:22:47Z",
+        "anthropic-ratelimit-output-tokens-limit": "400000",
+        "anthropic-ratelimit-output-tokens-remaining": "400000",
+        "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:22:47Z",
+        "anthropic-ratelimit-requests-limit": "1000",
+        "anthropic-ratelimit-requests-remaining": "999",
+        "anthropic-ratelimit-requests-reset": "2026-10-14T01:22:47Z",
+        "anthropic-ratelimit-tokens-limit": "2400000",
+        "anthropic-ratelimit-tokens-remaining": "2397000",
+        "anthropic-ratelimit-tokens-reset": "2026-10-14T01:22:47Z",
+        "request-id": "req_000000000000000000000000",
+        "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+        "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+        "cf-ray": "0000000000000000-FRA"
+       },
+       "request_id": "req_000000000000000000000000",
+       "t_first_event": 872.8,
+       "message_start_usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 6245,
+        "input_tokens": 42,
+        "output_tokens": 6
+       },
+       "t_first_block": 872.9,
+       "t_first_text": 873.0,
+       "t_say": 985.8,
+       "t_point1": 1282.9,
+       "stop_reason": "end_turn",
+       "t_done": 1411.9,
+       "block_types": [
+        "text"
+       ],
+       "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 6245,
+        "input_tokens": 42,
+        "output_tokens": 134
+       },
+       "text_chars": 249,
+       "text_head": "SAY: Il dato di fuel use per 100 km a Lyon nel Q2 è 20,8.\n- Fuel use per 100 km al deposito di Lyon, Q2: 20,8 [F014], responsabile Marco Rinaldi, fonte Depot Rollout Plan, p.17.\n- Il dato è espresso nell'unità del foglio",
+       "cost_usd": 0.000134,
+       "out_tok_per_s": 248.7
+      }
+     ],
+     "summary": {
+      "n_requested": 2,
+      "n_ok": 2,
+      "n_errors": 0,
+      "n_cache_read_gt0": 1,
+      "n_in_stats": 2,
+      "t_headers": {
+       "n": 2,
+       "p50": 1279.85,
+       "p90": 1687.2,
+       "p90_interp": 1605.73,
+       "min": 872.5,
+       "max": 1687.2,
+       "mean": 1279.8
+      },
+      "t_first_event": {
+       "n": 2,
+       "p50": 1282.05,
+       "p90": 1691.3,
+       "p90_interp": 1609.4499999999998,
+       "min": 872.8,
+       "max": 1691.3,
+       "mean": 1282.0
+      },
+      "t_first_block": {
+       "n": 2,
+       "p50": 1282.45,
+       "p90": 1692.0,
+       "p90_interp": 1610.0900000000001,
+       "min": 872.9,
+       "max": 1692.0,
+       "mean": 1282.5
+      },
+      "t_first_text": {
+       "n": 2,
+       "p50": 1282.5,
+       "p90": 1692.0,
+       "p90_interp": 1610.1,
+       "min": 873.0,
+       "max": 1692.0,
+       "mean": 1282.5
+      },
+      "t_say": {
+       "n": 2,
+       "p50": 1388.25,
+       "p90": 1790.7,
+       "p90_interp": 1710.21,
+       "min": 985.8,
+       "max": 1790.7,
+       "mean": 1388.2
+      },
+      "t_point1": {
+       "n": 2,
+       "p50": 1724.25,
+       "p90": 2165.6,
+       "p90_interp": 2077.33,
+       "min": 1282.9,
+       "max": 2165.6,
+       "mean": 1724.2
+      },
+      "t_done": {
+       "n": 2,
+       "p50": 1820.4,
+       "p90": 2228.9,
+       "p90_interp": 2147.2000000000003,
+       "min": 1411.9,
+       "max": 2228.9,
+       "mean": 1820.4
+      },
+      "out_tok_per_s": {
+       "n": 2,
+       "p50": 271.5,
+       "p90": 294.3,
+       "p90_interp": 289.74,
+       "min": 248.7,
+       "max": 294.3,
+       "mean": 271.5
+      },
+      "cost_usd": 0.001
+     }
+    }
+   },
+   "before_idle": {
+    "label": "writes cache before idle",
+    "model": "claude-haiku-5-5",
+    "ok": true,
+    "t_headers": 776.3,
+    "http_version": "HTTP/2",
+    "headers": {
+     "anthropic-ratelimit-input-tokens-limit": "2000000",
+     "anthropic-ratelimit-input-tokens-remaining": "1997000",
+     "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:08:36Z",
+     "anthropic-ratelimit-output-tokens-limit": "400000",
+     "anthropic-ratelimit-output-tokens-remaining": "400000",
+     "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:08:36Z",
+     "anthropic-ratelimit-requests-limit": "1000",
+     "anthropic-ratelimit-requests-remaining": "999",
+     "anthropic-ratelimit-requests-reset": "2026-10-14T01:08:36Z",
+     "anthropic-ratelimit-tokens-limit": "2400000",
+     "anthropic-ratelimit-tokens-remaining": "2397000",
+     "anthropic-ratelimit-tokens-reset": "2026-10-14T01:08:36Z",
+     "request-id": "req_000000000000000000000000",
+     "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+     "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+     "cf-ray": "0000000000000000-FRA"
+    },
+    "request_id": "req_000000000000000000000000",
+    "t_first_event": 787.1,
+    "message_start_usage": {
+     "cache_creation_input_tokens": 6245,
+     "cache_read_input_tokens": 0,
+     "input_tokens": 14,
+     "output_tokens": 8
+    },
+    "t_first_block": 788.2,
+    "t_first_text": 788.3,
+    "t_say": 927.5,
+    "t_point1": 1103.9,
+    "stop_reason": "end_turn",
+    "t_done": 1451.9,
+    "block_types": [
+     "text"
+    ],
+    "usage": {
+     "cache_creation_input_tokens": 6245,
+     "cache_read_input_tokens": 0,
+     "input_tokens": 14,
+     "output_tokens": 123
+    },
+    "text_chars": 367,
+    "text_head": "SAY: Let me check and come back to you.\n- The question is only \"warmup question\" with no specific topic, so the pack does not show what Alex needs to answer.\n- The transcript covers the pilot results, Q3 budget and depo",
+    "cost_usd": 0.000844,
+    "out_tok_per_s": 185.4
+   },
+   "wall_s": 852.6
+  }
+ },
+ "pack_tokens": {
+  "claude-haiku-5-5": {
+   "total_input_tokens_incl_question": 6204,
+   "count_tokens_ms": 652.5
+  },
+  "claude-sonnet-5-5": {
+   "total_input_tokens_incl_question": 6204,
+   "count_tokens_ms": 247.6
+  }
+ },
+ "spend": {
+  "total_usd": 0.00244,
+  "by_model_usd": {
+   "claude-haiku-5-5": 0.00244
+  },
+  "priced_calls": 7,
+  "prices_per_mtok": {
+   "claude-haiku-5-5": {
+    "input": 0.1,
+    "output": 0.5,
+    "cache_write_5m_x": 1.25,
+    "cache_read_x": 0.1
+   },
+   "claude-sonnet-5-5": {
+    "input": 2.0,
+    "output": 10.0,
+    "cache_write_5m_x": 1.25,
+    "cache_read_x": 0.1
+   }
+  }
+ },
+ "rate_limits": {
+  "claude-haiku-5-5": {
+   "first": {
+    "anthropic-ratelimit-input-tokens-limit": "2000000",
+    "anthropic-ratelimit-input-tokens-remaining": "1997000",
+    "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:09:08Z",
+    "anthropic-ratelimit-output-tokens-limit": "400000",
+    "anthropic-ratelimit-output-tokens-remaining": "400000",
+    "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:09:08Z",
+    "anthropic-ratelimit-requests-limit": "1000",
+    "anthropic-ratelimit-requests-remaining": "999",
+    "anthropic-ratelimit-requests-reset": "2026-10-14T01:09:08Z",
+    "anthropic-ratelimit-tokens-limit": "2400000",
+    "anthropic-ratelimit-tokens-remaining": "2397000",
+    "anthropic-ratelimit-tokens-reset": "2026-10-14T01:09:08Z"
+   },
+   "last": {
+    "anthropic-ratelimit-input-tokens-limit": "2000000",
+    "anthropic-ratelimit-input-tokens-remaining": "1997000",
+    "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:08:36Z",
+    "anthropic-ratelimit-output-tokens-limit": "400000",
+    "anthropic-ratelimit-output-tokens-remaining": "400000",
+    "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:08:36Z",
+    "anthropic-ratelimit-requests-limit": "1000",
+    "anthropic-ratelimit-requests-remaining": "999",
+    "anthropic-ratelimit-requests-reset": "2026-10-14T01:08:36Z",
+    "anthropic-ratelimit-tokens-limit": "2400000",
+    "anthropic-ratelimit-tokens-remaining": "2397000",
+    "anthropic-ratelimit-tokens-reset": "2026-10-14T01:08:36Z"
+   }
+  }
+ },
+ "table_text": "case                         n cache>0 |  TTFT p50    p90    max |  SAY p50    p90 |  pt1 p50    p90 |  done p50    p90 |  hdrs p50\n-----------------------------------------------------------------------------------------------------------------------------------\nidle ladder 30s              1       1 |      1158   1158   1158 |     1596   1596 |     1596   1596 |      1946   1946 |      1152\nidle ladder 60s              1       1 |      1170   1170   1170 |     1184   1184 |     1612   1612 |      1612   1612 |      1165\nidle ladder 120s             1       1 |      1350   1350   1350 |     1359   1359 |     1920   1920 |      1920   1920 |      1342\nidle ladder 240s             1       1 |       923    923    923 |     1119   1119 |     1326   1326 |      2017   2017 |       917\nidle ladder 390s             2       1 |      1282   1692   1692 |     1388   1791 |     1724   2166 |      1820   2229 |      1280\n(ms from request start; p50 = median, p90 = nearest rank; TTFT = first text delta; SAY = first complete 'SAY:' line; pt1 = first complete '- ' point)"
+}

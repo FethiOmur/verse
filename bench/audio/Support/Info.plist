@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>dev.verse.bench.TapProbe</string>
+    <key>CFBundleName</key>
+    <string>TapProbe</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Verse TapProbe measures the loudness of the meeting app's audio (numbers only, nothing is recorded).</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Verse TapProbe measures microphone loudness to check speaker bleed (numbers only, nothing is recorded).</string>
+</dict>
+</plist>

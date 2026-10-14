@@ -1,0 +1,22 @@
+# build and env
+.build/
+.swiftpm/
+.venv/
+__pycache__/
+*.pyc
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+# never commit audio or secrets
+*.wav
+*.aiff
+*.caf
+*.m4a
+*.mp3
+.env
+*.p8
+# throwaway bench iterations
+bench/api/results/_run1/
+bench/api/results/_run2/
+bench/api/results/_stub/

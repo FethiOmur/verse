@@ -1,0 +1,4 @@
+# Verse P0-A bench. Install: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+anthropic==1.13.0          # spec: >= 1.13
+httpx2[http2]==2.13.1      # anthropic 1.x runs on httpx2; a plain httpx client is rejected (TypeError)
+httpx[http2]==0.28.1       # named in the plan; not used by the bench itself (kept for the Phase 1 brain's other HTTP)

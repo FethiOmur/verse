@@ -1,0 +1,3126 @@
+{
+ "meta": {
+  "timestamp": "20261014-030645",
+  "python": "3.14.7",
+  "anthropic": "1.13.0",
+  "httpx2": "2.13.1",
+  "models": {
+   "haiku": "claude-haiku-5-5",
+   "sonnet": "claude-sonnet-5-5"
+  },
+  "host": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+  "client": "AsyncAnthropic + DefaultAsyncHttpxClient(http2=True, keepalive_expiry=300), max_retries=0",
+  "organization_id": "00000000-0000-0000-0000-000000000000",
+  "http_version": "HTTP/2"
+ },
+ "cases": {
+  "ab_salt4": {
+   "config": "extra: haiku(disabled,low) on 4 different packs, round-robin with rotating start",
+   "A_warmup": {
+    "label": "salt A warm-up",
+    "model": "claude-haiku-5-5",
+    "ok": true,
+    "t_headers": 854.0,
+    "http_version": "HTTP/2",
+    "headers": {
+     "anthropic-ratelimit-input-tokens-limit": "2000000",
+     "anthropic-ratelimit-input-tokens-remaining": "1997000",
+     "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:06:47Z",
+     "anthropic-ratelimit-output-tokens-limit": "400000",
+     "anthropic-ratelimit-output-tokens-remaining": "400000",
+     "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:06:47Z",
+     "anthropic-ratelimit-requests-limit": "1000",
+     "anthropic-ratelimit-requests-remaining": "999",
+     "anthropic-ratelimit-requests-reset": "2026-10-14T01:06:47Z",
+     "anthropic-ratelimit-tokens-limit": "2400000",
+     "anthropic-ratelimit-tokens-remaining": "2397000",
+     "anthropic-ratelimit-tokens-reset": "2026-10-14T01:06:47Z",
+     "request-id": "req_000000000000000000000000",
+     "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+     "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+     "cf-ray": "0000000000000000-FRA"
+    },
+    "request_id": "req_000000000000000000000000",
+    "t_first_event": 865.3,
+    "message_start_usage": {
+     "cache_creation_input_tokens": 0,
+     "cache_read_input_tokens": 6190,
+     "input_tokens": 14,
+     "output_tokens": 8
+    },
+    "t_first_block": 866.6,
+    "t_first_text": 866.7,
+    "t_say": 890.5,
+    "t_point1": 1400.8,
+    "stop_reason": "end_turn",
+    "t_done": 1537.4,
+    "block_types": [
+     "text"
+    ],
+    "usage": {
+     "cache_creation_input_tokens": 0,
+     "cache_read_input_tokens": 6190,
+     "input_tokens": 14,
+     "output_tokens": 141
+    },
+    "text_chars": 404,
+    "text_head": "SAY: Let me check and come back to you.\n- The pack has no question-specific data for \"warmup question\", so there is no figure or owner to cite.\n- The meeting transcript only covers agenda items (pilot results, Q3 budget,",
+    "cost_usd": 0.000134,
+    "out_tok_per_s": 210.2
+   },
+   "H1_warmup": {
+    "label": "salt H1 warm-up",
+    "model": "claude-haiku-5-5",
+    "ok": true,
+    "t_headers": 760.1,
+    "http_version": "HTTP/2",
+    "headers": {
+     "anthropic-ratelimit-input-tokens-limit": "2000000",
+     "anthropic-ratelimit-input-tokens-remaining": "1997000",
+     "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:06:48Z",
+     "anthropic-ratelimit-output-tokens-limit": "400000",
+     "anthropic-ratelimit-output-tokens-remaining": "400000",
+     "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:06:48Z",
+     "anthropic-ratelimit-requests-limit": "1000",
+     "anthropic-ratelimit-requests-remaining": "999",
+     "anthropic-ratelimit-requests-reset": "2026-10-14T01:06:48Z",
+     "anthropic-ratelimit-tokens-limit": "2400000",
+     "anthropic-ratelimit-tokens-remaining": "2397000",
+     "anthropic-ratelimit-tokens-reset": "2026-10-14T01:06:48Z",
+     "request-id": "req_000000000000000000000000",
+     "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+     "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+     "cf-ray": "0000000000000000-FRA"
+    },
+    "request_id": "req_000000000000000000000000",
+    "t_first_event": 760.3,
+    "message_start_usage": {
+     "cache_creation_input_tokens": 0,
+     "cache_read_input_tokens": 6223,
+     "input_tokens": 14,
+     "output_tokens": 8
+    },
+    "t_first_block": 760.4,
+    "t_first_text": 760.4,
+    "t_say": 965.7,
+    "stop_reason": "end_turn",
+    "t_done": 1318.7,
+    "t_point1": 1318.7,
+    "block_types": [
+     "text"
+    ],
+    "usage": {
+     "cache_creation_input_tokens": 0,
+     "cache_read_input_tokens": 6223,
+     "input_tokens": 14,
+     "output_tokens": 61
+    },
+    "text_chars": 182,
+    "text_head": "SAY: Let me check and come back to you.\n- The pack has no question-specific fact for \"warmup question\"; it does not say what the warmup question asks, so no figure can be tied to it.",
+    "cost_usd": 9.4e-05,
+    "out_tok_per_s": 109.3
+   },
+   "B2_warmup": {
+    "label": "salt B2 warm-up",
+    "model": "claude-haiku-5-5",
+    "ok": true,
+    "t_headers": 646.6,
+    "http_version": "HTTP/2",
+    "headers": {
+     "anthropic-ratelimit-input-tokens-limit": "2000000",
+     "anthropic-ratelimit-input-tokens-remaining": "1997000",
+     "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:06:50Z",
+     "anthropic-ratelimit-output-tokens-limit": "400000",
+     "anthropic-ratelimit-output-tokens-remaining": "400000",
+     "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:06:49Z",
+     "anthropic-ratelimit-requests-limit": "1000",
+     "anthropic-ratelimit-requests-remaining": "999",
+     "anthropic-ratelimit-requests-reset": "2026-10-14T01:06:50Z",
+     "anthropic-ratelimit-tokens-limit": "2400000",
+     "anthropic-ratelimit-tokens-remaining": "2397000",
+     "anthropic-ratelimit-tokens-reset": "2026-10-14T01:06:49Z",
+     "request-id": "req_000000000000000000000000",
+     "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+     "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+     "cf-ray": "0000000000000000-FRA"
+    },
+    "request_id": "req_000000000000000000000000",
+    "t_first_event": 646.9,
+    "message_start_usage": {
+     "cache_creation_input_tokens": 6242,
+     "cache_read_input_tokens": 0,
+     "input_tokens": 14,
+     "output_tokens": 8
+    },
+    "t_first_block": 647.0,
+    "t_first_text": 647.1,
+    "t_say": 870.5,
+    "t_point1": 1080.2,
+    "stop_reason": "end_turn",
+    "t_done": 1514.8,
+    "block_types": [
+     "text"
+    ],
+    "usage": {
+     "cache_creation_input_tokens": 6242,
+     "cache_read_input_tokens": 0,
+     "input_tokens": 14,
+     "output_tokens": 133
+    },
+    "text_chars": 359,
+    "text_head": "SAY: Let me check and come back to you.\n- The pack has no question-specific answer for \"warmup question\"; the answer bank covers KPI trends (sensor uptime, on-time rate, cost, dwell, fuel, re-plans, rebate), not a warmup",
+    "cost_usd": 0.000848,
+    "out_tok_per_s": 153.3
+   },
+   "C3_warmup": {
+    "label": "salt C3 warm-up",
+    "model": "claude-haiku-5-5",
+    "ok": true,
+    "t_headers": 890.9,
+    "http_version": "HTTP/2",
+    "headers": {
+     "anthropic-ratelimit-input-tokens-limit": "2000000",
+     "anthropic-ratelimit-input-tokens-remaining": "1997000",
+     "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:06:51Z",
+     "anthropic-ratelimit-output-tokens-limit": "400000",
+     "anthropic-ratelimit-output-tokens-remaining": "400000",
+     "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:06:51Z",
+     "anthropic-ratelimit-requests-limit": "1000",
+     "anthropic-ratelimit-requests-remaining": "999",
+     "anthropic-ratelimit-requests-reset": "2026-10-14T01:06:51Z",
+     "anthropic-ratelimit-tokens-limit": "2400000",
+     "anthropic-ratelimit-tokens-remaining": "2397000",
+     "anthropic-ratelimit-tokens-reset": "2026-10-14T01:06:51Z",
+     "request-id": "req_000000000000000000000000",
+     "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+     "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+     "cf-ray": "0000000000000000-FRA"
+    },
+    "request_id": "req_000000000000000000000000",
+    "t_first_event": 891.7,
+    "message_start_usage": {
+     "cache_creation_input_tokens": 6191,
+     "cache_read_input_tokens": 0,
+     "input_tokens": 14,
+     "output_tokens": 8
+    },
+    "t_first_block": 895.6,
+    "t_first_text": 896.0,
+    "t_say": 917.9,
+    "t_point1": 1419.3,
+    "stop_reason": "end_turn",
+    "t_done": 1424.2,
+    "block_types": [
+     "text"
+    ],
+    "usage": {
+     "cache_creation_input_tokens": 6191,
+     "cache_read_input_tokens": 0,
+     "input_tokens": 14,
+     "output_tokens": 94
+    },
+    "text_chars": 283,
+    "text_head": "SAY: Let me check and come back to you.\n- The pack has no question-specific answer for \"warmup question\"; it only lists metrics, glossary terms and meeting snippets.\n- The transcript shows Elif is asked for the budget he",
+    "cost_usd": 0.000822,
+    "out_tok_per_s": 178.0
+   },
+   "A": {
+    "calls": [
+     {
+      "label": "salt A #1",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 850.1,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:06:53Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:06:52Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:06:52Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:06:52Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 850.2,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 32,
+       "output_tokens": 5
+      },
+      "t_first_block": 850.3,
+      "t_first_text": 850.3,
+      "t_say": 997.7,
+      "t_point1": 1417.8,
+      "stop_reason": "end_turn",
+      "t_done": 1586.0,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 32,
+       "output_tokens": 164
+      },
+      "text_chars": 419,
+      "text_head": "SAY: The Milan driver overtime figure for Q2 is not in the pack, so I'll check and come back to you.\n- The pack has driver overtime hours for Milan only for Q1 (39.5 [F003]) and for the pilot period in other records; n",
+      "cost_usd": 0.000147,
+      "out_tok_per_s": 222.9
+     },
+     {
+      "label": "salt A #2",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1116.7,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:03Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:03Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:03Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:03Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1117.1,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 38,
+       "output_tokens": 6
+      },
+      "t_first_block": 1117.2,
+      "t_first_text": 1117.2,
+      "t_say": 1218.9,
+      "t_point1": 1399.8,
+      "stop_reason": "end_turn",
+      "t_done": 1581.7,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 38,
+       "output_tokens": 117
+      },
+      "text_chars": 212,
+      "text_head": "SAY: Il dato di carrier rebate per Nice nel Q1 è 74.0.\n- Carrier rebate al deposito di Nice, Q1: 74.0 (unità come nel foglio sorgente) [F046].\n- Fonte: Depot Rollout Plan, p.14; responsabile Marco Rinaldi [F046].",
+      "cost_usd": 0.000124,
+      "out_tok_per_s": 251.9
+     },
+     {
+      "label": "salt A #3",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 3841.8,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:08Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:08Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:08Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:08Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 3842.7,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 43,
+       "output_tokens": 6
+      },
+      "t_first_block": 3842.9,
+      "t_first_text": 3843.2,
+      "t_say": 4340.6,
+      "t_point1": 4571.4,
+      "stop_reason": "end_turn",
+      "t_done": 4979.5,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 43,
+       "output_tokens": 224
+      },
+      "text_chars": 389,
+      "text_head": "SAY: Bologna'da Q2 için müşteri şikâyeti oranı 47,2 idi; ayrıntıyı kontrol edip geri döneceğim.\n- Bologna deposunun Q2 müşteri şikâyeti oranı (1000 teslimat başına) 47,2 olarak kayıtlı [F053].\n- Bu veri Pilot Review v3, ",
+      "cost_usd": 0.000178,
+      "out_tok_per_s": 197.1
+     },
+     {
+      "label": "salt A #4",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 899.0,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:17Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:17Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:17Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:17Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 899.7,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 37,
+       "output_tokens": 6
+      },
+      "t_first_block": 899.8,
+      "t_first_text": 899.8,
+      "t_say": 1000.5,
+      "t_point1": 1544.3,
+      "stop_reason": "end_turn",
+      "t_done": 1549.7,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 37,
+       "output_tokens": 154
+      },
+      "text_chars": 371,
+      "text_head": "SAY: Verona's customer complaints in Q3 were 13.9 per 1000 drops.\n- The customer complaints per 1000 drops at the Verona depot in Q3 was 13.9 (source: Risk Register, p.12) [F005].\n- The figure is owned by Giulia Ferri, a",
+      "cost_usd": 0.000143,
+      "out_tok_per_s": 237.0
+     },
+     {
+      "label": "salt A #5",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1045.7,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:22Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:21Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:22Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:21Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1046.0,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 41,
+       "output_tokens": 6
+      },
+      "t_first_block": 1046.1,
+      "t_first_text": 1046.2,
+      "t_say": 1181.2,
+      "t_point1": 1431.2,
+      "stop_reason": "end_turn",
+      "t_done": 1584.4,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 41,
+       "output_tokens": 128
+      },
+      "text_chars": 250,
+      "text_head": "SAY: Il dato di on-time delivery rate a Lyon nel Q2 era 20,6.\n- Il tasso di consegne puntuali al deposito di Lyon nel Q2 era 20,6 (unità come nel foglio sorgente) [F012].\n- La fonte è Audit Note 14, p.13; il responsabile",
+      "cost_usd": 0.00013,
+      "out_tok_per_s": 237.8
+     },
+     {
+      "label": "salt A #6",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 895.7,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:33Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:33Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:33Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:33Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 896.2,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 38,
+       "output_tokens": 6
+      },
+      "t_first_block": 896.3,
+      "t_first_text": 896.3,
+      "t_say": 1049.3,
+      "t_point1": 1397.4,
+      "stop_reason": "end_turn",
+      "t_done": 1503.8,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 38,
+       "output_tokens": 149
+      },
+      "text_chars": 388,
+      "text_head": "SAY: Marseille's route re-plans per day last quarter were 96.4, according to the Pilot Review v3.\n- Route re-plans per day at the Marseille depot, last quarter: 96.4, owner Elif Demir [F019].\n- The source for this figure",
+      "cost_usd": 0.00014,
+      "out_tok_per_s": 245.3
+     },
+     {
+      "label": "salt A #7",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1081.4,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:38Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:38Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:38Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:38Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1081.7,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 34,
+       "output_tokens": 5
+      },
+      "t_first_block": 1081.8,
+      "t_first_text": 1081.9,
+      "t_say": 1165.4,
+      "t_point1": 1430.6,
+      "stop_reason": "end_turn",
+      "t_done": 1543.6,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 34,
+       "output_tokens": 118
+      },
+      "text_chars": 267,
+      "text_head": "SAY: The fuel use per 100 km at Milano in Q2 was 34.0.\n- Fuel use per 100 km at the Milano depot, Q2, is 34.0 according to the Risk Register, owned by Kaan Arslan [F026].\n- This figure comes from Risk Register, p.1, so i",
+      "cost_usd": 0.000124,
+      "out_tok_per_s": 255.6
+     },
+     {
+      "label": "salt A #8",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1000.1,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:42Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:42Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:42Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:42Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1000.5,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 40,
+       "output_tokens": 8
+      },
+      "t_first_block": 1000.6,
+      "t_first_text": 1000.6,
+      "t_say": 1109.1,
+      "t_point1": 1552.2,
+      "stop_reason": "end_turn",
+      "t_done": 1552.9,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 40,
+       "output_tokens": 151
+      },
+      "text_chars": 360,
+      "text_head": "SAY: Sensor uptime at Marseille in the pilot period was 19.3, per the Audit Note 14.\n\n- Sensor uptime at the Marseille depot, pilot period: 19.3, owned by Marco Rinaldi [F033].\n- Source for this figure is Audit Note 14, ",
+      "cost_usd": 0.000141,
+      "out_tok_per_s": 273.4
+     },
+     {
+      "label": "salt A #9",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 876.1,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:47Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:47Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:47Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:47Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 876.5,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 36,
+       "output_tokens": 6
+      },
+      "t_first_block": 876.6,
+      "t_first_text": 876.7,
+      "t_say": 1225.6,
+      "t_point1": 1530.9,
+      "stop_reason": "end_turn",
+      "t_done": 1785.9,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 36,
+       "output_tokens": 188
+      },
+      "text_chars": 315,
+      "text_head": "SAY: Marseille'in Q2 boş sefer oranı 62.3 olarak kayıtlı, aynı zamanda sorumlusu Giulia Ferri.\n- Marseille deposu için Q2 dönemindeki boş sefer oranı 62.3 olarak kaydedilmiş [F040].\n- Bu kaydın sorumlusu Giulia Ferri'dir",
+      "cost_usd": 0.00016,
+      "out_tok_per_s": 206.8
+     },
+     {
+      "label": "salt A #10",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1039.9,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:08:00Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:08:00Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:08:00Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:08:00Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1040.2,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 31,
+       "output_tokens": 5
+      },
+      "t_first_block": 1040.3,
+      "t_first_text": 1040.3,
+      "t_say": 1167.5,
+      "t_point1": 1589.1,
+      "stop_reason": "end_turn",
+      "t_done": 1619.3,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 31,
+       "output_tokens": 120
+      },
+      "text_chars": 276,
+      "text_head": "SAY: The Genova depot logged 36.6 training hours per driver in Q1.\n- Training hours per driver at the Genova depot, Q1: 36.6, per Risk Register p.25 [F047].\n- Owner of this figure is Giulia Ferri [F047].\n- The unit is as",
+      "cost_usd": 0.000125,
+      "out_tok_per_s": 207.3
+     },
+     {
+      "label": "salt A #11",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 966.3,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:08:05Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:08:05Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:08:05Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:08:05Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 966.8,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 39,
+       "output_tokens": 6
+      },
+      "t_first_block": 966.9,
+      "t_first_text": 966.9,
+      "t_say": 1087.1,
+      "t_point1": 1627.2,
+      "stop_reason": "end_turn",
+      "t_done": 1637.7,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 39,
+       "output_tokens": 146
+      },
+      "text_chars": 275,
+      "text_head": "SAY: Il dato di depot dwell time a Lyon nel Q2 era 51,9.\n- Depot dwell time al deposito di Lyon, Q2: 51,9 [F018], owner Marco Rinaldi, fonte Depot Rollout Plan, p.11.\n- Il valore è l'unità riportata nel foglio sorgente; ",
+      "cost_usd": 0.000139,
+      "out_tok_per_s": 217.7
+     },
+     {
+      "label": "salt A #12",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 960.5,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:08:09Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:08:09Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:08:09Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:08:09Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 961.0,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 37,
+       "output_tokens": 6
+      },
+      "t_first_block": 961.1,
+      "t_first_text": 961.1,
+      "t_say": 1433.8,
+      "t_point1": 1638.5,
+      "stop_reason": "end_turn",
+      "t_done": 1750.4,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6190,
+       "input_tokens": 37,
+       "output_tokens": 165
+      },
+      "text_chars": 292,
+      "text_head": "SAY: Lyon'un son çeyrekteki depot dwell time değeri 86.2; kaynak F006.\n- Lyon deposu için son çeyrekteki depot dwell time değeri 86.2 olarak kayıtlı [F006].\n- Bu değerin sahibi Kaan Arslan'dır ve birim kaynak tabloda bel",
+      "cost_usd": 0.000148,
+      "out_tok_per_s": 209.0
+     }
+    ],
+    "summary": {
+     "n_requested": 12,
+     "n_ok": 12,
+     "n_errors": 0,
+     "n_cache_read_gt0": 12,
+     "n_in_stats": 12,
+     "t_headers": {
+      "n": 12,
+      "p50": 983.2,
+      "p90": 1116.7,
+      "p90_interp": 1113.17,
+      "min": 850.1,
+      "max": 3841.8,
+      "mean": 1214.4
+     },
+     "t_first_event": {
+      "n": 12,
+      "p50": 983.65,
+      "p90": 1117.1,
+      "p90_interp": 1113.56,
+      "min": 850.2,
+      "max": 3842.7,
+      "mean": 1214.9
+     },
+     "t_first_block": {
+      "n": 12,
+      "p50": 983.75,
+      "p90": 1117.2,
+      "p90_interp": 1113.66,
+      "min": 850.3,
+      "max": 3842.9,
+      "mean": 1215.0
+     },
+     "t_first_text": {
+      "n": 12,
+      "p50": 983.75,
+      "p90": 1117.2,
+      "p90_interp": 1113.67,
+      "min": 850.3,
+      "max": 3843.2,
+      "mean": 1215.0
+     },
+     "t_say": {
+      "n": 12,
+      "p50": 1166.45,
+      "p90": 1433.8,
+      "p90_interp": 1412.98,
+      "min": 997.7,
+      "max": 4340.6,
+      "mean": 1414.7
+     },
+     "t_point1": {
+      "n": 12,
+      "p50": 1537.6,
+      "p90": 1638.5,
+      "p90_interp": 1637.3700000000001,
+      "min": 1397.4,
+      "max": 4571.4,
+      "mean": 1760.9
+     },
+     "t_done": {
+      "n": 12,
+      "p50": 1585.2,
+      "p90": 1785.9,
+      "p90_interp": 1782.3500000000001,
+      "min": 1503.8,
+      "max": 4979.5,
+      "mean": 1889.6
+     },
+     "out_tok_per_s": {
+      "n": 12,
+      "p50": 229.95,
+      "p90": 255.6,
+      "p90_interp": 255.23,
+      "min": 197.1,
+      "max": 273.4,
+      "mean": 230.2
+     },
+     "cost_usd": 0.0017
+    }
+   },
+   "H1": {
+    "calls": [
+     {
+      "label": "salt H1 #1",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 775.4,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:06:54Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:06:54Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:06:54Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:06:54Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 775.7,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 33,
+       "output_tokens": 8
+      },
+      "t_first_block": 775.8,
+      "t_first_text": 775.8,
+      "t_say": 974.4,
+      "stop_reason": "end_turn",
+      "t_done": 1437.1,
+      "t_point1": 1437.1,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 33,
+       "output_tokens": 111
+      },
+      "text_chars": 298,
+      "text_head": "SAY: Let me check and come back to you.\n- The pack has driver overtime hours at Milano for Q1 (79.8 [F027]) and for last quarter (11.0 [F039]), but these come from different sheets and the question's period label is ambi",
+      "cost_usd": 0.000121,
+      "out_tok_per_s": 167.9
+     },
+     {
+      "label": "salt H1 #2",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 751.3,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:06:59Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:06:59Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:06:59Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:06:59Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 751.8,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 38,
+       "output_tokens": 6
+      },
+      "t_first_block": 751.9,
+      "t_first_text": 752.0,
+      "t_say": 955.1,
+      "t_point1": 1165.1,
+      "stop_reason": "end_turn",
+      "t_done": 1356.8,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 38,
+       "output_tokens": 165
+      },
+      "text_chars": 384,
+      "text_head": "SAY: Verona's carrier rebate for Q1 was 11.2, and I'll confirm the unit.\n- The Q1 carrier rebate at the Verona depot is 11.2 (unit as in the source sheet) [F046].\n- The owner of this figure is Kaan Arslan, and it comes f",
+      "cost_usd": 0.000149,
+      "out_tok_per_s": 272.8
+     },
+     {
+      "label": "salt H1 #3",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 755.4,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:13Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:13Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:13Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:13Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 755.8,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 43,
+       "output_tokens": 6
+      },
+      "t_first_block": 755.9,
+      "t_first_text": 755.9,
+      "t_say": 976.1,
+      "t_point1": 1345.9,
+      "stop_reason": "end_turn",
+      "t_done": 1836.3,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 43,
+       "output_tokens": 216
+      },
+      "text_chars": 381,
+      "text_head": "SAY: Lyon'da son çeyrek müşteri şikayeti oranı 16,3 idi.\n- Lyon deposunun son çeyrek değeri, 1000 teslimat başına müşteri şikayeti 16,3 olarak kaydedilmiş [F053].\n- Bu veri, Kaan Arslan'ın sahipliğindedir ve Depot Rollou",
+      "cost_usd": 0.000175,
+      "out_tok_per_s": 199.9
+     },
+     {
+      "label": "salt H1 #4",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 829.2,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:18Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:18Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:18Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:18Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 829.6,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 38,
+       "output_tokens": 6
+      },
+      "t_first_block": 829.7,
+      "t_first_text": 829.7,
+      "t_say": 1007.5,
+      "t_point1": 1072.4,
+      "stop_reason": "end_turn",
+      "t_done": 1457.7,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 38,
+       "output_tokens": 153
+      },
+      "text_chars": 379,
+      "text_head": "SAY: Milano's customer complaints were 7.3 per 1000 drops last quarter.\n- Customer complaints per 1000 drops at the Milano depot, last quarter, were 7.3 [F005].\n- The figure is owned by Marco Rinaldi and sourced from Pil",
+      "cost_usd": 0.000143,
+      "out_tok_per_s": 243.6
+     },
+     {
+      "label": "salt H1 #5",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 790.6,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:23Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:23Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:23Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:23Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 791.0,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 40,
+       "output_tokens": 6
+      },
+      "t_first_block": 791.1,
+      "t_first_text": 791.1,
+      "t_say": 1011.0,
+      "t_point1": 1234.9,
+      "stop_reason": "end_turn",
+      "t_done": 1520.2,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 40,
+       "output_tokens": 178
+      },
+      "text_chars": 364,
+      "text_head": "SAY: Il dato di on-time delivery rate a Genova nel Q2 è 23,4.\n- Il tasso di consegne puntuali a Genova nel Q2 è 23,4, secondo la fonte indicata [F012].\n- La responsabile del dato è Giulia Ferri, e la fonte è Audit Note 1",
+      "cost_usd": 0.000155,
+      "out_tok_per_s": 244.1
+     },
+     {
+      "label": "salt H1 #6",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 825.2,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:28Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:28Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:28Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:28Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 825.6,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 38,
+       "output_tokens": 6
+      },
+      "t_first_block": 825.6,
+      "t_first_text": 825.7,
+      "t_say": 1046.3,
+      "t_point1": 1253.6,
+      "stop_reason": "end_turn",
+      "t_done": 1804.4,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 38,
+       "output_tokens": 181
+      },
+      "text_chars": 349,
+      "text_head": "SAY: Marseille'in pilot dönemindeki route re-plans per day değeri 58,5'tir.\n- Marseille deposu için pilot dönemde route re-plans per day değeri 58,5 olarak kaydedilmiş [F019].\n- Bu değerin sorumlusu Sara Conti'dir [F019]",
+      "cost_usd": 0.000157,
+      "out_tok_per_s": 184.9
+     },
+     {
+      "label": "salt H1 #7",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 713.6,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:39Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:39Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:39Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:39Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 713.9,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 34,
+       "output_tokens": 5
+      },
+      "t_first_block": 714.0,
+      "t_first_text": 714.1,
+      "t_say": 929.5,
+      "t_point1": 1337.4,
+      "stop_reason": "end_turn",
+      "t_done": 1349.5,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 34,
+       "output_tokens": 119
+      },
+      "text_chars": 262,
+      "text_head": "SAY: The Verona depot's fuel use per 100 km in Q2 was 38.1.\n- Fact F026 records fuel use per 100 km at the Verona depot for Q2 as 38.1, in the unit used in the source sheet.\n- The source for this figure is Depot Rollout ",
+      "cost_usd": 0.000125,
+      "out_tok_per_s": 187.3
+     },
+     {
+      "label": "salt H1 #8",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 714.5,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:44Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:44Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:44Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:44Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 714.9,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 39,
+       "output_tokens": 8
+      },
+      "t_first_block": 715.0,
+      "t_first_text": 715.0,
+      "t_say": 934.3,
+      "stop_reason": "end_turn",
+      "t_done": 1144.0,
+      "t_point1": 1144.0,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 39,
+       "output_tokens": 94
+      },
+      "text_chars": 251,
+      "text_head": "SAY: Let me check and come back to you.\n- The pack has sensor uptime for Bologna in Q3 as 82.4 [F033], but the answer bank has no sensor uptime entry and the figure is in the fact sheet only, so please confirm it is the ",
+      "cost_usd": 0.000113,
+      "out_tok_per_s": 219.1
+     },
+     {
+      "label": "salt H1 #9",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1546.2,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:49Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:49Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:49Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:49Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1546.6,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 36,
+       "output_tokens": 6
+      },
+      "t_first_block": 1546.7,
+      "t_first_text": 1546.7,
+      "t_say": 1795.2,
+      "t_point1": 2004.8,
+      "stop_reason": "end_turn",
+      "t_done": 2883.2,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 36,
+       "output_tokens": 234
+      },
+      "text_chars": 412,
+      "text_head": "SAY: Lyon'un Q1 boş sefer oranı 71.4; bunu kontrol edip size döneceğim.\n- Pakette Lyon deposunun Q1 boş sefer oranı 71.4 olarak görünüyor [F040].\n- Ancak bu değerin sahibi Marco Rinaldi; birimi ve son doğrulaması için ka",
+      "cost_usd": 0.000183,
+      "out_tok_per_s": 175.1
+     },
+     {
+      "label": "salt H1 #10",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 924.6,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:55Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:55Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:55Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:55Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 924.9,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 32,
+       "output_tokens": 5
+      },
+      "t_first_block": 925.0,
+      "t_first_text": 925.1,
+      "t_say": 1151.5,
+      "t_point1": 1344.4,
+      "stop_reason": "end_turn",
+      "t_done": 1762.1,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 32,
+       "output_tokens": 203
+      },
+      "text_chars": 522,
+      "text_head": "SAY: The Nice depot's training hours per driver in the pilot period were 33.8, per the Carrier Contract 2026.\n- Training hours per driver at the Nice depot, pilot period: 33.8 (unit as in the source sheet) [F047], owner ",
+      "cost_usd": 0.000167,
+      "out_tok_per_s": 242.5
+     },
+     {
+      "label": "salt H1 #11",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 616.9,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:08:06Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:08:06Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:08:06Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:08:06Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 617.1,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 38,
+       "output_tokens": 8
+      },
+      "t_first_block": 617.1,
+      "t_first_text": 617.1,
+      "t_say": 817.2,
+      "stop_reason": "end_turn",
+      "t_done": 1151.3,
+      "t_point1": 1151.3,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 38,
+       "output_tokens": 108
+      },
+      "text_chars": 292,
+      "text_head": "SAY: Let me check and come back to you.\n- The pack has depot dwell time for Milan in Q1 as F054 (9.6), but the question asks in Italian and the answer bank has no matching entry; I should verify F054's unit and whether ",
+      "cost_usd": 0.00012,
+      "out_tok_per_s": 202.2
+     },
+     {
+      "label": "salt H1 #12",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 748.1,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:08:11Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:08:11Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:08:11Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:08:11Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 748.4,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 37,
+       "output_tokens": 6
+      },
+      "t_first_block": 748.5,
+      "t_first_text": 748.5,
+      "t_say": 1152.3,
+      "t_point1": 1184.7,
+      "stop_reason": "end_turn",
+      "t_done": 1700.3,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6223,
+       "input_tokens": 37,
+       "output_tokens": 191
+      },
+      "text_chars": 358,
+      "text_head": "SAY: Marseille'in pilot dönemi depot dwell time değeri 6.1; bunu F006 kaynağından doğrulayabilirim.\n- Marseille depotunun pilot dönemindeki depot dwell time değeri 6.1'dir [F006].\n- Kaynak Carrier Contract 2026, sayfa 16",
+      "cost_usd": 0.000161,
+      "out_tok_per_s": 200.7
+     }
+    ],
+    "summary": {
+     "n_requested": 12,
+     "n_ok": 12,
+     "n_errors": 0,
+     "n_cache_read_gt0": 12,
+     "n_in_stats": 12,
+     "t_headers": {
+      "n": 12,
+      "p50": 765.4,
+      "p90": 924.6,
+      "p90_interp": 915.0600000000001,
+      "min": 616.9,
+      "max": 1546.2,
+      "mean": 832.6
+     },
+     "t_first_event": {
+      "n": 12,
+      "p50": 765.75,
+      "p90": 924.9,
+      "p90_interp": 915.37,
+      "min": 617.1,
+      "max": 1546.6,
+      "mean": 832.9
+     },
+     "t_first_block": {
+      "n": 12,
+      "p50": 765.8499999999999,
+      "p90": 925.0,
+      "p90_interp": 915.47,
+      "min": 617.1,
+      "max": 1546.7,
+      "mean": 833.0
+     },
+     "t_first_text": {
+      "n": 12,
+      "p50": 765.8499999999999,
+      "p90": 925.1,
+      "p90_interp": 915.5600000000001,
+      "min": 617.1,
+      "max": 1546.7,
+      "mean": 833.1
+     },
+     "t_say": {
+      "n": 12,
+      "p50": 991.8,
+      "p90": 1152.3,
+      "p90_interp": 1152.22,
+      "min": 817.2,
+      "max": 1795.2,
+      "mean": 1062.5
+     },
+     "t_point1": {
+      "n": 12,
+      "p50": 1244.25,
+      "p90": 1437.1,
+      "p90_interp": 1427.98,
+      "min": 1072.4,
+      "max": 2004.8,
+      "mean": 1306.3
+     },
+     "t_done": {
+      "n": 12,
+      "p50": 1488.95,
+      "p90": 1836.3,
+      "p90_interp": 1833.11,
+      "min": 1144.0,
+      "max": 2883.2,
+      "mean": 1616.9
+     },
+     "out_tok_per_s": {
+      "n": 12,
+      "p50": 201.45,
+      "p90": 244.1,
+      "p90_interp": 244.04999999999998,
+      "min": 167.9,
+      "max": 272.8,
+      "mean": 211.7
+     },
+     "cost_usd": 0.00177
+    }
+   },
+   "B2": {
+    "calls": [
+     {
+      "label": "salt B2 #1",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 761.9,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:06:56Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:06:55Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:06:56Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:06:55Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 762.5,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 32,
+       "output_tokens": 6
+      },
+      "t_first_block": 762.6,
+      "t_first_text": 762.6,
+      "t_say": 962.7,
+      "t_point1": 1147.1,
+      "stop_reason": "end_turn",
+      "t_done": 1634.2,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 32,
+       "output_tokens": 178
+      },
+      "text_chars": 435,
+      "text_head": "SAY: Milan's driver overtime in Q1 was 97.1 hours, per the Depot Rollout Plan.\n- Driver overtime hours at the Milan depot, Q1: 97.1, source Depot Rollout Plan, p.3, owner Elif Demir [F039].\n- The figure is stated in th",
+      "cost_usd": 0.000155,
+      "out_tok_per_s": 204.2
+     },
+     {
+      "label": "salt B2 #2",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 673.3,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:00Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:00Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:00Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:00Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 673.7,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 39,
+       "output_tokens": 1
+      },
+      "t_first_block": 673.7,
+      "t_first_text": 673.8,
+      "t_say": 832.5,
+      "t_point1": 1058.5,
+      "stop_reason": "end_turn",
+      "t_done": 1337.7,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 39,
+       "output_tokens": 143
+      },
+      "text_chars": 287,
+      "text_head": "SAY: Il dato di carrier rebate per Bologna nel Q2 è 67,5.\n- Il carrier rebate al deposito di Bologna nel Q2 è 67,5 secondo la fonte Carrier Contract 2026 p.23 [F046].\n- Il dato è riportato con l'unità della fonte origina",
+      "cost_usd": 0.000138,
+      "out_tok_per_s": 215.4
+     },
+     {
+      "label": "salt B2 #3",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 770.4,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:05Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:04Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:05Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:04Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 770.8,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 42,
+       "output_tokens": 3
+      },
+      "t_first_block": 770.9,
+      "t_first_text": 771.0,
+      "t_say": 1016.6,
+      "t_point1": 1264.4,
+      "stop_reason": "end_turn",
+      "t_done": 1672.3,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 42,
+       "output_tokens": 152
+      },
+      "text_chars": 256,
+      "text_head": "SAY: Verona'nın Q1 müşteri şikayeti oranı 68,5 per 1000 teslimat.\n- Verona deposunun Q1 dönemindeki 1000 teslimat başına müşteri şikayeti oranı 68,5'tir [F053].\n- Bu kayıt, Depot Rollout Plan (s.3) kaynağından alınmıştır",
+      "cost_usd": 0.000143,
+      "out_tok_per_s": 168.6
+     },
+     {
+      "label": "salt B2 #4",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 806.4,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:20Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:20Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:20Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:20Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 806.8,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 38,
+       "output_tokens": 5
+      },
+      "t_first_block": 806.9,
+      "t_first_text": 806.9,
+      "t_say": 1074.5,
+      "t_point1": 1239.9,
+      "stop_reason": "end_turn",
+      "t_done": 1544.8,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 38,
+       "output_tokens": 158
+      },
+      "text_chars": 358,
+      "text_head": "SAY: The Bologna depot recorded 32.1 customer complaints per 1000 drops in Q3.\n- Customer complaints per 1000 drops at the Bologna depot, Q3, were 32.1 [F005].\n- This figure comes from the Carrier Contract 2026 sheet, pa",
+      "cost_usd": 0.000145,
+      "out_tok_per_s": 214.1
+     },
+     {
+      "label": "salt B2 #5",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 866.5,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:25Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:24Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:25Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:24Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 866.8,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 41,
+       "output_tokens": 6
+      },
+      "t_first_block": 866.9,
+      "t_first_text": 866.9,
+      "t_say": 1054.3,
+      "t_point1": 1255.4,
+      "stop_reason": "end_turn",
+      "t_done": 1572.9,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 41,
+       "output_tokens": 174
+      },
+      "text_chars": 367,
+      "text_head": "SAY: Il tasso di consegne puntuali a Milan nel periodo pilota era 72,2.\n- Il tasso di consegne puntuali al deposito di Milan, periodo pilota, è 72,2 [F012].\n- Il dato è di proprietà di Marco Rinaldi e proviene dal Risk",
+      "cost_usd": 0.000154,
+      "out_tok_per_s": 246.5
+     },
+     {
+      "label": "salt B2 #6",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 803.4,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:30Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:30Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:30Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:30Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 803.8,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 38,
+       "output_tokens": 6
+      },
+      "t_first_block": 803.8,
+      "t_first_text": 803.9,
+      "t_say": 1013.0,
+      "t_point1": 1219.5,
+      "stop_reason": "end_turn",
+      "t_done": 1693.9,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 38,
+       "output_tokens": 154
+      },
+      "text_chars": 399,
+      "text_head": "SAY: Marseille's route re-plans per day last quarter were 52.1, per the Risk Register.\n- Route re-plans per day at the Marseille depot, last quarter: 52.1 [F019], owner Kaan Arslan, source Risk Register, p.14.\n- The figu",
+      "cost_usd": 0.000143,
+      "out_tok_per_s": 173.0
+     },
+     {
+      "label": "salt B2 #7",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1114.5,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:35Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:34Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:34Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:34Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1114.8,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 34,
+       "output_tokens": 5
+      },
+      "t_first_block": 1114.9,
+      "t_first_text": 1114.9,
+      "t_say": 1391.0,
+      "t_point1": 1391.1,
+      "stop_reason": "end_turn",
+      "t_done": 1620.2,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 34,
+       "output_tokens": 114
+      },
+      "text_chars": 235,
+      "text_head": "SAY: The Milano depot's fuel use per 100 km in Q1 was 28.1.\n- Fuel use per 100 km at the Milano depot, Q1, is 28.1 per the Risk Register (p.7) [F026].\n- The figure is owned by Marco Rinaldi.\n- The unit is as stated in th",
+      "cost_usd": 0.000123,
+      "out_tok_per_s": 225.6
+     },
+     {
+      "label": "salt B2 #8",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 760.9,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:45Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:45Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:45Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:45Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 761.2,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 39,
+       "output_tokens": 6
+      },
+      "t_first_block": 761.3,
+      "t_first_text": 761.3,
+      "t_say": 974.5,
+      "t_point1": 1170.3,
+      "stop_reason": "end_turn",
+      "t_done": 1848.9,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 39,
+       "output_tokens": 229
+      },
+      "text_chars": 457,
+      "text_head": "SAY: Il dato di Bologna per il sensor uptime nel Q1 era 26,3, secondo la fonte disponibile.\n- Sensor uptime al deposito di Bologna, Q1: 26,3 [F033], fonte Q3 Budget Sheet, p.25, responsabile Giulia Ferri.\n- Lo stesso ind",
+      "cost_usd": 0.000181,
+      "out_tok_per_s": 210.6
+     },
+     {
+      "label": "salt B2 #9",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 792.8,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:52Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:51Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:52Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:51Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 793.7,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 35,
+       "output_tokens": 6
+      },
+      "t_first_block": 793.8,
+      "t_first_text": 793.9,
+      "t_say": 1006.9,
+      "t_point1": 1222.4,
+      "stop_reason": "end_turn",
+      "t_done": 1674.6,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 35,
+       "output_tokens": 139
+      },
+      "text_chars": 243,
+      "text_head": "SAY: Milano'da Q1 için empty-run share 49.3 idi.\n- Milano deposunun Q1 empty-run share değeri 49.3'tür [F040].\n- Bu değerin sorumlusu Kaan Arslan'dır ve kaynak Pilot Review v3, s.16'dır [F040].\n- Birim, kaynak sayfasında",
+      "cost_usd": 0.000135,
+      "out_tok_per_s": 157.8
+     },
+     {
+      "label": "salt B2 #10",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 803.3,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:57Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:57Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:57Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:57Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 803.7,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 33,
+       "output_tokens": 5
+      },
+      "t_first_block": 803.7,
+      "t_first_text": 803.8,
+      "t_say": 1079.8,
+      "t_point1": 1303.4,
+      "stop_reason": "end_turn",
+      "t_done": 1579.2,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 33,
+       "output_tokens": 143
+      },
+      "text_chars": 383,
+      "text_head": "SAY: The Bologna depot logged 69.2 training hours per driver in the pilot period.\n- The training hours per driver at the Bologna depot for the pilot period were 69.2, per the source sheet [F047].\n- The figure comes from ",
+      "cost_usd": 0.000137,
+      "out_tok_per_s": 184.4
+     },
+     {
+      "label": "salt B2 #11",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 811.9,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:08:02Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:08:02Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:08:02Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:08:02Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 812.1,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 38,
+       "output_tokens": 6
+      },
+      "t_first_block": 812.2,
+      "t_first_text": 812.3,
+      "t_say": 928.3,
+      "t_point1": 1135.1,
+      "stop_reason": "end_turn",
+      "t_done": 1583.8,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 38,
+       "output_tokens": 177
+      },
+      "text_chars": 368,
+      "text_head": "SAY: Il dato di depot dwell time a Nice nel Q3 è 66,5.\n- Il depot dwell time al deposito di Nice nel Q3 è 66,5, come riportato nel Carrier Contract 2026 (p.14) [F054].\n- Il dato è di proprietà di Marco Rinaldi [F054].\n- ",
+      "cost_usd": 0.000155,
+      "out_tok_per_s": 229.4
+     },
+     {
+      "label": "salt B2 #12",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 709.5,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:08:13Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:08:13Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:08:13Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:08:13Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 710.0,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 36,
+       "output_tokens": 6
+      },
+      "t_first_block": 710.1,
+      "t_first_text": 710.2,
+      "t_say": 921.6,
+      "t_point1": 1364.4,
+      "stop_reason": "end_turn",
+      "t_done": 1903.6,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6242,
+       "input_tokens": 36,
+       "output_tokens": 221
+      },
+      "text_chars": 399,
+      "text_head": "SAY: Verona'nın Q3 depot dwell time değerini kontrol edip size geri döneceğim.\n- Pakette Verona deposu için Q3 dwell time değeri bulunmuyor; F006 yalnızca Verona'nın Q3 değerini 25.8 olarak veriyor, bu da doğru dönem.\n- ",
+      "cost_usd": 0.000177,
+      "out_tok_per_s": 185.2
+     }
+    ],
+    "summary": {
+     "n_requested": 12,
+     "n_ok": 12,
+     "n_errors": 0,
+     "n_cache_read_gt0": 12,
+     "n_in_stats": 12,
+     "t_headers": {
+      "n": 12,
+      "p50": 798.05,
+      "p90": 866.5,
+      "p90_interp": 861.04,
+      "min": 673.3,
+      "max": 1114.5,
+      "mean": 806.2
+     },
+     "t_first_event": {
+      "n": 12,
+      "p50": 798.7,
+      "p90": 866.8,
+      "p90_interp": 861.3299999999999,
+      "min": 673.7,
+      "max": 1114.8,
+      "mean": 806.7
+     },
+     "t_first_block": {
+      "n": 12,
+      "p50": 798.75,
+      "p90": 866.9,
+      "p90_interp": 861.4300000000001,
+      "min": 673.7,
+      "max": 1114.9,
+      "mean": 806.7
+     },
+     "t_first_text": {
+      "n": 12,
+      "p50": 798.8499999999999,
+      "p90": 866.9,
+      "p90_interp": 861.44,
+      "min": 673.8,
+      "max": 1114.9,
+      "mean": 806.8
+     },
+     "t_say": {
+      "n": 12,
+      "p50": 1009.95,
+      "p90": 1079.8,
+      "p90_interp": 1079.27,
+      "min": 832.5,
+      "max": 1391.0,
+      "mean": 1021.3
+     },
+     "t_point1": {
+      "n": 12,
+      "p50": 1231.15,
+      "p90": 1364.4,
+      "p90_interp": 1358.3000000000002,
+      "min": 1058.5,
+      "max": 1391.1,
+      "mean": 1231.0
+     },
+     "t_done": {
+      "n": 12,
+      "p50": 1627.2,
+      "p90": 1848.9,
+      "p90_interp": 1833.4,
+      "min": 1337.7,
+      "max": 1903.6,
+      "mean": 1638.8
+     },
+     "out_tok_per_s": {
+      "n": 12,
+      "p50": 207.39999999999998,
+      "p90": 229.4,
+      "p90_interp": 229.02,
+      "min": 157.8,
+      "max": 246.5,
+      "mean": 201.2
+     },
+     "cost_usd": 0.00179
+    }
+   },
+   "C3": {
+    "calls": [
+     {
+      "label": "salt C3 #1",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1149.8,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:06:57Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:06:57Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:06:57Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:06:57Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1150.3,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 32,
+       "output_tokens": 8
+      },
+      "t_first_block": 1150.4,
+      "t_first_text": 1150.4,
+      "t_say": 1170.8,
+      "t_point1": 1524.4,
+      "stop_reason": "end_turn",
+      "t_done": 1642.9,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 32,
+       "output_tokens": 130
+      },
+      "text_chars": 290,
+      "text_head": "SAY: Let me check and come back to you.\n- The pack has driver overtime hours for Milano in Q3 (F015: 32.0) and in the pilot period (F003: 75.7), but no Q1 figure for that depot.\n- F039 gives Milano driver overtime hours ",
+      "cost_usd": 0.00013,
+      "out_tok_per_s": 264.0
+     },
+     {
+      "label": "salt C3 #2",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 993.5,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:02Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:01Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:02Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:01Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 993.8,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 39,
+       "output_tokens": 6
+      },
+      "t_first_block": 993.9,
+      "t_first_text": 993.9,
+      "t_say": 1080.9,
+      "t_point1": 1475.3,
+      "stop_reason": "end_turn",
+      "t_done": 1481.1,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 39,
+       "output_tokens": 133
+      },
+      "text_chars": 320,
+      "text_head": "SAY: Carrier rebate at the Nice depot in the pilot period was 7.0.\n- The pilot-period carrier rebate at the Nice depot is 7.0, with the owner listed as Kaan Arslan [F046].\n- The source for this figure is Pilot Review v3,",
+      "cost_usd": 0.000132,
+      "out_tok_per_s": 273.0
+     },
+     {
+      "label": "salt C3 #3",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 948.0,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:06Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:06Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:06Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:06Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 948.4,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 43,
+       "output_tokens": 6
+      },
+      "t_first_block": 948.5,
+      "t_first_text": 948.5,
+      "t_say": 1241.7,
+      "t_point1": 1509.8,
+      "stop_reason": "end_turn",
+      "t_done": 2195.9,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 43,
+       "output_tokens": 263
+      },
+      "text_chars": 498,
+      "text_head": "SAY: Bologna'nın Q3 müşteri şikayeti oranını kontrol edip size döneceğim.\n- Paketteki Bologna Q3 için customer complaints per 1000 drops kaydı F053'te yer alıyor, ancak bu satırda değer 30.0 olarak görünüyor ve sahibi Sa",
+      "cost_usd": 0.000198,
+      "out_tok_per_s": 210.8
+     },
+     {
+      "label": "salt C3 #4",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 905.5,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:15Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:15Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:15Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:15Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 905.9,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 38,
+       "output_tokens": 5
+      },
+      "t_first_block": 906.0,
+      "t_first_text": 906.1,
+      "t_say": 1049.2,
+      "t_point1": 1407.7,
+      "stop_reason": "end_turn",
+      "t_done": 1611.5,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 38,
+       "output_tokens": 159
+      },
+      "text_chars": 409,
+      "text_head": "SAY: The Genova depot recorded 20.1 customer complaints per 1000 drops in the pilot period.\n- The customer complaints per 1000 drops at the Genova depot for the pilot period was 20.1 [F005].\n- The figure is owned by Giul",
+      "cost_usd": 0.000145,
+      "out_tok_per_s": 225.4
+     },
+     {
+      "label": "salt C3 #5",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1041.9,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:26Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:26Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:26Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:26Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1042.3,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 41,
+       "output_tokens": 6
+      },
+      "t_first_block": 1042.4,
+      "t_first_text": 1042.5,
+      "t_say": 1135.9,
+      "t_point1": 1479.5,
+      "stop_reason": "end_turn",
+      "t_done": 1773.4,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 41,
+       "output_tokens": 174
+      },
+      "text_chars": 431,
+      "text_head": "SAY: Milano's on-time delivery rate last quarter was 37.5.\n- The on-time delivery rate at the Milano depot, last quarter, was 37.5 according to the Q3 Budget Sheet [F012].\n- The figure is owned by Giulia Ferri and comes ",
+      "cost_usd": 0.000153,
+      "out_tok_per_s": 238.1
+     },
+     {
+      "label": "salt C3 #6",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1291.6,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:31Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:31Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:31Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:31Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1292.3,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 37,
+       "output_tokens": 8
+      },
+      "t_first_block": 1292.4,
+      "t_first_text": 1292.4,
+      "t_say": 1310.4,
+      "stop_reason": "end_turn",
+      "t_done": 1646.2,
+      "t_point1": 1646.2,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 37,
+       "output_tokens": 84
+      },
+      "text_chars": 222,
+      "text_head": "SAY: Let me check and come back to you.\n- The pack has route re-plans per day for Milano in Q3 as F019 (33.4), but the answer bank and snippets do not give a verified Q3 figure, and the owner/unit context needs confirmin",
+      "cost_usd": 0.000108,
+      "out_tok_per_s": 237.4
+     },
+     {
+      "label": "salt C3 #7",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 994.3,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:36Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:36Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:36Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:36Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 994.6,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 35,
+       "output_tokens": 5
+      },
+      "t_first_block": 994.7,
+      "t_first_text": 994.8,
+      "t_say": 1098.0,
+      "t_point1": 1576.0,
+      "stop_reason": "end_turn",
+      "t_done": 1646.1,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 35,
+       "output_tokens": 152
+      },
+      "text_chars": 391,
+      "text_head": "SAY: The fuel use per 100 km at Milano in the pilot period was 47.3.\n- Fact F026 records fuel use per 100 km at the Milano depot for the pilot period as 47.3, in the unit used in the source sheet [F026].\n- The owner of t",
+      "cost_usd": 0.000141,
+      "out_tok_per_s": 233.4
+     },
+     {
+      "label": "salt C3 #8",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1020.0,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:41Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:41Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:41Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:41Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1020.3,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 39,
+       "output_tokens": 8
+      },
+      "t_first_block": 1020.3,
+      "t_first_text": 1020.4,
+      "t_say": 1052.0,
+      "stop_reason": "end_turn",
+      "t_done": 1622.0,
+      "t_point1": 1622.0,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 39,
+       "output_tokens": 137
+      },
+      "text_chars": 332,
+      "text_head": "SAY: Let me check and come back to you.\n- The pack has sensor uptime for Lyon only for Q2 (32.4, [F009]) and Q3 (64.1, [F033]); F033 lists Q3 as 64.1, so the Q3 figure appears to be [F033], but the answer bank entries fo",
+      "cost_usd": 0.000134,
+      "out_tok_per_s": 227.7
+     },
+     {
+      "label": "salt C3 #9",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1029.4,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:53Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:53Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:53Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:53Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1030.2,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 35,
+       "output_tokens": 6
+      },
+      "t_first_block": 1030.3,
+      "t_first_text": 1030.3,
+      "t_say": 1147.4,
+      "t_point1": 1697.3,
+      "stop_reason": "end_turn",
+      "t_done": 1708.0,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 35,
+       "output_tokens": 152
+      },
+      "text_chars": 401,
+      "text_head": "SAY: Genova's empty-run share in the pilot period was 13.0, let me confirm the unit.\n- The empty-run share at the Genova depot for the pilot period was 13.0, in the unit used in the source sheet [F040].\n- The source for ",
+      "cost_usd": 0.000141,
+      "out_tok_per_s": 224.3
+     },
+     {
+      "label": "salt C3 #10",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1037.4,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:07:58Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:07:58Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:07:58Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:07:58Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1037.7,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 32,
+       "output_tokens": 1
+      },
+      "t_first_block": 1037.8,
+      "t_first_text": 1037.8,
+      "t_say": 1214.8,
+      "t_point1": 1758.0,
+      "stop_reason": "end_turn",
+      "t_done": 1764.3,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 32,
+       "output_tokens": 144
+      },
+      "text_chars": 365,
+      "text_head": "SAY: Milano's pilot-period training hours per driver were 85.4, per the fact sheet.\n- Training hours per driver at the Milano depot, pilot period: 85.4 (unit as in the source sheet), owner Elif Demir [F047].\n- The source",
+      "cost_usd": 0.000137,
+      "out_tok_per_s": 198.2
+     },
+     {
+      "label": "salt C3 #11",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 895.7,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:08:03Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:08:03Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:08:03Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:08:03Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 896.2,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 40,
+       "output_tokens": 8
+      },
+      "t_first_block": 896.3,
+      "t_first_text": 896.3,
+      "t_say": 914.2,
+      "stop_reason": "end_turn",
+      "t_done": 1365.1,
+      "t_point1": 1365.1,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 40,
+       "output_tokens": 123
+      },
+      "text_chars": 293,
+      "text_head": "SAY: Let me check and come back to you.\n- The pack has no figure for depot dwell time at the Bologna depot for the pilot period; F006 covers Nice (Q2), F018 Milano (Q2), F042 Genova (Q1), F054 Bologna (pilot period, 63.7",
+      "cost_usd": 0.000127,
+      "out_tok_per_s": 262.4
+     },
+     {
+      "label": "salt C3 #12",
+      "model": "claude-haiku-5-5",
+      "ok": true,
+      "t_headers": 1036.5,
+      "http_version": "HTTP/2",
+      "headers": {
+       "anthropic-ratelimit-input-tokens-limit": "2000000",
+       "anthropic-ratelimit-input-tokens-remaining": "1997000",
+       "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:08:07Z",
+       "anthropic-ratelimit-output-tokens-limit": "400000",
+       "anthropic-ratelimit-output-tokens-remaining": "400000",
+       "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:08:07Z",
+       "anthropic-ratelimit-requests-limit": "1000",
+       "anthropic-ratelimit-requests-remaining": "999",
+       "anthropic-ratelimit-requests-reset": "2026-10-14T01:08:07Z",
+       "anthropic-ratelimit-tokens-limit": "2400000",
+       "anthropic-ratelimit-tokens-remaining": "2397000",
+       "anthropic-ratelimit-tokens-reset": "2026-10-14T01:08:07Z",
+       "request-id": "req_000000000000000000000000",
+       "anthropic-organization-id": "00000000-0000-0000-0000-000000000000",
+       "anthropic-workspace-id": "wrkspc_000000000000000000000000",
+       "cf-ray": "0000000000000000-FRA"
+      },
+      "request_id": "req_000000000000000000000000",
+      "t_first_event": 1036.9,
+      "message_start_usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 36,
+       "output_tokens": 6
+      },
+      "t_first_block": 1036.9,
+      "t_first_text": 1037.0,
+      "t_say": 1165.1,
+      "t_point1": 1431.5,
+      "stop_reason": "end_turn",
+      "t_done": 1787.7,
+      "block_types": [
+       "text"
+      ],
+      "usage": {
+       "cache_creation_input_tokens": 0,
+       "cache_read_input_tokens": 6191,
+       "input_tokens": 36,
+       "output_tokens": 167
+      },
+      "text_chars": 295,
+      "text_head": "SAY: Nice deposunun Q2 depot dwell time değeri 68,5 olarak kaydedilmiş.\n- Nice deposu Q2 depot dwell time değeri 68,5 [F006].\n- Bu değerin sorumlusu Elif Demir ve kaynak Depot Rollout Plan, s.2 [F006].\n- Birim kaynak say",
+      "cost_usd": 0.000149,
+      "out_tok_per_s": 222.5
+     }
+    ],
+    "summary": {
+     "n_requested": 12,
+     "n_ok": 12,
+     "n_errors": 0,
+     "n_cache_read_gt0": 12,
+     "n_in_stats": 12,
+     "t_headers": {
+      "n": 12,
+      "p50": 1024.7,
+      "p90": 1149.8,
+      "p90_interp": 1139.01,
+      "min": 895.7,
+      "max": 1291.6,
+      "mean": 1028.6
+     },
+     "t_first_event": {
+      "n": 12,
+      "p50": 1025.25,
+      "p90": 1150.3,
+      "p90_interp": 1139.5,
+      "min": 896.2,
+      "max": 1292.3,
+      "mean": 1029.1
+     },
+     "t_first_block": {
+      "n": 12,
+      "p50": 1025.3,
+      "p90": 1150.4,
+      "p90_interp": 1139.6000000000001,
+      "min": 896.3,
+      "max": 1292.4,
+      "mean": 1029.2
+     },
+     "t_first_text": {
+      "n": 12,
+      "p50": 1025.35,
+      "p90": 1150.4,
+      "p90_interp": 1139.6100000000001,
+      "min": 896.3,
+      "max": 1292.4,
+      "mean": 1029.2
+     },
+     "t_say": {
+      "n": 12,
+      "p50": 1141.65,
+      "p90": 1241.7,
+      "p90_interp": 1239.01,
+      "min": 914.2,
+      "max": 1310.4,
+      "mean": 1131.7
+     },
+     "t_point1": {
+      "n": 12,
+      "p50": 1517.1,
+      "p90": 1697.3,
+      "p90_interp": 1692.19,
+      "min": 1365.1,
+      "max": 1758.0,
+      "mean": 1541.1
+     },
+     "t_done": {
+      "n": 12,
+      "p50": 1646.15,
+      "p90": 1787.7,
+      "p90_interp": 1786.27,
+      "min": 1365.1,
+      "max": 2195.9,
+      "mean": 1687.0
+     },
+     "out_tok_per_s": {
+      "n": 12,
+      "p50": 230.55,
+      "p90": 264.0,
+      "p90_interp": 263.84,
+      "min": 198.2,
+      "max": 273.0,
+      "mean": 234.8
+     },
+     "cost_usd": 0.00169
+    }
+   },
+   "wall_s": 87.8
+  }
+ },
+ "pack_tokens": {
+  "claude-haiku-5-5": {
+   "total_input_tokens_incl_question": 6204,
+   "count_tokens_ms": 482.3
+  },
+  "claude-sonnet-5-5": {
+   "total_input_tokens_incl_question": 6204,
+   "count_tokens_ms": 302.3
+  }
+ },
+ "spend": {
+  "total_usd": 0.00885,
+  "by_model_usd": {
+   "claude-haiku-5-5": 0.00885
+  },
+  "priced_calls": 52,
+  "prices_per_mtok": {
+   "claude-haiku-5-5": {
+    "input": 0.1,
+    "output": 0.5,
+    "cache_write_5m_x": 1.25,
+    "cache_read_x": 0.1
+   },
+   "claude-sonnet-5-5": {
+    "input": 2.0,
+    "output": 10.0,
+    "cache_write_5m_x": 1.25,
+    "cache_read_x": 0.1
+   }
+  }
+ },
+ "rate_limits": {
+  "claude-haiku-5-5": {
+   "first": {
+    "anthropic-ratelimit-input-tokens-limit": "2000000",
+    "anthropic-ratelimit-input-tokens-remaining": "1997000",
+    "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:06:47Z",
+    "anthropic-ratelimit-output-tokens-limit": "400000",
+    "anthropic-ratelimit-output-tokens-remaining": "400000",
+    "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:06:47Z",
+    "anthropic-ratelimit-requests-limit": "1000",
+    "anthropic-ratelimit-requests-remaining": "999",
+    "anthropic-ratelimit-requests-reset": "2026-10-14T01:06:47Z",
+    "anthropic-ratelimit-tokens-limit": "2400000",
+    "anthropic-ratelimit-tokens-remaining": "2397000",
+    "anthropic-ratelimit-tokens-reset": "2026-10-14T01:06:47Z"
+   },
+   "last": {
+    "anthropic-ratelimit-input-tokens-limit": "2000000",
+    "anthropic-ratelimit-input-tokens-remaining": "1997000",
+    "anthropic-ratelimit-input-tokens-reset": "2026-10-14T01:08:07Z",
+    "anthropic-ratelimit-output-tokens-limit": "400000",
+    "anthropic-ratelimit-output-tokens-remaining": "400000",
+    "anthropic-ratelimit-output-tokens-reset": "2026-10-14T01:08:07Z",
+    "anthropic-ratelimit-requests-limit": "1000",
+    "anthropic-ratelimit-requests-remaining": "999",
+    "anthropic-ratelimit-requests-reset": "2026-10-14T01:08:07Z",
+    "anthropic-ratelimit-tokens-limit": "2400000",
+    "anthropic-ratelimit-tokens-remaining": "2397000",
+    "anthropic-ratelimit-tokens-reset": "2026-10-14T01:08:07Z"
+   }
+  }
+ },
+ "table_text": "case                         n cache>0 |  TTFT p50    p90    max |  SAY p50    p90 |  pt1 p50    p90 |  done p50    p90 |  hdrs p50\n-----------------------------------------------------------------------------------------------------------------------------------\nab4: pack salt A            12      12 |       984   1117   3843 |     1166   1434 |     1538   1638 |      1585   1786 |       983\nab4: pack salt H1           12      12 |       766    925   1547 |      992   1152 |     1244   1437 |      1489   1836 |       765\nab4: pack salt B2           12      12 |       799    867   1115 |     1010   1080 |     1231   1364 |      1627   1849 |       798\nab4: pack salt C3           12      12 |      1025   1150   1292 |     1142   1242 |     1517   1697 |      1646   1788 |      1025\n(ms from request start; p50 = median, p90 = nearest rank; TTFT = first text delta; SAY = first complete 'SAY:' line; pt1 = first complete '- ' point)"
+}

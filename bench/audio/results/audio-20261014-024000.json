@@ -1,0 +1,76 @@
+{
+  "args" : {
+    "app" : "Brave Browser",
+    "bleedSeconds" : 15,
+    "floorDb" : -60,
+    "isoSeconds" : 12,
+    "label" : "unspecified",
+    "route" : "pids",
+    "seconds" : 20,
+    "tests" : [
+      "list"
+    ],
+    "withSubDevice" : false
+  },
+  "defaultOutputDevice" : "AirPods Pro",
+  "macOS" : "Version 26.6.2 (Build 25G83)",
+  "note" : "numbers only; no audio was written",
+  "permissions" : {
+    "audioCaptureRequest" : null,
+    "audioCaptureTCC" : "not_determined",
+    "microphone" : "authorized",
+    "screenRecordingPreflight" : true
+  },
+  "responsibleAppGuess" : "\/Users\/user\/Library\/Application Support\/Claude\/claude-code\/2.1.295\/9d6405864fdc\/claude.app",
+  "tests" : {
+    "list_targets" : {
+      "appAudioProcesses" : [
+        {
+          "bundleID" : "com.brave.Browser.helper",
+          "isRunning" : false,
+          "isRunningInput" : false,
+          "isRunningOutput" : false,
+          "objectID" : 112,
+          "path" : "\/Applications\/Brave Browser.app\/Contents\/Frameworks\/Brave Browser Framework.framework\/Versions\/154.1.96.59\/Helpers\/Brave Browser Helper.app\/Contents\/MacOS\/Brave Browser Helper",
+          "pid" : 48344
+        },
+        {
+          "bundleID" : "com.brave.Browser.helper",
+          "isRunning" : false,
+          "isRunningInput" : false,
+          "isRunningOutput" : false,
+          "objectID" : 113,
+          "path" : "\/Applications\/Brave Browser.app\/Contents\/Frameworks\/Brave Browser Framework.framework\/Versions\/154.1.96.59\/Helpers\/Brave Browser Helper.app\/Contents\/MacOS\/Brave Browser Helper",
+          "pid" : 48346
+        },
+        {
+          "bundleID" : "com.brave.Browser",
+          "isRunning" : false,
+          "isRunningInput" : false,
+          "isRunningOutput" : false,
+          "objectID" : 114,
+          "path" : "\/private\/var\/folders\/th\/cqlllcvs5g9d857_y87xzf0w0000gn\/X\/com.brave.Browser.code_sign_clone\/code_sign_clone.Hg6yai\/Brave Browser.app.bundle\/Contents\/MacOS\/Brave Browser",
+          "pid" : 48284
+        }
+      ],
+      "appBundleIDs" : [
+        "com.brave.Browser",
+        "com.brave.Browser.helper"
+      ],
+      "appOSProcessCount" : 28,
+      "appOSProcessKinds" : {
+        "Brave Browser" : 1,
+        "Brave Browser Helper" : 5,
+        "Brave Browser Helper (Renderer)" : 21,
+        "chrome_crashpad_handler" : 1
+      },
+      "appOutputRunningNow" : false,
+      "audioRegisteredProcessCount" : 31,
+      "runningOutputNow" : [
+
+      ]
+    }
+  },
+  "timestamp" : "2026-10-14T00:40:00Z",
+  "tool" : "TapProbe"
+}
