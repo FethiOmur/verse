@@ -2,12 +2,18 @@
 
 Order (plan P1-1): instruction-free facts -> glossary -> bank (opener + points only) -> snippets.
 No timestamps, session ids or other per-run values may appear in the pack.
+
+Conflicts (plan F1): a fact whose sources disagree is written as "conflicting in sources: A (ref) vs B (ref)" and its
+own text and value are left out, so no single value is stated as fact; a bank point built on such a figure carries
+the same phrase; a snippet that holds a conflicting figure is marked. Records without conflicts render as before.
 """
 
 from __future__ import annotations
 
 import math
 from typing import Awaitable, Callable
+
+from .conflicts import conflict_phrase
 
 TOKEN_CAP = 12_000
 SAFETY = 0.97  # trim to 97 % of the cap so a re-count by another tokenizer path still fits
@@ -19,16 +25,30 @@ def _one_line(s: str) -> str:
     return " ".join(s.split())
 
 
+def _conflict_topic(f: dict) -> str:
+    return f.get("topic") or _fact_label(f)
+
+
 def _first_ref(rec: dict) -> str:
     srcs = rec.get("sources") or []
     return srcs[0]["ref"] if srcs else ""
 
 
+def _fact_label(f: dict) -> str:
+    """What a conflicted fact is about, without any of its competing values."""
+    t = _one_line(f["text"])
+    return t[len("Sources disagree on "):] if t.startswith("Sources disagree on ") else t
+
+
 def render_pack(facts: list[dict], glossary: list[dict], bank: list[dict], snippets: list[dict]) -> str:
+    phrase = {f["id"]: conflict_phrase(f["conflict"]) for f in facts if f.get("status") == "conflict" and f.get("conflict")}
     out: list[str] = []
     out.append("## FACTS")
     for f in sorted(facts, key=lambda r: r["id"]):
-        out.append(f"[{f['id']}] {f['kind']} | {_one_line(f['text'])} | {_one_line(f['value'])} | {_first_ref(f)}")
+        if f["id"] in phrase:
+            out.append(f"[{f['id']}] {f['kind']} | {_conflict_topic(f)} | {phrase[f['id']]}")
+        else:
+            out.append(f"[{f['id']}] {f['kind']} | {_one_line(f['text'])} | {_one_line(f['value'])} | {_first_ref(f)}")
     out.append("")
     out.append("## GLOSSARY")
     for g in sorted(glossary, key=lambda r: r["id"]):
@@ -38,12 +58,15 @@ def render_pack(facts: list[dict], glossary: list[dict], bank: list[dict], snipp
     for b in sorted(bank, key=lambda r: r["id"]):
         out.append(f"[{b['id']}] Q ({b['lang']}): {_one_line(b['question'])}")
         out.append(f"SAY: {_one_line(b['opener'])}")
-        for p in b["points"]:
-            out.append(f"- {_one_line(p)}")
+        marks = {c["point"]: c["facts"] for c in b.get("conflict_points", [])}
+        for i, p in enumerate(b["points"]):
+            tail = "; ".join(phrase[x] for x in marks.get(i, []) if x in phrase)
+            out.append(f"- {_one_line(p)}" + (f" [{tail}]" if tail else ""))
     out.append("")
     out.append("## SNIPPETS")
     for s in sorted(snippets, key=lambda r: r["id"]):
-        out.append(f"[{s['id']}] {s['ref']} | {_one_line(s['text'])}")
+        mark = " | (holds conflicting figures: see FACTS)" if s.get("conflict") else ""
+        out.append(f"[{s['id']}] {s['ref']}{mark} | {_one_line(s['text'])}")
     return "\n".join(out) + "\n"
 
 

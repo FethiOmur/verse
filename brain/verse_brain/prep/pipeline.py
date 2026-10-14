@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .conflicts import apply_conflicts
 from .git_digest import Commit, GitError, read_commits
 from .ground import ground
 from .model import MAX_OUTPUT_TOKENS, PREP_MODEL, PRICES, PrepError, PrepModel, spend_usd
@@ -156,6 +157,7 @@ async def build_async(
         snippets = await asyncio.to_thread(_make_snippets, vault, g.bank, g.glossary, warnings)
     else:
         snippets = []
+    conflicts = apply_conflicts(book, g, snippets)  # marks facts, bank entries and snippets; must run before the pack
     pack, pack_tokens, trimmed = await fit_pack(g.facts, g.glossary, g.bank, snippets, model.count_tokens, TOKEN_CAP)
 
     sid = session_id or f"{now:%Y%m%d-%H%M%S}-" + hashlib.sha256(
@@ -173,7 +175,7 @@ async def build_async(
     spend = spend_usd(model.model, res.usage)
     stats = {
         **g.stats,
-        "bank_entries": len(g.bank), "facts": len(g.facts), "glossary_terms": len(g.glossary), "snippets": len(snippets),
+        "bank_entries": len(g.bank), "facts": len(g.facts), "conflicts": len(conflicts), "glossary_terms": len(g.glossary), "snippets": len(snippets),
         "pack_tokens": pack_tokens, "pack_cap": TOKEN_CAP, "pack_trimmed": trimmed,
         "vault_records_given": len(handles), "commits_given": len(commits), "stop_reason": res.stop_reason,
         "prep_note_sha256": hashlib.sha256(note.encode()).hexdigest(),
@@ -198,7 +200,8 @@ async def build_async(
         (tmp / "snippets.jsonl").write_text(_jsonl(snippets), encoding="utf-8")
         (tmp / "pack.md").write_text(pack, encoding="utf-8")
         (tmp / "review.md").write_text(
-            render_review(meta, g.bank, g.facts, g.glossary, snippets, g.dropped, warnings), encoding="utf-8")
+            render_review(meta, g.bank, g.facts, g.glossary, snippets, g.dropped, warnings, conflicts),
+            encoding="utf-8")
         tmp.rename(final)
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)

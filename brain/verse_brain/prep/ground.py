@@ -30,6 +30,8 @@ class Grounded:
     glossary: list[dict] = field(default_factory=list)
     dropped: list[Dropped] = field(default_factory=list)
     stats: dict = field(default_factory=dict)
+    # bank id -> {"points": [[Source, ...] per kept point], "deep": [Source, ...]}; used by the conflict check, not stored
+    point_sources: dict = field(default_factory=dict)
 
 
 def _verify(srcs: list[RawSrc], book: SourceBook) -> tuple[list[Source], int]:
@@ -170,23 +172,27 @@ def _ground_bank(raw: list[RawBank], book: SourceBook, langs: list[str], cap: in
             _bump(g, "entries_dropped_duplicate")
             continue
         points: list[str] = []
+        point_srcs: list[list[Source]] = []
         srcs: list[Source] = []
         for p in e.points:
             ps = _check_text(p, book, "point", q, g)
             if ps is None:
                 continue
             points.append(p.text.strip())
+            point_srcs.append(ps)
             srcs.extend(ps)
-        points = points[:3]
+        points, point_srcs = points[:3], point_srcs[:3]
         if not points:
             g.dropped.append(Dropped("entry", "no_sourced_points", q, ""))
             _bump(g, "entries_dropped_no_points")
             continue
         deep = ""
+        deep_srcs: list[Source] = []
         if e.deep is not None and e.deep.text.strip():
             ds = _check_text(e.deep, book, "deep", q, g)
             if ds is not None:
                 deep = e.deep.text.strip()
+                deep_srcs = ds
                 srcs.extend(ds)
         paras: dict[str, list[str]] = {}
         for pl in langs:
@@ -196,8 +202,10 @@ def _ground_bank(raw: list[RawBank], book: SourceBook, langs: list[str], cap: in
             if len(vals) < 3:
                 few_para += 1
         seen.add(norm(q))
+        bank_id = f"b{len(g.bank) + 1:03d}"
+        g.point_sources[bank_id] = {"points": point_srcs, "deep": deep_srcs}
         g.bank.append({
-            "id": f"b{len(g.bank) + 1:03d}", "lang": lang, "question": q, "paraphrases": paras, "opener": e.opener.strip(),
+            "id": bank_id, "lang": lang, "question": q, "paraphrases": paras, "opener": e.opener.strip(),
             "points": points, "deep": deep, "sources": [s.as_dict() for s in _dedupe_sources(srcs)],
         })
         if len(g.bank) >= cap:

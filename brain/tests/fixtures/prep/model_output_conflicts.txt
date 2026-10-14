@@ -1,0 +1,57 @@
+@FACT
+kind: number
+text: The dispatcher pilot budget is EUR 42,000 for phase one.
+value: 42000
+src: prep:L7 | "The dispatcher pilot budget is EUR 42,000 for phase one"
+@END
+
+@FACT
+kind: date
+text: The dispatcher pilot is planned for Q1 2027.
+value: 2027-Q1
+src: prep:L8 | "The dispatcher pilot is planned for Q1 2027"
+@END
+
+@FACT
+kind: number
+text: The courier pilot ran for 10 weeks.
+value: 10
+src: prep:L10 | "The courier pilot ran for 10 weeks across 23 vans in Milan"
+@END
+
+@BANK
+lang: en
+question: What is the budget and timing of the dispatcher pilot?
+para.en: How much money is set aside for the dispatcher pilot?
+para.en: When does the dispatcher pilot start?
+para.en: What are the pilot budget and the start date?
+para.it: Quanto e il budget del pilota del dispatcher?
+para.it: Quando parte il pilota del dispatcher?
+para.it: Qual e il budget e la data di inizio del pilota?
+opener: Let me give you what I have on the pilot.
+point: The pilot budget is EUR 42,000 for phase one.
+src: prep:L7 | "The dispatcher pilot budget is EUR 42,000 for phase one"
+point: The pilot is planned for Q1 2027.
+src: prep:L8 | "The dispatcher pilot is planned for Q1 2027"
+point: The courier pilot ran for 10 weeks.
+src: prep:L10 | "The courier pilot ran for 10 weeks across 23 vans in Milan"
+deep: The dispatcher pilot has a phase-one budget of EUR 42,000 and is planned for Q1 2027, so budget and timing are the two numbers to confirm before committing to anything.
+src: prep:L7 | "The dispatcher pilot budget is EUR 42,000 for phase one"
+src: prep:L8 | "The dispatcher pilot is planned for Q1 2027"
+@END
+
+@BANK
+lang: en
+question: Tell me about the courier pilot.
+para.en: What did the courier pilot show?
+para.en: How big was the courier pilot?
+para.en: Describe the pilot you ran with couriers.
+para.it: Mi parli del pilota con i corrieri.
+para.it: Quanto era grande il pilota con i corrieri?
+para.it: Cosa ha mostrato il pilota con i corrieri?
+opener: It was a small, bounded trial in Milan.
+point: It ran for 10 weeks across 23 vans in Milan.
+src: prep:L10 | "The courier pilot ran for 10 weeks across 23 vans in Milan"
+point: Lantern totals accuracy was 96.4 percent.
+src: prep:L9 | "was 96.4 percent for totals"
+@END

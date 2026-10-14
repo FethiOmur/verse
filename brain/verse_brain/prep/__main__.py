@@ -56,6 +56,9 @@ def main(argv: list[str] | None = None) -> int:
     st = meta["stats"]
     print(f"session: {session}")
     print(f"bank entries: {st['bank_entries']} | facts {st['facts']} | glossary {st['glossary_terms']} | snippets {st['snippets']}")
+    if st.get("conflicts"):
+        print(f"CONFLICTS: {st['conflicts']} figure(s) differ between sources; {st.get('conflict_bank_entries', 0)} bank "
+              f"entries use them (see review.md, top section)")
     print(f"dropped unsourced points: {meta['dropped_unsourced_points']} "
           f"(unsupported quote {st.get('points_dropped_unsupported_quote', 0)}, "
           f"unsupported number {st.get('points_dropped_unsupported_number', 0)})")
