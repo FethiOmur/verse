@@ -809,6 +809,8 @@ class Brain:
         st.final_text = text
         st.addressee = msg.get("addressee", "unknown")
         st.kind = turn_kind(msg)
+        if st.kind == "fragment" and st.bank_hit is not None:
+            st.kind = "question"           # it matched a prepared question: answer it, don't drop it as a fragment
         st.turns_before = list(self.turns)
         self.turns.append(Turn(tid, speaker, text))
         if st.kind != "fragment":      # a stray fragment must not make the pending question's retry look stale
@@ -837,7 +839,9 @@ class Brain:
         self._endpoint(st)
 
     def _endpoint(self, st: TurnState) -> None:
-        if st.kind == "statement":
+        # A turn that matched a prepared bank question is answered as a question even when Swift's cue check called it
+        # a statement ("So, have you built ..." starts with a discourse word and has no question cue).
+        if st.kind == "statement" and st.bank_hit is None:
             return self._endpoint_statement(st)
         cfg = self.config
         final = tokens(st.final_text)
