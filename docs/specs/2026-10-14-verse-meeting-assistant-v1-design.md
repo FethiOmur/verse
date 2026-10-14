@@ -227,9 +227,12 @@ teleprompter's voice-activated scroll follows the owner's voice through this tex
 | Path | p50 | p90 |
 |---|---|---|
 | Bank hit or fact chips visible | ≤ 0.3 s | ≤ 0.4 s |
-| Correct speculation → opener visible | ≤ 0.3 s | ≤ 0.5 s |
+| Correct speculation → opener visible | ≤ 0.7 s | ≤ 1.3 s |
 | No hit, fresh Haiku → first word | ≤ 2.0 s | ≤ 2.8 s |
 | Sonnet deep points, first words (thinking off) | ≤ 2.0 s | ≤ 3.0 s |
+
+The speculation target was ≤ 0.3 / 0.5 s until 2026-10-14. P1-6 measured 0.67 / 1.22 s: the 300 ms endpoint wait is
+inside the path, so Alex moved the target to ≤ 0.7 / 1.3 s (he judged the live result "very fast").
 
 Stage estimates from the critique, partly measured on this Mac:
 - request floor on a reused connection: ~165 ms (measured);
