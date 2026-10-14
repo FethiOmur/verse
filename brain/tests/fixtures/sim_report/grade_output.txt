@@ -1,0 +1,29 @@
+Here is the grading.
+
+```json
+{
+  "overall": 3,
+  "competencies": {
+    "c1": {"score": 3, "rubric_line": "Shipped something, vague on production concerns.", "q_ids": ["q2"]},
+    "c2": {"score": 7, "rubric_line": "Clear but generic.", "q_ids": ["q1", "q3"]},
+    "c3": {"score": 2, "rubric_line": "No measurement.", "q_ids": ["q2", "q4"]},
+    "c9": {"score": 4, "rubric_line": "not a real competency", "q_ids": []}
+  },
+  "questions": [
+    {"q_id": "q1", "strong": ["Named both products clearly."], "missing": ["No single story to anchor the conversation."],
+     "better_answer": [
+       {"sentence": "I build AI products end to end, most recently Verse, a meeting assistant for the Mac.", "evidence_ids": ["e1"]}]},
+    {"q_id": "q2", "strong": ["Described the review screen."], "missing": ["No before and after numbers.", "Did not name a trade-off."],
+     "better_answer": [
+       {"sentence": "At Lantern I added an LLM extraction step with a human review screen.", "evidence_ids": ["e2"]},
+       {"sentence": "Entry time per document dropped from 11 minutes to 2 minutes.", "evidence_ids": ["e2"]},
+       {"sentence": "Corrections fell by 40 percent after the second prompt.", "evidence_ids": ["e2"]},
+       {"sentence": "We ran 4 ad experiments on the same pipeline.", "evidence_ids": ["e2"]},
+       {"sentence": "I ran 4 ad experiments for Trailhead.", "evidence_ids": ["e3", "e99"]}]},
+    {"q_id": "q3", "strong": [], "missing": ["Skipped."], "better_answer": []},
+    {"q_id": "q4", "strong": ["Streaming the first sentence."], "missing": ["No measured latency."],
+     "better_answer": [{"sentence": "In Verse I stream the first sentence as soon as it is complete.", "evidence_ids": ["e1"]}]}
+  ],
+  "practise_next": ["Lead with one numbered result.", "Name a trade-off in every story.", "Prepare a Why-this-company answer.", "A fourth item that must be cut."]
+}
+```
