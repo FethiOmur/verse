@@ -18,6 +18,7 @@ let package = Package(
         .library(name: "VerseSpeech", targets: ["VerseSpeech"]),
         .library(name: "VerseTurns", targets: ["VerseTurns"]),
         .library(name: "VerseMeet", targets: ["VerseMeet"]),
+        .library(name: "VersePosting", targets: ["VersePosting"]),
         .executable(name: "verse-listen", targets: ["verse-listen"]),
         .executable(name: "verse-run", targets: ["verse-run"]),
         // P1-5: the menu-bar app (bundled into app/build/Verse.app by scripts/bundle-app.sh).
@@ -111,6 +112,17 @@ let package = Package(
                 .unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT",
                               "-Xlinker", "__info_plist", "-Xlinker", meetInfoPlist]),
             ]
+        ),
+        // S4a: job-posting fetch (LinkedIn guest API, Ashby, Greenhouse, Lever, generic pages).
+        .target(
+            name: "VersePosting",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .testTarget(
+            name: "VersePostingTests",
+            dependencies: ["VersePosting"],
+            resources: [.copy("Fixtures")],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
             name: "VerseMeetTests",
