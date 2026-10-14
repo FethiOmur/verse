@@ -18,6 +18,8 @@ struct Options {
     var list = false
     var emitToneSeconds: Double?
     var probeDucking = false
+    var levels = false
+    var playTestFile: String?
 
     static func parse(_ args: [String]) -> Options {
         var o = Options()
@@ -44,10 +46,13 @@ struct Options {
             case "--list": o.list = true
             case "--emit-test-tone": o.emitToneSeconds = Double(value(k)) ?? 5
             case "--probe-ducking": o.probeDucking = true
+            case "--levels": o.levels = true
+            case "--play-test-file": o.playTestFile = value(k)
             case "-h", "--help":
                 print("""
                 verse-listen --lang en|it|tr [--seconds 30] [--file PATH] [--no-mic] [--bundle-ids a,b]
-                             [--route auto|bundle|pids] [--voice-processing]
+                             [--route auto|bundle|pids] [--voice-processing] [--levels]
+                --levels: once per second, per-channel RMS dBFS and chunk counts on stderr (numbers only)
                 verse-listen --list                 audio processes known to Core Audio
                 verse-listen --probe-ducking        measures how much voice processing ducks other audio
                 stdout: one TranscriptEvent JSON object per line. stderr: status/issue JSON lines.
@@ -84,6 +89,7 @@ struct VerseListen {
         if let s = o.emitToneSeconds { emitTone(seconds: s); return }
         if o.list { listProcesses(); return }
         if o.probeDucking { await DuckingProbe.run(); return }
+        if let f = o.playTestFile { playTestFile(f); return }
 
         var config = ListenConfig(lang: o.lang, remoteBundleIDs: o.bundleIDs, micEnabled: o.mic,
                                   source: o.file.map { .file(URL(fileURLWithPath: $0)) } ?? .live)
@@ -93,9 +99,22 @@ struct VerseListen {
 
         if config.isLiveSource {
             let p = SystemPermissions()
-            status(["permissions": ["audioCapture": p.status(.audioCapture).rawValue,
-                                    "microphone": p.status(.microphone).rawValue],
-                    "outputDevice": defaultOutputName() ?? "?"])
+            var mic = p.status(.microphone)
+            status(["permissions": ["audioCapture": p.status(.audioCapture).rawValue, "microphone": mic.rawValue],
+                    "outputDevice": defaultOutputName() ?? "?", "inputDevice": defaultInputName() ?? "?"])
+            if o.mic {
+                if mic == .notDetermined {
+                    status(["state": "requesting_microphone",
+                            "message": "macOS will ask for microphone access for the app running verse-listen (e.g. Terminal); click Allow"])
+                    mic = await p.request(.microphone)
+                    status(["permissions": ["microphone": mic.rawValue], "state": "microphone_answered"])
+                }
+                if mic != .granted {
+                    status(["type": "issue", "code": "permission_denied",
+                            "message": "microphone access is \(mic.rawValue): System Settings > Privacy & Security > Microphone, enable the app running verse-listen, or pass --no-mic"])
+                    exit(3)
+                }
+            }
         }
 
         let stream: AsyncStream<TranscriptEvent>
@@ -116,9 +135,23 @@ struct VerseListen {
 
         let issueTask = Task {
             for await issue in session.issues {
-                status(["type": "issue", "code": issue.code, "message": issue.description])
+                var hint = ""
+                if issue == .deadStream(.me) { hint = " (microphone delivers no audio: check the input device and microphone permission)" }
+                if issue == .deadStream(.remote) { hint = " (the meeting app is playing but the tap gets silence: check System Audio Recording permission)" }
+                status(["type": "issue", "code": issue.code, "message": issue.description + hint])
             }
         }
+        let levelsTask: Task<Void, Never>? = o.levels ? Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                let lv = await session.levels(window: 1.0)
+                var f: [String: Any] = ["type": "levels", "t": r3(await session.now())]
+                for (c, l) in lv {
+                    f[c.rawValue] = ["rmsDbfs": l.rmsDbfs.map { $0 as Any } ?? NSNull(), "peakDbfs": l.peakBinDbfs.map { $0 as Any } ?? NSNull(), "chunks": l.chunksTotal] as [String: Any]
+                }
+                status(f)
+            }
+        } : nil
         let signals = installSignalHandlers { Task { await session.stop() } }
         let timer = Task {
             try? await Task.sleep(for: .seconds(o.seconds))
@@ -138,6 +171,7 @@ struct VerseListen {
         timer.cancel()
         await session.stop()
         issueTask.cancel()
+        levelsTask?.cancel()
         _ = signals
         status(["state": "stopped", "events": count, "droppedEchoEvents": session.droppedEchoEvents])
     }
@@ -169,6 +203,40 @@ func defaultOutputName() -> String? {
     var ns = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
     guard AudioObjectGetPropertyData(dev, &na, 0, nil, &ns, &name) == noErr, let n = name else { return nil }
     return n.takeRetainedValue() as String
+}
+
+func defaultInputName() -> String? {
+    var a = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultInputDevice,
+                                       mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+    var dev = AudioObjectID(0)
+    var size = UInt32(MemoryLayout<AudioObjectID>.size)
+    guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &a, 0, nil, &size, &dev) == noErr else { return nil }
+    var na = AudioObjectPropertyAddress(mSelector: kAudioObjectPropertyName, mScope: kAudioObjectPropertyScopeGlobal,
+                                        mElement: kAudioObjectPropertyElementMain)
+    var name: Unmanaged<CFString>?
+    var ns = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+    guard AudioObjectGetPropertyData(dev, &na, 0, nil, &ns, &name) == noErr, let n = name else { return nil }
+    return n.takeRetainedValue() as String
+}
+
+/// Diagnostic for the tap-path test: plays an audio file (a `say` fixture the test made and deletes) through the
+/// default output from memory, then exits. Gives the test a process with a known bundle ID that speaks known text.
+func playTestFile(_ path: String) {
+    let clip: PCMClip
+    do { clip = try PCMClip.read(URL(fileURLWithPath: path)) } catch { fail("play: \(error)") }
+    let engine = AVAudioEngine()
+    let player = AVAudioPlayerNode()
+    guard let fmt = AVAudioFormat(standardFormatWithSampleRate: clip.sampleRate, channels: 1),
+          let buf = AVAudioPCMBuffer(pcmFormat: fmt, frameCapacity: AVAudioFrameCount(clip.samples.count)) else { fail("play: format") }
+    buf.frameLength = AVAudioFrameCount(clip.samples.count)
+    clip.samples.withUnsafeBufferPointer { buf.floatChannelData![0].update(from: $0.baseAddress!, count: clip.samples.count) }
+    engine.attach(player)
+    engine.connect(player, to: engine.mainMixerNode, format: fmt)
+    do { try engine.start() } catch { fail("play: \(error)") }
+    player.scheduleBuffer(buf, at: nil)
+    player.play()
+    Thread.sleep(forTimeInterval: clip.duration + 0.3)
+    engine.stop()
 }
 
 func listProcesses() {

@@ -20,6 +20,9 @@ final class ChannelPipeline: @unchecked Sendable {
     private var format: AVAudioFormat?
     private(set) var startedAt: TimeInterval = 0
     private(set) var feedError: String?
+    private var chunkCount = 0
+    /// Chunks received so far (for the `--levels` readout).
+    var chunksReceived: Int { lock.withLockUnchecked { chunkCount } }
     private var ended = false
 
     /// Without a chunk for this long, the pipeline feeds silence itself.
@@ -91,6 +94,7 @@ final class ChannelPipeline: @unchecked Sendable {
                 case .audio(let chunk):
                     envelope.add(chunk)
                     self.lock.withLockUnchecked {
+                        self.chunkCount += 1
                         self.detector.observe(chunk)
                         if self.origin == nil { self.origin = chunk.startTime }
                     }

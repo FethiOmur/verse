@@ -37,6 +37,26 @@ public actor ListenSession {
 
     public func engineNames() -> [Channel: String] { pipelines.mapValues { $0.engine.engineName } }
 
+    /// Loudness numbers for the last `window` seconds per channel (no audio): RMS in dBFS (nil = no signal or
+    /// exact silence) and the total chunk count so far (a count that stops growing means no callbacks).
+    public struct Level: Sendable {
+        public var rmsDbfs: Double?
+        public var peakBinDbfs: Double?
+        public var chunksTotal: Int
+    }
+
+    public func levels(window: TimeInterval = 1.0) -> [Channel: Level] {
+        let now = clock.now()
+        let b1 = EnvelopeTrack.bin(now), b0 = EnvelopeTrack.bin(now - window)
+        return pipelines.mapValues { p in
+            let bins = p.envelope.rms(fromBin: b0, toBin: b1)
+            let ms = bins.isEmpty ? 0 : bins.map { $0 * $0 }.reduce(0, +) / Double(bins.count)
+            let peak = bins.max() ?? 0
+            func db(_ x: Double) -> Double? { x > 0 ? ((20 * log10(x)) * 10).rounded() / 10 : nil }
+            return Level(rmsDbfs: db(ms.squareRoot()), peakBinDbfs: db(peak), chunksTotal: p.chunksReceived)
+        }
+    }
+
     /// `.me` results discarded by the bleed gate so far.
     public nonisolated var droppedEchoEvents: Int { counters.dropped }
 
