@@ -84,3 +84,14 @@ class Config:
     final_timeout_s: float = 45.0       # `control stop` waits this long for the merge, then closes with the draft
     # spend
     budget_usd: float | None = None    # None = no cap (Alex: the Max credit pays, no limits)
+    # F3 paraphrase matcher (EmbeddingGemma 2 text 270M, LiteRT-LM) next to Swift's n-gram matcher. Every gate is
+    # required: the F3 bench showed 10-12 % wrong ids and premature locks on short prefixes without them.
+    embed_enabled: bool = True
+    embed_model: str = ("~/Library/Application Support/Verse/models/embeddinggemma-2-text-270m-litert/"
+                        "embeddinggemma-2-text-270m.litertlm")
+    embed_backend: str = "gpu"
+    embed_threshold: float = 0.865     # top-1 cosine (F3 tuning, bench/embed/results/analysis_gpu_sym.txt)
+    embed_margin: float = 0.02         # over the runner-up entry; 0.005 (F3) gave 9.7 % wrong hits in replay, 0.02 gives 4.3 % (12/24 paraphrase hits)
+    embed_min_words: int = 5           # words in the partial
+    embed_consecutive: int = 2         # the same entry on this many consecutive evaluated partials
+    embed_langs: tuple[str, ...] = ("en",)   # thresholds were tuned on English only

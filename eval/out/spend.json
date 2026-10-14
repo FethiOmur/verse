@@ -660,6 +660,66 @@
    "run": "short1",
    "what": "d13 attempt 1",
    "usd": 0.025249
+  },
+  {
+   "run": "f3-embed",
+   "what": "d01 attempt 1",
+   "usd": 0.026434
+  },
+  {
+   "run": "f3-embed",
+   "what": "d02 attempt 1",
+   "usd": 0.021241
+  },
+  {
+   "run": "f3-embed",
+   "what": "d03 attempt 1",
+   "usd": 0.020243
+  },
+  {
+   "run": "f3-embed",
+   "what": "d04 attempt 1",
+   "usd": 0.015763
+  },
+  {
+   "run": "f3-embed",
+   "what": "d05 attempt 1",
+   "usd": 0.028507
+  },
+  {
+   "run": "f3-embed",
+   "what": "d06 attempt 1",
+   "usd": 0.020678
+  },
+  {
+   "run": "f3-embed",
+   "what": "d07 attempt 1",
+   "usd": 0.012456
+  },
+  {
+   "run": "f3-embed",
+   "what": "d08 attempt 1",
+   "usd": 0.021567
+  },
+  {
+   "run": "f3-embed",
+   "what": "d09 attempt 1",
+   "usd": 0.012155
+  },
+  {
+   "run": "f3-embed",
+   "what": "d10 attempt 1",
+   "usd": 0.013654
+  },
+  {
+   "run": "f3-embed",
+   "what": "d11 attempt 1",
+   "usd": 0.022314
+  },
+  {
+   "run": "f3-embed",
+   "what": "d12 attempt 1",
+   "usd": 0.026218
   }
  ],
  "total_usd": 0.518221

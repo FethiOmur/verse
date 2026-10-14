@@ -279,4 +279,67 @@ final class OverlayModelTests: XCTestCase {
         m.apply(.chip(obj(["type": "chip", "turn_id": "r1", "kind": "date", "text": "22 October", "source_ref": "vault:notes/x.md", "fact_id": "f1"])))
         XCTAssertEqual(m.state.card?.chips.map(\.source), ["glossary", "vault"])
     }
+
+    // MARK: F3 paraphrase hits from the brain (`bank_hit` with `via:"embed"`, a brain line, not an outbound one)
+
+    private func embedHit(_ tid: String, _ bid: String, score: Double = 0.88) -> RunnerEvent {
+        .brain(obj(["type": "bank_hit", "turn_id": tid, "bank_id": bid, "score": score, "via": "embed"]))
+    }
+
+    private func verdict(_ tid: String, _ bid: String, agree: Bool) -> RunnerEvent {
+        .brain(obj(["type": "bank_verdict", "turn_id": tid, "bank_id": bid, "agree": agree]))
+    }
+
+    func testEmbedBankHitShowsOpener() {
+        let c = Clock()
+        let m = model(c)
+        // before the turn (while the question is spoken): shown once the card opens
+        m.apply(embedHit("r1", "b001"))
+        XCTAssertNil(m.state.card)
+        m.apply(turn("r1", "How did you end up where you are today?"))
+        XCTAssertEqual(m.state.card?.say, "Sure, I'll give you the short version.")
+        XCTAssertEqual(m.state.card?.sayTier, "P")
+        XCTAssertEqual(m.state.card?.bullets, ["I led Lantern.", "Entry fell to 2 minutes.", "Route optimiser pilot."])
+        // after the turn (card already open): shown at once
+        m.apply(turn("r2", "Tell us who you are and what you have done so far?"))
+        XCTAssertNil(m.state.card?.say)
+        m.apply(embedHit("r2", "b001"))
+        XCTAssertEqual(m.state.card?.say, "Sure, I'll give you the short version.")
+        XCTAssertEqual(m.state.card?.sayTier, "P")
+        // Haiku agreeing changes nothing
+        m.apply(verdict("r2", "b001", agree: true))
+        XCTAssertEqual(m.state.card?.sayTier, "P")
+    }
+
+    func testEmbedBankVerdictDisagreeRemovesOpener() {
+        let c = Clock()
+        let m = model(c)
+        m.bank["b002"] = BankOpener(opener: "What stands out to me is the product direction.", points: ["Halden point."])
+        m.apply(embedHit("r1", "b001"))
+        m.apply(turn("r1", "What would a former manager say you need to work on?"))
+        XCTAssertEqual(m.state.card?.sayTier, "P")
+        m.apply(verdict("r1", "b001", agree: false))
+        XCTAssertNil(m.state.card?.say, "the retracted opener is gone")
+        XCTAssertNil(m.state.card?.sayTier)
+        XCTAssertEqual(m.state.card?.bullets, [], "its points go with it")
+        // the same id again does not come back; another entry for the turn (e.g. Swift's n-gram) still shows
+        m.apply(embedHit("r1", "b001"))
+        XCTAssertNil(m.state.card?.say)
+        m.apply(.outbound(obj(["type": "bank_hit", "turn_id": "r1", "bank_id": "b002", "score": 0.7, "dir": "to_brain"])))
+        XCTAssertEqual(m.state.card?.say, "What stands out to me is the product direction.")
+        // the fast tier's own SAY line replaces the opener as before
+        m.apply(.brain(obj(["type": "select", "turn_id": "r1", "id": "s0001"])))
+        for e in stream("s0001", "r1", "S", "SAY: Probably that I polish prototypes too long.") { m.apply(e) }
+        XCTAssertEqual(m.state.card?.sayTier, "S")
+    }
+
+    func testSwiftBankVerdictDisagreeStillRemovesOpener() {
+        let c = Clock()
+        let m = model(c)
+        m.apply(.outbound(obj(["type": "bank_hit", "turn_id": "r1", "bank_id": "b001", "score": 0.7, "dir": "to_brain"])))
+        m.apply(turn("r1", "Can you tell me about yourself?"))
+        XCTAssertEqual(m.state.card?.sayTier, "P")
+        m.apply(verdict("r1", "b001", agree: false))
+        XCTAssertNil(m.state.card?.say)
+    }
 }

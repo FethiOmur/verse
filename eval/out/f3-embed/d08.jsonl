@@ -1,0 +1,457 @@
+{"wall":1792000107.046,"line":{"type":"status","state":"warming","message":"pre-warming claude-haiku-5-5 and claude-sonnet-5-5"}}
+{"wall":1792000108.0875,"line":{"type":"metric","turn_id":"","stage":"prewarm","t":1792000108.087296,"model":"claude-sonnet-5-5","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4585,"input_tokens":7,"output_tokens":0},"stop_reason":"max_tokens","ms":1027.9,"cost_usd":0.000931}}
+{"wall":1792000108.0909,"line":{"type":"metric","turn_id":"","stage":"prewarm","t":1792000108.090792,"model":"claude-haiku-5-5","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4461,"input_tokens":7,"output_tokens":0},"stop_reason":"max_tokens","ms":1044.6,"cost_usd":4.5e-05}}
+{"wall":1792000108.0909,"line":{"type":"status","state":"ready","message":"warm; spend so far $0.0010"}}
+{"wall":1792000108.2277,"line":{"brain_pid":34726,"fake_brain":false,"lang":"en","origin_remote":0,"source":"verse-run","stage":"session_t0","t":1792000108.228,"turn_id":"","type":"metric"}}
+{"wall":1792000109.2152,"line":{"type":"metric","turn_id":"","stage":"embed_ready","t":1792000109.215023,"docs":88,"entries":22,"load_ms":355.2,"index_ms":1813.3}}
+{"wall":1792000129.0272,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":20.52,"text":"How do you","turn_id":"r1","type":"partial"}}
+{"wall":1792000129.5702,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":20.92,"text":"How do you evaluate","turn_id":"r1","type":"partial"}}
+{"wall":1792000129.5705,"line":{"type":"metric","turn_id":"r1","stage":"fire","t":1792000129.57043,"id":"s0001","tier":"S","words":4,"hedge_after_s":1.5}}
+{"wall":1792000130.1457,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":21.8,"text":"How do you evaluate an L","turn_id":"r1","type":"partial"}}
+{"wall":1792000130.1458,"line":{"bank_id":"b009","dir":"to_brain","score":0.595,"turn_id":"r1","type":"bank_hit"}}
+{"wall":1792000130.1904,"line":{"type":"metric","turn_id":"r1","stage":"embed","t":1792000130.19025,"ms":44.07,"wait_ms":0.22,"top":"b009","score":0.8852,"second":0.854,"words":6,"accepted":true}}
+{"wall":1792000130.7088,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":22.36,"text":"How do you evaluate an LLM system","turn_id":"r1","type":"partial"}}
+{"wall":1792000130.7088,"line":{"bank_id":"b009","dir":"to_brain","score":0.776,"turn_id":"r1","type":"bank_hit"}}
+{"wall":1792000130.7725,"line":{"type":"metric","turn_id":"r1","stage":"first_byte","t":1792000130.772233,"id":"s0001","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000130.7727,"line":{"type":"metric","turn_id":"r1","stage":"first_delta","t":1792000130.772583,"id":"s0001","tier":"S"}}
+{"wall":1792000130.8811,"line":{"type":"metric","turn_id":"r1","stage":"say_line","t":1792000130.880832,"id":"s0001","tier":"S"}}
+{"wall":1792000130.9855,"line":{"type":"metric","turn_id":"r1","stage":"first_point","t":1792000130.985263,"id":"s0001","tier":"S"}}
+{"wall":1792000131.093,"line":{"type":"metric","turn_id":"r1","stage":"done","t":1792000131.092679,"id":"s0001","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4461,"input_tokens":39,"output_tokens":104},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000101}}
+{"wall":1792000131.4106,"line":{"type":"metric","turn_id":"r1","stage":"fire","t":1792000131.410329,"id":"d0002","tier":"D","words":7,"hedge_after_s":2.0}}
+{"wall":1792000131.8309,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":23.4,"text":"How do you evaluate an LLM system before release?","turn_id":"r1","type":"partial"}}
+{"wall":1792000131.831,"line":{"bank_id":"b009","dir":"to_brain","score":1,"turn_id":"r1","type":"bank_hit"}}
+{"wall":1792000131.8313,"line":{"type":"metric","turn_id":"r1","stage":"fire","t":1792000131.831212,"id":"s0003","tier":"S","words":9,"hedge_after_s":1.5}}
+{"wall":1792000131.9527,"line":{"addressee":"me","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":23.4,"text":"How do you evaluate an LLM system before release?","turn_id":"r1","type":"turn"}}
+{"wall":1792000131.9528,"line":{"since_audio_end_s":0.325,"source":"verse-run","stage":"turn_sent","t":1792000131.953,"t_audio_end":23.4,"t_audio_end_wall":1792000131.628,"turn_id":"r1","type":"metric"}}
+{"wall":1792000131.9529,"line":{"type":"metric","turn_id":"r1","stage":"turn_recv","t":1792000131.952796,"speaker":"remote","t_audio_end":23.4}}
+{"wall":1792000131.953,"line":{"type":"select","turn_id":"r1","id":"s0003"}}
+{"wall":1792000131.9531,"line":{"type":"metric","turn_id":"r1","stage":"select","t":1792000131.952972,"id":"s0003","tier":"S","distance":0}}
+{"wall":1792000131.9531,"line":{"type":"metric","turn_id":"r1","stage":"release","t":1792000131.95299,"id":"s0003","tier":"S","buffered_events":0}}
+{"wall":1792000132.5778,"line":{"type":"metric","turn_id":"r1","stage":"first_byte","t":1792000132.577604,"id":"d0002","tier":"D","lane":0,"new_connection":false}}
+{"wall":1792000132.5779,"line":{"type":"metric","turn_id":"r1","stage":"first_delta","t":1792000132.577787,"id":"d0002","tier":"D"}}
+{"wall":1792000132.5933,"line":{"type":"metric","turn_id":"r1","stage":"first_byte","t":1792000132.5932338,"id":"s0003","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000132.5934,"line":{"type":"metric","turn_id":"r1","stage":"first_delta","t":1792000132.593334,"id":"s0003","tier":"S"}}
+{"wall":1792000132.5934,"line":{"type":"metric","turn_id":"r1","stage":"visible","t":1792000132.5933518,"id":"s0003","tier":"S"}}
+{"wall":1792000132.5934,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"SAY: I treat ev","line_done":false}}
+{"wall":1792000132.5935,"line":{"since_audio_end_s":0.966,"since_turn_sent_s":0.641,"source":"verse-run","stage":"first_text","t":1792000132.593,"tier":"S","turn_id":"r1","type":"metric"}}
+{"wall":1792000132.6125,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"aluation as a gate on","line_done":false}}
+{"wall":1792000132.7869,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":" every change, not","line_done":false}}
+{"wall":1792000132.7869,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":" a one","line_done":false}}
+{"wall":1792000132.787,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"-time","line_done":false}}
+{"wall":1792000132.787,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":" check.","line_done":false}}
+{"wall":1792000132.787,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"","line_done":true}}
+{"wall":1792000132.787,"line":{"type":"metric","turn_id":"r1","stage":"say_line","t":1792000132.786848,"id":"s0003","tier":"S"}}
+{"wall":1792000132.787,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"- I use a fr","line_done":false}}
+{"wall":1792000132.787,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"ozen set of 400 inv","line_done":false}}
+{"wall":1792000132.787,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"oices and","line_done":false}}
+{"wall":1792000132.787,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":" rerun it on every promp","line_done":false}}
+{"wall":1792000132.7871,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"t change before release.","line_done":false}}
+{"wall":1792000132.7871,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"","line_done":true}}
+{"wall":1792000132.7871,"line":{"type":"metric","turn_id":"r1","stage":"first_point","t":1792000132.7870321,"id":"s0003","tier":"S"}}
+{"wall":1792000132.7871,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"- On","line_done":false}}
+{"wall":1792000132.7904,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":" the held-out set, accu","line_done":false}}
+{"wall":1792000132.8114,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"racy was 96.4 ","line_done":false}}
+{"wall":1792000132.8254,"line":{"type":"metric","turn_id":"r1","stage":"first_point","t":1792000132.825212,"id":"d0002","tier":"D"}}
+{"wall":1792000132.8449,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"percent for totals and 91","line_done":false}}
+{"wall":1792000132.8553,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":" percent for line items.","line_done":false}}
+{"wall":1792000132.8958,"line":{"type":"delta","id":"s0003","turn_id":"r1","tier":"S","text":"","line_done":true}}
+{"wall":1792000132.8961,"line":{"type":"bank_verdict","turn_id":"r1","bank_id":"b009","agree":true}}
+{"wall":1792000132.8962,"line":{"type":"metric","turn_id":"r1","stage":"d_skipped","t":1792000132.896158,"bank_id":"b009"}}
+{"wall":1792000132.8965,"line":{"type":"metric","turn_id":"r1","stage":"done","t":1792000132.896412,"id":"s0003","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4461,"input_tokens":47,"output_tokens":99},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":9.9e-05}}
+{"wall":1792000132.8966,"line":{"type":"metric","turn_id":"r1","stage":"done","t":1792000132.8965042,"id":"d0002","tier":"D","stop_reason":null,"usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4585,"input_tokens":244,"output_tokens":8},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":true,"cost_usd":0.001485}}
+{"wall":1792000141.349,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":33,"text":"Ingrid","turn_id":"r2","type":"partial"}}
+{"wall":1792000141.3491,"line":{"fact_id":"f002","kind":"name","source_ref":"prep:L4","text":"Ingrid Solberg is the VP Engineering and the hiring manager on the panel.","turn_id":"r2","type":"chip"}}
+{"wall":1792000141.9077,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":33.64,"text":"Ingrid, did you","turn_id":"r2","type":"partial"}}
+{"wall":1792000142.4686,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":33.88,"text":"Ingrid, did you want to","turn_id":"r2","type":"partial"}}
+{"wall":1792000142.4692,"line":{"type":"metric","turn_id":"r2","stage":"fire","t":1792000142.469046,"id":"s0004","tier":"S","words":5,"hedge_after_s":1.5}}
+{"wall":1792000142.5148,"line":{"type":"metric","turn_id":"r2","stage":"embed","t":1792000142.514704,"ms":45.34,"wait_ms":0.26,"top":"b014","score":0.8484,"second":0.8347,"words":5,"accepted":false}}
+{"wall":1792000143.0177,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":34.44,"text":"Ingrid, did you want to ask about","turn_id":"r2","type":"partial"}}
+{"wall":1792000143.048,"line":{"type":"metric","turn_id":"r2","stage":"embed","t":1792000143.047858,"ms":29.76,"wait_ms":0.15,"top":"b014","score":0.8791,"second":0.8455,"words":7,"accepted":true}}
+{"wall":1792000143.5756,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":34.92,"text":"Ingrid, did you want to ask about the","turn_id":"r2","type":"partial"}}
+{"wall":1792000143.6073,"line":{"type":"metric","turn_id":"r2","stage":"embed","t":1792000143.607123,"ms":31.22,"wait_ms":0.1,"top":"b014","score":0.8769,"second":0.8522,"words":8,"accepted":true}}
+{"wall":1792000143.6073,"line":{"type":"bank_hit","turn_id":"r2","bank_id":"b014","score":0.8769,"via":"embed"}}
+{"wall":1792000143.9705,"line":{"type":"metric","turn_id":"r2","stage":"hedge","t":1792000143.970284,"id":"s0004","tier":"S","after_s":1.5}}
+{"wall":1792000144.0012,"line":{"type":"metric","turn_id":"r2","stage":"first_byte","t":1792000144.00097,"id":"s0004","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000144.0012,"line":{"type":"metric","turn_id":"r2","stage":"first_delta","t":1792000144.001149,"id":"s0004","tier":"S"}}
+{"wall":1792000144.1502,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":35.64,"text":"Ingrid, did you want to ask about the dispatcher","turn_id":"r2","type":"partial"}}
+{"wall":1792000144.1506,"line":{"type":"metric","turn_id":"r2","stage":"fire","t":1792000144.150451,"id":"s0005","tier":"S","words":9,"hedge_after_s":1.5}}
+{"wall":1792000144.1751,"line":{"type":"metric","turn_id":"r2","stage":"say_line","t":1792000144.174995,"id":"s0004","tier":"S"}}
+{"wall":1792000144.2001,"line":{"type":"metric","turn_id":"r2","stage":"embed","t":1792000144.1999638,"ms":49.23,"wait_ms":0.22,"top":"b013","score":0.8866,"second":0.8471,"words":9,"accepted":true}}
+{"wall":1792000144.2395,"line":{"addressee":"other","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":35.64,"text":"Ingrid, did you want to ask about the dispatcher","turn_id":"r2","type":"turn"}}
+{"wall":1792000144.2395,"line":{"since_audio_end_s":0.372,"source":"verse-run","stage":"turn_sent","t":1792000144.239,"t_audio_end":35.64,"t_audio_end_wall":1792000143.868,"turn_id":"r2","type":"metric"}}
+{"wall":1792000144.2398,"line":{"type":"metric","turn_id":"r2","stage":"turn_recv","t":1792000144.239591,"speaker":"remote","t_audio_end":35.64}}
+{"wall":1792000144.24,"line":{"type":"metric","turn_id":"r2","stage":"for_others","t":1792000144.239724}}
+{"wall":1792000144.2403,"line":{"type":"metric","turn_id":"r2","stage":"done","t":1792000144.240215,"id":"s0005","tier":"S","stop_reason":null,"usage":{},"hedged":false,"winner_lane":null,"new_connection":null,"error":null,"discarded":true,"cost_usd":0.0}}
+{"wall":1792000144.2406,"line":{"type":"metric","turn_id":"r2","stage":"done","t":1792000144.240463,"id":"s0004","tier":"S","stop_reason":null,"usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4461,"input_tokens":62,"output_tokens":8},"hedged":true,"winner_lane":0,"new_connection":false,"error":null,"discarded":true,"cost_usd":5.5e-05}}
+{"wall":1792000145.8257,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":37.08,"text":"Yes","turn_id":"r3","type":"partial"}}
+{"wall":1792000146.3896,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":37.72,"text":"Yes, thanks","turn_id":"r3","type":"partial"}}
+{"wall":1792000146.9456,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":38.36,"text":"Yes, thanks Thomas","turn_id":"r3","type":"partial"}}
+{"wall":1792000147.4364,"line":{"addressee":"other","dir":"to_brain","kind":"statement","speaker":"remote","t_audio_end":38.547,"text":"Yes, thanks Thomas","turn_id":"r3","type":"turn"}}
+{"wall":1792000147.4365,"line":{"since_audio_end_s":0.662,"source":"verse-run","stage":"turn_sent","t":1792000147.436,"t_audio_end":38.547,"t_audio_end_wall":1792000146.774,"turn_id":"r3","type":"metric"}}
+{"wall":1792000147.4366,"line":{"type":"metric","turn_id":"r3","stage":"turn_recv","t":1792000147.4365098,"speaker":"remote","t_audio_end":38.547}}
+{"wall":1792000147.4367,"line":{"type":"metric","turn_id":"r3","stage":"for_others","t":1792000147.436569}}
+{"wall":1792000148.6233,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":40.2,"text":"How would you","turn_id":"r4","type":"partial"}}
+{"wall":1792000149.1856,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":40.44,"text":"How would you design","turn_id":"r4","type":"partial"}}
+{"wall":1792000149.1861,"line":{"type":"metric","turn_id":"r4","stage":"fire","t":1792000149.185868,"id":"s0006","tier":"S","words":4,"hedge_after_s":1.5}}
+{"wall":1792000149.7492,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":41.08,"text":"How would you design a language","turn_id":"r4","type":"partial"}}
+{"wall":1792000149.8003,"line":{"type":"metric","turn_id":"r4","stage":"embed","t":1792000149.800155,"ms":50.66,"wait_ms":0.13,"top":"b013","score":0.8648,"second":0.8638,"words":6,"accepted":false}}
+{"wall":1792000150.2901,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":41.8,"text":"How would you design a language model","turn_id":"r4","type":"partial"}}
+{"wall":1792000150.3019,"line":{"type":"metric","turn_id":"r4","stage":"first_byte","t":1792000150.301769,"id":"s0006","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000150.3019,"line":{"type":"metric","turn_id":"r4","stage":"first_delta","t":1792000150.301872,"id":"s0006","tier":"S"}}
+{"wall":1792000150.3021,"line":{"type":"metric","turn_id":"r4","stage":"say_line","t":1792000150.302079,"id":"s0006","tier":"S"}}
+{"wall":1792000150.3023,"line":{"type":"metric","turn_id":"r4","stage":"first_point","t":1792000150.302311,"id":"s0006","tier":"S"}}
+{"wall":1792000150.3229,"line":{"type":"metric","turn_id":"r4","stage":"embed","t":1792000150.3228312,"ms":32.44,"wait_ms":0.1,"top":"b013","score":0.8957,"second":0.8715,"words":7,"accepted":true}}
+{"wall":1792000150.5375,"line":{"type":"metric","turn_id":"r4","stage":"done","t":1792000150.5372522,"id":"s0006","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4461,"input_tokens":98,"output_tokens":112},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.00011}}
+{"wall":1792000150.8679,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":42.44,"text":"How would you design a language model assistant for","turn_id":"r4","type":"partial"}}
+{"wall":1792000150.8685,"line":{"type":"metric","turn_id":"r4","stage":"fire","t":1792000150.868267,"id":"s0007","tier":"S","words":9,"hedge_after_s":1.5}}
+{"wall":1792000150.9053,"line":{"type":"metric","turn_id":"r4","stage":"embed","t":1792000150.905084,"ms":36.27,"wait_ms":0.35,"top":"b013","score":0.8954,"second":0.8476,"words":9,"accepted":true}}
+{"wall":1792000150.9054,"line":{"type":"bank_hit","turn_id":"r4","bank_id":"b013","score":0.8954,"via":"embed"}}
+{"wall":1792000151.434,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":42.92,"text":"How would you design a language model assistant for our dispatch","turn_id":"r4","type":"partial"}}
+{"wall":1792000151.4658,"line":{"type":"metric","turn_id":"r4","stage":"embed","t":1792000151.4656808,"ms":31.31,"wait_ms":0.12,"top":"b013","score":0.928,"second":0.8462,"words":11,"accepted":true}}
+{"wall":1792000151.9848,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":43.24,"text":"How would you design a language model assistant for our dispatchers","turn_id":"r4","type":"partial"}}
+{"wall":1792000152.0235,"line":{"type":"metric","turn_id":"r4","stage":"embed","t":1792000152.0233889,"ms":38.17,"wait_ms":0.14,"top":"b013","score":0.9306,"second":0.8439,"words":11,"accepted":true}}
+{"wall":1792000152.0745,"line":{"addressee":"me","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":43.33,"text":"How would you design a language model assistant for our dispatchers","turn_id":"r4","type":"turn"}}
+{"wall":1792000152.0745,"line":{"since_audio_end_s":0.517,"source":"verse-run","stage":"turn_sent","t":1792000152.074,"t_audio_end":43.33,"t_audio_end_wall":1792000151.557,"turn_id":"r4","type":"metric"}}
+{"wall":1792000152.0746,"line":{"type":"metric","turn_id":"r4","stage":"turn_recv","t":1792000152.074483,"speaker":"remote","t_audio_end":43.33}}
+{"wall":1792000152.0746,"line":{"type":"select","turn_id":"r4","id":"s0007"}}
+{"wall":1792000152.0747,"line":{"type":"metric","turn_id":"r4","stage":"select","t":1792000152.074602,"id":"s0007","tier":"S","distance":2}}
+{"wall":1792000152.0747,"line":{"type":"metric","turn_id":"r4","stage":"release","t":1792000152.074615,"id":"s0007","tier":"S","buffered_events":0}}
+{"wall":1792000152.075,"line":{"type":"metric","turn_id":"r4","stage":"fire","t":1792000152.0748532,"id":"d0008","tier":"D","words":11,"hedge_after_s":2.0}}
+{"wall":1792000152.3698,"line":{"type":"metric","turn_id":"r4","stage":"hedge","t":1792000152.369607,"id":"s0007","tier":"S","after_s":1.5}}
+{"wall":1792000154.0002,"line":{"type":"metric","turn_id":"r4","stage":"first_byte","t":1792000153.999903,"id":"d0008","tier":"D","lane":0,"new_connection":false}}
+{"wall":1792000154.0004,"line":{"type":"metric","turn_id":"r4","stage":"first_delta","t":1792000154.000221,"id":"d0008","tier":"D"}}
+{"wall":1792000154.0006,"line":{"type":"metric","turn_id":"r4","stage":"visible","t":1792000154.00053,"id":"d0008","tier":"D"}}
+{"wall":1792000154.0006,"line":{"type":"opener_status","turn_id":"r4","ok":true}}
+{"wall":1792000154.0007,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"- Start with the p","line_done":false}}
+{"wall":1792000154.0008,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"ilot sc","line_done":false}}
+{"wall":1792000154.0578,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"ope: the L","line_done":false}}
+{"wall":1792000154.069,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"LM-assisted disp","line_done":false}}
+{"wall":1792000154.1009,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"atcher replaces r","line_done":false}}
+{"wall":1792000154.1365,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"ules-based dispatch,","line_done":false}}
+{"wall":1792000154.1756,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" with a pilot planned for","line_done":false}}
+{"wall":1792000154.2063,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" Q1 2027, so","line_done":false}}
+{"wall":1792000154.2353,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" I","line_done":false}}
+{"wall":1792000154.3436,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"'d ke","line_done":false}}
+{"wall":1792000154.9106,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"ep the first","line_done":false}}
+{"wall":1792000154.9107,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" version","line_done":false}}
+{"wall":1792000154.9107,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" nar","line_done":false}}
+{"wall":1792000154.9107,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"row.","line_done":false}}
+{"wall":1792000154.9107,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" (f","line_done":false}}
+{"wall":1792000154.9108,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"010, g004","line_done":false}}
+{"wall":1792000154.9108,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":")","line_done":false}}
+{"wall":1792000154.9108,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"","line_done":true}}
+{"wall":1792000154.9109,"line":{"type":"metric","turn_id":"r4","stage":"first_point","t":1792000154.910783,"id":"d0008","tier":"D"}}
+{"wall":1792000154.911,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"- Gate every","line_done":false}}
+{"wall":1792000154.911,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" pr","line_done":false}}
+{"wall":1792000154.911,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"ompt change on a frozen","line_done":false}}
+{"wall":1792000154.911,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" evaluation set,","line_done":false}}
+{"wall":1792000154.911,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" as","line_done":false}}
+{"wall":1792000154.911,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" I did with ","line_done":false}}
+{"wall":1792000155.1266,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"400 invoices, and","line_done":false}}
+{"wall":1792000155.1266,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" r","line_done":false}}
+{"wall":1792000155.1267,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"erun it before each","line_done":false}}
+{"wall":1792000155.1267,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" release. (f018","line_done":false}}
+{"wall":1792000155.1267,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":",","line_done":false}}
+{"wall":1792000155.1267,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" b009","line_done":false}}
+{"wall":1792000155.1267,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":")","line_done":false}}
+{"wall":1792000155.1267,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"","line_done":true}}
+{"wall":1792000155.1267,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"- Validate output","line_done":false}}
+{"wall":1792000155.1268,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"s against a schema, retry","line_done":false}}
+{"wall":1792000155.1268,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" once, then escalate;","line_done":false}}
+{"wall":1792000155.1268,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" the model should","line_done":false}}
+{"wall":1792000155.1268,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" never guess a crit","line_done":false}}
+{"wall":1792000155.1269,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"ical value,","line_done":false}}
+{"wall":1792000155.3618,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" the way it","line_done":false}}
+{"wall":1792000155.3619,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" never guessed a total. (","line_done":false}}
+{"wall":1792000155.3619,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"b003,","line_done":false}}
+{"wall":1792000155.3619,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" b010","line_done":false}}
+{"wall":1792000155.3619,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":")","line_done":false}}
+{"wall":1792000155.3619,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"","line_done":true}}
+{"wall":1792000155.3619,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"- Send low-conf","line_done":false}}
+{"wall":1792000155.3619,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"idence cases to","line_done":false}}
+{"wall":1792000155.362,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" a human d","line_done":false}}
+{"wall":1792000155.362,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"ispatcher; in","line_done":false}}
+{"wall":1792000155.362,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" Lantern, fields below","line_done":false}}
+{"wall":1792000155.3906,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" 0.8 confidence","line_done":false}}
+{"wall":1792000155.4228,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" went to an","line_done":false}}
+{"wall":1792000155.4557,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":" operator, about 7 perc","line_done":false}}
+{"wall":1792000155.4933,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"ent of invoices. (f","line_done":false}}
+{"wall":1792000155.531,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"014, f015)","line_done":false}}
+{"wall":1792000155.5437,"line":{"type":"delta","id":"d0008","turn_id":"r4","tier":"D","text":"","line_done":true}}
+{"wall":1792000155.5438,"line":{"type":"metric","turn_id":"r4","stage":"done","t":1792000155.5437272,"id":"d0008","tier":"D","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4585,"input_tokens":346,"output_tokens":240},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.004009}}
+{"wall":1792000158.6605,"line":{"type":"metric","turn_id":"r4","stage":"first_byte","t":1792000158.660244,"id":"s0007","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000158.6606,"line":{"type":"metric","turn_id":"r4","stage":"first_delta","t":1792000158.660477,"id":"s0007","tier":"S"}}
+{"wall":1792000158.6606,"line":{"type":"metric","turn_id":"r4","stage":"visible","t":1792000158.660512,"id":"s0007","tier":"S"}}
+{"wall":1792000158.6606,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"SAY:","line_done":false}}
+{"wall":1792000158.6607,"line":{"since_audio_end_s":7.103,"since_turn_sent_s":6.586,"source":"verse-run","stage":"first_text","t":1792000158.661,"tier":"S","turn_id":"r4","type":"metric"}}
+{"wall":1792000158.8112,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":" Let me start","line_done":false}}
+{"wall":1792000158.8114,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":" with","line_done":false}}
+{"wall":1792000158.8114,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":" the ev","line_done":false}}
+{"wall":1792000158.8114,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"aluation and","line_done":false}}
+{"wall":1792000158.8115,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":" saf","line_done":false}}
+{"wall":1792000158.8115,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"ety","line_done":false}}
+{"wall":1792000158.8116,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":" side, since","line_done":false}}
+{"wall":1792000158.8116,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":" that's where I","line_done":false}}
+{"wall":1792000158.8116,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"'","line_done":false}}
+{"wall":1792000158.8261,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"d beg","line_done":false}}
+{"wall":1792000158.8422,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"in.","line_done":false}}
+{"wall":1792000158.8423,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"","line_done":true}}
+{"wall":1792000158.8423,"line":{"type":"metric","turn_id":"r4","stage":"say_line","t":1792000158.842004,"id":"s0007","tier":"S"}}
+{"wall":1792000158.8423,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"- I","line_done":false}}
+{"wall":1792000158.8715,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"'d gate changes on a","line_done":false}}
+{"wall":1792000159.158,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":" frozen evaluation set","line_done":false}}
+{"wall":1792000159.158,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":", rerun on every promp","line_done":false}}
+{"wall":1792000159.1581,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"t change before release.","line_done":false}}
+{"wall":1792000159.1581,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"","line_done":true}}
+{"wall":1792000159.1581,"line":{"type":"metric","turn_id":"r4","stage":"first_point","t":1792000159.157867,"id":"s0007","tier":"S"}}
+{"wall":1792000159.1581,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"- I","line_done":false}}
+{"wall":1792000159.1581,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"'d validate outputs against","line_done":false}}
+{"wall":1792000159.1581,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":" a schema, retry once,","line_done":false}}
+{"wall":1792000159.1581,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":" then escalate low","line_done":false}}
+{"wall":1792000159.1581,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"-confidence cases to","line_done":false}}
+{"wall":1792000159.1581,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":" a human operator.","line_done":false}}
+{"wall":1792000159.1581,"line":{"type":"delta","id":"s0007","turn_id":"r4","tier":"S","text":"","line_done":true}}
+{"wall":1792000159.1735,"line":{"type":"bank_verdict","turn_id":"r4","bank_id":"b013","agree":true}}
+{"wall":1792000159.1737,"line":{"type":"metric","turn_id":"r4","stage":"done","t":1792000159.173495,"id":"s0007","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4461,"input_tokens":105,"output_tokens":106},"hedged":true,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000108}}
+{"wall":1792000163.1936,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":54.76,"text":"How would you","turn_id":"r5","type":"partial"}}
+{"wall":1792000163.7474,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":55.08,"text":"How would you test","turn_id":"r5","type":"partial"}}
+{"wall":1792000163.7477,"line":{"type":"metric","turn_id":"r5","stage":"fire","t":1792000163.747616,"id":"s0009","tier":"S","words":4,"hedge_after_s":1.5}}
+{"wall":1792000164.2943,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":55.72,"text":"How would you test the dispatch","turn_id":"r5","type":"partial"}}
+{"wall":1792000164.3396,"line":{"type":"metric","turn_id":"r5","stage":"embed","t":1792000164.3393831,"ms":44.63,"wait_ms":0.13,"top":"b013","score":0.8868,"second":0.8708,"words":6,"accepted":true}}
+{"wall":1792000164.8437,"line":{"type":"metric","turn_id":"r5","stage":"first_byte","t":1792000164.843113,"id":"s0009","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000164.8438,"line":{"type":"metric","turn_id":"r5","stage":"first_delta","t":1792000164.8434718,"id":"s0009","tier":"S"}}
+{"wall":1792000164.8699,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":56.6,"text":"How would you test the dispatcher before it","turn_id":"r5","type":"partial"}}
+{"wall":1792000164.8703,"line":{"type":"metric","turn_id":"r5","stage":"fire","t":1792000164.8701608,"id":"s0010","tier":"S","words":8,"hedge_after_s":1.5}}
+{"wall":1792000164.9,"line":{"type":"metric","turn_id":"r5","stage":"embed","t":1792000164.899864,"ms":29.41,"wait_ms":0.21,"top":"b013","score":0.8757,"second":0.8658,"words":8,"accepted":true}}
+{"wall":1792000164.9001,"line":{"type":"bank_hit","turn_id":"r5","bank_id":"b013","score":0.8757,"via":"embed"}}
+{"wall":1792000165.0882,"line":{"type":"metric","turn_id":"r5","stage":"say_line","t":1792000165.0879428,"id":"s0009","tier":"S"}}
+{"wall":1792000165.2619,"line":{"type":"metric","turn_id":"r5","stage":"first_point","t":1792000165.26161,"id":"s0009","tier":"S"}}
+{"wall":1792000165.2669,"line":{"type":"metric","turn_id":"r5","stage":"done","t":1792000165.266677,"id":"s0009","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":82,"cache_read_input_tokens":4461,"input_tokens":38,"output_tokens":98},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000108}}
+{"wall":1792000165.4184,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":56.84,"text":"How would you test the dispatcher before it touches","turn_id":"r5","type":"partial"}}
+{"wall":1792000165.4561,"line":{"type":"metric","turn_id":"r5","stage":"embed","t":1792000165.4559429,"ms":37.18,"wait_ms":0.1,"top":"b013","score":0.8686,"second":0.8544,"words":9,"accepted":true}}
+{"wall":1792000165.6616,"line":{"type":"metric","turn_id":"r5","stage":"first_byte","t":1792000165.6614232,"id":"s0010","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000165.6617,"line":{"type":"metric","turn_id":"r5","stage":"first_delta","t":1792000165.6616042,"id":"s0010","tier":"S"}}
+{"wall":1792000165.7457,"line":{"type":"metric","turn_id":"r5","stage":"say_line","t":1792000165.7454772,"id":"s0010","tier":"S"}}
+{"wall":1792000165.7586,"line":{"type":"metric","turn_id":"r5","stage":"first_point","t":1792000165.758351,"id":"s0010","tier":"S"}}
+{"wall":1792000165.8879,"line":{"type":"metric","turn_id":"r5","stage":"done","t":1792000165.8876271,"id":"s0010","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4543,"input_tokens":46,"output_tokens":101},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000101}}
+{"wall":1792000165.9946,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":57.64,"text":"How would you test the dispatcher before it touches live roots?","turn_id":"r5","type":"partial"}}
+{"wall":1792000166.0315,"line":{"type":"metric","turn_id":"r5","stage":"embed","t":1792000166.0313442,"ms":36.25,"wait_ms":0.14,"top":"b013","score":0.8729,"second":0.8563,"words":11,"accepted":true}}
+{"wall":1792000166.1738,"line":{"addressee":"me","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":57.64,"text":"How would you test the dispatcher before it touches live roots?","turn_id":"r5","type":"turn"}}
+{"wall":1792000166.1739,"line":{"since_audio_end_s":0.306,"source":"verse-run","stage":"turn_sent","t":1792000166.174,"t_audio_end":57.64,"t_audio_end_wall":1792000165.868,"turn_id":"r5","type":"metric"}}
+{"wall":1792000166.174,"line":{"type":"metric","turn_id":"r5","stage":"turn_recv","t":1792000166.173853,"speaker":"remote","t_audio_end":57.64}}
+{"wall":1792000166.1741,"line":{"type":"select","turn_id":"r5","id":"s0010"}}
+{"wall":1792000166.1741,"line":{"type":"metric","turn_id":"r5","stage":"select","t":1792000166.173971,"id":"s0010","tier":"S","distance":3}}
+{"wall":1792000166.1741,"line":{"type":"metric","turn_id":"r5","stage":"release","t":1792000166.173982,"id":"s0010","tier":"S","buffered_events":20}}
+{"wall":1792000166.1741,"line":{"type":"metric","turn_id":"r5","stage":"visible","t":1792000166.1739972,"id":"s0010","tier":"S"}}
+{"wall":1792000166.1741,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":"SAY: I'd test","line_done":false}}
+{"wall":1792000166.1741,"line":{"since_audio_end_s":0.307,"since_turn_sent_s":0,"source":"verse-run","stage":"first_text","t":1792000166.174,"tier":"S","turn_id":"r5","type":"metric"}}
+{"wall":1792000166.1742,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":" it against","line_done":false}}
+{"wall":1792000166.1742,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":" a frozen evaluation","line_done":false}}
+{"wall":1792000166.1742,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":" set before it ","line_done":false}}
+{"wall":1792000166.1742,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":"ever touches live routes.","line_done":false}}
+{"wall":1792000166.1742,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":"","line_done":true}}
+{"wall":1792000166.1742,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":"- I'd rerun that","line_done":false}}
+{"wall":1792000166.1742,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":" fr","line_done":false}}
+{"wall":1792000166.1742,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":"ozen set on every change","line_done":false}}
+{"wall":1792000166.1742,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":" before release, so reg","line_done":false}}
+{"wall":1792000166.1743,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":"ressions show","line_done":false}}
+{"wall":1792000166.1743,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":" up early.","line_done":false}}
+{"wall":1792000166.1743,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":"","line_done":true}}
+{"wall":1792000166.1743,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":"- I'd","line_done":false}}
+{"wall":1792000166.1743,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":" valid","line_done":false}}
+{"wall":1792000166.1744,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":"ate outputs against a schema","line_done":false}}
+{"wall":1792000166.1744,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":", retry once, then escal","line_done":false}}
+{"wall":1792000166.1744,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":"ate low-confidence cases","line_done":false}}
+{"wall":1792000166.1744,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":" to a human operator.","line_done":false}}
+{"wall":1792000166.1744,"line":{"type":"delta","id":"s0010","turn_id":"r5","tier":"S","text":"","line_done":true}}
+{"wall":1792000166.1744,"line":{"type":"bank_verdict","turn_id":"r5","bank_id":"b013","agree":true}}
+{"wall":1792000166.1745,"line":{"type":"metric","turn_id":"r5","stage":"fire","t":1792000166.174405,"id":"d0011","tier":"D","words":11,"hedge_after_s":2.0}}
+{"wall":1792000167.9916,"line":{"type":"metric","turn_id":"r5","stage":"first_byte","t":1792000167.991455,"id":"d0011","tier":"D","lane":0,"new_connection":false}}
+{"wall":1792000167.9917,"line":{"type":"metric","turn_id":"r5","stage":"first_delta","t":1792000167.991602,"id":"d0011","tier":"D"}}
+{"wall":1792000168.0204,"line":{"type":"metric","turn_id":"r5","stage":"visible","t":1792000168.02027,"id":"d0011","tier":"D"}}
+{"wall":1792000168.0205,"line":{"type":"opener_status","turn_id":"r5","ok":true}}
+{"wall":1792000168.0205,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"- Use a frozen ev","line_done":false}}
+{"wall":1792000168.0516,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"aluation set, like","line_done":false}}
+{"wall":1792000168.0857,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" my ","line_done":false}}
+{"wall":1792000168.1102,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"400-invoice one","line_done":false}}
+{"wall":1792000168.1371,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":", and","line_done":false}}
+{"wall":1792000168.1758,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" rerun it on every promp","line_done":false}}
+{"wall":1792000168.2061,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"t change before any","line_done":false}}
+{"wall":1792000168.2355,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" release","line_done":false}}
+{"wall":1792000168.2658,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":". (f","line_done":false}}
+{"wall":1792000168.4011,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"018, b013","line_done":false}}
+{"wall":1792000168.7936,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":")","line_done":false}}
+{"wall":1792000168.7937,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"","line_done":true}}
+{"wall":1792000168.7937,"line":{"type":"metric","turn_id":"r5","stage":"first_point","t":1792000168.793427,"id":"d0011","tier":"D"}}
+{"wall":1792000168.7937,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"- Validate every","line_done":false}}
+{"wall":1792000168.7937,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" output","line_done":false}}
+{"wall":1792000168.7938,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" against a schema, retry once","line_done":false}}
+{"wall":1792000168.7938,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":", then escalate;","line_done":false}}
+{"wall":1792000168.7938,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" the","line_done":false}}
+{"wall":1792000168.7938,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" model never guesses a crit","line_done":false}}
+{"wall":1792000168.7938,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"ical value like","line_done":false}}
+{"wall":1792000168.7938,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" a total. (b010","line_done":false}}
+{"wall":1792000168.7939,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":",","line_done":false}}
+{"wall":1792000168.7939,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" b013)","line_done":false}}
+{"wall":1792000168.7939,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"","line_done":true}}
+{"wall":1792000168.794,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"- Send low","line_done":false}}
+{"wall":1792000168.794,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"-confidence cases to a","line_done":false}}
+{"wall":1792000168.794,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" human d","line_done":false}}
+{"wall":1792000169.0837,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"ispatcher;","line_done":false}}
+{"wall":1792000169.0838,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" in","line_done":false}}
+{"wall":1792000169.0838,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" Lantern, fields below","line_done":false}}
+{"wall":1792000169.0838,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" 0.8 confidence","line_done":false}}
+{"wall":1792000169.0838,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" went to an","line_done":false}}
+{"wall":1792000169.0839,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" operator, about 7 ","line_done":false}}
+{"wall":1792000169.0839,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"percent of invoices. (","line_done":false}}
+{"wall":1792000169.0839,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"f014, f015)","line_done":false}}
+{"wall":1792000169.0839,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"","line_done":true}}
+{"wall":1792000169.0839,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"-","line_done":false}}
+{"wall":1792000169.0894,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" Run the pilot plan","line_done":false}}
+{"wall":1792000169.0894,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"ned for Q1 2027","line_done":false}}
+{"wall":1792000169.0894,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" in","line_done":false}}
+{"wall":1792000169.1022,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" stages, with a","line_done":false}}
+{"wall":1792000169.1351,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" human operator re","line_done":false}}
+{"wall":1792000169.1683,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"viewing before","line_done":false}}
+{"wall":1792000169.2027,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":" any live route change. (g","line_done":false}}
+{"wall":1792000169.246,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"004, b013)","line_done":false}}
+{"wall":1792000169.2517,"line":{"type":"delta","id":"d0011","turn_id":"r5","tier":"D","text":"","line_done":true}}
+{"wall":1792000169.2518,"line":{"type":"metric","turn_id":"r5","stage":"done","t":1792000169.251675,"id":"d0011","tier":"D","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":82,"cache_read_input_tokens":4585,"input_tokens":296,"output_tokens":202},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.003734}}
+{"wall":1792000174.9297,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":66.36,"text":"Thomas","turn_id":"r6","type":"partial"}}
+{"wall":1792000175.515,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":67.08,"text":"Thomas, could you mute","turn_id":"r6","type":"partial"}}
+{"wall":1792000175.5154,"line":{"type":"metric","turn_id":"r6","stage":"fire","t":1792000175.5153,"id":"s0012","tier":"S","words":4,"hedge_after_s":1.5}}
+{"wall":1792000176.0695,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":67.56,"text":"Thomas, could you mute your microphone","turn_id":"r6","type":"partial"}}
+{"wall":1792000176.1146,"line":{"type":"metric","turn_id":"r6","stage":"embed","t":1792000176.114389,"ms":44.51,"wait_ms":0.12,"top":"b010","score":0.7824,"second":0.7732,"words":6,"accepted":false}}
+{"wall":1792000176.341,"line":{"type":"metric","turn_id":"r6","stage":"first_byte","t":1792000176.340445,"id":"s0012","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000176.3412,"line":{"type":"metric","turn_id":"r6","stage":"first_delta","t":1792000176.340998,"id":"s0012","tier":"S"}}
+{"wall":1792000176.5562,"line":{"type":"metric","turn_id":"r6","stage":"say_line","t":1792000176.555679,"id":"s0012","tier":"S"}}
+{"wall":1792000176.6222,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":67.96,"text":"Thomas, could you mute your microphone while","turn_id":"r6","type":"partial"}}
+{"wall":1792000176.6715,"line":{"type":"metric","turn_id":"r6","stage":"embed","t":1792000176.671376,"ms":48.44,"wait_ms":0.4,"top":"b010","score":0.7933,"second":0.787,"words":7,"accepted":false}}
+{"wall":1792000176.7201,"line":{"type":"metric","turn_id":"r6","stage":"first_point","t":1792000176.720014,"id":"s0012","tier":"S"}}
+{"wall":1792000176.8605,"line":{"type":"metric","turn_id":"r6","stage":"done","t":1792000176.860236,"id":"s0012","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4543,"input_tokens":64,"output_tokens":114},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000109}}
+{"wall":1792000177.1905,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":68.6,"text":"Thomas, could you mute your microphone while I talk","turn_id":"r6","type":"partial"}}
+{"wall":1792000177.1909,"line":{"type":"metric","turn_id":"r6","stage":"fire","t":1792000177.190767,"id":"s0013","tier":"S","words":9,"hedge_after_s":1.5}}
+{"wall":1792000177.2413,"line":{"type":"metric","turn_id":"r6","stage":"embed","t":1792000177.241159,"ms":50.07,"wait_ms":0.2,"top":"b010","score":0.7861,"second":0.7804,"words":9,"accepted":false}}
+{"wall":1792000177.2785,"line":{"addressee":"other","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":68.676,"text":"Thomas, could you mute your microphone while I talk","turn_id":"r6","type":"turn"}}
+{"wall":1792000177.2785,"line":{"since_audio_end_s":0.375,"source":"verse-run","stage":"turn_sent","t":1792000177.278,"t_audio_end":68.676,"t_audio_end_wall":1792000176.903,"turn_id":"r6","type":"metric"}}
+{"wall":1792000177.2786,"line":{"type":"metric","turn_id":"r6","stage":"turn_recv","t":1792000177.278323,"speaker":"remote","t_audio_end":68.676}}
+{"wall":1792000177.2786,"line":{"type":"metric","turn_id":"r6","stage":"for_others","t":1792000177.278385}}
+{"wall":1792000177.2786,"line":{"type":"metric","turn_id":"","stage":"summary_deferred","t":1792000177.27842,"reason":"turn_in_flight"}}
+{"wall":1792000177.2818,"line":{"type":"metric","turn_id":"r6","stage":"done","t":1792000177.278807,"id":"s0013","tier":"S","stop_reason":null,"usage":{},"hedged":false,"winner_lane":null,"new_connection":null,"error":null,"discarded":true,"cost_usd":0.0}}
+{"wall":1792000177.2819,"line":{"type":"metric","turn_id":"","stage":"fire","t":1792000177.27914,"id":"r0014","tier":"R","words":0,"hedge_after_s":null}}
+{"wall":1792000178.2411,"line":{"type":"metric","turn_id":"","stage":"first_byte","t":1792000178.240909,"id":"r0014","tier":"R","lane":1,"new_connection":false}}
+{"wall":1792000178.2412,"line":{"type":"metric","turn_id":"","stage":"first_delta","t":1792000178.2410922,"id":"r0014","tier":"R"}}
+{"wall":1792000178.3092,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":69.88,"text":"Sorry","turn_id":"r7","type":"partial"}}
+{"wall":1792000178.4067,"line":{"type":"actions","items":[]}}
+{"wall":1792000178.4068,"line":{"type":"summary","decisions":[],"actions":[],"open":["How the dispatcher will be tested before it touches live routes.","How the LLM-assisted dispatcher would be designed for dispatchers."]}}
+{"wall":1792000178.4068,"line":{"type":"metric","turn_id":"","stage":"done","t":1792000178.4065511,"id":"r0014","tier":"R","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4543,"input_tokens":128,"output_tokens":57},"hedged":false,"winner_lane":1,"new_connection":false,"error":null,"discarded":false,"cost_usd":8.7e-05}}
+{"wall":1792000179.4287,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":70.76,"text":"Sorry, done","turn_id":"r7","type":"partial"}}
+{"wall":1792000180.2889,"line":{"addressee":"unknown","dir":"to_brain","kind":"fragment","speaker":"remote","t_audio_end":70.805,"text":"Sorry, done","turn_id":"r7","type":"turn"}}
+{"wall":1792000180.289,"line":{"since_audio_end_s":1.257,"source":"verse-run","stage":"turn_sent","t":1792000180.289,"t_audio_end":70.805,"t_audio_end_wall":1792000179.032,"turn_id":"r7","type":"metric"}}
+{"wall":1792000180.2892,"line":{"type":"metric","turn_id":"r7","stage":"turn_recv","t":1792000180.289034,"speaker":"remote","t_audio_end":70.805}}
+{"wall":1792000180.2892,"line":{"type":"metric","turn_id":"r7","stage":"fragment_skipped","t":1792000180.289094}}
+{"wall":1792000181.0964,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":72.52,"text":"How much","turn_id":"r8","type":"partial"}}
+{"wall":1792000181.6699,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":73.24,"text":"How much homework have","turn_id":"r8","type":"partial"}}
+{"wall":1792000181.6702,"line":{"type":"metric","turn_id":"r8","stage":"fire","t":1792000181.670142,"id":"s0015","tier":"S","words":4,"hedge_after_s":1.5}}
+{"wall":1792000182.228,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":73.8,"text":"How much homework have you done on","turn_id":"r8","type":"partial"}}
+{"wall":1792000182.2733,"line":{"type":"metric","turn_id":"r8","stage":"embed","t":1792000182.273131,"ms":44.73,"wait_ms":0.16,"top":"b004","score":0.8654,"second":0.8596,"words":7,"accepted":true}}
+{"wall":1792000182.5339,"line":{"type":"metric","turn_id":"r8","stage":"first_byte","t":1792000182.533536,"id":"s0015","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000182.5339,"line":{"type":"metric","turn_id":"r8","stage":"first_delta","t":1792000182.533827,"id":"s0015","tier":"S"}}
+{"wall":1792000182.6651,"line":{"type":"metric","turn_id":"r8","stage":"say_line","t":1792000182.6649458,"id":"s0015","tier":"S"}}
+{"wall":1792000182.7924,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":74.52,"text":"How much homework have you done on Holden?","turn_id":"r8","type":"partial"}}
+{"wall":1792000182.7927,"line":{"type":"metric","turn_id":"r8","stage":"fire","t":1792000182.792633,"id":"s0016","tier":"S","words":8,"hedge_after_s":1.5}}
+{"wall":1792000182.8316,"line":{"type":"metric","turn_id":"r8","stage":"embed","t":1792000182.831413,"ms":38.41,"wait_ms":0.18,"top":"b008","score":0.8612,"second":0.8601,"words":8,"accepted":false}}
+{"wall":1792000182.933,"line":{"type":"metric","turn_id":"r8","stage":"first_point","t":1792000182.932853,"id":"s0015","tier":"S"}}
+{"wall":1792000182.9343,"line":{"addressee":"me","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":74.52,"text":"How much homework have you done on Holden?","turn_id":"r8","type":"turn"}}
+{"wall":1792000182.9343,"line":{"since_audio_end_s":0.187,"source":"verse-run","stage":"turn_sent","t":1792000182.934,"t_audio_end":74.52,"t_audio_end_wall":1792000182.748,"turn_id":"r8","type":"metric"}}
+{"wall":1792000182.9344,"line":{"type":"metric","turn_id":"r8","stage":"turn_recv","t":1792000182.934279,"speaker":"remote","t_audio_end":74.52}}
+{"wall":1792000182.9345,"line":{"type":"select","turn_id":"r8","id":"s0016"}}
+{"wall":1792000182.9345,"line":{"type":"metric","turn_id":"r8","stage":"select","t":1792000182.9343948,"id":"s0016","tier":"S","distance":0}}
+{"wall":1792000182.9345,"line":{"type":"metric","turn_id":"r8","stage":"release","t":1792000182.934407,"id":"s0016","tier":"S","buffered_events":0}}
+{"wall":1792000182.9349,"line":{"type":"metric","turn_id":"r8","stage":"fire","t":1792000182.934813,"id":"d0017","tier":"D","words":8,"hedge_after_s":2.0}}
+{"wall":1792000182.935,"line":{"type":"metric","turn_id":"r8","stage":"done","t":1792000182.934916,"id":"s0015","tier":"S","stop_reason":null,"usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4543,"input_tokens":96,"output_tokens":6},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":true,"cost_usd":5.8e-05}}
+{"wall":1792000183.4933,"line":{"type":"metric","turn_id":"r8","stage":"first_byte","t":1792000183.493121,"id":"s0016","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000183.4934,"line":{"type":"metric","turn_id":"r8","stage":"first_delta","t":1792000183.493333,"id":"s0016","tier":"S"}}
+{"wall":1792000183.4934,"line":{"type":"metric","turn_id":"r8","stage":"visible","t":1792000183.493366,"id":"s0016","tier":"S"}}
+{"wall":1792000183.4935,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"SAY: I've done a","line_done":false}}
+{"wall":1792000183.4935,"line":{"since_audio_end_s":0.746,"since_turn_sent_s":0.559,"source":"verse-run","stage":"first_text","t":1792000183.493,"tier":"S","turn_id":"r8","type":"metric"}}
+{"wall":1792000183.7253,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":" f","line_done":false}}
+{"wall":1792000183.7354,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"air amount of re","line_done":false}}
+{"wall":1792000183.7355,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"ading on","line_done":false}}
+{"wall":1792000183.7355,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":" Halden,","line_done":false}}
+{"wall":1792000183.7355,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":" so let me share what st","line_done":false}}
+{"wall":1792000183.7355,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"ood","line_done":false}}
+{"wall":1792000183.7355,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":" out.","line_done":false}}
+{"wall":1792000183.7356,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"","line_done":true}}
+{"wall":1792000183.7356,"line":{"type":"metric","turn_id":"r8","stage":"say_line","t":1792000183.735518,"id":"s0016","tier":"S"}}
+{"wall":1792000183.7356,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"- The","line_done":false}}
+{"wall":1792000183.7356,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":" company builds route-planning software","line_done":false}}
+{"wall":1792000183.7357,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":" for mid-size European haul","line_done":false}}
+{"wall":1792000183.7357,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"age firms.","line_done":false}}
+{"wall":1792000183.7357,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"","line_done":true}}
+{"wall":1792000183.7358,"line":{"type":"metric","turn_id":"r8","stage":"first_point","t":1792000183.735668,"id":"s0016","tier":"S"}}
+{"wall":1792000183.7358,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"- Comp","line_done":false}}
+{"wall":1792000183.7358,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"ass re-plans delivery","line_done":false}}
+{"wall":1792000183.8282,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":" routes every 90 secon","line_done":false}}
+{"wall":1792000183.8283,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"ds using live traffic and dri","line_done":false}}
+{"wall":1792000183.8283,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"ver status.","line_done":false}}
+{"wall":1792000183.8283,"line":{"type":"delta","id":"s0016","turn_id":"r8","tier":"S","text":"","line_done":true}}
+{"wall":1792000183.8292,"line":{"type":"metric","turn_id":"r8","stage":"done","t":1792000183.8290172,"id":"s0016","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4543,"input_tokens":103,"output_tokens":92},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000102}}
+{"wall":1792000184.5024,"line":{"type":"metric","turn_id":"r8","stage":"first_byte","t":1792000184.502125,"id":"d0017","tier":"D","lane":0,"new_connection":false}}
+{"wall":1792000184.5025,"line":{"type":"metric","turn_id":"r8","stage":"first_delta","t":1792000184.5024168,"id":"d0017","tier":"D"}}
+{"wall":1792000184.5314,"line":{"type":"metric","turn_id":"r8","stage":"visible","t":1792000184.531046,"id":"d0017","tier":"D"}}
+{"wall":1792000184.5315,"line":{"type":"opener_status","turn_id":"r8","ok":true}}
+{"wall":1792000184.5315,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"- Halden builds route-","line_done":false}}
+{"wall":1792000184.5678,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"planning software for mid-size","line_done":false}}
+{"wall":1792000184.6061,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" European haulage firms, with","line_done":false}}
+{"wall":1792000184.6309,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" about 140 employees;","line_done":false}}
+{"wall":1792000184.6579,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" the","line_done":false}}
+{"wall":1792000184.6925,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" AI team has 6 people","line_done":false}}
+{"wall":1792000184.7271,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" and reports to Ingr","line_done":false}}
+{"wall":1792000184.7612,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"id. (f004, f009","line_done":false}}
+{"wall":1792000184.7977,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":", f008)","line_done":false}}
+{"wall":1792000184.7977,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"","line_done":true}}
+{"wall":1792000184.7978,"line":{"type":"metric","turn_id":"r8","stage":"first_point","t":1792000184.797441,"id":"d0017","tier":"D"}}
+{"wall":1792000184.7978,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"- Comp","line_done":false}}
+{"wall":1792000184.923,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"ass is","line_done":false}}
+{"wall":1792000184.9231,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" the","line_done":false}}
+{"wall":1792000185.3326,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" product that re-plans deliv","line_done":false}}
+{"wall":1792000185.3327,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"ery routes every 90 se","line_done":false}}
+{"wall":1792000185.3327,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"conds, using live traffic","line_done":false}}
+{"wall":1792000185.3328,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" and driver status. (f005","line_done":false}}
+{"wall":1792000185.333,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":", f","line_done":false}}
+{"wall":1792000185.333,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"007, g002)","line_done":false}}
+{"wall":1792000185.333,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"","line_done":true}}
+{"wall":1792000185.333,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"- You","line_done":false}}
+{"wall":1792000185.3331,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" are repl","line_done":false}}
+{"wall":1792000185.3331,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"acing rules-based disp","line_done":false}}
+{"wall":1792000185.3332,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"atch with an LLM-","line_done":false}}
+{"wall":1792000185.3332,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"assisted dispatcher","line_done":false}}
+{"wall":1792000185.3332,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":", with a pilot planned","line_done":false}}
+{"wall":1792000185.3333,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" for Q1 2027,","line_done":false}}
+{"wall":1792000185.6124,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" which is why","line_done":false}}
+{"wall":1792000185.6125,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" Lantern and","line_done":false}}
+{"wall":1792000185.6125,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" the courier opt","line_done":false}}
+{"wall":1792000185.6125,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"imiser feel relevant","line_done":false}}
+{"wall":1792000185.6125,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":". (g","line_done":false}}
+{"wall":1792000185.6126,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"004, f","line_done":false}}
+{"wall":1792000185.6127,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"006)","line_done":false}}
+{"wall":1792000185.6127,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"","line_done":true}}
+{"wall":1792000185.6127,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"- One","line_done":false}}
+{"wall":1792000185.6127,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" th","line_done":false}}
+{"wall":1792000185.6128,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"ing I'd like","line_done":false}}
+{"wall":1792000185.6128,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" to underst","line_done":false}}
+{"wall":1792000185.6177,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"and better","line_done":false}}
+{"wall":1792000185.65,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" is which","line_done":false}}
+{"wall":1792000185.6878,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":" part of Compass is hard","line_done":false}}
+{"wall":1792000185.7207,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"est to test today. (b014","line_done":false}}
+{"wall":1792000185.7382,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":")","line_done":false}}
+{"wall":1792000185.7463,"line":{"type":"delta","id":"d0017","turn_id":"r8","tier":"D","text":"","line_done":true}}
+{"wall":1792000185.7466,"line":{"type":"metric","turn_id":"r8","stage":"done","t":1792000185.7461948,"id":"d0017","tier":"D","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4667,"input_tokens":113,"output_tokens":221},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.003369}}
+{"wall":1792000193.1651,"line":{"type":"metric","turn_id":"","stage":"fire","t":1792000193.1648169,"id":"a0018","tier":"A","words":0,"hedge_after_s":null}}
+{"wall":1792000194.3019,"line":{"type":"metric","turn_id":"","stage":"first_byte","t":1792000194.3016572,"id":"a0018","tier":"A","lane":1,"new_connection":false}}
+{"wall":1792000194.302,"line":{"type":"metric","turn_id":"","stage":"first_delta","t":1792000194.301901,"id":"a0018","tier":"A"}}
+{"wall":1792000195.7686,"line":{"type":"metric","turn_id":"","stage":"done","t":1792000195.7682948,"id":"a0018","tier":"A","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":73,"cache_read_input_tokens":4667,"input_tokens":156,"output_tokens":205},"hedged":false,"winner_lane":1,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.003478}}
+{"wall":1792000195.7696,"line":{"type":"actions","items":[]}}
+{"wall":1792000195.7696,"line":{"type":"summary","decisions":[],"actions":[],"open":["How an LLM-assisted dispatcher would be designed for Halden's dispatchers, and how it would be tested before it touches live routes.","How much research Alex has done on Halden; the question was asked last and no answer is recorded."],"final":true,"conflicts":[],"text":"The meeting was an interview panel with Ingrid and Tomas at Halden. They asked how Alex evaluates an LLM system before release, how he would design a language model assistant for dispatchers, how he would test the dispatcher before it touches live routes, and how much homework he had done on Halden. The transcript ends with the homework question still unanswered.","path":"/var/folders/th/cqlllcvs5g9d857_y87xzf0w0000gn/T/verse-eval-audio-nb_ix4_d/session/summary.md"}}
+{"wall":1792000195.7696,"line":{"type":"metric","turn_id":"","stage":"summary_final","t":1792000195.7694678,"ok":true,"reason":null,"turns":8,"cost_usd":0.003478}}
