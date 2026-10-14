@@ -1,0 +1,385 @@
+{
+  "session_id": "sim-20261014-2112-brightwave",
+  "created_at": "2026-10-14T21:12:29+02:00",
+  "lang": "en",
+  "company": "Brightwave",
+  "role": "AI Engineer",
+  "interview_type": "mixed",
+  "difficulty": "standard",
+  "length_min": 30,
+  "posting": {
+    "source_url": "https://jobs.ashbyhq.com/brightwave/11111111-2222-3333-4444-555555555555",
+    "text_path": "posting.txt",
+    "sha256": "ecc77e2d91b670b2453a25addb7f3c7ec2f929e7d8fe2efa70945de55fa682c3"
+  },
+  "competencies": [
+    {
+      "id": "c1",
+      "name": "Grounding and hallucination fixes",
+      "posting_quote": "The agent sometimes says a product is unavailable when it's in stock."
+    },
+    {
+      "id": "c2",
+      "name": "Hybrid exact and semantic retrieval",
+      "posting_quote": "We need both, in one ranking."
+    },
+    {
+      "id": "c3",
+      "name": "Multilingual quality",
+      "posting_quote": "An agent that answers in the wrong language is worse than one that says nothing."
+    },
+    {
+      "id": "c4",
+      "name": "Latency and cost",
+      "posting_quote": "You'll profile requests, test prompt and model changes, and ship improvements you can point at on a graph."
+    },
+    {
+      "id": "c5",
+      "name": "Evals that predict production",
+      "posting_quote": "Making it actually predict production quality is open work."
+    },
+    {
+      "id": "c6",
+      "name": "Reading traces and debugging",
+      "posting_quote": "Given a bad answer in production, you can find why: retrieval missed, the prompt was wrong, the model picked the wrong tool."
+    },
+    {
+      "id": "c7",
+      "name": "Scoring and suppressing proactive insights",
+      "posting_quote": "Ranking, scoring, and suppressing proactive insights so the agent interrupts a customer only when it has earned it."
+    },
+    {
+      "id": "c8",
+      "name": "RAG fundamentals",
+      "posting_quote": "You know how RAG actually behaves: embeddings, vector search, chunking, reranking, and where each one breaks."
+    }
+  ],
+  "evidence": [
+    {
+      "id": "e1",
+      "kind": "skill",
+      "text": "4 years of professional experience as a software engineer, the last two on LLM features used by real customers.",
+      "sources": [
+        {
+          "kind": "cv",
+          "ref": "cv:L5",
+          "quote": "4 years of professional experience, the last two on LLM features used by real customers"
+        }
+      ]
+    },
+    {
+      "id": "e2",
+      "kind": "project",
+      "text": "Built a product-question assistant for a fashion webshop, with pgvector retrieval over 38,000 catalogue items and answers in Swedish and English.",
+      "sources": [
+        {
+          "kind": "cv",
+          "ref": "cv:L9",
+          "quote": "retrieval over 38,000 catalogue items with pgvector, answers in Swedish and English"
+        }
+      ]
+    },
+    {
+      "id": "e3",
+      "kind": "metric",
+      "text": "Cut out-of-stock hallucinations from 9% to 2% with an exact SKU and size lookup before semantic search plus a grounding check on the final answer.",
+      "sources": [
+        {
+          "kind": "cv",
+          "ref": "cv:L10",
+          "quote": "hallucinations from 9% to 2% by adding an exact SKU and size lookup before semantic search and a grounding check on the final answer"
+        }
+      ]
+    },
+    {
+      "id": "e4",
+      "kind": "metric",
+      "text": "Reduced median answer latency from 4.1 s to 2.3 s by caching embeddings, trimming the prompt and streaming the first sentence.",
+      "sources": [
+        {
+          "kind": "cv",
+          "ref": "cv:L11",
+          "quote": "Reduced median answer latency from 4.1 s to 2.3 s by caching embeddings, trimming the prompt and streaming the first sentence"
+        }
+      ]
+    },
+    {
+      "id": "e5",
+      "kind": "project",
+      "text": "Set up Langfuse tracing for every conversation and a golden set of 220 questions that runs in CI before each prompt change.",
+      "sources": [
+        {
+          "kind": "cv",
+          "ref": "cv:L12",
+          "quote": "Set up Langfuse tracing for every conversation and a golden set of 220 questions that runs in CI before each prompt change"
+        }
+      ]
+    },
+    {
+      "id": "e6",
+      "kind": "metric",
+      "text": "Added a cross-encoder reranking step; recall at 5 went from 0.71 to 0.84 on the golden set.",
+      "sources": [
+        {
+          "kind": "cv",
+          "ref": "cv:L13",
+          "quote": "Wrote a reranking step with a cross-encoder; recall at 5 went from 0.71 to 0.84 on the golden set"
+        }
+      ]
+    },
+    {
+      "id": "e7",
+      "kind": "project",
+      "text": "Wrote an open-source eval harness for retrieval systems with 140 GitHub stars, used by two other teams at Nordlys Commerce.",
+      "sources": [
+        {
+          "kind": "cv",
+          "ref": "cv:L21",
+          "quote": "Open-source eval harness for retrieval systems: 140 GitHub stars, used by two other teams at Nordlys Commerce"
+        }
+      ]
+    },
+    {
+      "id": "e8",
+      "kind": "story",
+      "text": "Built an Italian-language recipe chatbot as a side project to learn how multilingual prompts fail.",
+      "sources": [
+        {
+          "kind": "cv",
+          "ref": "cv:L22",
+          "quote": "Side project: Italian-language recipe chatbot, built to learn how multilingual prompts fail."
+        }
+      ]
+    },
+    {
+      "id": "e9",
+      "kind": "project",
+      "text": "Owned the shipment-tracking API in Python and FastAPI, serving 1.2 million requests per day.",
+      "sources": [
+        {
+          "kind": "cv",
+          "ref": "cv:L16",
+          "quote": "Owned the shipment-tracking API in Python and FastAPI, serving 1.2 million requests per day."
+        }
+      ]
+    },
+    {
+      "id": "e10",
+      "kind": "metric",
+      "text": "Moved a nightly batch job to a queue-based pipeline, cutting data delay from 6 hours to 15 minutes.",
+      "sources": [
+        {
+          "kind": "cv",
+          "ref": "cv:L17",
+          "quote": "Moved a nightly batch job to a queue-based pipeline, which brought the data delay from 6 hours to 15 minutes."
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "id": "q1",
+      "kind": "opener",
+      "text": "Thanks for joining. To start, could you tell me a bit about yourself and what you have been building recently?",
+      "competency_ids": [
+        "c8"
+      ],
+      "evidence_ids": [
+        "e1",
+        "e2"
+      ],
+      "follow_ups": [],
+      "target_s": [
+        60,
+        90
+      ]
+    },
+    {
+      "id": "q2",
+      "kind": "motivation",
+      "text": "What draws you to Brightwave and to this AI Engineer role in particular?",
+      "competency_ids": [
+        "c7"
+      ],
+      "evidence_ids": [],
+      "follow_ups": [
+        "What part of building proactive agents interests you most?",
+        "What would you want to have owned after your first few months?"
+      ],
+      "target_s": [
+        60,
+        90
+      ]
+    },
+    {
+      "id": "q3",
+      "kind": "technical",
+      "text": "Imagine our agent tells a customer that a product is unavailable when it is actually in stock. How would you find out why, and how would you fix it?",
+      "competency_ids": [
+        "c1",
+        "c6"
+      ],
+      "evidence_ids": [
+        "e3",
+        "e5"
+      ],
+      "follow_ups": [
+        "What would you look at first in the trace?",
+        "How would you prove the fix worked and stays fixed?"
+      ],
+      "target_s": [
+        90,
+        150
+      ]
+    },
+    {
+      "id": "q4",
+      "kind": "technical",
+      "text": "Semantic search handles a warm jacket for winter well but struggles with a SKU or a specific size. How would you combine exact and semantic matching in one ranking?",
+      "competency_ids": [
+        "c2",
+        "c8"
+      ],
+      "evidence_ids": [
+        "e3",
+        "e6",
+        "e2"
+      ],
+      "follow_ups": [
+        "How would you decide how to weigh the two signals?",
+        "Where does a reranker fit, and where does it break down?"
+      ],
+      "target_s": [
+        90,
+        150
+      ]
+    },
+    {
+      "id": "q5",
+      "kind": "behavioural",
+      "text": "Tell me about a time you worked on an assistant that had to answer in more than one language. What went wrong, and what did you do about it?",
+      "competency_ids": [
+        "c3"
+      ],
+      "evidence_ids": [
+        "e2",
+        "e8"
+      ],
+      "follow_ups": [
+        "How did you measure quality in each language?",
+        "What would you do differently now?"
+      ],
+      "target_s": [
+        60,
+        120
+      ]
+    },
+    {
+      "id": "q6",
+      "kind": "behavioural",
+      "text": "Tell me about a time you made an LLM feature faster or cheaper. How did you find the bottleneck?",
+      "competency_ids": [
+        "c4"
+      ],
+      "evidence_ids": [
+        "e4"
+      ],
+      "follow_ups": [
+        "What was the number before and after?",
+        "Did any change hurt answer quality, and how did you check?"
+      ],
+      "target_s": [
+        60,
+        120
+      ]
+    },
+    {
+      "id": "q7",
+      "kind": "technical",
+      "text": "Our golden-dataset harness does not yet predict production quality well. How would you go about making it more predictive?",
+      "competency_ids": [
+        "c5",
+        "c6"
+      ],
+      "evidence_ids": [
+        "e5",
+        "e7"
+      ],
+      "follow_ups": [
+        "Where would new test cases come from?",
+        "How would you know the eval score and production quality actually agree?"
+      ],
+      "target_s": [
+        90,
+        150
+      ]
+    },
+    {
+      "id": "q8",
+      "kind": "role",
+      "text": "Suppose a proactive agent has ten possible things it could tell a customer right now. How would you decide which one, if any, is worth saying?",
+      "competency_ids": [
+        "c7"
+      ],
+      "evidence_ids": [],
+      "follow_ups": [
+        "What signals would you use to score an insight?",
+        "How would you measure whether suppressing an insight was the right call?"
+      ],
+      "target_s": [
+        90,
+        150
+      ]
+    }
+  ],
+  "rubric": {
+    "c1": {
+      "1": "Blames the model in general and proposes a vague prompt tweak, with no way to locate or verify the cause.",
+      "3": "Separates retrieval, prompt and model causes and suggests a stock or grounding check, but gives little measurement.",
+      "5": "Traces the failing case, adds exact lookup and a grounding check against stock data, and shows the hallucination rate falling with numbers on a fixed test set."
+    },
+    "c2": {
+      "1": "Treats semantic search as the only option and cannot explain why SKUs and sizes fail.",
+      "3": "Describes combining keyword or exact lookup with vector search, but is vague about how the results are merged.",
+      "5": "Explains how exact and semantic results are merged in one ranking, with weighting and reranking, and checks the result against recall on a golden set."
+    },
+    "c3": {
+      "1": "Says the model handles any language and has no way to detect wrong-language answers.",
+      "3": "Knows multilingual prompts fail and describes language detection or per-language checks.",
+      "5": "Gives a concrete failure, enforces answer language, tests each language on its own set, and reports the improvement."
+    },
+    "c4": {
+      "1": "Talks about speed in general terms with no measurement or numbers.",
+      "3": "Profiles requests and names sensible changes such as caching or shorter prompts, with partial numbers.",
+      "5": "Measures before and after on latency and cost, names the bottleneck, ships specific changes, and checks that quality did not drop."
+    },
+    "c5": {
+      "1": "Relies on manual spot checks or a static test set with no link to production.",
+      "3": "Maintains a golden set and runs it before changes, but does not check whether scores match real outcomes.",
+      "5": "Grows the golden set from real production traces, validates eval scores against production quality, and runs the evals in CI to block regressions."
+    },
+    "c6": {
+      "1": "Cannot say where to look for the cause of a bad answer.",
+      "3": "Reads a trace and sorts the failure into retrieval, prompt or tool choice.",
+      "5": "Walks through a trace step by step, isolates retrieval, prompt or tool selection as the cause, and turns the finding into a fix and a regression test."
+    },
+    "c7": {
+      "1": "Suggests sending every possible insight or picks at random, with no notion of cost to the customer.",
+      "3": "Proposes scoring insights by relevance and setting a threshold, with limited thought on measurement.",
+      "5": "Designs a scoring and suppression approach with clear signals and an explicit cost of interrupting, and plans to measure suppressed versus sent insights."
+    },
+    "c8": {
+      "1": "Only names RAG components and cannot say how or where they fail.",
+      "3": "Explains embeddings, chunking and reranking with some failure modes seen in practice.",
+      "5": "Explains where each RAG stage breaks with real examples from production, backed by measured results such as recall."
+    }
+  },
+  "warnings": [],
+  "prep_model": "claude-sonnet-5-5",
+  "prep_usage": {
+    "input": 74,
+    "output": 7735,
+    "cache_read": 0,
+    "cache_write": 3607
+  }
+}
