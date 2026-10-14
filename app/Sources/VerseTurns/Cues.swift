@@ -66,6 +66,8 @@ public enum Cues {
         for i in 0..<n {
             if isStart[i], i + 1 < n {
                 if enWh.contains(t[i]) || enAux.contains(t[i]) || enImperative.contains(t[i]) { return true }
+                // "Any questions?" / "Any questions for us" (no auxiliary in front).
+                if t[i] == "any" && t[i + 1].hasPrefix("question") { return true }
             }
             // Anywhere: "<aux> you", "tell me", "walk me through".
             if i + 1 < n {
@@ -136,9 +138,43 @@ public enum Cues {
     }
 
     /// The kind of a finished turn: fragment (see `isFragment`), question (a question cue or a closing "?"), or statement.
+    /// A turn shorter than `minWords` is still a question when it is a complete short question (`isShortQuestion`).
+    /// Only the kind changes: `isFragment` (and with it the endpoint hold) is the same for short turns as before.
     public static func kind(of text: String, lang: String = "en", minWords: Int = 3) -> TurnKind {
-        if isFragment(text, lang: lang, minWords: minWords) { return .fragment }
+        if isFragment(text, lang: lang, minWords: minWords) {
+            return isShortQuestion(text, lang: lang, minWords: minWords) ? .question : .fragment
+        }
         if hasCue(text, lang: lang) || text.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("?") { return .question }
         return .statement
+    }
+
+    // MARK: short questions
+
+    /// Second words that make a wh-question a cut-off prefix ("Why this", "How big", "How many"): the rest follows.
+    private static let openSecondWords: Set<String> = ["this", "that", "these", "those", "big", "long", "many", "much", "often", "far", "old",
+                                                       "kind", "sort", "type"]
+
+    /// True for a turn of two words up to `minWords - 1` that is a complete short question ("Why Halden?", "And salary?",
+    /// "Any questions"): it carries a question cue (the language's own cues, "any questions", an imperative ask, or
+    /// the recognizer's "Y" for "why") or a closing "?", and it does not end where a clause cannot end (a preposition,
+    /// conjunction, article, bare auxiliary, "Where do you", a filler) or look like a prefix ("Why this").
+    /// One word is never a question here ("Okay.", "Sure?"), and a "?" after nothing but leader words ("Okay, right?") is not either.
+    public static func isShortQuestion(_ text: String, lang: String = "en", minWords: Int = 3) -> Bool {
+        let w = Text.words(text, lang: lang)
+        let t = w.map(\.text)
+        guard t.count >= 2, t.count < minWords, let last = t.last, !isHesitation(last, lang: lang) else { return false }
+        if (fragmentEnders[lang] ?? fragmentEnders["en"]!).contains(last) { return false }
+        let closedByQuestionMark = text.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("?")
+        if lang == "en" {
+            if openSecondWords.contains(last), t.count == 2, enWh.contains(t[0]) || t[0] == "y" { return false }
+            // Nothing but leaders ("Okay, right?") is an acknowledgement, not a question.
+            if t.allSatisfy({ enLeaders.contains($0) }) { return false }
+        }
+        if closedByQuestionMark { return true }
+        // Without a "?" the clause must also end where a question can: "Where do" and "Can you" are cut off.
+        guard endsComplete(text, lang: lang) else { return false }
+        if hasCue(text, lang: lang) { return true }
+        // Nemotron wrote "Why Halden?" as "Y Halden".
+        return lang == "en" && t[0] == "y"
     }
 }

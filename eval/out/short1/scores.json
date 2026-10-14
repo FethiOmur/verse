@@ -1,0 +1,637 @@
+{
+ "run": "short1",
+ "dialogues": [
+  {
+   "id": "d13",
+   "suite": "short",
+   "speakers": 2,
+   "engine": "Nemotron (took over at 14.2 s)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "paraphrase",
+     "text": "Why this company?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b002",
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "Why this company",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0001",
+       "line": "SAY: What stands out to me is the direction the product is taking.",
+       "turn_id": "r1"
+      },
+      {
+       "call": "f0001",
+       "line": "- The company is moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027.",
+       "turn_id": "r1"
+      },
+      {
+       "call": "f0001",
+       "line": "- I have built LLM pipelines: I led Lantern, which extracts structured fields from supplier invoices.",
+       "turn_id": "r1"
+      },
+      {
+       "call": "d0002",
+       "line": "- Halden builds route-planning software for mid-size European haulage firms, which is the domain where my courier route optimiser work applies directly. (f004, f019)",
+       "turn_id": "r1"
+      },
+      {
+       "call": "d0002",
+       "line": "- Compass re-plans delivery routes every 90 seconds, and moving beyond rules-based dispatch to an LLM-assisted dispatcher, with a Q1 2027 pilot, is the part I most want to work on. (f007, g004)",
+       "turn_id": "r1"
+      },
+      {
+       "call": "d0002",
+       "line": "- I led Lantern, an LLM pipeline that cut manual data entry from 11 minutes to 2 minutes per invoice, so I can contribute to the dispatcher from day one. (f010, f006)",
+       "turn_id": "r1"
+      },
+      {
+       "call": "d0002",
+       "line": "- I'd join a 6-person AI team reporting to Ingrid at a company of about 140 people, where I can have direct impact. (f008, f009)",
+       "turn_id": "r1"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.696,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.497,
+     "d_first_text_s": 1.92
+    },
+    {
+     "index": 2,
+     "category": "paraphrase",
+     "text": "What's your weakness?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b005",
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "What's your weakness?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "d0004",
+       "line": "- I used to over-engineer early prototypes, building too much before checking the idea worked. (b005)",
+       "turn_id": "r2"
+      },
+      {
+       "call": "d0004",
+       "line": "- The fix is to ship a thin working version in the first week and get feedback early. (b005, b020)",
+       "turn_id": "r2"
+      },
+      {
+       "call": "d0004",
+       "line": "- It's a habit I deliberately changed, so I now start small and expand only where it proves useful. (b020)",
+       "turn_id": "r2"
+      },
+      {
+       "call": "f0003",
+       "line": "SAY: One I've actively worked on is how I approach early prototypes.",
+       "turn_id": "r2"
+      },
+      {
+       "call": "f0003",
+       "line": "- I used to over-engineer early prototypes.",
+       "turn_id": "r2"
+      },
+      {
+       "call": "f0003",
+       "line": "- Now I ship a thin version in the first week.",
+       "turn_id": "r2"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 0.378,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.846,
+     "d_first_text_s": 1.669
+    },
+    {
+     "index": 4,
+     "category": "paraphrase",
+     "text": "Describe Lantern.",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b003",
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "Describe lantern",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0005",
+       "line": "SAY: Happy to; it's the project I can speak about in the most detail.",
+       "turn_id": "r3"
+      },
+      {
+       "call": "f0005",
+       "line": "- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.",
+       "turn_id": "r3"
+      },
+      {
+       "call": "f0005",
+       "line": "- It cut manual data entry from 11 minutes to 2 minutes per invoice.",
+       "turn_id": "r3"
+      },
+      {
+       "call": "d0006",
+       "line": "- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led the project. (f006, g003)",
+       "turn_id": "r3"
+      },
+      {
+       "call": "d0006",
+       "line": "- It cut manual data entry from 11 minutes to 2 minutes per invoice, running on 38,000 invoices a month. (f010, f011)",
+       "turn_id": "r3"
+      },
+      {
+       "call": "d0006",
+       "line": "- Safeguards: extraction is schema-validated with one retry, then escalated; the model never guesses a total. Fields below 0.8 confidence go to a human. (b003, f014)",
+       "turn_id": "r3"
+      },
+      {
+       "call": "d0006",
+       "line": "- Held-out accuracy was 96.4 percent for totals and 91 percent for line items. Model cost was about EUR 1,900 a month against EUR 9,500 of labour saved. (f012, f013, f017)",
+       "turn_id": "r3"
+      }
+     ],
+     "main_turn": "r3",
+     "asr_endpoint_s": 1.286,
+     "sf_tier": "F",
+     "sf_first_text_s": 2.021,
+     "d_first_text_s": 2.931,
+     "chips": [
+      {
+       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "kind": "name",
+       "visible_s": 0.306
+      },
+      {
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "kind": "term",
+       "visible_s": 0.306
+      }
+     ]
+    },
+    {
+     "index": 6,
+     "category": "paraphrase",
+     "text": "Notice period?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b015",
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "notice period",
+     "detected_answerable": false,
+     "detected_kind": [
+      "fragment"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r4",
+     "asr_endpoint_s": 1.323
+    },
+    {
+     "index": 8,
+     "category": "paraphrase",
+     "text": "Why Halden?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b002",
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "Y Halden",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0007",
+       "line": "SAY: What stands out to me is the direction the product is taking.",
+       "turn_id": "r5"
+      },
+      {
+       "call": "f0007",
+       "line": "- The company is moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027.",
+       "turn_id": "r5"
+      },
+      {
+       "call": "d0008",
+       "line": "- Halden is moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027; that direction matches my experience. (g004, b002)",
+       "turn_id": "r5"
+      },
+      {
+       "call": "d0008",
+       "line": "- I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices, so I have built this kind of system. (f006, b002)",
+       "turn_id": "r5"
+      },
+      {
+       "call": "d0008",
+       "line": "- I also built a route optimiser for a courier pilot that reduced empty runs by 14 percent. (f019, b002)",
+       "turn_id": "r5"
+      },
+      {
+       "call": "d0008",
+       "line": "- Compass re-plans delivery routes every 90 seconds, which is a real-time planning product I'd like to work on. (f007, f005)",
+       "turn_id": "r5"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 1.307,
+     "sf_tier": "F",
+     "sf_first_text_s": 2.206,
+     "d_first_text_s": 2.449,
+     "chips": [
+      {
+       "text": "Halden Freight Systems builds route-planning software for mid-size European haulage firms.",
+       "kind": "name",
+       "visible_s": 0.182
+      },
+      {
+       "text": "When could you start if we made an offer?",
+       "kind": "topic",
+       "visible_s": 0.182
+      }
+     ]
+    },
+    {
+     "index": 10,
+     "category": "offbank",
+     "text": "Tell us more.",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r6"
+     ],
+     "heard": "Tell us more",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0009",
+       "line": "SAY: Happy to, I'll focus on the Lantern project since it's the one I can speak to in most detail.",
+       "turn_id": "r6"
+      },
+      {
+       "call": "f0009",
+       "line": "- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.",
+       "turn_id": "r6"
+      },
+      {
+       "call": "f0009",
+       "line": "- It cut manual data entry from 11 minutes to 2 minutes per invoice across 38,000 invoices a month.",
+       "turn_id": "r6"
+      },
+      {
+       "call": "d0010",
+       "line": "- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it end to end. (f006, b003)",
+       "turn_id": "r6"
+      },
+      {
+       "call": "d0010",
+       "line": "- Manual data entry dropped from 11 minutes to 2 minutes per invoice, at 38,000 invoices a month. (f010, f011)",
+       "turn_id": "r6"
+      },
+      {
+       "call": "d0010",
+       "line": "- Accuracy on the held-out set was 96.4 percent for totals and 91 percent for line items. (f012, f013)",
+       "turn_id": "r6"
+      },
+      {
+       "call": "d0010",
+       "line": "- Fields below 0.8 confidence go to a human operator, about 7 percent of invoices; model cost was around EUR 1,900 monthly. (f014, f015, f016)",
+       "turn_id": "r6"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 0.519,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.439,
+     "d_first_text_s": 1.606
+    }
+   ],
+   "turns": 6,
+   "spurious_turns": [],
+   "answerable_turns": 5,
+   "statuses": [],
+   "warm_until_session_s": 14.67
+  }
+ ],
+ "aggregate": {
+  "questions_to_owner": 0,
+  "excluded_warmup_utterances": 0,
+  "detection": {
+   "positives": 0,
+   "covered": 0,
+   "recall": null,
+   "predicted_turns": 0,
+   "true_positive_turns": 0,
+   "precision": null,
+   "missed": [],
+   "false_positives": []
+  },
+  "addressee": {
+   "questions_to_other": 0,
+   "no_say": 0,
+   "no_say_rate": null,
+   "three_speaker_n": 0,
+   "three_speaker_no_say": 0,
+   "classified_other": 0,
+   "not_detected_at_all": 0,
+   "failures": []
+  },
+  "bank": {
+   "banked_questions": 0,
+   "hits": 0,
+   "confirmed_by_haiku": 0,
+   "hit_rate": null,
+   "by_category": {
+    "exact": {
+     "n": 0,
+     "hit": 0,
+     "confirmed": 0
+    },
+    "paraphrase": {
+     "n": 0,
+     "hit": 0,
+     "confirmed": 0
+    }
+   },
+   "utterances_probed": 0,
+   "wrong_hits": 0,
+   "wrong_hit_rate": null,
+   "wrong_hits_transient": 0,
+   "wrong_hit_rate_transient": null,
+   "wrong_after_haiku": 0,
+   "wrong_after_haiku_rate": null,
+   "wrong_detail": []
+  },
+  "latency": {
+   "acoustic_end_to_turn_sent": {
+    "n": 0,
+    "p50": null,
+    "p90": null,
+    "max": null
+   },
+   "first_visible_text_any_SF": {
+    "n": 0,
+    "p50": null,
+    "p90": null,
+    "max": null
+   },
+   "speculation_hit_opener_visible": {
+    "n": 0,
+    "p50": null,
+    "p90": null,
+    "max": null
+   },
+   "fresh_haiku_first_word": {
+    "n": 0,
+    "p50": null,
+    "p90": null,
+    "max": null
+   },
+   "sonnet_deep_first_words": {
+    "n": 0,
+    "p50": null,
+    "p90": null,
+    "max": null
+   },
+   "bank_hit_visible": {
+    "n": 0,
+    "p50": null,
+    "p90": null,
+    "max": null
+   },
+   "fact_chip_visible": {
+    "n": 0,
+    "p50": null,
+    "p90": null,
+    "max": null
+   },
+   "questions_with_no_sf_text": 0,
+   "questions_with_d_text": 0,
+   "n_speculation_path": 0,
+   "n_fresh_path": 0
+  },
+  "other": {
+   "statements": 0,
+   "statements_with_say": 0,
+   "statements_called_question": 0,
+   "fragments": 0,
+   "fragments_with_output": 0
+  },
+  "cost": {
+   "per_dialogue_usd": {},
+   "total_usd": 0.0,
+   "replay_minutes": 0.0,
+   "usd_per_30_min": null
+  }
+ },
+ "aggregate_short": {
+  "questions_to_owner": 6,
+  "excluded_warmup_utterances": 0,
+  "detection": {
+   "positives": 6,
+   "covered": 5,
+   "recall": 0.8333,
+   "predicted_turns": 5,
+   "true_positive_turns": 5,
+   "precision": 1.0,
+   "missed": [
+    {
+     "dialogue": "d13",
+     "text": "Notice period?",
+     "heard": "notice period",
+     "kinds": [
+      "fragment"
+     ],
+     "addressee": [
+      "unknown"
+     ]
+    }
+   ],
+   "false_positives": []
+  },
+  "addressee": {
+   "questions_to_other": 0,
+   "no_say": 0,
+   "no_say_rate": null,
+   "three_speaker_n": 0,
+   "three_speaker_no_say": 0,
+   "classified_other": 0,
+   "not_detected_at_all": 0,
+   "failures": []
+  },
+  "bank": {
+   "banked_questions": 5,
+   "hits": 0,
+   "confirmed_by_haiku": 0,
+   "hit_rate": 0.0,
+   "by_category": {
+    "exact": {
+     "n": 0,
+     "hit": 0,
+     "confirmed": 0
+    },
+    "paraphrase": {
+     "n": 5,
+     "hit": 0,
+     "confirmed": 0
+    }
+   },
+   "utterances_probed": 6,
+   "wrong_hits": 0,
+   "wrong_hit_rate": 0.0,
+   "wrong_hits_transient": 0,
+   "wrong_hit_rate_transient": 0.0,
+   "wrong_after_haiku": 0,
+   "wrong_after_haiku_rate": 0.0,
+   "wrong_detail": []
+  },
+  "latency": {
+   "acoustic_end_to_turn_sent": {
+    "n": 6,
+    "p50": 0.991,
+    "p90": 1.323,
+    "max": 1.323
+   },
+   "first_visible_text_any_SF": {
+    "n": 5,
+    "p50": 1.846,
+    "p90": 2.206,
+    "max": 2.206
+   },
+   "speculation_hit_opener_visible": {
+    "n": 0,
+    "p50": null,
+    "p90": null,
+    "max": null
+   },
+   "fresh_haiku_first_word": {
+    "n": 5,
+    "p50": 1.846,
+    "p90": 2.206,
+    "max": 2.206
+   },
+   "sonnet_deep_first_words": {
+    "n": 5,
+    "p50": 1.92,
+    "p90": 2.931,
+    "max": 2.931
+   },
+   "bank_hit_visible": {
+    "n": 0,
+    "p50": null,
+    "p90": null,
+    "max": null
+   },
+   "fact_chip_visible": {
+    "n": 4,
+    "p50": 0.244,
+    "p90": 0.306,
+    "max": 0.306
+   },
+   "questions_with_no_sf_text": 1,
+   "questions_with_d_text": 5,
+   "n_speculation_path": 0,
+   "n_fresh_path": 5
+  },
+  "other": {
+   "statements": 0,
+   "statements_with_say": 0,
+   "statements_called_question": 0,
+   "fragments": 0,
+   "fragments_with_output": 0
+  },
+  "cost": {
+   "per_dialogue_usd": {
+    "d13": 0.025249
+   },
+   "total_usd": 0.02525,
+   "replay_minutes": 1.06,
+   "usd_per_30_min": 0.7172
+  }
+ },
+ "metas": {
+  "d13": {
+   "duration_s": 108.37,
+   "lead_in_s": 45.0,
+   "loadavg_before": [
+    8.14,
+    12.02,
+    13.86
+   ],
+   "loadavg_after": [
+    4.43,
+    9.49,
+    12.62
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.025249,
+   "elapsed_s": 116.54
+  }
+ },
+ "grounding": {
+  "lines_checked": 33,
+  "auto_supported": 33,
+  "unresolved_by_string_check": 0,
+  "judged": 0,
+  "judge_supported": 0,
+  "violations": [],
+  "unjudged": [],
+  "judge_cost_usd": 0.0,
+  "unresolved_but_judged_supported": 0
+ }
+}

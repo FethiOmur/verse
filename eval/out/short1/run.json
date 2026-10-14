@@ -1,0 +1,12 @@
+{
+ "run": "short1",
+ "dialogues": [
+  "d13"
+ ],
+ "requested": [
+  "d13"
+ ],
+ "spend_usd": 0.025249,
+ "ledger_total_usd": 0.518221,
+ "fake_brain": false
+}

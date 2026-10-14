@@ -655,7 +655,12 @@
    "run": "live1",
    "what": "grounding-second-opinion",
    "usd": 0.01908
+  },
+  {
+   "run": "short1",
+   "what": "d13 attempt 1",
+   "usd": 0.025249
   }
  ],
- "total_usd": 0.492972
+ "total_usd": 0.518221
 }
