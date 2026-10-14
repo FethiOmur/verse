@@ -201,6 +201,8 @@ struct StatusPanelView: View {
     var scale: CGFloat
     var onOpenSettings: (String) -> Void
     var onDismiss: () -> Void
+    /// Shown for errors when nothing is running.
+    var onRetry: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10 * scale) {
@@ -218,12 +220,57 @@ struct StatusPanelView: View {
                     Button("Open System Settings") { onOpenSettings(kind) }
                         .buttonStyle(OverlayButtonStyle(prominent: true, scale: scale))
                 }
+                if let onRetry {
+                    Button("Retry", action: onRetry)
+                        .buttonStyle(OverlayButtonStyle(prominent: true, scale: scale))
+                }
                 Button("Dismiss", action: onDismiss)
                     .buttonStyle(OverlayButtonStyle(prominent: false, scale: scale))
             }
         }
         .padding(18 * scale)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// The start-up panel: Starting… (with the step) → Ready · session → Listening. Stays until the first card or a click
+/// on the capsule.
+struct StartupPanelView: View {
+    var panel: StartupPanel
+    var scale: CGFloat
+
+    private var starting: Bool { if case .starting = panel.phase { return true }; return false }
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 12 * scale) {
+            Group {
+                if starting {
+                    ProgressView().controlSize(.small).tint(.white)
+                } else {
+                    Circle().fill(Color.green).frame(width: 10 * scale, height: 10 * scale)
+                        .shadow(color: .green.opacity(0.6), radius: 4)
+                }
+            }
+            .frame(width: 18 * scale, height: 18 * scale)
+            VStack(alignment: .leading, spacing: 3 * scale) {
+                Text(panel.title)
+                    .font(.system(size: (16 * scale).rounded(), weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                Text(panel.subtitle)
+                    .font(.system(size: (13 * scale).rounded()))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 18 * scale)
+        .padding(.top, 12 * scale)
+        .padding(.bottom, 16 * scale)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("verse.startup")
     }
 }
 
@@ -310,6 +357,7 @@ public struct OverlayView: View {
     @ObservedObject var settings: AppSettings
     var metrics: NotchMetrics
     var onOpenSettings: (String) -> Void
+    var onRetry: () -> Void
     var onSizeChange: (CGSize) -> Void
 
     @State private var dragStart: (width: Double, height: Double)?
@@ -319,18 +367,21 @@ public struct OverlayView: View {
     @State private var target: CGSize = .zero
 
     public init(model: OverlayModel, settings: AppSettings, metrics: NotchMetrics,
-                onOpenSettings: @escaping (String) -> Void = { _ in }, onSizeChange: @escaping (CGSize) -> Void = { _ in }) {
+                onOpenSettings: @escaping (String) -> Void = { _ in }, onRetry: @escaping () -> Void = {},
+                onSizeChange: @escaping (CGSize) -> Void = { _ in }) {
         self.model = model
         self.settings = settings
         self.metrics = metrics
         self.onOpenSettings = onOpenSettings
+        self.onRetry = onRetry
         self.onSizeChange = onSizeChange
     }
 
     private var state: OverlayState { model.state }
     private var scale: CGFloat { settings.textScale.factor }
     private var showPanel: Bool { state.status?.needsPanel ?? false }
-    private var showTopics: Bool { state.card == nil && !showPanel && !state.topics.isEmpty }
+    private var showStartup: Bool { state.card == nil && !showPanel && state.startup != nil }
+    private var showTopics: Bool { state.card == nil && !showPanel && !showStartup && !state.topics.isEmpty }
     private static let shoulder = HangingNotchMetrics.topShoulderRadius
     private var capsuleWidth: CGFloat { metrics.capsuleWidth(wide: false) }
 
@@ -362,9 +413,18 @@ public struct OverlayView: View {
     private var content: some View {
         VStack(spacing: 0) {
             CapsuleView(state: state, metrics: metrics)
+                .contentShape(Rectangle())
+                // Click the capsule: close the card (or the start-up panel). The panel never becomes key, so Esc
+                // can't reach it; the click is the dismiss.
+                .onTapGesture { model.collapse() }
             if showPanel, let s = state.status {
-                StatusPanelView(status: s, scale: scale, onOpenSettings: onOpenSettings, onDismiss: { model.dismissStatus() })
+                let canRetry: Bool = { if case .error = s { return !state.running }; return false }()
+                StatusPanelView(status: s, scale: scale, onOpenSettings: onOpenSettings, onDismiss: { model.dismissStatus() },
+                                onRetry: canRetry ? onRetry : nil)
                     .frame(width: max(capsuleWidth, CGFloat(min(settings.cardWidth, 520))))
+            } else if showStartup, let p = state.startup {
+                StartupPanelView(panel: p, scale: scale)
+                    .frame(width: max(capsuleWidth, CGFloat(min(settings.cardWidth, 460))))
             } else if showTopics {
                 ChipRow(chips: state.topics, scale: scale, leading: 0)
                     .frame(maxWidth: CGFloat(settings.cardWidth) - 32)

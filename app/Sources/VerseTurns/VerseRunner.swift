@@ -297,6 +297,12 @@ public final class VerseRunner: @unchecked Sendable {
         }
 
         let readyState = await startAndWaitReady()
+        if readyState == Self.stoppedWhileStarting {
+            // Stop pressed while the brain was still warming: end at once instead of waiting out readyTimeout.
+            log("stop requested while the brain was starting")
+            await stopBrain()
+            return 0
+        }
         if readyState == nil || readyState == "error" || readyState == "credit_exhausted" {
             log("brain did not become ready (\(readyState ?? "timeout")); stopping")
             await stopBrain()
@@ -475,7 +481,7 @@ public final class VerseRunner: @unchecked Sendable {
             return
         }
         let r = await startAndWaitReady()
-        guard let r, r != "error", r != "credit_exhausted" else {
+        guard let r, r != "error", r != "credit_exhausted", r != Self.stoppedWhileStarting else {
             // A crash during the restart is reported by brainEnded (second crash); a hang or an error status is not.
             if state.withLock({ $0.phase }) == .restarting { failBrain("the restarted brain did not become ready (\(r ?? "timeout"))") }
             return
@@ -499,11 +505,15 @@ public final class VerseRunner: @unchecked Sendable {
         let end = Date().addingTimeInterval(timeout)
         while Date() < end {
             if let r = state.withLock({ $0.ready }) { return r }
+            if state.withLock({ $0.stopRequested }) { return Self.stoppedWhileStarting }
             if !brain.isRunning { return "error" }
             try? await Task.sleep(for: .milliseconds(25))
         }
         return nil
     }
+
+    /// `waitReady`'s answer when Stop came before the brain was ready.
+    static let stoppedWhileStarting = "stopped"
 
     private func drain() async {
         let (stop, turns, failed) = state.withLock { ($0.stopRequested, $0.turnsSent, $0.brainFailed) }

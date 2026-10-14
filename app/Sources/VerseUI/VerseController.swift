@@ -13,6 +13,9 @@ public struct LaunchOptions: Sendable {
     /// `--preview-overlay capsule-idle,card-question`: shows those sample states (ScreenRenderer names) in the real
     /// notch panel, `VERSE_PREVIEW_SECONDS` (default 2) each, then quits. For checking placement on the real screen.
     public var previewOverlay: [String]?
+    /// Test only: `--cycles N` runs N Start → Ready → Stop cycles (Start right after Stop), logs each result to
+    /// verse.log and quits.
+    public var cycles: Int?
 
     public init(arguments: [String] = CommandLine.arguments) {
         var it = arguments.dropFirst().makeIterator()
@@ -23,6 +26,7 @@ public struct LaunchOptions: Sendable {
             case "--session": session = it.next()
             case "--autostart": autostart = true
             case "--render-screens": renderScreensDir = it.next()
+            case "--cycles": cycles = it.next().flatMap { Int($0) }
             case "--preview-overlay": previewOverlay = it.next()?.split(separator: ",").map(String.init)
             default: break
             }
@@ -98,29 +102,72 @@ public final class VerseController: ObservableObject {
 
     // MARK: start / stop
 
-    public func start() {
-        guard !running, !stopping else { return }
-        refreshSessions()
-        guard !settings.sessionName.isEmpty else { return }
-        let dir = SessionCatalog.url(settings.sessionName)
+    /// A live meeting runs until Stop. Without this the runner's `defaultLiveSeconds` (60 s, meant for CLI smoke
+    /// runs) ended every live session one minute after listening started.
+    public static let liveSessionSeconds = 12.0 * 3600
+
+    /// The runner options for one Start. A test file plays to its end; live listens until Stop.
+    public static func runOptions(sessionDir dir: URL, settings: AppSettings, fakeBrain: Bool, testFile: String?) -> RunOptions {
         var o = RunOptions(sessionDir: dir)
         o.lang = settings.language
         o.turn = settings.turnConfig
         o.fakeBrain = fakeBrain
         o.brainDir = Self.brainDir()
-        if let f = testFile { o.file = URL(fileURLWithPath: (f as NSString).expandingTildeInPath) }
+        if let f = testFile {
+            o.file = URL(fileURLWithPath: (f as NSString).expandingTildeInPath)
+        } else {
+            o.seconds = liveSessionSeconds
+        }
         o.transcriptURL = dir.appendingPathComponent("transcript.jsonl")
+        return o
+    }
+
+    /// The first known meeting app that is running ("Comet"), for the ready panel.
+    static func meetingAppName(bundleIDs: [String] = defaultMeetingApps) -> String? {
+        for id in bundleIDs {
+            if let app = NSRunningApplication.runningApplications(withBundleIdentifier: id).first {
+                return app.localizedName ?? id
+            }
+        }
+        return nil
+    }
+    static let defaultMeetingApps = ["ai.perplexity.comet", "com.brave.Browser", "us.zoom.xos", "com.microsoft.teams2"]
+
+    /// The last log line of the run, shown when a run fails without a status of its own.
+    private var lastLogLine: String?
+
+    public func log(_ line: String) {
+        FileLog.shared.write(line)
+    }
+
+    public func start() {
+        guard !running, !stopping else {
+            log("start ignored: running=\(running) stopping=\(stopping)")
+            return
+        }
+        refreshSessions()
+        guard !settings.sessionName.isEmpty else {
+            log("start ignored: no session")
+            overlay.showError("No session prepared. Run the prep for this meeting first.")
+            showPanel()
+            return
+        }
+        let dir = SessionCatalog.url(settings.sessionName)
+        var o = Self.runOptions(sessionDir: dir, settings: settings, fakeBrain: fakeBrain, testFile: testFile)
+        log("start session=\(settings.sessionName) lang=\(settings.language) fake=\(fakeBrain) file=\(testFile ?? "-") live_seconds=\(o.seconds.map { String(Int($0)) } ?? "file")")
+        lastLogLine = nil
         o.sink = { [weak self] e in
             // One FIFO hop to the main thread keeps the runner's order.
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.handle(e) } }
         }
-        let r = VerseRunner(options: o, log: { line in
-            // Brain and runner logs go to the unified log under the app's name; they never contain the key.
-            NSLog("Verse: %@", line)
+        let r = VerseRunner(options: o, log: { [weak self] line in
+            // Brain and runner logs go to ~/Library/Logs/Verse/verse.log; they never contain the key or audio.
+            FileLog.shared.write(line)
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.lastLogLine = line } }
         })
         overlay.bank = BankOpener.load(sessionDir: dir)
         overlay.config = settings.overlayConfig
-        overlay.sessionStarting(lang: settings.language)
+        overlay.sessionStarting(lang: settings.language, session: settings.sessionName, app: Self.meetingAppName())
         overlay.startClock()
         runner = r
         runSessionDir = dir
@@ -139,6 +186,7 @@ public final class VerseController: ObservableObject {
     /// Stops listening; the runner shuts the brain down. Returns when the run is over.
     public func stop() async {
         guard running, let r = runner else { return }
+        log("stop requested")
         stopping = true
         r.requestStop()
         await runTask?.value
@@ -173,11 +221,25 @@ public final class VerseController: ObservableObject {
         overlay.stopClock()
         persistSpend()
         monthSpend = SpendLedger.thisMonth()
+        log("run ended code=\(code)")
+        // Never fail silently: a failed run without a status of its own says what the log said last.
+        if code != 0 {
+            let detail = lastLogLine.map { "The session ended: \($0)" } ?? "The session ended with an error (code \(code))."
+            if overlay.state.status == nil || overlay.state.status == .error("The session ended with an error.") {
+                overlay.showError(detail)
+            }
+            showPanel()
+        }
         // Keep the overlay up only for a message that needs reading (permission, credit, error).
         if overlay.state.status?.needsPanel != true { panel?.hide() }
     }
 
     private func handle(_ e: RunnerEvent) {
+        if case .status(let st, let m) = e { log("status \(st) \(m)") }
+        if case .brain(let o) = e, o.type == "status" { log("brain status \(o[string: "state"] ?? "") \(o[string: "message"] ?? "")") }
+        if case .metric(let o) = e, o[string: "stage"] == "session_t0" {
+            log(String(format: "ready after %.1f s", Date().timeIntervalSince(runStartedAt)))
+        }
         overlay.apply(e)
         if case .brain(let o) = e, o.type == "metric", let c = o[double: "cost_usd"], c > 0 {
             sessionSpend += c
@@ -192,11 +254,17 @@ public final class VerseController: ObservableObject {
         SpendLedger.record(sessionDir: dir, startedAt: runStartedAt, costUSD: sessionSpend)
     }
 
+    /// The error panel's Retry: clears the message and starts again.
+    public func retry() {
+        overlay.dismissStatus()
+        start()
+    }
+
     private func showPanel() {
         if panel == nil {
             panel = NotchPanelController(model: overlay, settings: settings, onOpenSettings: { kind in
                 SystemSettingsLink.open(permission: kind)
-            })
+            }, onRetry: { [weak self] in self?.retry() })
         }
         panel?.show()
     }
@@ -207,6 +275,25 @@ public final class VerseController: ObservableObject {
     }
 
     public var overlayWindowNumber: Int? { panel?.windowNumber }
+
+    /// Test only (`--cycles N`): Start, wait for Ready (session_t0), Stop, and again at once. Returns the results.
+    public func runCycles(_ n: Int, readyTimeout: TimeInterval = 90) async -> [Bool] {
+        var results: [Bool] = []
+        for i in 1...max(n, 1) {
+            let t0 = Date()
+            start()
+            var ok = false
+            while Date().timeIntervalSince(t0) < readyTimeout {
+                if overlay.state.startup?.phase == .ready || overlay.state.startup?.phase == .listening { ok = true; break }
+                if !running { break }
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            log(String(format: "cycle %d: %@ after %.1f s", i, ok ? "READY" : "NOT READY", Date().timeIntervalSince(t0)))
+            results.append(ok)
+            await stop()
+        }
+        return results
+    }
 }
 
 /// Deep links into System Settings > Privacy & Security.

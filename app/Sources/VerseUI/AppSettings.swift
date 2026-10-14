@@ -35,7 +35,7 @@ public final class AppSettings: ObservableObject {
     @Published public var plainEndpointMs: Int { didSet { defaults.set(plainEndpointMs, forKey: "plainEndpointMs") } }
     @Published public var matchThreshold: Double { didSet { defaults.set(matchThreshold, forKey: "matchThreshold") } }
     @Published public var textScale: TextScale { didSet { defaults.set(textScale.rawValue, forKey: "textScale") } }
-    @Published public var cardTimeout: Double { didSet { defaults.set(cardTimeout, forKey: "cardTimeout") } }
+    @Published public var cardTimeout: Double { didSet { defaults.set(cardTimeout, forKey: "cardTimeoutV2") } }
     @Published public var cardWidth: Double { didSet { defaults.set(cardWidth, forKey: "cardWidth") } }
     @Published public var cardMaxHeight: Double { didSet { defaults.set(cardMaxHeight, forKey: "cardMaxHeight") } }
     /// The session folder name chosen in the menu.
@@ -57,7 +57,7 @@ public final class AppSettings: ObservableObject {
         plainEndpointMs = d.object(forKey: "plainEndpointMs") as? Int ?? 600
         matchThreshold = d.object(forKey: "matchThreshold") as? Double ?? 0.55
         textScale = TextScale(rawValue: d.string(forKey: "textScale") ?? "") ?? .medium
-        cardTimeout = d.object(forKey: "cardTimeout") as? Double ?? 45
+        cardTimeout = d.object(forKey: "cardTimeoutV2") as? Double ?? 0
         cardWidth = (d.object(forKey: "cardWidth") as? Double ?? 560).clamped(to: Self.cardWidthRange)
         cardMaxHeight = (d.object(forKey: "cardMaxHeight") as? Double ?? 460).clamped(to: Self.cardMaxHeightRange)
         sessionName = d.string(forKey: "sessionName") ?? ""
@@ -82,7 +82,7 @@ public final class AppSettings: ObservableObject {
     }
 
     public var overlayConfig: OverlayConfig {
-        OverlayConfig(cardTimeout: cardTimeout, otherNames: Self.list(otherParticipants))
+        OverlayConfig(cardTimeout: cardTimeout > 0 ? cardTimeout : .infinity, otherNames: Self.list(otherParticipants))
     }
 }
 

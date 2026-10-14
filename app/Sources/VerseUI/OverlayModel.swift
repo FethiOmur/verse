@@ -38,8 +38,20 @@ public final class OverlayModel: ObservableObject {
         publish()
     }
 
-    public func sessionStarting(lang: String) {
-        reducer.sessionStarting(lang: lang)
+    public func sessionStarting(lang: String, session: String = "", app: String? = nil) {
+        reducer.sessionStarting(lang: lang, session: session, app: app)
+        publish()
+    }
+
+    /// Click on the capsule: closes the open card, else the start-up panel.
+    public func collapse() {
+        reducer.collapse()
+        publish()
+    }
+
+    /// Shows an error message (with Retry) for a run that ended without saying why.
+    public func showError(_ message: String) {
+        reducer.setStatus(.error(message))
         publish()
     }
 

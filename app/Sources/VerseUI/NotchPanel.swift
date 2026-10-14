@@ -45,7 +45,11 @@ public final class NotchPanelController {
     private var hostingView: OverlayHostingView?
     private var layoutPending = false
 
-    public init(model: OverlayModel, settings: AppSettings, onOpenSettings: @escaping (String) -> Void) {
+    private let onRetry: () -> Void
+
+    public init(model: OverlayModel, settings: AppSettings, onOpenSettings: @escaping (String) -> Void,
+                onRetry: @escaping () -> Void = {}) {
+        self.onRetry = onRetry
         self.model = model
         self.settings = settings
         let s = Self.notchScreen()
@@ -67,7 +71,7 @@ public final class NotchPanelController {
         panel.title = "Verse overlay"
 
         let root = OverlayView(model: model, settings: settings, metrics: metrics, onOpenSettings: onOpenSettings,
-                               onSizeChange: { [weak self] size in self?.contentSizeChanged(size) })
+                               onRetry: onRetry, onSizeChange: { [weak self] size in self?.contentSizeChanged(size) })
         let host = OverlayHostingView(rootView: AnyView(root.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)))
         host.sizingOptions = []
         // The hosting view sits inside a plain container so it never drives the window's size itself (as a window's
@@ -117,7 +121,7 @@ public final class NotchPanelController {
         if m != metrics {
             metrics = m
             let root = OverlayView(model: model, settings: settings, metrics: metrics, onOpenSettings: { _ in },
-                                   onSizeChange: { [weak self] size in self?.contentSizeChanged(size) })
+                                   onRetry: onRetry, onSizeChange: { [weak self] size in self?.contentSizeChanged(size) })
             hostingView?.rootView = AnyView(root.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top))
         }
         layout()

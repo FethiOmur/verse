@@ -113,8 +113,9 @@ public struct SettingsView: View {
                     ForEach(TextScale.allCases) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                Stepper(value: $settings.cardTimeout, in: 10...180, step: 5) {
-                    LabeledContent("Card stays for", value: "\(Int(settings.cardTimeout)) s")
+                Picker("Card closes after", selection: $settings.cardTimeout) {
+                    Text("Never").tag(0.0)
+                    ForEach([30.0, 45.0, 60.0, 90.0, 120.0, 180.0], id: \.self) { Text("\(Int($0)) s").tag($0) }
                 }
                 LabeledContent("Card width", value: "\(Int(settings.cardWidth)) pt (drag the card's bottom edge)")
             }

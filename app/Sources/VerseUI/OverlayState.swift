@@ -133,6 +133,9 @@ public struct OverlayState: Equatable, Sendable {
     public var card: OverlayCard?
     /// Topic chips (F4, `chip` with `kind:"topic"`) while no card is open: a slim row under the capsule.
     public var topics: [OverlayChip] = []
+    /// The start-up panel under the capsule (Starting… → Ready → Listening). nil once the first card opened or the
+    /// user collapsed it.
+    public var startup: StartupPanel?
 
     public init() {}
 
@@ -142,16 +145,55 @@ public struct OverlayState: Equatable, Sendable {
     }
 }
 
+/// The persistent panel after Start: what Verse is doing before the first question.
+public struct StartupPanel: Equatable, Sendable {
+    public enum Phase: Equatable, Sendable {
+        /// Brain warming / models loading; `step` says which.
+        case starting(step: String)
+        /// Brain ready and the listen session is up.
+        case ready
+        /// The meeting app's audio is being transcribed.
+        case listening
+    }
+    public var phase: Phase
+    public var session: String
+    /// The meeting app being listened to ("Comet"); nil when none of the known apps is running.
+    public var app: String?
+
+    public init(phase: Phase, session: String, app: String?) {
+        self.phase = phase
+        self.session = session
+        self.app = app
+    }
+
+    public var title: String {
+        switch phase {
+        case .starting: return "Starting…"
+        case .ready: return "Ready · \(session)"
+        case .listening: return "Listening · \(session)"
+        }
+    }
+
+    public var subtitle: String {
+        switch phase {
+        case .starting(let step): return step
+        case .ready: return app.map { "listening to \($0)" } ?? "waiting for the meeting app's audio"
+        case .listening: return app.map { "hearing \($0)" } ?? "hearing the meeting"
+        }
+    }
+}
+
 /// Settings the reducer needs.
 public struct OverlayConfig: Equatable, Sendable {
-    /// Seconds without new content after which the card collapses to the capsule.
-    public var cardTimeout: TimeInterval = 45
+    /// Seconds without new content after which the card collapses to the capsule. `.infinity` (the default): never;
+    /// the card stays until the next card replaces it or the user dismisses it.
+    public var cardTimeout: TimeInterval = .infinity
     /// Other participants, to name them in the capsule tag (`for Marco`).
     public var otherNames: [String] = []
     public var maxBullets = 3
     public var maxDeepPoints = 4
 
-    public init(cardTimeout: TimeInterval = 45, otherNames: [String] = []) {
+    public init(cardTimeout: TimeInterval = .infinity, otherNames: [String] = []) {
         self.cardTimeout = cardTimeout
         self.otherNames = otherNames
     }
@@ -250,12 +292,14 @@ public struct OverlayReducer: Sendable {
             if o[string: "stage"] == "session_t0" {
                 state.running = true
                 if state.activity == .idle || state.activity == .warming { state.activity = .listening }
+                if state.startup != nil { state.startup?.phase = .ready }
             }
         case .ended(let code):
             state.running = false
             state.activity = .idle
             state.card = nil
             state.topics = []
+            state.startup = nil
             state.addresseeTag = nil
             state.tagDimmed = false
             if code != 0, state.status == nil { state.status = .error("The session ended with an error.") }
@@ -275,11 +319,23 @@ public struct OverlayReducer: Sendable {
         }
     }
 
-    /// Marks the start of a session (Start pressed): the capsule shows warming until the brain is ready.
-    public mutating func sessionStarting(lang: String) {
+    /// Marks the start of a session (Start pressed): the capsule shows warming until the brain is ready, and the
+    /// start-up panel stays open until the first card or until the user collapses it.
+    public mutating func sessionStarting(lang: String, session: String = "", app: String? = nil) {
         reset(lang: lang)
         state.running = true
         state.activity = .warming
+        state.startup = StartupPanel(phase: .starting(step: "Starting the brain and loading models"), session: session, app: app)
+    }
+
+    /// The user collapsed the open panel or card (click on the capsule).
+    public mutating func collapse() {
+        if state.card != nil {
+            state.card = nil
+            if state.activity == .thinking { state.activity = .listening }
+        } else {
+            state.startup = nil
+        }
     }
 
     private mutating func touch(_ now: TimeInterval) { lastContent = now }
@@ -290,6 +346,7 @@ public struct OverlayReducer: Sendable {
         switch st {
         case "warming": state.activity = .warming
         case "ready":
+            if case .starting? = state.startup?.phase { state.startup?.phase = .starting(step: "Brain ready · starting speech recognition") }
             if state.activity == .warming || state.activity == .offline || state.activity == .idle { state.activity = .listening }
             if state.status == .offline || state.status == .rateLimited || state.status == .restarting { state.status = nil }
         case "offline":
@@ -307,6 +364,10 @@ public struct OverlayReducer: Sendable {
     }
 
     private mutating func applyOutbound(_ o: [String: JSONValue], now: TimeInterval) {
+        if (o.type == "partial" || o.type == "turn"), o[string: "speaker"] == "remote", state.startup?.phase == .ready {
+            // The meeting app's audio is being transcribed.
+            state.startup?.phase = .listening
+        }
         guard let tid = o[string: "turn_id"] else { return }
         switch o.type {
         case "bank_hit":
@@ -340,6 +401,7 @@ public struct OverlayReducer: Sendable {
         state.addresseeTag = who == "me" ? "for you" : nil
         state.tagDimmed = false
         state.card = OverlayCard(turnID: tid, question: question)
+        state.startup = nil
         state.topics = []
         topicSeen = [:]
         state.activity = .thinking

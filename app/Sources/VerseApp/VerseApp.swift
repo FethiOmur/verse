@@ -109,6 +109,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             return
         }
+        if let n = launch.cycles {
+            Task { @MainActor in
+                let r = await controller.runCycles(n)
+                let line = "cycles: \(r.filter { $0 }.count)/\(r.count) reached Ready"
+                controller.log(line)
+                print(line)
+                Self.terminateSoon()
+            }
+            return
+        }
         if launch.autostart { controller.start() }
     }
 

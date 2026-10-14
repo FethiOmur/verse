@@ -73,7 +73,23 @@ public enum ScreenRenderer {
         offline.activity = .offline
         offline.card = nil
 
+        var starting = OverlayState()
+        starting.running = true
+        starting.activity = .warming
+        starting.startup = StartupPanel(phase: .starting(step: "Starting the brain and loading models"), session: "mara-northwindlabs", app: "Comet")
+        var ready = idle
+        ready.startup = StartupPanel(phase: .ready, session: "mara-northwindlabs", app: "Comet")
+        var listening = idle
+        listening.startup = StartupPanel(phase: .listening, session: "mara-northwindlabs", app: "Comet")
+        var failed = OverlayState()
+        failed.status = .error("The session ended: brain did not become ready (timeout); stopping")
+
         return [
+            Shot(name: "starting", state: starting),
+            Shot(name: "ready", state: ready),
+            Shot(name: "listening", state: listening),
+            Shot(name: "error", state: failed),
+            Shot(name: "card-persistent", state: q),
             Shot(name: "capsule-idle", state: idle),
             Shot(name: "capsule-for-marco", state: marco),
             Shot(name: "card-question", state: q),
