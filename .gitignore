@@ -29,3 +29,4 @@ bench/stt-models/
 *.safetensors
 *.onnx
 bench/embed/results/*.npz
+app/build/
