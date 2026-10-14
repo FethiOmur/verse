@@ -6,7 +6,7 @@ func flag(_ n: String) -> Bool { args.contains(n) }
 func opt(_ n: String) -> String? { args.firstIndex(of: n).flatMap { $0 + 1 < args.count ? args[$0 + 1] : nil } }
 
 guard let engineName = opt("--engine") else {
-    print("usage: SttLocal --engine apple|nemotron|moonshine [--tag cold|warm] [--questions N] [--moon-interval 0.5] [--voices en,en-samantha]")
+    print("usage: SttLocal --engine apple|nemotron|moonshine [--model-dir PATH] [--tag cold|warm] [--questions N] [--moon-interval 0.5] [--voices en,en-samantha]")
     exit(2)
 }
 let fm = FileManager.default
@@ -20,7 +20,11 @@ let langs = ([Corpus.en, Corpus.enControl]).filter { voiceKeys.contains($0.key) 
 let engine: Engine
 switch engineName {
 case "apple": engine = AppleEngine()
-case "nemotron": engine = NemotronEngine(modelDir: modelsRoot.appendingPathComponent("nemotron/nemotron_coreml_560ms"))
+case "nemotron":
+    // The model folder lives in the app's model location since 2026-10-14 (see ../stt-models/README.md).
+    let nemotronDir = opt("--model-dir").map { URL(fileURLWithPath: $0) }
+        ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support/Verse/models/nemotron-en-0.6b-560ms")
+    engine = NemotronEngine(modelDir: nemotronDir)
 case "moonshine":
     engine = MoonshineEngine(python: root.appendingPathComponent(".venv/bin/python"),
                              worker: root.appendingPathComponent("moonshine_worker.py"),

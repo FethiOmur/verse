@@ -18,6 +18,11 @@ let package = Package(
         .executable(name: "verse-listen", targets: ["verse-listen"]),
         .executable(name: "verse-run", targets: ["verse-run"]),
     ],
+    dependencies: [
+        // Apache-2.0. Local Nemotron Speech Streaming 0.6B (CoreML) engine; same pin as bench/stt-local.
+        // The model files are NOT part of the package: they are read from ~/Library/Application Support/Verse/models.
+        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.7"),
+    ],
     targets: [
         .target(
             name: "VerseAudio",
@@ -29,7 +34,7 @@ let package = Package(
         ),
         .target(
             name: "VerseSpeech",
-            dependencies: ["VerseAudio"],
+            dependencies: ["VerseAudio", .product(name: "FluidAudio", package: "FluidAudio")],
             swiftSettings: [.swiftLanguageMode(.v6)],
             linkerSettings: [.linkedFramework("Speech")]
         ),

@@ -48,8 +48,14 @@ public struct ListenConfig: Sendable {
     /// Silence appended after a file or memory clip so the recognizer settles, as it would in a live call.
     public var clipTailSeconds: TimeInterval = 2.0
     public var bleedGate = BleedGate()
-    /// Engine override (default: EngineFactory.defaultKind(for: lang)).
+    /// Engine override. Default (nil): `EngineFactory.sessionDefaultKind(for: lang)`, i.e. `.auto` for English
+    /// (Nemotron once loaded, Apple until then and as the fallback), the Apple engine for it/tr.
     public var engineKind: EngineKind? = nil
+    /// Folder with the Nemotron model files (never downloaded; see `NemotronModel`).
+    public var nemotronModelDir: URL = NemotronModel.defaultDirectory
+    /// Where engine status lines go (`engine_ready`, `engine_switch`, `engine_fallback`). Default: stderr as JSON
+    /// lines, the same channel `verse-listen` uses for its own status lines. nil: dropped.
+    public var statusSink: (@Sendable (ListenStatus) -> Void)? = ListenStatus.writeToStderr
 
     public init(lang: String, remoteBundleIDs: [String] = defaultRemoteBundleIDs, micEnabled: Bool = true,
                 source: Source = .live) {
@@ -101,5 +107,5 @@ public struct ListenEnvironment: Sendable {
                 return me.map { MemorySource(clip: $0, tailSeconds: cfg.clipTailSeconds, name: "memory mic") }
             }
         },
-        makeEngine: { cfg in try EngineFactory.make(lang: cfg.lang, kind: cfg.engineKind) })
+        makeEngine: { cfg in try EngineFactory.make(config: cfg) })
 }

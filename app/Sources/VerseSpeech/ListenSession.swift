@@ -83,11 +83,17 @@ public actor ListenSession {
         }
 
         var built: [Channel: ChannelPipeline] = [:]
+        let sink = config.statusSink
+        func makeEngine(for channel: Channel) throws -> any TranscriptionEngine {
+            let engine = try environment.makeEngine(config)
+            engine.attach(channel: channel, status: { sink?($0) })
+            return engine
+        }
         if let s = remoteSource {
-            built[.remote] = ChannelPipeline(channel: .remote, source: s, engine: try environment.makeEngine(config))
+            built[.remote] = ChannelPipeline(channel: .remote, source: s, engine: try makeEngine(for: .remote))
         }
         if let s = micSource {
-            built[.me] = ChannelPipeline(channel: .me, source: s, engine: try environment.makeEngine(config))
+            built[.me] = ChannelPipeline(channel: .me, source: s, engine: try makeEngine(for: .me))
         }
         remoteSource = nil
         micSource = nil

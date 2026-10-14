@@ -24,6 +24,13 @@ public protocol TranscriptionEngine: AnyObject, Sendable {
     func finish() async throws
     /// Stops at once, dropping pending results.
     func cancel() async
+    /// Called once by the session before `prepare()`: where this engine reports status lines (`ListenStatus`)
+    /// for the given channel. Engines with nothing to report ignore it.
+    func attach(channel: Channel, status: @escaping @Sendable (ListenStatus) -> Void)
+}
+
+public extension TranscriptionEngine {
+    func attach(channel: Channel, status: @escaping @Sendable (ListenStatus) -> Void) {}
 }
 
 public enum EngineKind: String, Sendable, Codable {
@@ -33,6 +40,13 @@ public enum EngineKind: String, Sendable, Codable {
     case dictationTranscriber
     /// Slot for a later WhisperKit engine (not on disk; see bench/whisper/RESULTS_whisper.md).
     case whisperKit
+    /// NVIDIA Nemotron Speech Streaming 0.6B (CoreML, FluidAudio), English only. Fails if the model folder is
+    /// missing. Prefer `.auto`, which falls back to Apple.
+    case nemotron
+    /// English: Apple `SpeechTranscriber` right away, Nemotron once its model is loaded, per channel at the next
+    /// turn boundary; plain Apple if the model folder does not exist or fails to load. Other languages: the
+    /// `defaultKind` engine.
+    case auto
 }
 
 public enum EngineFactory {
@@ -45,17 +59,40 @@ public enum EngineFactory {
         }
     }
 
-    /// Decided routing (plan P1-3): en/it -> SpeechTranscriber+fastResults, tr -> DictationTranscriber+frequentFinalization.
+    /// Apple routing (plan P1-3): en/it -> SpeechTranscriber+fastResults, tr -> DictationTranscriber+frequentFinalization.
+    /// This is the Apple engine used for each language, also as the fallback of `.auto`.
     public static func defaultKind(for lang: String) -> EngineKind {
         lang == "tr" ? .dictationTranscriber : .speechTranscriber
     }
 
-    public static func make(lang: String, kind: EngineKind? = nil) throws -> TranscriptionEngine {
-        switch kind ?? defaultKind(for: lang) {
+    /// What a session uses when `ListenConfig.engineKind` is nil: `.auto` for English, `defaultKind` otherwise.
+    public static func sessionDefaultKind(for lang: String) -> EngineKind {
+        lang == "en" ? .auto : defaultKind(for: lang)
+    }
+
+    public static func make(lang: String, kind: EngineKind? = nil,
+                            nemotronModelDir: URL = NemotronModel.defaultDirectory) throws -> TranscriptionEngine {
+        switch kind ?? sessionDefaultKind(for: lang) {
         case .speechTranscriber: return AppleSpeechEngine(lang: lang, kind: .speech)
         case .dictationTranscriber: return AppleSpeechEngine(lang: lang, kind: .dictation)
         case .whisperKit: throw ListenError.speechUnavailable(lang: lang, reason: "WhisperKit engine not built yet (model not on disk)")
+        case .nemotron:
+            guard lang == "en" else {
+                throw ListenError.speechUnavailable(lang: lang, reason: "the Nemotron model is English only")
+            }
+            if let reason = NemotronEngine.unavailableReason(nemotronModelDir) {
+                throw ListenError.speechUnavailable(lang: lang, reason: reason)
+            }
+            return NemotronEngine(modelDir: nemotronModelDir)
+        case .auto:
+            let apple = AppleSpeechEngine(lang: lang, kind: defaultKind(for: lang) == .dictationTranscriber ? .dictation : .speech)
+            guard lang == "en" else { return apple }
+            return SwitchingEngine.auto(lang: lang, apple: apple, modelDir: nemotronModelDir)
         }
+    }
+
+    public static func make(config: ListenConfig) throws -> TranscriptionEngine {
+        try make(lang: config.lang, kind: config.engineKind, nemotronModelDir: config.nemotronModelDir)
     }
 }
 
