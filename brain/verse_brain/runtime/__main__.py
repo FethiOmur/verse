@@ -1,5 +1,9 @@
 """CLI: python -u -m verse_brain.runtime [--budget-usd N] [--fake] [--no-embed]
 
+One process serves one session, and its first message decides which: `start` runs the meeting runtime (engine.Brain),
+`sim_start` the interview simulation (sim.SimRuntime, plan S2). `--budget-usd` and the embedding matcher apply to
+meetings only.
+
 Reads Swift -> brain JSON lines on stdin, writes brain -> Swift JSON lines on stdout (flushed per line), logs to
 stderr. Exits on `{"type":"control","action":"stop"}` or stdin EOF. `--fake` uses the canned fake transport
 (no network, no key) for IPC tests; it also leaves the embedding matcher off. `--no-embed` turns the F3 paraphrase
@@ -18,6 +22,7 @@ import sys
 from .engine import Brain
 from .protocol import Emitter, parse_line
 from .settings import Config
+from .sim import SimRuntime, sim_fake_responder
 
 
 async def _stdin_lines():
@@ -55,7 +60,7 @@ async def amain(args) -> int:
         from .embed import LiteRtEmbedder
 
         factory = lambda: LiteRtEmbedder(cfg.embed_model, cfg.embed_backend)  # noqa: E731
-    brain = Brain(transport, emitter, cfg, embedder_factory=factory)
+    runtime: Brain | SimRuntime | None = None
     try:
         async for raw in _stdin_lines():
             try:
@@ -65,11 +70,21 @@ async def amain(args) -> int:
                 continue
             if msg is None:
                 continue
-            await brain.handle(msg)
-            if brain.stopped.is_set():
+            if runtime is None:   # the first message decides the mode for the life of the process
+                if msg.get("type") == "sim_start":
+                    if args.fake:
+                        transport.responder = sim_fake_responder
+                    runtime = SimRuntime(transport, emitter)
+                else:
+                    runtime = Brain(transport, emitter, cfg, embedder_factory=factory)
+            await runtime.handle(msg)
+            if runtime.stopped.is_set():
                 break
     finally:
-        await brain.shutdown()
+        if runtime is not None:
+            await runtime.shutdown()
+        else:
+            await transport.aclose()
     return 0
 
 

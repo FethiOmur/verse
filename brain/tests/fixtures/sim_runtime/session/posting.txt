@@ -1,0 +1,15 @@
+AI Engineer - Northwind Labs (remote, Europe)
+
+Northwind Labs builds conversational commerce tools for online shops. Our assistant answers shoppers on WhatsApp and the web for more than 400 merchants.
+
+What you will do:
+- Design, ship and monitor LLM features that talk to real customers.
+- Build evaluation pipelines that catch regressions before they reach merchants.
+- Work closely with the product team and explain trade-offs in plain language.
+
+What we look for:
+- You have shipped at least one LLM feature to production users.
+- You measure quality with evals, not vibes.
+- You communicate clearly with non-technical colleagues.
+
+How we work: small team, weekly releases, async first. The interview process has a screening call, a technical case study and a final call with the founders.

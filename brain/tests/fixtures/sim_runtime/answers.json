@@ -1,0 +1,9 @@
+{"_note": "Scripted candidate answers for the live 3-question run. Each list is consumed in order, one entry per listen for that question; when a list runs out the driver answers with `fallback`.",
+ "q1": ["Sure. I'm a software engineer who has spent the last two years building LLM products. Most recently I led Lantern, a pipeline that reads supplier invoices and pulls out the fields our accounting team needed. I'm looking for a role where I can work on assistants that talk to customers directly.",
+        "What I enjoy most is the moment a feature leaves the demo stage and real people start relying on it. That's when you learn what actually matters."],
+ "q2": ["So we built an extraction feature for invoices and the users were happy with it, it worked pretty well and the team liked it.",
+        "Right, the number was data entry time. It went from about eleven minutes per invoice to two minutes, which we measured on the accounting team's own logs.",
+        "We kept a golden set of three hundred invoices and ran it on every prompt change, so a regression showed up before anything was released."],
+ "q3": ["I like that Northwind ships every week and that the assistant talks to real shoppers, so quality problems are visible quickly. I want to get better at evaluation for conversations, not just extraction."],
+ "candidate": "Yes, what does the technical case study in the process look like?",
+ "fallback": "I think that covers it."}
