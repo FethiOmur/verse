@@ -1,0 +1,1284 @@
+{
+  "chunkMs" : 50,
+  "engine" : "nemotron",
+  "fixtures" : {
+    "deletedAt" : "2026-10-14T09:10:43Z",
+    "directory" : "\/Users\/user\/Desktop\/ProjectExamples\/CursorExamples\/Verse\/bench\/stt-local\/fixtures\/run-2026-10-14T091041Z",
+    "directoryAbsentAfterDelete" : true,
+    "filesCreated" : 3,
+    "filesDeleted" : 3
+  },
+  "gapSilenceSec" : 2.5,
+  "generatedAt" : "2026-10-14T09:10:43Z",
+  "host" : "Version 26.6.2 (Build 25G83)",
+  "leadSilenceSec" : 1,
+  "notes" : [
+
+  ],
+  "runs" : [
+    {
+      "chunks" : 368,
+      "computeSec" : 0.9591101179999992,
+      "cpuPct" : 3.2290765307414073,
+      "cpuSec" : 0.5942419999999999,
+      "engine" : "nemotron",
+      "events" : [
+        {
+          "end" : 1.4400000000000002,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 1.2000000000000002,
+              "start" : 1.12,
+              "text" : "What "
+            },
+            {
+              "end" : 1.28,
+              "start" : 1.2,
+              "text" : "is "
+            },
+            {
+              "end" : 1.36,
+              "start" : 1.28,
+              "text" : "the "
+            },
+            {
+              "end" : 1.4400000000000002,
+              "start" : 1.36,
+              "text" : "main "
+            }
+          ],
+          "start" : 1.12,
+          "t" : 1.732097958,
+          "text" : "What is the main"
+        },
+        {
+          "end" : 2,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 1.2000000000000002,
+              "start" : 1.12,
+              "text" : "What "
+            },
+            {
+              "end" : 1.28,
+              "start" : 1.2,
+              "text" : "is "
+            },
+            {
+              "end" : 1.36,
+              "start" : 1.28,
+              "text" : "the "
+            },
+            {
+              "end" : 1.4400000000000002,
+              "start" : 1.36,
+              "text" : "main "
+            },
+            {
+              "end" : 1.84,
+              "start" : 1.76,
+              "text" : "risk "
+            },
+            {
+              "end" : 2,
+              "start" : 1.92,
+              "text" : "in "
+            },
+            {
+              "end" : 2,
+              "start" : 1.92,
+              "text" : "the "
+            }
+          ],
+          "start" : 1.12,
+          "t" : 2.271673167,
+          "text" : "What is the main risk in the"
+        },
+        {
+          "end" : 2.3200000000000003,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 1.2000000000000002,
+              "start" : 1.12,
+              "text" : "What "
+            },
+            {
+              "end" : 1.28,
+              "start" : 1.2,
+              "text" : "is "
+            },
+            {
+              "end" : 1.36,
+              "start" : 1.28,
+              "text" : "the "
+            },
+            {
+              "end" : 1.4400000000000002,
+              "start" : 1.36,
+              "text" : "main "
+            },
+            {
+              "end" : 1.84,
+              "start" : 1.76,
+              "text" : "risk "
+            },
+            {
+              "end" : 2,
+              "start" : 1.92,
+              "text" : "in "
+            },
+            {
+              "end" : 2,
+              "start" : 1.92,
+              "text" : "the "
+            },
+            {
+              "end" : 2.3200000000000003,
+              "start" : 2.24,
+              "text" : "current "
+            }
+          ],
+          "start" : 1.12,
+          "t" : 2.825809,
+          "text" : "What is the main risk in the current"
+        },
+        {
+          "end" : 2.8800000000000003,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 1.2000000000000002,
+              "start" : 1.12,
+              "text" : "What "
+            },
+            {
+              "end" : 1.28,
+              "start" : 1.2,
+              "text" : "is "
+            },
+            {
+              "end" : 1.36,
+              "start" : 1.28,
+              "text" : "the "
+            },
+            {
+              "end" : 1.4400000000000002,
+              "start" : 1.36,
+              "text" : "main "
+            },
+            {
+              "end" : 1.84,
+              "start" : 1.76,
+              "text" : "risk "
+            },
+            {
+              "end" : 2,
+              "start" : 1.92,
+              "text" : "in "
+            },
+            {
+              "end" : 2,
+              "start" : 1.92,
+              "text" : "the "
+            },
+            {
+              "end" : 2.3200000000000003,
+              "start" : 2.24,
+              "text" : "current "
+            },
+            {
+              "end" : 2.8800000000000003,
+              "start" : 2.8000000000000003,
+              "text" : "delivery "
+            }
+          ],
+          "start" : 1.12,
+          "t" : 3.42889,
+          "text" : "What is the main risk in the current delivery"
+        },
+        {
+          "end" : 3.68,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 1.2000000000000002,
+              "start" : 1.12,
+              "text" : "What "
+            },
+            {
+              "end" : 1.28,
+              "start" : 1.2,
+              "text" : "is "
+            },
+            {
+              "end" : 1.36,
+              "start" : 1.28,
+              "text" : "the "
+            },
+            {
+              "end" : 1.4400000000000002,
+              "start" : 1.36,
+              "text" : "main "
+            },
+            {
+              "end" : 1.84,
+              "start" : 1.76,
+              "text" : "risk "
+            },
+            {
+              "end" : 2,
+              "start" : 1.92,
+              "text" : "in "
+            },
+            {
+              "end" : 2,
+              "start" : 1.92,
+              "text" : "the "
+            },
+            {
+              "end" : 2.3200000000000003,
+              "start" : 2.24,
+              "text" : "current "
+            },
+            {
+              "end" : 2.8800000000000003,
+              "start" : 2.8000000000000003,
+              "text" : "delivery "
+            },
+            {
+              "end" : 3.68,
+              "start" : 3.36,
+              "text" : "timeline "
+            }
+          ],
+          "start" : 1.12,
+          "t" : 3.9711371250000003,
+          "text" : "What is the main risk in the current delivery timeline"
+        },
+        {
+          "end" : 6.48,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 1.2000000000000002,
+              "start" : 1.12,
+              "text" : "What "
+            },
+            {
+              "end" : 1.28,
+              "start" : 1.2,
+              "text" : "is "
+            },
+            {
+              "end" : 1.36,
+              "start" : 1.28,
+              "text" : "the "
+            },
+            {
+              "end" : 1.4400000000000002,
+              "start" : 1.36,
+              "text" : "main "
+            },
+            {
+              "end" : 1.84,
+              "start" : 1.76,
+              "text" : "risk "
+            },
+            {
+              "end" : 2,
+              "start" : 1.92,
+              "text" : "in "
+            },
+            {
+              "end" : 2,
+              "start" : 1.92,
+              "text" : "the "
+            },
+            {
+              "end" : 2.3200000000000003,
+              "start" : 2.24,
+              "text" : "current "
+            },
+            {
+              "end" : 2.8800000000000003,
+              "start" : 2.8000000000000003,
+              "text" : "delivery "
+            },
+            {
+              "end" : 6.24,
+              "start" : 3.36,
+              "text" : "timeline? "
+            },
+            {
+              "end" : 6.4,
+              "start" : 6.32,
+              "text" : "Can "
+            },
+            {
+              "end" : 6.48,
+              "start" : 6.4,
+              "text" : "you "
+            }
+          ],
+          "start" : 1.12,
+          "t" : 6.796147875,
+          "text" : "What is the main risk in the current delivery timeline? Can you"
+        },
+        {
+          "end" : 6.24,
+          "isFinal" : true,
+          "runs" : [
+            {
+              "end" : 1.2000000000000002,
+              "start" : 1.12,
+              "text" : "What "
+            },
+            {
+              "end" : 1.28,
+              "start" : 1.2,
+              "text" : "is "
+            },
+            {
+              "end" : 1.36,
+              "start" : 1.28,
+              "text" : "the "
+            },
+            {
+              "end" : 1.4400000000000002,
+              "start" : 1.36,
+              "text" : "main "
+            },
+            {
+              "end" : 1.84,
+              "start" : 1.76,
+              "text" : "risk "
+            },
+            {
+              "end" : 2,
+              "start" : 1.92,
+              "text" : "in "
+            },
+            {
+              "end" : 2,
+              "start" : 1.92,
+              "text" : "the "
+            },
+            {
+              "end" : 2.3200000000000003,
+              "start" : 2.24,
+              "text" : "current "
+            },
+            {
+              "end" : 2.8800000000000003,
+              "start" : 2.8000000000000003,
+              "text" : "delivery "
+            },
+            {
+              "end" : 6.24,
+              "start" : 3.36,
+              "text" : "timeline? "
+            }
+          ],
+          "start" : 1.12,
+          "t" : 6.796147875,
+          "text" : "What is the main risk in the current delivery timeline?"
+        },
+        {
+          "end" : 7.12,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 6.4,
+              "start" : 6.32,
+              "text" : "Can "
+            },
+            {
+              "end" : 6.48,
+              "start" : 6.4,
+              "text" : "you "
+            },
+            {
+              "end" : 6.88,
+              "start" : 6.8,
+              "text" : "walk "
+            },
+            {
+              "end" : 6.96,
+              "start" : 6.88,
+              "text" : "us "
+            },
+            {
+              "end" : 7.12,
+              "start" : 7.04,
+              "text" : "through "
+            }
+          ],
+          "start" : 6.32,
+          "t" : 7.332368833,
+          "text" : "Can you walk us through"
+        },
+        {
+          "end" : 7.5200000000000005,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 6.4,
+              "start" : 6.32,
+              "text" : "Can "
+            },
+            {
+              "end" : 6.48,
+              "start" : 6.4,
+              "text" : "you "
+            },
+            {
+              "end" : 6.88,
+              "start" : 6.8,
+              "text" : "walk "
+            },
+            {
+              "end" : 6.96,
+              "start" : 6.88,
+              "text" : "us "
+            },
+            {
+              "end" : 7.12,
+              "start" : 7.04,
+              "text" : "through "
+            },
+            {
+              "end" : 7.44,
+              "start" : 7.36,
+              "text" : "how "
+            },
+            {
+              "end" : 7.5200000000000005,
+              "start" : 7.44,
+              "text" : "the "
+            }
+          ],
+          "start" : 6.32,
+          "t" : 7.875279042,
+          "text" : "Can you walk us through how the"
+        },
+        {
+          "end" : 8.16,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 6.4,
+              "start" : 6.32,
+              "text" : "Can "
+            },
+            {
+              "end" : 6.48,
+              "start" : 6.4,
+              "text" : "you "
+            },
+            {
+              "end" : 6.88,
+              "start" : 6.8,
+              "text" : "walk "
+            },
+            {
+              "end" : 6.96,
+              "start" : 6.88,
+              "text" : "us "
+            },
+            {
+              "end" : 7.12,
+              "start" : 7.04,
+              "text" : "through "
+            },
+            {
+              "end" : 7.44,
+              "start" : 7.36,
+              "text" : "how "
+            },
+            {
+              "end" : 7.5200000000000005,
+              "start" : 7.44,
+              "text" : "the "
+            },
+            {
+              "end" : 7.92,
+              "start" : 7.84,
+              "text" : "pricing "
+            },
+            {
+              "end" : 8.16,
+              "start" : 8.08,
+              "text" : "mod "
+            }
+          ],
+          "start" : 6.32,
+          "t" : 8.424246875,
+          "text" : "Can you walk us through how the pricing mod"
+        },
+        {
+          "end" : 8.56,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 6.4,
+              "start" : 6.32,
+              "text" : "Can "
+            },
+            {
+              "end" : 6.48,
+              "start" : 6.4,
+              "text" : "you "
+            },
+            {
+              "end" : 6.88,
+              "start" : 6.8,
+              "text" : "walk "
+            },
+            {
+              "end" : 6.96,
+              "start" : 6.88,
+              "text" : "us "
+            },
+            {
+              "end" : 7.12,
+              "start" : 7.04,
+              "text" : "through "
+            },
+            {
+              "end" : 7.44,
+              "start" : 7.36,
+              "text" : "how "
+            },
+            {
+              "end" : 7.5200000000000005,
+              "start" : 7.44,
+              "text" : "the "
+            },
+            {
+              "end" : 7.92,
+              "start" : 7.84,
+              "text" : "pricing "
+            },
+            {
+              "end" : 8.48,
+              "start" : 8.08,
+              "text" : "model "
+            },
+            {
+              "end" : 8.56,
+              "start" : 8.48,
+              "text" : "works "
+            }
+          ],
+          "start" : 6.32,
+          "t" : 9.021966792,
+          "text" : "Can you walk us through how the pricing model works"
+        },
+        {
+          "end" : 11.44,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 6.4,
+              "start" : 6.32,
+              "text" : "Can "
+            },
+            {
+              "end" : 6.48,
+              "start" : 6.4,
+              "text" : "you "
+            },
+            {
+              "end" : 6.88,
+              "start" : 6.8,
+              "text" : "walk "
+            },
+            {
+              "end" : 6.96,
+              "start" : 6.88,
+              "text" : "us "
+            },
+            {
+              "end" : 7.12,
+              "start" : 7.04,
+              "text" : "through "
+            },
+            {
+              "end" : 7.44,
+              "start" : 7.36,
+              "text" : "how "
+            },
+            {
+              "end" : 7.5200000000000005,
+              "start" : 7.44,
+              "text" : "the "
+            },
+            {
+              "end" : 7.92,
+              "start" : 7.84,
+              "text" : "pricing "
+            },
+            {
+              "end" : 8.48,
+              "start" : 8.08,
+              "text" : "model "
+            },
+            {
+              "end" : 11.280000000000001,
+              "start" : 8.48,
+              "text" : "works? "
+            },
+            {
+              "end" : 11.44,
+              "start" : 11.36,
+              "text" : "Do "
+            }
+          ],
+          "start" : 6.32,
+          "t" : 11.826163875,
+          "text" : "Can you walk us through how the pricing model works? Do"
+        },
+        {
+          "end" : 11.280000000000001,
+          "isFinal" : true,
+          "runs" : [
+            {
+              "end" : 6.4,
+              "start" : 6.32,
+              "text" : "Can "
+            },
+            {
+              "end" : 6.48,
+              "start" : 6.4,
+              "text" : "you "
+            },
+            {
+              "end" : 6.88,
+              "start" : 6.8,
+              "text" : "walk "
+            },
+            {
+              "end" : 6.96,
+              "start" : 6.88,
+              "text" : "us "
+            },
+            {
+              "end" : 7.12,
+              "start" : 7.04,
+              "text" : "through "
+            },
+            {
+              "end" : 7.44,
+              "start" : 7.36,
+              "text" : "how "
+            },
+            {
+              "end" : 7.5200000000000005,
+              "start" : 7.44,
+              "text" : "the "
+            },
+            {
+              "end" : 7.92,
+              "start" : 7.84,
+              "text" : "pricing "
+            },
+            {
+              "end" : 8.48,
+              "start" : 8.08,
+              "text" : "model "
+            },
+            {
+              "end" : 11.280000000000001,
+              "start" : 8.48,
+              "text" : "works? "
+            }
+          ],
+          "start" : 6.32,
+          "t" : 11.826163875,
+          "text" : "Can you walk us through how the pricing model works?"
+        },
+        {
+          "end" : 12.08,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 11.44,
+              "start" : 11.36,
+              "text" : "Do "
+            },
+            {
+              "end" : 11.84,
+              "start" : 11.76,
+              "text" : "you "
+            },
+            {
+              "end" : 12,
+              "start" : 11.92,
+              "text" : "think "
+            },
+            {
+              "end" : 12.08,
+              "start" : 12,
+              "text" : "the "
+            }
+          ],
+          "start" : 11.36,
+          "t" : 12.389766167,
+          "text" : "Do you think the"
+        },
+        {
+          "end" : 12.56,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 11.44,
+              "start" : 11.36,
+              "text" : "Do "
+            },
+            {
+              "end" : 11.84,
+              "start" : 11.76,
+              "text" : "you "
+            },
+            {
+              "end" : 12,
+              "start" : 11.92,
+              "text" : "think "
+            },
+            {
+              "end" : 12.08,
+              "start" : 12,
+              "text" : "the "
+            },
+            {
+              "end" : 12.4,
+              "start" : 12.32,
+              "text" : "team "
+            },
+            {
+              "end" : 12.56,
+              "start" : 12.48,
+              "text" : "can "
+            }
+          ],
+          "start" : 11.36,
+          "t" : 12.941552083,
+          "text" : "Do you think the team can"
+        },
+        {
+          "end" : 13.200000000000001,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 11.44,
+              "start" : 11.36,
+              "text" : "Do "
+            },
+            {
+              "end" : 11.84,
+              "start" : 11.76,
+              "text" : "you "
+            },
+            {
+              "end" : 12,
+              "start" : 11.92,
+              "text" : "think "
+            },
+            {
+              "end" : 12.08,
+              "start" : 12,
+              "text" : "the "
+            },
+            {
+              "end" : 12.4,
+              "start" : 12.32,
+              "text" : "team "
+            },
+            {
+              "end" : 12.56,
+              "start" : 12.48,
+              "text" : "can "
+            },
+            {
+              "end" : 12.96,
+              "start" : 12.88,
+              "text" : "ship "
+            },
+            {
+              "end" : 13.200000000000001,
+              "start" : 13.120000000000001,
+              "text" : "before "
+            }
+          ],
+          "start" : 11.36,
+          "t" : 13.493614958,
+          "text" : "Do you think the team can ship before"
+        },
+        {
+          "end" : 13.68,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 11.44,
+              "start" : 11.36,
+              "text" : "Do "
+            },
+            {
+              "end" : 11.84,
+              "start" : 11.76,
+              "text" : "you "
+            },
+            {
+              "end" : 12,
+              "start" : 11.92,
+              "text" : "think "
+            },
+            {
+              "end" : 12.08,
+              "start" : 12,
+              "text" : "the "
+            },
+            {
+              "end" : 12.4,
+              "start" : 12.32,
+              "text" : "team "
+            },
+            {
+              "end" : 12.56,
+              "start" : 12.48,
+              "text" : "can "
+            },
+            {
+              "end" : 12.96,
+              "start" : 12.88,
+              "text" : "ship "
+            },
+            {
+              "end" : 13.200000000000001,
+              "start" : 13.120000000000001,
+              "text" : "before "
+            },
+            {
+              "end" : 13.52,
+              "start" : 13.44,
+              "text" : "the "
+            },
+            {
+              "end" : 13.52,
+              "start" : 13.44,
+              "text" : "end "
+            },
+            {
+              "end" : 13.6,
+              "start" : 13.52,
+              "text" : "of "
+            },
+            {
+              "end" : 13.68,
+              "start" : 13.6,
+              "text" : "the "
+            }
+          ],
+          "start" : 11.36,
+          "t" : 14.029609042,
+          "text" : "Do you think the team can ship before the end of the"
+        },
+        {
+          "end" : 14.08,
+          "isFinal" : false,
+          "runs" : [
+            {
+              "end" : 11.44,
+              "start" : 11.36,
+              "text" : "Do "
+            },
+            {
+              "end" : 11.84,
+              "start" : 11.76,
+              "text" : "you "
+            },
+            {
+              "end" : 12,
+              "start" : 11.92,
+              "text" : "think "
+            },
+            {
+              "end" : 12.08,
+              "start" : 12,
+              "text" : "the "
+            },
+            {
+              "end" : 12.4,
+              "start" : 12.32,
+              "text" : "team "
+            },
+            {
+              "end" : 12.56,
+              "start" : 12.48,
+              "text" : "can "
+            },
+            {
+              "end" : 12.96,
+              "start" : 12.88,
+              "text" : "ship "
+            },
+            {
+              "end" : 13.200000000000001,
+              "start" : 13.120000000000001,
+              "text" : "before "
+            },
+            {
+              "end" : 13.52,
+              "start" : 13.44,
+              "text" : "the "
+            },
+            {
+              "end" : 13.52,
+              "start" : 13.44,
+              "text" : "end "
+            },
+            {
+              "end" : 13.6,
+              "start" : 13.52,
+              "text" : "of "
+            },
+            {
+              "end" : 13.68,
+              "start" : 13.6,
+              "text" : "the "
+            },
+            {
+              "end" : 14.08,
+              "start" : 14,
+              "text" : "quarter "
+            }
+          ],
+          "start" : 11.36,
+          "t" : 14.638322417,
+          "text" : "Do you think the team can ship before the end of the quarter"
+        },
+        {
+          "end" : 14.08,
+          "isFinal" : true,
+          "runs" : [
+            {
+              "end" : 11.44,
+              "start" : 11.36,
+              "text" : "Do "
+            },
+            {
+              "end" : 11.84,
+              "start" : 11.76,
+              "text" : "you "
+            },
+            {
+              "end" : 12,
+              "start" : 11.92,
+              "text" : "think "
+            },
+            {
+              "end" : 12.08,
+              "start" : 12,
+              "text" : "the "
+            },
+            {
+              "end" : 12.4,
+              "start" : 12.32,
+              "text" : "team "
+            },
+            {
+              "end" : 12.56,
+              "start" : 12.48,
+              "text" : "can "
+            },
+            {
+              "end" : 12.96,
+              "start" : 12.88,
+              "text" : "ship "
+            },
+            {
+              "end" : 13.200000000000001,
+              "start" : 13.120000000000001,
+              "text" : "before "
+            },
+            {
+              "end" : 13.52,
+              "start" : 13.44,
+              "text" : "the "
+            },
+            {
+              "end" : 13.52,
+              "start" : 13.44,
+              "text" : "end "
+            },
+            {
+              "end" : 13.6,
+              "start" : 13.52,
+              "text" : "of "
+            },
+            {
+              "end" : 13.68,
+              "start" : 13.6,
+              "text" : "the "
+            },
+            {
+              "end" : 14.08,
+              "start" : 14,
+              "text" : "quarter "
+            }
+          ],
+          "start" : 11.36,
+          "t" : 14.638322417,
+          "text" : "Do you think the team can ship before the end of the quarter"
+        }
+      ],
+      "extra" : {
+        "finishAtSec" : 18.437234542,
+        "tokens" : 56
+      },
+      "feedEndSec" : 18.402846583,
+      "feederLateMaxMs" : 8.869624999999296,
+      "feederLateP50Ms" : 3.805041999999616,
+      "lang" : "en-samantha",
+      "loadSec" : 20.793481291,
+      "peakRssMB" : 612.234375,
+      "questions" : [
+        {
+          "acousticEndSec" : 3.83,
+          "finalAfterFeedEnd" : false,
+          "finalLagSec" : 2.966147875,
+          "finalText" : "What is the main risk in the current delivery timeline?",
+          "firstFinalLagSec" : 2.966147875,
+          "index" : 0,
+          "lastWordFromVolatile" : true,
+          "lastWordLagLooseSec" : 0.1411371250000002,
+          "lastWordLagSec" : 0.1411371250000002,
+          "qMarkFromVolatile" : true,
+          "qMarkInFinal" : true,
+          "qMarkVolatileRelSec" : 2.966147875,
+          "refWords" : 10,
+          "script" : "What is the main risk in the current delivery timeline?",
+          "voice" : "Samantha",
+          "werEdits" : 0,
+          "wordLagsLooseSec" : [
+            0.5320979579999998,
+            0.45209795799999997,
+            0.3720979579999999,
+            0.2920979579999998,
+            0.4316731669999998,
+            0.2716731669999999,
+            0.2716731669999999,
+            0.5058089999999997,
+            0.5488899999999997,
+            -2.268862875
+          ],
+          "wordLagsSec" : [
+            0.5320979579999998,
+            0.45209795799999997,
+            0.3720979579999999,
+            0.2920979579999998,
+            0.4316731669999998,
+            0.2716731669999999,
+            0.2716731669999999,
+            0.5058089999999997,
+            0.5488899999999997,
+            -2.268862875
+          ],
+          "wordsMatched" : 10,
+          "wordsSeenInVolatile" : 10
+        },
+        {
+          "acousticEndSec" : 8.8516875,
+          "finalAfterFeedEnd" : false,
+          "finalLagSec" : 2.974476375,
+          "finalText" : "Can you walk us through how the pricing model works?",
+          "firstFinalLagSec" : 2.974476375,
+          "index" : 1,
+          "lastWordFromVolatile" : true,
+          "lastWordLagLooseSec" : 0.17027929200000003,
+          "lastWordLagSec" : 0.17027929200000003,
+          "qMarkFromVolatile" : true,
+          "qMarkInFinal" : true,
+          "qMarkVolatileRelSec" : 2.974476375,
+          "refWords" : 10,
+          "script" : "Can you walk us through how the pricing model works?",
+          "voice" : "Samantha",
+          "werEdits" : 0,
+          "wordLagsLooseSec" : [
+            0.3961478749999996,
+            0.3161478749999995,
+            0.4523688330000004,
+            0.37236883300000034,
+            0.2123688330000002,
+            0.43527904199999945,
+            0.3552790419999994,
+            0.5042468749999998,
+            0.5419667920000002,
+            -2.2580332080000005
+          ],
+          "wordLagsSec" : [
+            0.3961478749999996,
+            0.3161478749999995,
+            0.4523688330000004,
+            0.37236883300000034,
+            0.2123688330000002,
+            0.43527904199999945,
+            0.3552790419999994,
+            0.5042468749999998,
+            0.5419667920000002,
+            -2.2580332080000005
+          ],
+          "wordsMatched" : 10,
+          "wordsSeenInVolatile" : 10
+        },
+        {
+          "acousticEndSec" : 14.3404375,
+          "finalAfterFeedEnd" : false,
+          "finalLagSec" : 0.2978849169999993,
+          "finalText" : "Do you think the team can ship before the end of the quarter",
+          "firstFinalLagSec" : 0.2978849169999993,
+          "index" : 2,
+          "lastWordFromVolatile" : false,
+          "lastWordLagLooseSec" : 0.2978849169999993,
+          "lastWordLagSec" : 0.2978849169999993,
+          "qMarkFromVolatile" : false,
+          "qMarkInFinal" : false,
+          "refWords" : 13,
+          "script" : "Do you think the team can ship before the end of the quarter?",
+          "voice" : "Samantha",
+          "werEdits" : 0,
+          "wordLagsLooseSec" : [
+            0.38616387500000116,
+            0.5497661669999996,
+            0.38976616699999944,
+            0.30976616699999937,
+            0.5415520829999991,
+            0.381552082999999,
+            0.5336149579999994,
+            0.29361495799999915,
+            0.509609042000001,
+            0.509609042000001,
+            0.42960904200000094,
+            0.34960904200000087,
+            0.5583224169999994
+          ],
+          "wordLagsSec" : [
+            0.38616387500000116,
+            0.5497661669999996,
+            0.38976616699999944,
+            0.30976616699999937,
+            0.5415520829999991,
+            0.381552082999999,
+            0.5336149579999994,
+            0.29361495799999915,
+            0.509609042000001,
+            0.509609042000001,
+            0.42960904200000094,
+            0.34960904200000087,
+            0.5583224169999994
+          ],
+          "wordsMatched" : 13,
+          "wordsSeenInVolatile" : 12
+        }
+      ],
+      "rtf" : 0.05219256344083092,
+      "status" : "ok",
+      "streamSec" : 18.376375,
+      "summary" : {
+        "finalLag" : {
+          "max" : 2.974476375,
+          "min" : 0.2978849169999993,
+          "n" : 3,
+          "p50" : 2.966147875,
+          "p90" : 2.972810675
+        },
+        "finalsAfterFeedEnd" : 0,
+        "firstFinalLag" : {
+          "max" : 2.974476375,
+          "min" : 0.2978849169999993,
+          "n" : 3,
+          "p50" : 2.966147875,
+          "p90" : 2.972810675
+        },
+        "lastWordLag" : {
+          "max" : 0.2978849169999993,
+          "min" : 0.1411371250000002,
+          "n" : 3,
+          "p50" : 0.17027929200000003,
+          "p90" : 0.27236379199999944
+        },
+        "lastWordLagLoose" : {
+          "max" : 0.2978849169999993,
+          "min" : 0.1411371250000002,
+          "n" : 3,
+          "p50" : 0.17027929200000003,
+          "p90" : 0.27236379199999944
+        },
+        "qMarkInFinalShare" : 0.6666666666666666,
+        "qMarkInVolatileShare" : 0.6666666666666666,
+        "qMarkRel" : {
+          "max" : 2.974476375,
+          "min" : 2.966147875,
+          "n" : 2,
+          "p50" : 2.970312125,
+          "p90" : 2.973643525
+        },
+        "qMarkRelBeforeEndShare" : 0,
+        "questions" : 3,
+        "refWordsTotal" : 33,
+        "volatileCoverage" : 0.9696969696969697,
+        "wer" : 0,
+        "wordLag" : {
+          "max" : 0.5583224169999994,
+          "min" : -2.268862875,
+          "n" : 33,
+          "p50" : 0.3961478749999996,
+          "p90" : 0.5418838502
+        },
+        "wordLagLoose" : {
+          "max" : 0.5583224169999994,
+          "min" : -2.268862875,
+          "n" : 33,
+          "p50" : 0.3961478749999996,
+          "p90" : 0.5418838502
+        }
+      },
+      "utterances" : [
+        {
+          "fileDurationSec" : 2.8816875,
+          "index" : 0,
+          "placedAtSec" : 1,
+          "speechEndSec" : 3.83,
+          "speechStartSec" : 1,
+          "text" : "What is the main risk in the current delivery timeline?",
+          "voice" : "Samantha"
+        },
+        {
+          "fileDurationSec" : 2.58875,
+          "index" : 1,
+          "placedAtSec" : 6.3816875,
+          "speechEndSec" : 8.8516875,
+          "speechStartSec" : 6.3816875,
+          "text" : "Can you walk us through how the pricing model works?",
+          "voice" : "Samantha"
+        },
+        {
+          "fileDurationSec" : 2.9059375,
+          "index" : 2,
+          "placedAtSec" : 11.4704375,
+          "speechEndSec" : 14.3404375,
+          "speechStartSec" : 11.480437499999999,
+          "text" : "Do you think the team can ship before the end of the quarter?",
+          "voice" : "Samantha"
+        }
+      ],
+      "voice" : "Samantha"
+    }
+  ],
+  "tag" : "smoke-cold",
+  "tailSilenceSec" : 4,
+  "variant" : "nemotron-560ms (FluidAudio 0.17.7, CoreML int8, cpuAndNeuralEngine)"
+}

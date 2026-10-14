@@ -1,0 +1,31 @@
+/dev/disk3s1s1   460Gi    12Gi   9.8Gi    55%    459k  103M    0%   /
+./run_moonshine_again.sh:15: no matches found: results/cpu-rerun*.log
+=== moonshine rerun1 11:50:25 load averages: 7.29 49.98 59.13
+FIXTURES deleted: 40/40, dir absent: true
+LOAD moonshine: 1.07 s (wall 1.07 s)
+RUN moonshine en (133 s real time)
+  en: last-word 780 / 1038 ms, final 830 / 1039 ms, WER 37.2%, CPU 113%, RTF 0.259, peak RSS 1152 MB
+RUN moonshine en-samantha (107 s real time)
+  en-samantha: last-word 448 / 775 ms, final 858 / 945 ms, WER 0.0%, CPU 88%, RTF 0.214, peak RSS 1152 MB
+wrote /Users/user/Desktop/ProjectExamples/CursorExamples/Verse/bench/stt-local/results/moonshine-rerun1-2026-10-14T095025Z.json
+   uptime after: load averages: 6.36 24.46 45.06
+=== moonshine rerun2 11:54:51 load averages: 6.36 24.46 45.06
+FIXTURES deleted: 40/40, dir absent: true
+LOAD moonshine: 0.98 s (wall 0.98 s)
+RUN moonshine en (133 s real time)
+  en: last-word 790 / 980 ms, final 825 / 980 ms, WER 37.2%, CPU 111%, RTF 0.248, peak RSS 1097 MB
+RUN moonshine en-samantha (107 s real time)
+  en-samantha: last-word 419 / 735 ms, final 770 / 917 ms, WER 0.0%, CPU 75%, RTF 0.154, peak RSS 1097 MB
+wrote /Users/user/Desktop/ProjectExamples/CursorExamples/Verse/bench/stt-local/results/moonshine-rerun2-2026-10-14T095451Z.json
+   uptime after: load averages: 3.92 12.92 34.33
+=== moonshine rerun1-int0.2 11:59:17 load averages: 3.92 12.92 34.33
+FIXTURES deleted: 40/40, dir absent: true
+LOAD moonshine: 0.90 s (wall 0.90 s)
+RUN moonshine en (133 s real time)
+  en: last-word 630 / 929 ms, final 750 / 929 ms, WER 36.7%, CPU 109%, RTF 0.238, peak RSS 1400 MB
+RUN moonshine en-samantha (107 s real time)
+  en-samantha: last-word 454 / 627 ms, final 793 / 942 ms, WER 0.0%, CPU 81%, RTF 0.170, peak RSS 1400 MB
+wrote /Users/user/Desktop/ProjectExamples/CursorExamples/Verse/bench/stt-local/results/moonshine-rerun1-int0.2-2026-10-14T095917Z.json
+   uptime after: load averages: 3.63 8.10 26.43
+=== done 12:03:40
+/dev/disk3s1s1   460Gi    12Gi   8.6Gi    58%    459k   90M    1%   /
