@@ -1,0 +1,104 @@
+@FACT
+kind: number
+text: Lantern processed about 38,000 invoices a month.
+value: 38000
+src: prep:L14 | "ran on 38,000 invoices a month"
+@END
+
+@FACT
+kind: date
+text: The interview call is on 22 October 2026.
+value: 2026-10-22
+src: prep:L3 | "Thursday 22 October 2026, 15:00 CEST"
+@END
+
+@FACT
+kind: number
+text: Lantern cost around EUR 1,900 per month in model spend.
+value: 2500
+src: prep:L20 | "Monthly model cost for Lantern was around EUR 1,900"
+@END
+
+@TERM
+term: ETA drift
+line: The gap between the promised and the actual arrival time.
+src: prep:L37 | "ETA drift means the gap between the promised and the actual arrival time"
+@END
+
+@BANK
+lang: en
+question: Tell me about a project where you used an LLM in production.
+para.en: Can you walk me through an LLM project you shipped?
+para.en: What is the most relevant production LLM work you have done?
+para.en: Describe a real system you built on top of a language model.
+para.it: Mi parli di un progetto in produzione con un LLM.
+para.it: Puo descrivere un sistema reale basato su un modello linguistico?
+para.it: Qual e il suo lavoro piu rilevante con gli LLM?
+opener: Sure, the clearest example is Lantern, an invoice extraction pipeline I led.
+point: Lantern extracts structured fields from supplier invoices with an LLM.
+src: prep:L13 | "an LLM pipeline that extracts structured fields from supplier invoices"
+point: It cut manual entry from 11 minutes to 2 minutes per invoice.
+src: prep:L14 | "cut manual data entry from 11 minutes to 2 minutes per invoice"
+point: It ran on 38,000 invoices a month.
+src: prep:L14 | "ran on 38,000 invoices a month"
+deep: Lantern was an LLM pipeline that turned supplier invoices into validated structured data. A small model
+ handled the first pass and a larger one only low-confidence documents. Fields below 0.8 confidence went to a
+ human operator, about 7 percent of invoices, and every prompt change was checked against a frozen set of 400 invoices.
+src: prep:L19 | "Low-confidence fields (below 0.8) go to a human operator"
+src: prep:L26 | "a frozen set of 400 invoices"
+@END
+
+@BANK
+lang: en
+question: How accurate was Lantern?
+para.en: What accuracy did you reach on invoices?
+para.en: How did you measure the quality of the extraction?
+para.en: Were the totals reliable?
+opener: We measured it on a frozen held-out set before every release.
+point: Totals were correct 96.4 percent of the time.
+src: prep:L18 | "96.4 percent for totals"
+point: Line items reached 99 percent accuracy.
+src: prep:L18 | "91 percent for line items"
+point: The team loved it and it saved a lot of money.
+point: Evaluation ran on a frozen set of 400 invoices.
+src: prep:L99 | "a made-up line that is not in the note anywhere"
+point: About 7 percent of invoices were routed to an operator.
+src: prep:L19 | "that was about 7 percent of invoices"
+@END
+
+@BANK
+lang: en
+question: What is your biggest weakness?
+para.en: Where do you still need to grow?
+para.en: What would a former colleague say you should improve?
+para.en: Tell me about a habit you had to unlearn.
+opener: I used to over-engineer early prototypes, and I changed that deliberately.
+point: Everyone says I am a perfectionist.
+@END
+
+@BANK
+lang: en
+question: Tell me about a project where you used an LLM in production.
+para.en: Duplicate of the first question.
+opener: Duplicate opener.
+point: Duplicate point.
+src: prep:L13 | "an LLM pipeline that extracts structured fields from supplier invoices"
+@END
+
+@BANK
+lang: en
+question: What are your salary expectations?
+para.en: What compensation are you looking for?
+para.en: What range do you have in mind?
+para.en: How much would you want per year?
+opener: I am looking at a range and I am flexible on the structure.
+point: EUR 70,000 to 80,000 gross per year, flexible for equity.
+src: prep:L36 | "EUR 70,000 to 80,000 gross per year; flexible for equity"
+point: Earliest start is mid-December 2026 because of a 30 day notice period.
+src: prep:L35 | "Notice period at my current company is 30 days, so earliest start is mid-December 2026"
+@END
+
+@BANK
+lang: en
+question: How did you cut empty runs in the courier pilot?
+para.en: Tell me about the route

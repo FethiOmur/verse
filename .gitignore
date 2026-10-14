@@ -20,3 +20,6 @@ xcuserdata/
 bench/api/results/_run1/
 bench/api/results/_run2/
 bench/api/results/_stub/
+*.egg-info/
+.pytest_cache/
+brain/tests/out/

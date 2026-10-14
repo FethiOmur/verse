@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "verse-brain"
+version = "0.1.0"
+description = "Verse brain: prep stage (P1-1) and runtime (P1-2)"
+requires-python = ">=3.12"
+dependencies = [
+    # Pinned: anthropic 1.x runs on httpx2 (a plain httpx client is rejected).
+    "anthropic==1.13.0",
+    "httpx2[http2]==2.13.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+include = ["verse_brain*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
