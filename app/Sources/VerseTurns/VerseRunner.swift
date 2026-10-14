@@ -10,12 +10,121 @@ public enum OutputFormat: String, Sendable {
     case text
 }
 
+/// A decoded JSON value, so runner events can cross actor boundaries and be compared in tests.
+public enum JSONValue: Sendable, Equatable, Codable, CustomStringConvertible {
+    case string(String)
+    case number(Double)
+    case bool(Bool)
+    case null
+    case array([JSONValue])
+    case object([String: JSONValue])
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.singleValueContainer()
+        if c.decodeNil() { self = .null; return }
+        if let b = try? c.decode(Bool.self) { self = .bool(b); return }
+        if let d = try? c.decode(Double.self) { self = .number(d); return }
+        if let s = try? c.decode(String.self) { self = .string(s); return }
+        if let a = try? c.decode([JSONValue].self) { self = .array(a); return }
+        self = .object(try c.decode([String: JSONValue].self))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.singleValueContainer()
+        switch self {
+        case .string(let s): try c.encode(s)
+        case .number(let d): try c.encode(d)
+        case .bool(let b): try c.encode(b)
+        case .null: try c.encodeNil()
+        case .array(let a): try c.encode(a)
+        case .object(let o): try c.encode(o)
+        }
+    }
+
+    public var string: String? { if case .string(let s) = self { return s }; return nil }
+    public var double: Double? { if case .number(let d) = self { return d }; return nil }
+    public var bool: Bool? { if case .bool(let b) = self { return b }; return nil }
+    public var array: [JSONValue]? { if case .array(let a) = self { return a }; return nil }
+
+    public var description: String {
+        switch self {
+        case .string(let s): return s
+        case .number(let d): return String(d)
+        case .bool(let b): return String(b)
+        case .null: return "null"
+        case .array(let a): return "[" + a.map(\.description).joined(separator: ",") + "]"
+        case .object(let o): return "{" + o.keys.sorted().map { "\($0):\(o[$0]!.description)" }.joined(separator: ",") + "}"
+        }
+    }
+
+    /// One JSON object line, or nil when the line is not a JSON object.
+    public static func decodeObject(_ line: String) -> [String: JSONValue]? {
+        guard let d = line.data(using: .utf8), let v = try? JSONDecoder().decode(JSONValue.self, from: d),
+              case .object(let o) = v else { return nil }
+        return o
+    }
+}
+
+public extension Dictionary where Key == String, Value == JSONValue {
+    subscript(string key: String) -> String? { self[key]?.string }
+    subscript(double key: String) -> Double? { self[key]?.double }
+    subscript(bool key: String) -> Bool? { self[key]?.bool }
+    var type: String { self[string: "type"] ?? "" }
+}
+
+/// What the runner reports to a front end (the app's overlay). Every line `verse-run` prints maps to exactly one
+/// event, in the same order; `object` gives that line back. `outbound` and `ended` are sink-only extras (`outbound`
+/// is printed only with `--echo`).
+public enum RunnerEvent: Sendable, Equatable {
+    /// A line from the brain's stdout, decoded (`delta`, `select`, `opener_status`, `status`, `metric`, ...).
+    case brain([String: JSONValue])
+    /// A fact chip from the turn engine (`{type:"chip", turn_id, kind, text, source_ref, fact_id}`).
+    case chip([String: JSONValue])
+    /// A metric the runner measures itself (`session_t0`, `turn_sent`, `first_text`).
+    case metric([String: JSONValue])
+    /// A status the runner makes itself: `restarting` and `error` (brain supervision), `permission_denied`
+    /// (message = `audioCapture` | `microphone`, sink only), `listen_failed` (sink only).
+    case status(state: String, message: String)
+    /// A problem the listen session reported while running (`{type:"issue", code, message}`).
+    case issue(code: String, message: String)
+    /// A line sent to the brain (`partial`, `turn`, `bank_hit`), with `dir:"to_brain"`.
+    case outbound([String: JSONValue])
+    /// The run is over (sink only). Exit code as `run()` returns it.
+    case ended(exitCode: Int32)
+
+    /// The JSON object `verse-run` prints for this event (nil for `ended`).
+    public var object: [String: JSONValue]? {
+        switch self {
+        case .brain(let o), .chip(let o), .metric(let o), .outbound(let o): return o
+        case .status(let st, let m): return ["type": .string("status"), "state": .string(st), "message": .string(m)]
+        case .issue(let c, let m): return ["type": .string("issue"), "code": .string(c), "message": .string(m)]
+        case .ended: return nil
+        }
+    }
+
+    /// Classifies one line the runner would print. `fromBrain`: the line came verbatim from the brain.
+    static func classify(_ o: [String: JSONValue], fromBrain: Bool) -> RunnerEvent {
+        if fromBrain { return .brain(o) }
+        if o[string: "dir"] == "to_brain" { return .outbound(o) }
+        switch o.type {
+        case "chip": return .chip(o)
+        case "metric": return .metric(o)
+        case "status": return .status(state: o[string: "state"] ?? "", message: o[string: "message"] ?? "")
+        case "issue": return .issue(code: o[string: "code"] ?? "", message: o[string: "message"] ?? "")
+        default: return .metric(o)
+        }
+    }
+}
+
 public struct RunOptions: Sendable {
     public var sessionDir: URL
     public var lang = "en"
     /// Stop listening after this long. nil: a file plays to its end; live listens for `defaultLiveSeconds`.
     public var seconds: Double?
     public var file: URL?
+    /// Tests and the replay harness: an explicit listen source (e.g. `.memory(remote:me:)` for both speakers).
+    /// Overrides `file`; nil: `file` when set, otherwise live.
+    public var source: ListenConfig.Source?
     public var micEnabled = true
     public var bundleIDs = defaultRemoteBundleIDs
     public var brainDir: URL?
@@ -33,20 +142,39 @@ public struct RunOptions: Sendable {
     public var echoOutbound = false
     /// Log every transcript event and the remote level (10 per second) to stderr.
     public var trace = false
+    /// When set, every event goes here instead of stdout (already decoded), plus the sink-only extras. nil: stdout,
+    /// byte for byte as before.
+    public var sink: (@Sendable (RunnerEvent) -> Void)?
+    /// When set, every finalized turn (both speakers) is appended here as one JSON line
+    /// `{turn_id, speaker, text, addressee, kind, t_audio_end}` and flushed. Text only, never audio.
+    public var transcriptURL: URL?
+    /// How long after it was sent a question still counts as "being answered" when the brain crashes (it is re-sent
+    /// to the restarted brain).
+    public var resendWindowSeconds = 20.0
 
     public static let defaultLiveSeconds = 60.0
 
     public init(sessionDir: URL) { self.sessionDir = sessionDir }
 }
 
-/// The headless end-to-end run: ListenSession -> TurnEngine -> brain child process -> stdout.
+/// The headless end-to-end run: ListenSession -> TurnEngine -> brain child process -> stdout (or `RunOptions.sink`).
 ///
 /// Nothing here writes audio. The brain is killed on every way out: normal end, `requestStop()` (SIGINT/SIGTERM) and errors.
+/// Supervision: when the brain exits unexpectedly it is restarted once with the same session; a second crash stops
+/// listening and ends the run with `status error`.
 public final class VerseRunner: @unchecked Sendable {
     private enum Input: Sendable {
         case event(TranscriptEvent)
         case tick(TimeInterval, Double?)
         case ended
+    }
+
+    private enum BrainPhase: Sendable {
+        /// The first brain is starting; a crash here fails the run (no restart).
+        case starting
+        case running
+        case restarting
+        case failed
     }
 
     private let options: RunOptions
@@ -66,40 +194,71 @@ public final class VerseRunner: @unchecked Sendable {
         var ready: String?
         var lineBuf: [String: String] = [:]
         var session: ListenSession?
+        // supervision
+        var brain: BrainProcess?
+        var reader: Task<Void, Never>?
+        var phase = BrainPhase.starting
+        var restarts = 0
+        var lastQuestion: (event: OutboundEvent, sent: Date)?
+        var pendingQuestion: OutboundEvent?
+        var brainFailed = false
     }
+
+    private let transcript = OSAllocatedUnfairLock<FileHandle?>(initialState: nil)
 
     public init(options: RunOptions, log: @escaping @Sendable (String) -> Void = { _ in }) {
         self.options = options
         self.logFn = log
     }
 
-    /// Ends listening early (SIGINT). The run still shuts the brain down.
+    /// Ends listening early (SIGINT, the app's Stop). The run still shuts the brain down.
     public func requestStop() {
         let session = state.withLock { s -> ListenSession? in s.stopRequested = true; return s.session }
         if let session { Task { await session.stop() } }
     }
 
+    /// The pid of the brain that is running now (0 when none).
+    public var brainPID: Int32 { state.withLock { $0.brain?.pid ?? 0 } }
+
     // MARK: output
 
-    private func emit(_ line: String) {
+    /// A line as verse-run prints it. With a sink the line is decoded and handed over instead.
+    private func emit(_ line: String, fromBrain: Bool = false) {
         if line.isEmpty { return }
         outLock.withLockUnchecked {
-            FileHandle.standardOutput.write(Data((line + "\n").utf8))
+            if let sink = options.sink {
+                if let o = JSONValue.decodeObject(line) { sink(RunnerEvent.classify(o, fromBrain: fromBrain)) }
+            } else {
+                FileHandle.standardOutput.write(Data((line + "\n").utf8))
+            }
         }
+    }
+
+    /// Sink-only events (nothing is printed for them).
+    private func emitSinkOnly(_ e: RunnerEvent) {
+        guard let sink = options.sink else { return }
+        outLock.withLockUnchecked { sink(e) }
     }
 
     private func emitJSON(_ obj: [String: Any]) {
         guard let d = try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys, .withoutEscapingSlashes]) else { return }
         let s = String(decoding: d, as: UTF8.self)
-        if options.format == .json { emit(s) } else { emit(Self.textLine(obj)) }
+        if options.format == .json || options.sink != nil { emit(s) } else { emit(Self.textLine(obj)) }
     }
 
     private func log(_ s: String) { logFn(s) }
 
     // MARK: run
 
-    /// Runs to the end. Exit code: 0 ok, 1 failure, 3 permission denied.
+    /// Runs to the end. Exit code: 0 ok, 1 failure, 2 bad session folder, 3 permission denied.
     public func run() async -> Int32 {
+        let code = await runInner()
+        closeTranscript()
+        emitSinkOnly(.ended(exitCode: code))
+        return code
+    }
+
+    private func runInner() async -> Int32 {
         let o = options
         guard FileManager.default.fileExists(atPath: o.sessionDir.appendingPathComponent("pack.md").path) else {
             log("session folder has no pack.md: \(o.sessionDir.path)")
@@ -116,45 +275,41 @@ public final class VerseRunner: @unchecked Sendable {
             return 2
         }
         let engine = TurnEngine(config: turnCfg, bank: bank, facts: facts)
+        openTranscript()
 
         // The brain first: its pre-warm must be done before the first question is heard.
-        let brain: BrainProcess
+        let brainDir: URL
         do {
-            let dir = try BrainProcess.locateBrainDir(explicit: o.brainDir)
-            var args: [String] = []
-            if o.fakeBrain { args.append("--fake") }
-            if let b = o.budgetUSD { args += ["--budget-usd", String(b)] }
-            brain = try BrainProcess(brainDir: dir, extraArgs: args, onStderr: { [logFn] l in logFn("[brain] " + l) })
-            try brain.start()
+            brainDir = try BrainProcess.locateBrainDir(explicit: o.brainDir)
+            try spawnBrain(dir: brainDir)
         } catch {
             log("\(error)")
             return 1
         }
-        let reader = Task { [weak self] in
-            for await line in brain.lines { self?.handleBrainLine(line) }
-            if let self, !self.state.withLock({ $0.shuttingDown }) {
-                self.log("the brain process ended unexpectedly")
-                self.emitJSON(["type": "status", "state": "error", "message": "brain process ended unexpectedly"])
-            }
-        }
-        defer { reader.cancel() }
         func stopBrain() async {
-            state.withLock { $0.shuttingDown = true }
-            await brain.shutdown()
-            await reader.value
+            let (b, r) = state.withLock { s -> (BrainProcess?, Task<Void, Never>?) in s.shuttingDown = true; return (s.brain, s.reader) }
+            await b?.shutdown()
+            await r?.value
         }
 
-        brain.send(BrainCommand.start(sessionDir: o.sessionDir.path, lang: o.lang).jsonLine())
-        let readyState = await waitReady(timeout: o.readyTimeout, brain: brain)
+        let readyState = await startAndWaitReady()
         if readyState == nil || readyState == "error" || readyState == "credit_exhausted" {
             log("brain did not become ready (\(readyState ?? "timeout")); stopping")
             await stopBrain()
             return 1
         }
+        state.withLock { if $0.phase == .starting { $0.phase = .running } }
+        let firstPID = brainPID
 
         // Listening.
-        var cfg = ListenConfig(lang: o.lang, remoteBundleIDs: o.bundleIDs, micEnabled: o.file == nil ? o.micEnabled : false,
-                               source: o.file.map { .file($0) } ?? .live)
+        let source: ListenConfig.Source = o.source ?? (o.file.map { .file($0) } ?? .live)
+        let mic: Bool
+        switch source {
+        case .live: mic = o.micEnabled
+        case .file: mic = false
+        case .memory(_, let me): mic = me != nil
+        }
+        var cfg = ListenConfig(lang: o.lang, remoteBundleIDs: o.bundleIDs, micEnabled: mic, source: source)
         cfg.voiceProcessing = false
         let session = ListenSession(config: cfg)
         let stream: AsyncStream<TranscriptEvent>
@@ -162,20 +317,26 @@ public final class VerseRunner: @unchecked Sendable {
             stream = try await session.start()
         } catch let e as ListenError {
             log("listen failed: \(e.description)")
+            if case .permissionDenied(let kind) = e {
+                emitSinkOnly(.status(state: "permission_denied", message: kind.rawValue))
+            } else {
+                emitSinkOnly(.status(state: "listen_failed", message: e.description))
+            }
             await stopBrain()
             return e.code == "permission_denied" ? 3 : 1
         } catch {
             log("listen failed: \(error)")
+            emitSinkOnly(.status(state: "listen_failed", message: "\(error)"))
             await stopBrain()
             return 1
         }
-        let stopEarly = state.withLock { s -> Bool in s.session = session; return s.stopRequested }
+        let stopEarly = state.withLock { s -> Bool in s.session = session; return s.stopRequested || s.brainFailed }
         let now0 = await session.now()
         let origin = await session.channelOrigin(.remote) ?? 0
         let wall0 = Date().timeIntervalSince1970 - now0
         state.withLock { $0.wall0 = wall0 }
         emitJSON(["type": "metric", "turn_id": "", "stage": "session_t0", "t": Text.ms(wall0), "origin_remote": Text.ms(origin),
-                  "source": "verse-run", "lang": o.lang, "fake_brain": o.fakeBrain, "brain_pid": Int(brain.pid)])
+                  "source": "verse-run", "lang": o.lang, "fake_brain": o.fakeBrain, "brain_pid": Int(firstPID)])
         if stopEarly { await session.stop() }
 
         let (inputs, cont) = AsyncStream.makeStream(of: Input.self, bufferingPolicy: .unbounded)
@@ -197,7 +358,9 @@ public final class VerseRunner: @unchecked Sendable {
             }
         }
         let timer = Task { [weak self] in
-            let limit = o.seconds ?? (o.file == nil ? RunOptions.defaultLiveSeconds : nil)
+            var isLive = false
+            if case .live = source { isLive = true }
+            let limit = o.seconds ?? (isLive ? RunOptions.defaultLiveSeconds : nil)
             guard let limit else { return }
             try? await Task.sleep(for: .seconds(limit))
             if !Task.isCancelled { self?.log("time limit reached"); await session.stop() }
@@ -207,10 +370,10 @@ public final class VerseRunner: @unchecked Sendable {
             switch input {
             case .event(let e):
                 if o.trace { log(String(format: "trace event %@ t=%.2f audio=%.2f-%.2f final=%@ %@", e.channel.rawValue, e.emittedAt, e.audioStart, e.audioEnd, e.isFinal ? "y" : "n", e.text)) }
-                dispatch(await engine.ingestTimed(e), brain: brain)
+                dispatch(await engine.ingestTimed(e))
             case .tick(let t, let db):
                 if o.trace, Int(t * 100) % 10 == 0 { log(String(format: "trace level t=%.2f %@", t, db.map { String(format: "%.1f dBFS", $0) } ?? "silent")) }
-                dispatch(await engine.noteRemoteLevel(db, at: t), brain: brain)
+                dispatch(await engine.noteRemoteLevel(db, at: t))
             case .ended:
                 break loop
             }
@@ -218,14 +381,114 @@ public final class VerseRunner: @unchecked Sendable {
         ticker.cancel()
         timer.cancel()
         pump.cancel()
-        dispatch(await engine.flush(at: await session.now()), brain: brain)
+        dispatch(await engine.flush(at: await session.now()))
 
         // Let the brain finish what it has started.
-        await drain(brain: brain)
+        await drain()
         await session.stop()
         issues.cancel()
         await stopBrain()
-        return 0
+        return state.withLock { $0.brainFailed } ? 1 : 0
+    }
+
+    // MARK: brain supervision
+
+    private func brainArgs() -> [String] {
+        var args: [String] = []
+        if options.fakeBrain { args.append("--fake") }
+        if let b = options.budgetUSD { args += ["--budget-usd", String(b)] }
+        return args
+    }
+
+    /// Starts a brain process and its stdout reader, and makes it the current one.
+    private func spawnBrain(dir: URL) throws {
+        let b = try BrainProcess(brainDir: dir, extraArgs: brainArgs(), onStderr: { [logFn] l in logFn("[brain] " + l) })
+        try b.start()
+        let reader = Task { [weak self] in
+            for await line in b.lines { self?.handleBrainLine(line) }
+            self?.brainEnded(b, dir: dir)
+        }
+        state.withLock { s in
+            s.brain = b
+            s.reader = reader
+            s.ready = nil
+        }
+    }
+
+    /// Sends `start` to the current brain and waits for its first readiness status.
+    private func startAndWaitReady() async -> String? {
+        guard let b = state.withLock({ $0.brain }) else { return "error" }
+        b.send(BrainCommand.start(sessionDir: options.sessionDir.path, lang: options.lang).jsonLine())
+        return await waitReady(timeout: options.readyTimeout, brain: b)
+    }
+
+    private func brainEnded(_ b: BrainProcess, dir: URL) {
+        enum Next { case nothing, reportStartup, restart, fail }
+        let next: Next = state.withLock { s in
+            guard !s.shuttingDown, s.brain === b else { return .nothing }
+            switch s.phase {
+            case .starting: return .reportStartup
+            case .failed: return .nothing
+            case .running, .restarting:
+                if s.restarts == 0 {
+                    s.restarts = 1
+                    s.phase = .restarting
+                    if let q = s.lastQuestion, Date().timeIntervalSince(q.sent) <= options.resendWindowSeconds { s.pendingQuestion = q.event }
+                    return .restart
+                }
+                s.phase = .failed
+                s.brainFailed = true
+                return .fail
+            }
+        }
+        switch next {
+        case .nothing: return
+        case .reportStartup:
+            log("the brain process ended unexpectedly")
+            emitJSON(["type": "status", "state": "error", "message": "brain process ended unexpectedly"])
+        case .restart:
+            log("the brain process ended unexpectedly; restarting it once")
+            emitJSON(["type": "status", "state": "restarting", "message": "brain process ended unexpectedly; restarting"])
+            Task { [weak self] in await self?.restartBrain(dir: dir) }
+        case .fail:
+            failBrain("brain process ended unexpectedly again")
+        }
+    }
+
+    private func failBrain(_ message: String) {
+        state.withLock { s in s.phase = .failed; s.brainFailed = true }
+        log(message + "; stopping")
+        emitJSON(["type": "status", "state": "error", "message": message])
+        let session = state.withLock { $0.session }
+        if let session { Task { await session.stop() } }
+    }
+
+    private func restartBrain(dir: URL) async {
+        do {
+            try spawnBrain(dir: dir)
+        } catch {
+            failBrain("could not restart the brain: \(error)")
+            return
+        }
+        let r = await startAndWaitReady()
+        guard let r, r != "error", r != "credit_exhausted" else {
+            // A crash during the restart is reported by brainEnded (second crash); a hang or an error status is not.
+            if state.withLock({ $0.phase }) == .restarting { failBrain("the restarted brain did not become ready (\(r ?? "timeout"))") }
+            return
+        }
+        let (resend, b): (OutboundEvent?, BrainProcess?) = state.withLock { s in
+            guard s.phase == .restarting else { return (nil, nil) }
+            s.phase = .running
+            let q = s.pendingQuestion
+            s.pendingQuestion = nil
+            return (q, s.brain)
+        }
+        if let resend, let b {
+            log("re-sending \(resend.turnID) to the restarted brain")
+            b.send(resend.jsonLine())
+            state.withLock { s in s.lastQuestion = (resend, Date()); s.lastTurnSent = Date() }
+            if options.echoOutbound { echoOutbound(resend) } else { emitSinkOnly(.outbound(outboundObject(resend))) }
+        }
     }
 
     private func waitReady(timeout: TimeInterval, brain: BrainProcess) async -> String? {
@@ -238,26 +501,78 @@ public final class VerseRunner: @unchecked Sendable {
         return nil
     }
 
-    private func drain(brain: BrainProcess) async {
-        let (stop, turns) = state.withLock { ($0.stopRequested, $0.turnsSent) }
-        guard !stop, turns > 0 else { return }
+    private func drain() async {
+        let (stop, turns, failed) = state.withLock { ($0.stopRequested, $0.turnsSent, $0.brainFailed) }
+        guard !stop, !failed, turns > 0 else { return }
         let end = Date().addingTimeInterval(options.drainSeconds)
-        while Date() < end, brain.isRunning, !state.withLock({ $0.stopRequested }) {
-            let (lastLine, lastTurn) = state.withLock { ($0.lastBrainLine, $0.lastTurnSent ?? .distantPast) }
+        while Date() < end, !state.withLock({ $0.stopRequested || $0.brainFailed }) {
+            let (lastLine, lastTurn, brain, phase) = state.withLock { ($0.lastBrainLine, $0.lastTurnSent ?? .distantPast, $0.brain, $0.phase) }
+            if phase != .restarting, !(brain?.isRunning ?? false) { break }
             let quiet = Date().timeIntervalSince(max(lastLine, lastTurn))
-            if quiet >= options.quietSeconds { break }
+            if quiet >= options.quietSeconds, phase != .restarting { break }
             try? await Task.sleep(for: .milliseconds(50))
+        }
+    }
+
+    // MARK: transcript
+
+    private func openTranscript() {
+        guard let url = options.transcriptURL else { return }
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: url.path) { fm.createFile(atPath: url.path, contents: nil) }
+        guard let h = try? FileHandle(forWritingTo: url) else { log("cannot open the transcript file \(url.path)"); return }
+        _ = try? h.seekToEnd()
+        transcript.withLockUnchecked { $0 = h }
+    }
+
+    private func closeTranscript() {
+        transcript.withLockUnchecked { h in
+            try? h?.synchronize()
+            try? h?.close()
+            h = nil
+        }
+    }
+
+    private func appendTranscript(_ ev: OutboundEvent) {
+        guard case .turn(let id, let speaker, let text, let addressee, let audioEnd, let kind) = ev else { return }
+        let obj: [String: Any] = ["turn_id": id, "speaker": speaker.rawValue, "text": text, "addressee": addressee.rawValue,
+                                  "kind": kind.rawValue, "t_audio_end": Text.ms(audioEnd)]
+        guard let d = try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys, .withoutEscapingSlashes]) else { return }
+        transcript.withLockUnchecked { h in
+            guard let h else { return }
+            try? h.write(contentsOf: d + Data("\n".utf8))
+            try? h.synchronize()
         }
     }
 
     // MARK: engine output
 
-    private func dispatch(_ timed: [TurnEngine.Timed], brain: BrainProcess) {
+    private func isAnswerableQuestion(_ ev: OutboundEvent) -> Bool {
+        if case .turn(_, .remote, _, let who, _, let kind) = ev, who != .other, kind == .question { return true }
+        return false
+    }
+
+    private func dispatch(_ timed: [TurnEngine.Timed]) {
         for t in timed {
             let ev = t.event
+            if case .turn = ev { appendTranscript(ev) }
             if ev.isForBrain {
-                brain.send(ev.jsonLine())
-                if options.echoOutbound { echoOutbound(ev) }
+                let question = isAnswerableQuestion(ev)
+                let target: BrainProcess? = state.withLock { s in
+                    switch s.phase {
+                    case .running, .starting:
+                        if question { s.lastQuestion = (ev, Date()) }
+                        return s.brain
+                    case .restarting:
+                        if question { s.pendingQuestion = ev }
+                        return nil
+                    case .failed:
+                        return nil
+                    }
+                }
+                guard let target else { continue }   // dropped while the brain restarts (the latest question is kept)
+                target.send(ev.jsonLine())
+                if options.echoOutbound { echoOutbound(ev) } else { emitSinkOnly(.outbound(outboundObject(ev))) }
             } else if case .chip = ev {
                 if let d = try? JSONSerialization.jsonObject(with: Data(ev.jsonLine().utf8)) as? [String: Any] { emitJSON(d) }
             }
@@ -276,11 +591,17 @@ public final class VerseRunner: @unchecked Sendable {
         }
     }
 
+    private func outboundObject(_ ev: OutboundEvent) -> [String: JSONValue] {
+        var o = JSONValue.decodeObject(ev.jsonLine()) ?? [:]
+        o["dir"] = .string("to_brain")
+        return o
+    }
+
     private func echoOutbound(_ ev: OutboundEvent) {
         guard let d = try? JSONSerialization.jsonObject(with: Data(ev.jsonLine().utf8)) as? [String: Any] else { return }
         var o = d
         o["dir"] = "to_brain"
-        if options.format == .json { emitJSON(o) } else { emit(Self.textLine(o)) }
+        if options.format == .json || options.sink != nil { emitJSON(o) } else { emit(Self.textLine(o)) }
     }
 
     // MARK: brain output
@@ -289,10 +610,10 @@ public final class VerseRunner: @unchecked Sendable {
         state.withLock { $0.lastBrainLine = Date() }
         let obj = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any]
         if let obj, obj["type"] as? String == "status", let st = obj["state"] as? String {
-            if ["ready", "offline", "error", "credit_exhausted", "rate_limited"].contains(st) { state.withLock { $0.ready = st } }
+            if ["ready", "offline", "error", "credit_exhausted", "rate_limited"].contains(st) { state.withLock { if $0.ready == nil { $0.ready = st } } }
         }
-        if options.format == .json {
-            emit(line)
+        if options.format == .json || options.sink != nil {
+            emit(line, fromBrain: true)
         } else if let obj {
             emit(Self.textLine(obj, lineBuffer: { [state] id, chunk, done in
                 state.withLock { s -> String? in
@@ -323,7 +644,6 @@ public final class VerseRunner: @unchecked Sendable {
             }
         }
     }
-
     // MARK: text format
 
     /// A short human-readable line for an event object; nil buffer callback prints every delta chunk's line on its own.
