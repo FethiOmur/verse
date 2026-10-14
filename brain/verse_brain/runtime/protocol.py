@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import IO, Callable
 
 IN_TYPES = {"start", "partial", "turn", "bank_hit", "control"}
+# `turn.kind` (Swift VerseTurns): optional, absent from older senders. Anything else is treated as absent.
+TURN_KINDS = {"question", "statement", "fragment"}
 STATUS_STATES = {"warming", "ready", "offline", "rate_limited", "credit_exhausted", "refusal", "error"}
 
 
@@ -55,6 +57,13 @@ class ListEmitter(Emitter):
 
     def of(self, type_: str, **match) -> list[dict]:
         return [e for e in self.events if e["type"] == type_ and all(e.get(k) == v for k, v in match.items())]
+
+
+def turn_kind(msg: dict) -> str | None:
+    """The `kind` of a `turn` message: "question" | "statement" | "fragment", or None when missing or unknown
+    (None keeps the question behaviour)."""
+    k = msg.get("kind")
+    return k if isinstance(k, str) and k in TURN_KINDS else None
 
 
 def parse_line(line: str) -> dict | None:

@@ -40,9 +40,13 @@ async def partial(b: Brain, tid: str, text: str, cue: bool = True, speaker: str 
     await b.handle({"type": "partial", "turn_id": tid, "speaker": speaker, "text": text, "cue": cue, "t_audio_end": 0.0})
 
 
-async def turn(b: Brain, tid: str, text: str, addressee: str = "me", speaker: str = "remote") -> None:
-    await b.handle({"type": "turn", "turn_id": tid, "speaker": speaker, "text": text, "addressee": addressee,
-                    "t_audio_end": 0.0})
+async def turn(b: Brain, tid: str, text: str, addressee: str = "me", speaker: str = "remote",
+               kind: str | None = None) -> None:
+    """`kind=None` leaves the field out, like an older sender."""
+    msg = {"type": "turn", "turn_id": tid, "speaker": speaker, "text": text, "addressee": addressee, "t_audio_end": 0.0}
+    if kind is not None:
+        msg["kind"] = kind
+    await b.handle(msg)
 
 
 async def speak(b: Brain, tid: str, words: list[str], every: float, cue: bool = True, step: int = 1) -> None:

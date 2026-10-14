@@ -123,6 +123,26 @@ def fast_tail(question: str, lang: str, final: bool) -> str:
     return f"Language: {LANG_NAME.get(lang, lang)}\nCURRENT QUESTION ({state}): {' '.join(question.split())}"
 
 
+STATEMENT_SAY_WORDS = 12
+
+
+def statement_tail(text: str, lang: str) -> str:
+    """F call for a turn Swift classified as a statement. The instructions live in the tail (never cached), so the
+    system prompt and the cached prefix stay byte-identical to the question path."""
+    return (
+        f"Language: {LANG_NAME.get(lang, lang)}\n"
+        "STATEMENT CHECK. The turn below is probably not a question. The answer format above does not apply until "
+        "you have decided what the turn is. Write as the first line either KIND: question or KIND: statement.\n"
+        "KIND: question when the speaker asks or invites Alex to explain, describe or tell something, even without "
+        "a question mark (\"tell me about ...\", \"walk me through ...\", \"I would like to hear how ...\"). Then "
+        "continue with the normal answer lines: SAY, two \"- \" lines, BANK.\n"
+        "KIND: statement for everything else: a greeting, a pleasantry, an announcement, a remark, thanks, small talk. "
+        f"Then write one line only: SAY: <a brief acknowledgement Alex can say, first person, at most "
+        f"{STATEMENT_SAY_WORDS} words>, or the single word NONE. Write NONE unless the speaker expects a reply "
+        "(a greeting, a thank-you, a request for permission, a how-are-you). No points, no BANK line.\n"
+        f"CURRENT TURN (finished): {' '.join(text.split())}")
+
+
 def deep_tail(question: str, lang: str, final: bool, shown_opener: str | None, bank: dict | None) -> str:
     state = "finished" if final else "still being spoken, may be cut off"
     lines = [f"Language: {LANG_NAME.get(lang, lang)}",

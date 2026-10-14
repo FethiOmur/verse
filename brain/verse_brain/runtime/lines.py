@@ -1,7 +1,7 @@
 """Splits streamed model text into lines, forwarding display text word by word and holding control lines.
 
 Display lines (`SAY: ...`, `- ...`) are forwarded as soon as their start cannot be a control token. Control lines
-(`BANK: <id>|none`, `OPENER_OK`, `OPENER_WRONG`) are held until complete and reported through `on_control`, never
+(`BANK: <id>|none`, `KIND: question|statement`, `OPENER_OK`, `OPENER_WRONG`) are held until complete and reported through `on_control`, never
 forwarded as text. With `hold_first_line`, nothing is forwarded until the first line is complete (D: the opener
 verdict must reach Swift before any D text).
 """
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-CONTROL_TOKENS = ("BANK:", "OPENER_OK", "OPENER_WRONG")
+CONTROL_TOKENS = ("BANK:", "KIND:", "OPENER_OK", "OPENER_WRONG")
 
 
 class LineAssembler:

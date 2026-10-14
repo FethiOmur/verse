@@ -147,6 +147,8 @@ def default_responder(info: CallInfo) -> Script:
         return lines_script(ROLLING_CANNED)
     if info.tail.startswith("SUMMARIZE-FINAL"):
         return lines_script(FINAL_CANNED)
+    if "STATEMENT CHECK" in info.tail:
+        return lines_script("KIND: statement\nSAY: Thanks, noted.")
     if info.route == "D":
         return lines_script("OPENER_OK\n- A detail point from the pack (prep:L1)\n- Another detail (f001)")
     return lines_script("SAY: Sure, here is the short answer.\n- First point.\n- Second point.\nBANK: none")

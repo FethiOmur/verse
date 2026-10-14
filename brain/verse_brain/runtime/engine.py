@@ -7,6 +7,10 @@ Output contract towards Swift (in addition to the plan's event list):
   deltas, then the rest live. Every `delta` Swift receives is therefore meant to be shown.
 - `BANK:` / `OPENER_*` lines are never sent as text; they become `bank_verdict` / `opener_status` events.
 - `metric` events carry wall-clock `t` (time.time(), epoch seconds) plus `id`/`tier` and stage details.
+- Turn kind (`turn.kind`, optional; Swift VerseTurns): `fragment` -> nothing is fired or shown for the turn (it stays
+  in the transcript). `statement` (addressee me|unknown) -> S output is dropped, no early D; one F "statement probe"
+  whose first line is `KIND: question|statement`: `statement` shows at most one `SAY:` line of <= 12 words (or nothing
+  on `NONE`), `question` continues as the normal F answer and then D. `question` or no kind: unchanged.
 - F2 incremental summary, lowest priority. Tier R (Haiku, the S/F tuple and cached prefix, lane 1, no hedge) runs
   every `summary_every_turns` finalized turns or `summary_every_s` of speech, only when no turn is open and no
   S/F/D call is in flight and the Haiku bucket and the budget have room; its lines are merged (deduped) into a
@@ -29,8 +33,9 @@ from pathlib import Path
 
 from ..prep.model import Usage, spend_usd
 from .lines import LineAssembler
-from .prompt import (WARMUP_TAIL, Turn, build_request, deep_tail, fast_tail, final_tail, rolling_tail)
-from .protocol import Emitter, Session, load_session
+from .prompt import (STATEMENT_SAY_WORDS, WARMUP_TAIL, Turn, build_request, deep_tail, fast_tail, final_tail,
+                     rolling_tail, statement_tail)
+from .protocol import Emitter, Session, load_session, turn_kind
 from .ratelimit import ModelLimiter
 from .settings import HAIKU, MODEL_ROUTE, SONNET, Config, route_params
 from .summary import Running, parse_lines, render_markdown
@@ -73,7 +78,7 @@ class Call:
     buffered/live output."""
 
     def __init__(self, brain: "Brain", tier: str, turn_id: str, input_text: str, request: dict, *,
-                 buffered: bool, route: str) -> None:
+                 buffered: bool, route: str, probe: bool = False) -> None:
         self.brain = brain
         self.tier = tier
         self.route = route
@@ -91,6 +96,10 @@ class Call:
         self.first_point: str | None = None
         self.bank_id: str | None = None
         self.opener_ok: bool | None = None
+        # statement probe (an F call for a turn Swift called a statement): its first line is `KIND: ...`
+        self.probe = probe
+        self.kind: str | None = None          # None until the KIND line (or, without one, the first text line)
+        self.kind_known = asyncio.Event()
         self.points: list[str] = []
         self.stop_reason: str | None = None
         self.usage: dict = {}
@@ -105,7 +114,7 @@ class Call:
         self.done = asyncio.Event()
         self.bank_known = asyncio.Event()
         self.first_text_seen = False
-        self.lines = LineAssembler(self._on_text, self._on_control, hold_first_line=(tier == "D"))
+        self.lines = LineAssembler(self._on_text, self._on_control, hold_first_line=(tier == "D" or probe))
         self.task: asyncio.Task | None = None
 
     # ---- output
@@ -148,6 +157,9 @@ class Call:
             if line_done:
                 self.summary_lines.append(line.strip())
             return
+        if self.probe and self.kind != "question":
+            self._on_statement_text(line_done, line)
+            return
         self._out(self.brain.emitter.delta(self.id, self.turn_id, self.tier, chunk, line_done))
         if line_done:
             s = line.strip()
@@ -160,8 +172,35 @@ class Call:
                     self.first_point = s[2:].strip()
                     self._stage("first_point")
 
+    def _on_statement_text(self, line_done: bool, line: str) -> None:
+        """Statement mode: only the first complete `SAY:` line of <= STATEMENT_SAY_WORDS words is shown. Points, a
+        BANK line, a second line, `NONE` and an over-long acknowledgement are dropped, whatever the model writes."""
+        if not line_done:
+            return
+        if self.kind is None:              # no KIND line: a statement is the safe reading
+            self.kind = "statement"
+            self.kind_known.set()
+        s = line.strip()
+        if self.say_line is not None or not s.startswith("SAY:"):
+            return
+        body = s[4:].strip()
+        if not body:
+            return
+        if len(body.split()) > STATEMENT_SAY_WORDS:
+            self._stage("statement_overlong", words=len(body.split()))
+            return
+        self.say_line = body
+        self._out(self.brain.emitter.delta(self.id, self.turn_id, self.tier, s, True))
+        self._stage("say_line")
+
     def _on_control(self, line: str) -> None:
-        if line.startswith("BANK:"):
+        if line.startswith("KIND:"):
+            if self.probe and self.kind is None:
+                self.kind = "question" if line[5:].strip().lower().startswith("question") else "statement"
+                self.kind_known.set()
+        elif line.startswith("BANK:"):
+            if self.probe and self.kind != "question":
+                return
             bid = line[5:].strip().split()[0] if line[5:].strip() else "none"
             self.bank_id = bid.strip("[]").lower() if bid.lower() == "none" else bid.strip("[]")
             self.bank_known.set()
@@ -208,6 +247,7 @@ class Call:
             b.on_call_error(self, e)
         finally:
             self.bank_known.set()  # waiters re-check bank_id; a call without a BANK line must not stall D
+            self.kind_known.set()  # ...and a probe that failed or never wrote KIND must not stall its decider
             self.done.set()        # before on_call_done: its follow-ups (next summary pass) must see this call as over
             b.on_call_done(self)
             self._stage("done", stop_reason=self.stop_reason, usage=self.usage, hedged=self.hedged,
@@ -241,6 +281,7 @@ class TurnState:
     verdict_sent: bool = False
     turns_before: list[Turn] = field(default_factory=list)
     retried_offline: bool = False
+    kind: str | None = None        # `turn.kind` as sent by Swift (None = missing or unknown: question behaviour)
 
 
 class Brain:
@@ -422,7 +463,8 @@ class Brain:
                         log.warning("keep-alive %s failed: %s", model, e)
 
     # ------------------------------------------------------------------ call plumbing
-    def _launch(self, tier: str, turn_id: str, text: str, tail: str, turns: list[Turn], *, buffered: bool) -> Call | None:
+    def _launch(self, tier: str, turn_id: str, text: str, tail: str, turns: list[Turn], *, buffered: bool,
+                probe: bool = False) -> Call | None:
         if self.halted or self.session is None:
             return None
         if self.spend >= self.config.budget_usd:
@@ -438,7 +480,7 @@ class Brain:
             if tier in ("D", "A"):
                 self._status("rate_limited", "client-side token bucket empty", turn_id=turn_id)
             return None
-        call = Call(self, tier, turn_id, text, req, buffered=buffered, route=route)
+        call = Call(self, tier, turn_id, text, req, buffered=buffered, route=route, probe=probe)
         self.calls.append(call)
         self.last_call_mono[model] = time.monotonic()
         call.task = self._spawn(call.run())
@@ -685,9 +727,11 @@ class Brain:
         st.finished = True
         st.final_text = text
         st.addressee = msg.get("addressee", "unknown")
+        st.kind = turn_kind(msg)
         st.turns_before = list(self.turns)
         self.turns.append(Turn(tid, speaker, text))
-        self.latest_remote_turn = tid
+        if st.kind != "fragment":      # a stray fragment must not make the pending question's retry look stale
+            self.latest_remote_turn = tid
         if self.active_remote == tid:
             self.active_remote = None
         if st.d_timer is not None and not st.d_timer.done():
@@ -699,11 +743,21 @@ class Brain:
                 st.d_call.discard()
             self.emitter.metric(tid, "for_others")
             return
+        if st.kind == "fragment":
+            # a cut-off clause: nothing is fired or shown; speculation that started on its partials is closed
+            for c in st.s_calls:
+                c.discard()
+            if st.d_call:
+                st.d_call.discard()
+            self.emitter.metric(tid, "fragment_skipped")
+            return
         if self.halted or self.session is None:
             return
         self._endpoint(st)
 
     def _endpoint(self, st: TurnState) -> None:
+        if st.kind == "statement":
+            return self._endpoint_statement(st)
         cfg = self.config
         final = tokens(st.final_text)
         best: tuple[int, int] | None = None   # (distance, -seq): closest input wins, the newest on a tie
@@ -733,6 +787,39 @@ class Brain:
                                    st.turns_before, buffered=False)
         self._deciding += 1
         self._spawn(self._decide_d_tracked(st))
+
+    def _endpoint_statement(self, st: TurnState) -> None:
+        """A statement (addressee me|unknown): speculation is dropped (it answered a question nobody asked) and no D
+        is decided up front. One F probe either acknowledges in one short line, stays silent, or says `KIND: question`
+        (an implicit request), in which case the normal answer lines stream and D follows."""
+        for c in st.s_calls:
+            c.discard()
+        if st.d_call is not None:
+            st.d_call.discard()
+            st.d_call = None
+        st.fast = self._launch("F", st.turn_id, st.final_text, statement_tail(st.final_text, self.lang),
+                               st.turns_before, buffered=False, probe=True)
+        self.emitter.metric(st.turn_id, "statement_probe", launched=st.fast is not None)
+        if st.fast is None:
+            return
+        self._deciding += 1
+        self._spawn(self._decide_statement_tracked(st, st.fast))
+
+    async def _decide_statement_tracked(self, st: TurnState, probe: Call) -> None:
+        try:
+            await probe.kind_known.wait()
+            if probe.discarded or probe.error is not None:
+                return
+            if probe.kind == "question":
+                self.emitter.metric(st.turn_id, "statement_escalated", id=probe.id)
+                await self._decide_d(st)
+                return
+            await probe.done.wait()
+            if not probe.discarded and probe.error is None and probe.say_line is None:
+                self.emitter.metric(st.turn_id, "statement_no_reply", id=probe.id)
+        finally:
+            self._deciding -= 1
+            self._maybe_roll()
 
     async def _decide_d_tracked(self, st: TurnState) -> None:
         try:
