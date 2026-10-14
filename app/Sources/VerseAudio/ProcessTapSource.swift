@@ -15,7 +15,8 @@ public enum TapRoutePreference: String, Sendable, Codable {
 }
 
 /// Default bundle IDs of the meeting apps (Brave's audio comes from `com.brave.Browser.helper`).
-public let defaultRemoteBundleIDs = ["com.brave.Browser", "com.brave.Browser.helper", "us.zoom.xos", "com.microsoft.teams2"]
+public let defaultRemoteBundleIDs = ["com.brave.Browser", "com.brave.Browser.helper", "ai.perplexity.comet", "ai.perplexity.comet.helper",
+                                     "us.zoom.xos", "com.microsoft.teams2"]
 
 /// Core Audio process tap on the meeting app -> private aggregate device that holds only the tap (no output
 /// sub-device, so AirPods are never pulled into an aggregate or switched to headset mode) -> IOProc.

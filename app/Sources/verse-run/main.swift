@@ -17,7 +17,7 @@ func usage() -> Never {
       --seconds N         stop listening after N s (live default 60; a file plays to its end)
       --file PATH         play an audio file as the remote channel instead of listening live
       --no-mic            live: remote audio only
-      --bundle-ids a,b    apps whose audio is the remote channel (default Brave, Zoom, Teams)
+      --bundle-ids a,b    apps whose audio is the remote channel (default Brave, Comet, Zoom, Teams)
       --owner NAME        your name for the addressee check (default Alex); --alias a,b adds spellings the
                           recognizer produces; --others a,b names other participants
       --cue-ms N          endpoint wait after a finished question (default 300)

@@ -93,12 +93,14 @@ final class RunnerSinkTests: XCTestCase {
         XCTAssertEqual(Self.stableContent(stdoutObjs), Self.stableContent(printed.compactMap { $0 }))
     }
 
-    /// What does not depend on timing with the fake brain: chips, readiness, and the text each tier wrote per turn.
+    /// What does not depend on timing with the fake brain: fact chips, readiness, and the text each tier wrote per turn.
     private static func stableContent(_ objs: [[String: JSONValue]]) -> [String] {
         var text: [String: String] = [:]
         var out: [String] = []
         for o in objs {
             switch o.type {
+            // Topic chips (F4) depend on a wall-clock window and cooldown, so they differ between two runs.
+            case "chip" where o[string: "kind"] == "topic": break
             case "chip": out.append("chip \(o[string: "turn_id"] ?? "") \(o[string: "text"] ?? "")")
             case "status": out.append("status \(o[string: "state"] ?? "")")
             case "delta":

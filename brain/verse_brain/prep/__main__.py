@@ -1,6 +1,7 @@
 """CLI: python -m verse_brain.prep --prep-note PATH --repo PATH [--repo PATH...] --lang en[,it,tr] --out DIR
 
 --live runs the bundled sample prep note with the real model (budget < $0.50) and prints a summary.
+--from-event EVENT.json builds the prep note from a calendar event (F5); add --fake for an offline run (no network, no key).
 """
 
 from __future__ import annotations
@@ -8,8 +9,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
 from pathlib import Path
 
+from .event import EventError, FakeEventModel, event_to_prep_note, load_event
 from .keychain import KeychainError, read_api_key, redact
 from .model import PrepError
 from .pipeline import build
@@ -30,6 +33,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-vault", action="store_true", help="skip beyin.py retrieval")
     ap.add_argument("--vault-audience", choices=["internal", "public"], default="internal")
     ap.add_argument("--budget-usd", type=float, default=1.0, help="hard cap used to size max_tokens")
+    ap.add_argument("--from-event", type=Path, metavar="EVENT.json",
+                    help="build the prep note from a calendar event JSON (id, title, start, end, attendees, notes, url, provider)")
+    ap.add_argument("--fake", action="store_true",
+                    help="with --from-event: deterministic offline model, no network, no key, no spend")
     ap.add_argument("--live", action="store_true",
                     help="smoke run: sample prep note (unless --prep-note), real model, budget 0.45 USD, 24 questions")
     a = ap.parse_args(argv)
@@ -38,20 +45,36 @@ def main(argv: list[str] | None = None) -> int:
         a.prep_note = a.prep_note or SAMPLE
         a.budget_usd = min(a.budget_usd, 0.45)
         a.max_questions = min(a.max_questions, 24)
-    if a.prep_note is None:
-        ap.error("--prep-note is required (or use --live)")
+    if a.from_event is not None and a.prep_note is not None:
+        ap.error("--from-event and --prep-note are mutually exclusive")
+    if a.fake and a.from_event is None:
+        ap.error("--fake needs --from-event")
+    if a.prep_note is None and a.from_event is None:
+        ap.error("--prep-note is required (or use --from-event or --live)")
     langs = [c for c in a.lang.split(",") if c]
-    vault = None if a.no_vault else BeyinVault(a.vault, audience=a.vault_audience)
+    vault = None if (a.no_vault or a.fake) else BeyinVault(a.vault, audience=a.vault_audience)
     key = None
+    note_dir: tempfile.TemporaryDirectory | None = None
     try:
-        key = read_api_key()  # only to scrub error text; the model client reads its own copy
-        session = build(a.prep_note, a.repo, langs, a.out, a.max_questions, vault=vault, budget_usd=a.budget_usd)
-    except (KeychainError, PrepError, OSError) as e:
+        if a.from_event is not None:
+            note_dir = tempfile.TemporaryDirectory(prefix="verse-event-")
+            a.prep_note = Path(note_dir.name) / "event-prep-note.md"
+            a.prep_note.write_text(event_to_prep_note(load_event(a.from_event)), encoding="utf-8")
+        if a.fake:
+            session = build(a.prep_note, a.repo, langs, a.out, a.max_questions, model=FakeEventModel(), vault=None,
+                            budget_usd=a.budget_usd)
+        else:
+            key = read_api_key()  # only to scrub error text; the model client reads its own copy
+            session = build(a.prep_note, a.repo, langs, a.out, a.max_questions, vault=vault, budget_usd=a.budget_usd)
+    except (KeychainError, PrepError, EventError, OSError) as e:
         print(f"error: {redact(str(e), key)}", file=sys.stderr)
         return 1
     except Exception as e:  # noqa: BLE001
         print(f"error: {type(e).__name__}: {redact(str(e), key)[:300]}", file=sys.stderr)
         return 1
+    finally:
+        if note_dir is not None:
+            note_dir.cleanup()
     meta = json.loads((session / "meta.json").read_text(encoding="utf-8"))
     st = meta["stats"]
     print(f"session: {session}")
