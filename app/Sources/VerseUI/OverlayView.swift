@@ -432,6 +432,8 @@ public struct OverlayView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 6)
                     .padding(.bottom, 12)
+                    .contentShape(Rectangle())
+                    .onTapGesture { model.collapse() }   // a click on the row clears the topic hints
                     .frame(minWidth: capsuleWidth)
             } else if let card = state.card {
                 VStack(spacing: 0) {

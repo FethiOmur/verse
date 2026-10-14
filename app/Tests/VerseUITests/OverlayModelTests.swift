@@ -253,13 +253,13 @@ final class OverlayModelTests: XCTestCase {
         }
         m.apply(topic("r1", "ETA drift"))
         m.apply(topic("r1", "ETA drift"))
-        c.t += 20
+        c.t += 10
         m.apply(topic("r2", "Compass"))
         XCTAssertNil(m.state.card, "a topic opens no question card")
         XCTAssertEqual(m.state.topics.map(\.text), ["ETA drift", "Compass"], "deduped by text, in order")
-        c.t += 26
+        c.t += 6
         m.tick()
-        XCTAssertEqual(m.state.topics.map(\.text), ["Compass"], "ETA drift is 46 s old: dropped")
+        XCTAssertEqual(m.state.topics.map(\.text), ["Compass"], "ETA drift is 16 s old: dropped (topics fade after 15 s)")
         c.t += 20
         m.tick()
         XCTAssertTrue(m.state.topics.isEmpty)
@@ -341,5 +341,31 @@ final class OverlayModelTests: XCTestCase {
         XCTAssertEqual(m.state.card?.sayTier, "P")
         m.apply(verdict("r1", "b001", agree: false))
         XCTAssertNil(m.state.card?.say)
+    }
+}
+
+final class TopicChipExpiryTests: XCTestCase {
+    final class Clock: @unchecked Sendable { var t: TimeInterval = 0 }
+    private func topic(_ tid: String, _ text: String) -> RunnerEvent {
+        .chip(obj(["type": "chip", "turn_id": tid, "kind": "topic", "text": text, "source_ref": "prep", "fact_id": "b003"]))
+    }
+
+    /// Alex, 14 Oct: a topic hint stayed under the notch for good (cards never expire) and a click did not clear it.
+    @MainActor func testTopicChipsFadeEvenWhenCardsNeverExpire() {
+        let c = Clock()
+        let m = OverlayModel(config: OverlayConfig(cardTimeout: .infinity), clock: { c.t })
+        m.apply(topic("r1", "Why this role?"))
+        c.t = 10; m.tick()
+        XCTAssertEqual(m.state.topics.count, 1)
+        c.t = 16; m.tick()
+        XCTAssertTrue(m.state.topics.isEmpty)
+    }
+
+    @MainActor func testClickClearsTopicRow() {
+        let c = Clock()
+        let m = OverlayModel(config: OverlayConfig(cardTimeout: .infinity), clock: { c.t })
+        m.apply(topic("r1", "Why this role?"))
+        m.collapse()
+        XCTAssertTrue(m.state.topics.isEmpty)
     }
 }

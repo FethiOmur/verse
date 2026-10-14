@@ -192,6 +192,9 @@ public struct OverlayConfig: Equatable, Sendable {
     public var otherNames: [String] = []
     public var maxBullets = 3
     public var maxDeepPoints = 4
+    /// Topic chips (no question card open) fade after this many seconds. They are hints, not answers, so they never
+    /// follow `cardTimeout` (whose default is "never").
+    public var topicTimeout: TimeInterval = 15
 
     public init(cardTimeout: TimeInterval = .infinity, otherNames: [String] = []) {
         self.cardTimeout = cardTimeout
@@ -314,8 +317,8 @@ public struct OverlayReducer: Sendable {
             if state.activity == .thinking { state.activity = .listening }
         }
         if !state.topics.isEmpty {
-            state.topics.removeAll { now - (topicSeen[$0.text] ?? now) >= config.cardTimeout }
-            topicSeen = topicSeen.filter { now - $0.value < config.cardTimeout }
+            state.topics.removeAll { now - (topicSeen[$0.text] ?? now) >= config.topicTimeout }
+            topicSeen = topicSeen.filter { now - $0.value < config.topicTimeout }
         }
     }
 
@@ -333,6 +336,9 @@ public struct OverlayReducer: Sendable {
         if state.card != nil {
             state.card = nil
             if state.activity == .thinking { state.activity = .listening }
+        } else if !state.topics.isEmpty {
+            state.topics = []
+            topicSeen = [:]
         } else {
             state.startup = nil
         }
