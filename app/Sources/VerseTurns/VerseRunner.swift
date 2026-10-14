@@ -145,6 +145,9 @@ public struct RunOptions: Sendable {
     /// When set, every event goes here instead of stdout (already decoded), plus the sink-only extras. nil: stdout,
     /// byte for byte as before.
     public var sink: (@Sendable (RunnerEvent) -> Void)?
+    /// Tests: with a sink, also write every line verse-run would print here, so one run can be checked for sink/stdout
+    /// parity (two separate runs differ in timing-dependent lines such as hedges).
+    public var mirrorOutput: FileHandle?
     /// When set, every finalized turn (both speakers) is appended here as one JSON line
     /// `{turn_id, speaker, text, addressee, kind, t_audio_end}` and flushed. Text only, never audio.
     public var transcriptURL: URL?
@@ -228,6 +231,7 @@ public final class VerseRunner: @unchecked Sendable {
         outLock.withLockUnchecked {
             if let sink = options.sink {
                 if let o = JSONValue.decodeObject(line) { sink(RunnerEvent.classify(o, fromBrain: fromBrain)) }
+                options.mirrorOutput?.write(Data((line + "\n").utf8))
             } else {
                 FileHandle.standardOutput.write(Data((line + "\n").utf8))
             }

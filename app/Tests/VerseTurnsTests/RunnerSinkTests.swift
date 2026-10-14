@@ -33,24 +33,20 @@ final class RunnerSinkTests: XCTestCase {
             facts: ["{\"id\":\"f001\",\"kind\":\"name\",\"text\":\"Lantern project\",\"value\":\"Lantern\",\"sources\":[{\"kind\":\"prep\",\"ref\":\"prep:L13\",\"quote\":\"x\"}]}"])
     }
 
-    /// The same `--fake-brain --file` run printed by `verse-run` and delivered to a sink: the sink gets exactly the
-    /// printed objects, in the same order (numbers masked: timings and pids differ between two runs).
+    /// One `--fake-brain --file` run with a sink: the sink gets exactly the objects verse-run prints (mirrored from the
+    /// same run, so timing-dependent lines such as hedges and metrics can't differ), in the same order. Then a separate
+    /// stdout run of the `verse-run` binary must show the same timing-independent content (chips, statuses, the text
+    /// of every tier per turn).
     func testSinkParity() async throws {
         let session = try sampleSession()
         defer { session.delete() }
         let fixture = try SayFixture.make(voice: "Samantha", text: "Can you tell me about yourself and your background? [[slnc 1500]] What results did Lantern deliver?")
         defer { fixture.delete() }
 
-        let run = try RunningVerseRun(arguments: ["--session", session.dir.path, "--lang", "en", "--file", fixture.file.path,
-                                                  "--fake-brain", "--drain", "3", "--brain-dir", try brainDir().path])
-        let status = await run.waitForExit(timeout: 90)
-        XCTAssertEqual(status, 0, "verse-run stderr: \(run.stderrText)")
-        let printed = run.output.map { o -> [String: JSONValue] in
-            let d = try! JSONSerialization.data(withJSONObject: o.obj)
-            return JSONValue.decodeObject(String(decoding: d, as: UTF8.self))!
-        }
-        XCTAssertGreaterThan(printed.count, 20)
-
+        // 1. Same run: sink vs the mirrored printed lines.
+        let mirrorURL = session.dir.appendingPathComponent("mirror.jsonl")
+        FileManager.default.createFile(atPath: mirrorURL.path, contents: nil)
+        let mirror = try FileHandle(forWritingTo: mirrorURL)
         let rec = SinkRecorder()
         var o = RunOptions(sessionDir: session.dir)
         o.file = fixture.file
@@ -58,23 +54,24 @@ final class RunnerSinkTests: XCTestCase {
         o.drainSeconds = 3
         o.brainDir = try brainDir()
         o.sink = rec.sink
+        o.mirrorOutput = mirror
         let code = await VerseRunner(options: o).run()
+        try mirror.close()
         XCTAssertEqual(code, 0)
         let events = rec.all
         XCTAssertEqual(events.last, .ended(exitCode: 0))
+        let printed = try String(contentsOf: mirrorURL, encoding: .utf8).split(separator: "\n").map { JSONValue.decodeObject(String($0)) }
+        XCTAssertFalse(printed.contains { $0 == nil }, "every printed line is one JSON object")
         // Sink-only extras: the lines sent to the brain (printed only with --echo) and the end marker.
         let sunk = events.filter {
             if case .outbound = $0 { return false }
             if case .ended = $0 { return false }
             return true
         }
-        // Every event maps back to the object verse-run prints for it.
-        for e in sunk { XCTAssertNotNil(e.object) }
-        let a = printed.map { masked(.object($0)) }
-        let b = sunk.map { masked(.object($0.object!)) }
-        XCTAssertEqual(a.count, b.count, "printed \(a.count) lines, sink got \(b.count)")
-        for (i, (x, y)) in zip(a, b).enumerated() where x != y {
-            XCTFail("line \(i) differs:\n  printed \(x)\n  sink    \(y)")
+        XCTAssertGreaterThan(sunk.count, 20)
+        XCTAssertEqual(sunk.count, printed.count, "printed \(printed.count) lines, sink got \(sunk.count)")
+        for (i, (e, p)) in zip(sunk, printed).enumerated() where e.object != p {
+            XCTFail("line \(i) differs:\n  printed \(p.map { JSONValue.object($0).description } ?? "nil")\n  sink    \(e.object.map { JSONValue.object($0).description } ?? "nil")")
             break
         }
         // The categories are right: brain lines are .brain, chips .chip, the runner's own metrics .metric.
@@ -83,6 +80,35 @@ final class RunnerSinkTests: XCTestCase {
         XCTAssertTrue(sunk.contains { if case .metric(let o) = $0 { return o[string: "stage"] == "session_t0" }; return false })
         XCTAssertTrue(events.contains { if case .outbound(let o) = $0 { return o.type == "bank_hit" }; return false },
                       "the overlay needs bank_hit (P tier) from the sink")
+
+        // 2. The stdout path (sink nil) of the binary shows the same timing-independent content.
+        let run = try RunningVerseRun(arguments: ["--session", session.dir.path, "--lang", "en", "--file", fixture.file.path,
+                                                  "--fake-brain", "--drain", "3", "--brain-dir", try brainDir().path])
+        let status = await run.waitForExit(timeout: 90)
+        XCTAssertEqual(status, 0, "verse-run stderr: \(run.stderrText)")
+        let stdoutObjs = run.output.map { r -> [String: JSONValue] in
+            let d = try! JSONSerialization.data(withJSONObject: r.obj)
+            return JSONValue.decodeObject(String(decoding: d, as: UTF8.self))!
+        }
+        XCTAssertEqual(Self.stableContent(stdoutObjs), Self.stableContent(printed.compactMap { $0 }))
+    }
+
+    /// What does not depend on timing with the fake brain: chips, readiness, and the text each tier wrote per turn.
+    private static func stableContent(_ objs: [[String: JSONValue]]) -> [String] {
+        var text: [String: String] = [:]
+        var out: [String] = []
+        for o in objs {
+            switch o.type {
+            case "chip": out.append("chip \(o[string: "turn_id"] ?? "") \(o[string: "text"] ?? "")")
+            case "status": out.append("status \(o[string: "state"] ?? "")")
+            case "delta":
+                // Selected S and F both answer the turn; only the turn and the text matter, not which call it was.
+                let tier = o[string: "tier"] == "D" ? "D" : "fast"
+                text["\(o[string: "turn_id"] ?? "") \(tier)", default: ""] += o[string: "text"] ?? ""
+            default: break
+            }
+        }
+        return out + text.keys.sorted().map { "\($0): \(text[$0]!)" }
     }
 
     /// A brain that crashes after `ready` is restarted once and gets the latest question again; a second crash stops
