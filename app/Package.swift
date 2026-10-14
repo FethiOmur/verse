@@ -7,6 +7,7 @@ import Foundation
 let packageDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().path
 let listenInfoPlist = packageDir + "/Sources/verse-listen/Info.plist"
 let runInfoPlist = packageDir + "/Sources/verse-run/Info.plist"
+let meetInfoPlist = packageDir + "/Sources/verse-meet/Info.plist"
 
 let package = Package(
     name: "Verse",
@@ -15,8 +16,10 @@ let package = Package(
         .library(name: "VerseAudio", targets: ["VerseAudio"]),
         .library(name: "VerseSpeech", targets: ["VerseSpeech"]),
         .library(name: "VerseTurns", targets: ["VerseTurns"]),
+        .library(name: "VerseMeet", targets: ["VerseMeet"]),
         .executable(name: "verse-listen", targets: ["verse-listen"]),
         .executable(name: "verse-run", targets: ["verse-run"]),
+        .executable(name: "verse-meet", targets: ["verse-meet"]),
     ],
     dependencies: [
         // Apache-2.0. Local Nemotron Speech Streaming 0.6B (CoreML) engine; same pin as bench/stt-local.
@@ -63,6 +66,30 @@ let package = Package(
                 .unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT",
                               "-Xlinker", "__info_plist", "-Xlinker", runInfoPlist]),
             ]
+        ),
+        // F5: calendar prep (EventKit) and meeting detection (Core Audio process input flags).
+        .target(
+            name: "VerseMeet",
+            swiftSettings: [.swiftLanguageMode(.v6)],
+            linkerSettings: [
+                .linkedFramework("EventKit"),
+                .linkedFramework("CoreAudio"),
+            ]
+        ),
+        .executableTarget(
+            name: "verse-meet",
+            dependencies: ["VerseMeet"],
+            exclude: ["Info.plist"],
+            swiftSettings: [.swiftLanguageMode(.v6)],
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT",
+                              "-Xlinker", "__info_plist", "-Xlinker", meetInfoPlist]),
+            ]
+        ),
+        .testTarget(
+            name: "VerseMeetTests",
+            dependencies: ["VerseMeet"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
             name: "VerseTurnsTests",
