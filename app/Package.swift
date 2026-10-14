@@ -6,6 +6,7 @@ import Foundation
 // "System Audio Recording" and the microphone have a name and a reason to show.
 let packageDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().path
 let listenInfoPlist = packageDir + "/Sources/verse-listen/Info.plist"
+let runInfoPlist = packageDir + "/Sources/verse-run/Info.plist"
 
 let package = Package(
     name: "Verse",
@@ -13,7 +14,9 @@ let package = Package(
     products: [
         .library(name: "VerseAudio", targets: ["VerseAudio"]),
         .library(name: "VerseSpeech", targets: ["VerseSpeech"]),
+        .library(name: "VerseTurns", targets: ["VerseTurns"]),
         .executable(name: "verse-listen", targets: ["verse-listen"]),
+        .executable(name: "verse-run", targets: ["verse-run"]),
     ],
     targets: [
         .target(
@@ -39,6 +42,27 @@ let package = Package(
                 .unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT",
                               "-Xlinker", "__info_plist", "-Xlinker", listenInfoPlist]),
             ]
+        ),
+        // P1-4: turn logic (cues, endpoint, addressee, bank matcher, fact chips) and the brain child process.
+        .target(
+            name: "VerseTurns",
+            dependencies: ["VerseSpeech"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .executableTarget(
+            name: "verse-run",
+            dependencies: ["VerseTurns"],
+            exclude: ["Info.plist"],
+            swiftSettings: [.swiftLanguageMode(.v6)],
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT",
+                              "-Xlinker", "__info_plist", "-Xlinker", runInfoPlist]),
+            ]
+        ),
+        .testTarget(
+            name: "VerseTurnsTests",
+            dependencies: ["VerseTurns", "VerseSpeech", "verse-run"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
             name: "VerseAudioTests",

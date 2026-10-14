@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>dev.verse.run</string>
+    <key>CFBundleName</key>
+    <string>verse-run</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Verse transcribes the meeting app's audio on this Mac so it can suggest answers. Nothing is recorded or saved.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Verse transcribes your own voice on this Mac to follow the conversation. Nothing is recorded or saved.</string>
+</dict>
+</plist>

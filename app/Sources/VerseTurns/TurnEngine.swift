@@ -1,0 +1,428 @@
+import Foundation
+import VerseSpeech
+
+/// Thresholds and names the turn logic needs. Every number is a config value (plan P1-4).
+public struct TurnConfig: Sendable {
+    /// The owner's name and spellings the recognizer is known to produce for it ("Alex" often comes back as "Fi").
+    public var ownerName: String
+    public var ownerAliases: [String]
+    /// Other participants; a question that names one of them is not for the owner.
+    public var otherNames: [String]
+    /// Quiet time after a complete-clause question before the turn is declared over.
+    public var cueEndpointMs: Int
+    /// Quiet time for everything else.
+    public var plainEndpointMs: Int
+    public var matchThreshold: Double
+    public var matchMargin: Double
+    /// "en" | "it" | "tr".
+    public var lang: String
+    /// A gap this long between the previous words of a turn and new, non-overlapping audio starts a new turn.
+    public var newTurnSilenceMs: Int
+    /// A question that starts within this many seconds after the owner stopped talking is for the owner.
+    public var meFollowSeconds: Double
+    /// Consecutive transcript events that must agree on the same bank entry before `bank_hit` is sent.
+    public var matchConsecutive: Int
+    /// Remote audio counts as speech above this loudness (RMS dBFS over 100 ms) or `floor + speechAboveFloorDb`,
+    /// whichever is higher but never above `speechCeilingDbfs`. Only used once `noteRemoteLevel` has been called.
+    public var speechFloorDbfs: Double
+    public var speechAboveFloorDb: Double
+    public var speechCeilingDbfs: Double
+    /// With audio levels: the longest the endpoint waits (after the last text change) for the audio to go quiet or the
+    /// recognizer to catch up with it. Without levels the endpoint is purely text based and this is not used.
+    public var audioWaitCapMs: Int
+    /// With audio levels: a turn is never closed sooner than this after its last text change, so the rest of a burst of
+    /// recognizer results (several events in the same millisecond) still lands in it.
+    public var burstSettleMs: Int
+
+    public init(ownerName: String = "Alex", ownerAliases: [String] = [], otherNames: [String] = [],
+                cueEndpointMs: Int = 300, plainEndpointMs: Int = 600,
+                matchThreshold: Double = 0.55, matchMargin: Double = 0.08,
+                lang: String = "en", newTurnSilenceMs: Int = 600, meFollowSeconds: Double = 3.0, matchConsecutive: Int = 2,
+                speechFloorDbfs: Double = -55, speechAboveFloorDb: Double = 10, speechCeilingDbfs: Double = -42,
+                audioWaitCapMs: Int = 1500, burstSettleMs: Int = 80) {
+        self.ownerName = ownerName
+        self.ownerAliases = ownerAliases
+        self.otherNames = otherNames
+        self.cueEndpointMs = cueEndpointMs
+        self.plainEndpointMs = plainEndpointMs
+        self.matchThreshold = matchThreshold
+        self.matchMargin = matchMargin
+        self.lang = lang
+        self.newTurnSilenceMs = newTurnSilenceMs
+        self.meFollowSeconds = meFollowSeconds
+        self.matchConsecutive = matchConsecutive
+        self.speechFloorDbfs = speechFloorDbfs
+        self.speechAboveFloorDb = speechAboveFloorDb
+        self.speechCeilingDbfs = speechCeilingDbfs
+        self.audioWaitCapMs = audioWaitCapMs
+        self.burstSettleMs = burstSettleMs
+    }
+}
+
+/// Turns the two-channel transcript stream into the events the brain and the overlay need:
+/// `partial` for every remote update, a predictive `turn` endpoint, the addressee, bank hits and fact chips.
+///
+/// Time is session time (`TranscriptEvent.emittedAt`). The engine never reads a clock: `ingest` moves it to the
+/// event's time, and `advance(to:)` moves it forward when no event arrives (the endpoint is a timer, so the caller
+/// has to poll it, e.g. every 10-20 ms).
+public actor TurnEngine {
+    /// An event with the session time it was due.
+    public struct Timed: Sendable, Equatable {
+        public var at: TimeInterval
+        public var event: OutboundEvent
+    }
+
+    private struct Segment {
+        var start: Double, end: Double
+        var text: String
+        var isFinal: Bool
+    }
+
+    private struct Turn {
+        var id: String
+        var segments: [Segment] = []
+        var startedAt: Double
+        var lastChange: Double
+        var text = ""
+        var cue = false
+        var audioEnd = 0.0
+        var chipIDs: Set<String> = []
+        var hitCandidate: String?
+        var hitCount = 0
+        var sentHitID: String?
+        var sentHitScore = 0.0
+        /// The words of the previous turn that a cumulative recognizer result still repeats at its start.
+        var stripPrefix: [String]?
+        var stripBelow = 0.0
+        var followsMe = false
+    }
+
+    private struct Closed {
+        var tokens: [String]
+        var audioEnd: Double
+    }
+
+    private let config: TurnConfig
+    private let matcher: BankMatcher
+    private let facts: FactIndex
+
+    private var now: TimeInterval = 0
+    private var remote: Turn?
+    private var me: Turn?
+    private var closedRemote: Closed?
+    private var remoteCount = 0
+    private var meCount = 0
+    private var lastMeEnd: TimeInterval?
+    private var remoteSinceMe = 0
+    // Remote audio activity (optional input, see noteRemoteLevel).
+    private var levelsSeen = false
+    private var lastActive: TimeInterval = -.infinity
+    private var levelHistory: [(t: TimeInterval, db: Double)] = []
+
+    public init(config: TurnConfig, bank: Bank, facts: FactIndex) {
+        self.config = config
+        self.matcher = BankMatcher(bank: bank, lang: config.lang)
+        self.facts = facts
+    }
+
+    // MARK: public API
+
+    /// Plan signature: the events caused by `e`, in order.
+    public func ingest(_ e: TranscriptEvent) -> [OutboundEvent] {
+        ingestTimed(e).map(\.event)
+    }
+
+    public func ingestTimed(_ e: TranscriptEvent) -> [Timed] {
+        var out = advance(to: e.emittedAt)
+        let text = e.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return out }
+        switch e.channel {
+        case .remote: out += ingestRemote(e, text: text)
+        case .me: out += ingestMe(e, text: text)
+        }
+        // An event can be the one the endpoint was waiting for (the recognizer caught up with the audio).
+        return out + advance(to: now)
+    }
+
+    /// Feeds the loudness of the remote channel (RMS dBFS over the last ~100 ms; nil for exact silence) and moves
+    /// time forward. Call it every 10-20 ms. Once it has been called, the endpoint follows the audio instead of only
+    /// the text: the recognizer delivers its volatile text in bursts about a second apart, so "the text did not change
+    /// for 300 ms" is true between two bursts while the speaker is still talking.
+    public func noteRemoteLevel(_ rmsDbfs: Double?, at t: TimeInterval) -> [Timed] {
+        levelsSeen = true
+        now = max(now, t)
+        if let db = rmsDbfs {
+            if levelHistory.last.map({ t - $0.t >= 0.05 }) ?? true { levelHistory.append((t, db)) }
+            levelHistory.removeAll { t - $0.t > 8 }
+        }
+        let floor = levelHistory.map(\.db).min() ?? -.infinity
+        let threshold = min(max(floor + config.speechAboveFloorDb, config.speechFloorDbfs), config.speechCeilingDbfs)
+        if let db = rmsDbfs, db > threshold { lastActive = max(lastActive, t) }
+        return advance(to: t)
+    }
+
+    /// Moves time forward and returns the endpoints that came due, each stamped with its due time.
+    public func advance(to t: TimeInterval) -> [Timed] {
+        now = max(now, t)
+        var out: [Timed] = []
+        if let r = remote, deadline(r, remote: true) <= now {
+            out += closeRemote(at: max(deadline(r, remote: true), r.lastChange))
+        }
+        if let m = me, deadline(m, remote: false) <= now {
+            out += closeMe(at: max(deadline(m, remote: false), m.lastChange))
+        }
+        return out.sorted { $0.at < $1.at }
+    }
+
+    /// The session time of the next endpoint, nil when no turn is open.
+    public var nextDeadline: TimeInterval? {
+        [remote.map { deadline($0, remote: true) }, me.map { deadline($0, remote: false) }].compactMap { $0 }.min()
+    }
+
+    /// End of stream: closes whatever is open now.
+    public func flush(at t: TimeInterval? = nil) -> [Timed] {
+        let at = max(t ?? now, now)
+        now = at
+        var out: [Timed] = []
+        if remote != nil { out += closeRemote(at: at) }
+        if me != nil { out += closeMe(at: at) }
+        return out
+    }
+
+    /// The text of the open remote turn, for logs and tests.
+    public var openRemoteText: String? { remote?.text }
+
+    // MARK: endpoint
+
+    private func endpointMs(_ t: Turn) -> Int {
+        t.cue && Cues.endsComplete(t.text, lang: config.lang) ? config.cueEndpointMs : config.plainEndpointMs
+    }
+
+    /// When the turn is over. Text only: `T` after the last text change. With audio levels: `T` after the remote audio
+    /// went quiet, once the recognizer has processed that audio (its result range reaches the end of the speech), and
+    /// never later than `audioWaitCapMs` after the last text change.
+    private func deadline(_ t: Turn, remote isRemote: Bool) -> TimeInterval {
+        let T = Double(isRemote ? endpointMs(t) : config.plainEndpointMs) / 1000
+        let textDue = t.lastChange + T
+        guard isRemote, levelsSeen, lastActive.isFinite, lastActive >= t.startedAt - 3 else { return textDue }
+        let cap = t.lastChange + max(T, Double(config.audioWaitCapMs) / 1000)
+        let caughtUp = t.audioEnd >= lastActive - 0.05
+        var due = lastActive + (caughtUp ? T : max(T, Double(config.audioWaitCapMs) / 1000))
+        due = max(due, t.lastChange + Double(config.burstSettleMs) / 1000)
+        return min(due, cap)
+    }
+
+    // MARK: remote channel
+
+    private func ingestRemote(_ e: TranscriptEvent, text: String) -> [Timed] {
+        var out: [Timed] = []
+        // The owner stopped talking: a remote event after a me turn closes it.
+        if me != nil { out += closeMe(at: now) }
+
+        var (start, end, body) = (e.audioStart, e.audioEnd, text)
+
+        // Which earlier words does this result repeat? Cumulative results keep the words of a turn that is already
+        // closed at their start; a turn opened by such a result remembers them and strips them from every update.
+        var prefix: (tokens: [String], below: Double)?
+        if let turn = remote, let p = turn.stripPrefix {
+            prefix = (p, turn.stripBelow)
+        } else if remote == nil, let closed = closedRemote {
+            // Late recognizer output for a turn that is already closed (the final that settles it, a correction).
+            if end <= closed.audioEnd + Self.slack { return out }
+            prefix = (closed.tokens, closed.audioEnd)
+        }
+        var stripped: (tokens: [String], below: Double)?
+        if let p = prefix, start < p.below - Self.slack, let rest = Self.dropPrefix(body, prefix: p.tokens, lang: config.lang) {
+            if rest.isEmpty { return out }          // nothing new beyond the closed turn
+            body = rest
+            start = max(start, p.below)
+            end = max(end, start)
+            stripped = p
+        }
+
+        if remote == nil {
+            remoteCount += 1
+            var t = Turn(id: "r\(remoteCount)", startedAt: now, lastChange: now)
+            t.followsMe = remoteSinceMe == 0 && lastMeEnd.map { now - $0 <= config.meFollowSeconds } == true
+            if let p = stripped { t.stripPrefix = p.tokens; t.stripBelow = p.below }
+            remote = t
+        }
+        guard var turn = remote else { return out }
+
+        // A long gap before non-overlapping audio: the previous words were a turn of their own.
+        if !turn.segments.isEmpty, config.newTurnSilenceMs > 0,
+           start - turn.audioEnd >= Double(config.newTurnSilenceMs) / 1000,
+           !turn.segments.contains(where: { Self.replaces($0, start: start, end: end) }) {
+            out += closeRemote(at: now)
+            remoteCount += 1
+            var t = Turn(id: "r\(remoteCount)", startedAt: now, lastChange: now)
+            t.followsMe = false
+            remote = t
+            turn = t
+        }
+        return out + applyRemote(&turn, start: start, end: end, body: body, e: e)
+    }
+
+    private func applyRemote(_ turn: inout Turn, start: Double, end: Double, body: String, e: TranscriptEvent) -> [Timed] {
+        let lang = config.lang
+        let changed = Self.apply(&turn, start: start, end: end, text: body, isFinal: e.isFinal, now: now)
+        remote = turn
+        guard changed || !e.isFinal else { return [] }
+        var out: [Timed] = []
+        turn.cue = Cues.hasCue(turn.text, lang: lang)
+        remote = turn
+        out.append(Timed(at: now, event: .partial(turnID: turn.id, speaker: .remote, text: turn.text, cue: turn.cue, tAudioEnd: e.audioEnd)))
+        // Fact chips: once per fact per turn.
+        for c in facts.chips(in: turn.text) where !turn.chipIDs.contains(c.id) {
+            turn.chipIDs.insert(c.id)
+            out.append(Timed(at: now, event: .chip(turnID: turn.id, kind: c.kind, text: c.text, sourceRef: c.sourceRef, factID: c.id)))
+        }
+        // Bank hit: the same entry, clear of the runner-up, on consecutive events.
+        if let cand = bestCandidate(turn.text) {
+            if turn.hitCandidate == cand.id { turn.hitCount += 1 } else { turn.hitCandidate = cand.id; turn.hitCount = 1 }
+            if turn.hitCount >= config.matchConsecutive,
+               turn.sentHitID != cand.id || abs(cand.score - turn.sentHitScore) >= 0.08 {
+                turn.sentHitID = cand.id
+                turn.sentHitScore = cand.score
+                out.append(Timed(at: now, event: .bankHit(turnID: turn.id, bankID: cand.id, score: cand.score)))
+            }
+        } else {
+            turn.hitCandidate = nil
+            turn.hitCount = 0
+        }
+        remote = turn
+        return out
+    }
+
+    /// The best bank entry for the turn text (whole text or its last sentence, whichever matches better), or nil
+    /// when it is below the threshold or too close to the runner-up.
+    private func bestCandidate(_ text: String) -> BankMatcher.Candidate? {
+        guard !matcher.isEmpty else { return nil }
+        var texts = [text]
+        let sentences = text.split(whereSeparator: { ".?!".contains($0) }).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        if sentences.count > 1, let last = sentences.last { texts.append(last) }
+        var best: [BankMatcher.Candidate] = []
+        for t in texts {
+            let top = matcher.top2(t)
+            if let f = top.first, f.score > (best.first?.score ?? -1) { best = top }
+        }
+        guard let first = best.first, first.score >= config.matchThreshold else { return nil }
+        if best.count > 1, first.score - best[1].score < config.matchMargin { return nil }
+        return first
+    }
+
+    private func closeRemote(at t: TimeInterval) -> [Timed] {
+        guard let turn = remote else { return [] }
+        remote = nil
+        let tokens = Text.tokens(turn.text, lang: config.lang)
+        // A turn that was opened by stripping an earlier turn's words keeps them in front, so the chain of turns of one
+        // cumulative recognizer result can be stripped again.
+        closedRemote = Closed(tokens: (turn.stripPrefix ?? []) + tokens, audioEnd: turn.audioEnd)
+        // Nothing but fillers: not worth a model call.
+        if tokens.isEmpty || Cues.isOnlyHesitation(turn.text, lang: config.lang) { return [] }
+        remoteSinceMe += 1
+        let who = classify(turn)
+        return [Timed(at: t, event: .turn(turnID: turn.id, speaker: .remote, text: turn.text, addressee: who, tAudioEnd: turn.audioEnd))]
+    }
+
+    // MARK: me channel
+
+    private func ingestMe(_ e: TranscriptEvent, text: String) -> [Timed] {
+        var out: [Timed] = []
+        // The owner starts talking: the remote question is over, right now.
+        if remote != nil { out += closeRemote(at: now) }
+        if me == nil {
+            meCount += 1
+            me = Turn(id: "m\(meCount)", startedAt: now, lastChange: now)
+        }
+        guard var turn = me else { return out }
+        _ = Self.apply(&turn, start: e.audioStart, end: e.audioEnd, text: text, isFinal: e.isFinal, now: now)
+        me = turn
+        return out
+    }
+
+    private func closeMe(at t: TimeInterval) -> [Timed] {
+        guard let turn = me else { return [] }
+        me = nil
+        lastMeEnd = turn.lastChange
+        remoteSinceMe = 0
+        guard !Text.tokens(turn.text, lang: config.lang).isEmpty else { return [] }
+        return [Timed(at: t, event: .turn(turnID: turn.id, speaker: .me, text: turn.text, addressee: .unknown, tAudioEnd: turn.audioEnd))]
+    }
+
+    // MARK: addressee
+
+    private func classify(_ turn: Turn) -> Addressee {
+        let lang = config.lang
+        let toks = Text.foldedTokens(turn.text)
+        func names(_ n: String) -> Bool { FactIndex.contains(toks, Text.foldedTokens(n)) }
+        if ([config.ownerName] + config.ownerAliases).contains(where: { !$0.isEmpty && names($0) }) { return .me }
+        if config.otherNames.contains(where: { !$0.isEmpty && names($0) }) { return .other }
+        if Self.hasSecondPerson(toks, lang: lang) { return .me }
+        if turn.followsMe { return .me }
+        return .unknown
+    }
+
+    static func hasSecondPerson(_ toks: [String], lang: String) -> Bool {
+        switch lang {
+        case "it":
+            return toks.contains { ["tu", "lei", "ti", "le"].contains($0) }
+        case "tr":
+            return toks.contains { t in
+                if ["sen", "siz", "senin", "sizin", "seni", "sizi", "sana", "size"].contains(t) { return true }
+                return t.count >= 6 && ["sin", "sun", "sünüz", "siniz", "sunuz", "sınız", "sın", "sün"].contains { t.hasSuffix($0) }
+            }
+        default:
+            return toks.contains { ["you", "your", "yours", "yourself", "you're", "you'd", "you've", "you'll"].contains($0) }
+        }
+    }
+
+    // MARK: segments
+
+    static let slack = 0.08
+
+    /// Does a new result (start...end) replace the stored segment? Volatile results grow the same range; a final
+    /// settles it; a result starting where the old one ended is new material.
+    private static func replaces(_ old: Segment, start: Double, end: Double) -> Bool {
+        let overlap = min(old.end, end) - max(old.start, start)
+        if overlap <= 0 { return abs(old.start - start) < 0.02 }
+        let shortest = max(min(old.end - old.start, end - start), 0.02)
+        return overlap >= 0.5 * shortest || (old.start >= start - 0.05 && old.start < end)
+    }
+
+    /// Returns whether the assembled text changed.
+    private static func apply(_ turn: inout Turn, start: Double, end: Double, text: String, isFinal: Bool, now: Double) -> Bool {
+        turn.segments.removeAll { replaces($0, start: start, end: end) }
+        turn.segments.append(Segment(start: start, end: end, text: text, isFinal: isFinal))
+        turn.segments.sort { $0.start < $1.start }
+        let joined = turn.segments.map(\.text).joined(separator: " ")
+            .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        turn.audioEnd = max(turn.audioEnd, end)
+        if joined != turn.text {
+            turn.text = joined
+            turn.lastChange = now
+            return true
+        }
+        return false
+    }
+
+    /// `body` without its first `prefix.count` words when those words match the prefix (within a few edits, since a
+    /// final may correct them); nil when it does not start with the prefix.
+    static func dropPrefix(_ body: String, prefix: [String], lang: String) -> String? {
+        let chunks = body.split(whereSeparator: \.isWhitespace).map(String.init)
+        var seen = 0
+        var head: [String] = []
+        var i = 0
+        while i < chunks.count, seen < prefix.count {
+            let t = Text.tokens(chunks[i], lang: lang)
+            head += t
+            seen += t.count
+            i += 1
+        }
+        guard seen >= prefix.count || seen > 0 else { return nil }
+        let k = prefix.count
+        let allowed = max(1, k / 5)
+        guard Text.editDistance(Array(head.prefix(k)), prefix) <= allowed, head.count >= max(1, k - allowed) else { return nil }
+        return chunks[i...].joined(separator: " ")
+    }
+}
