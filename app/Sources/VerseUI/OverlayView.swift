@@ -5,10 +5,9 @@ public enum OverlayStyle {
     /// The single accent: a calm mint, used for the live dot and the SAY marker only.
     public static let accent = Color(red: 0.42, green: 0.90, blue: 0.70)
     static let wing: CGFloat = 72
-    static let cardGap: CGFloat = 8
-    static let cardRadius: CGFloat = 26
     /// The morph between capsule and card (spec: <= 150 ms, no spring).
-    static let morph = Animation.easeOut(duration: 0.14)
+    static let morphDuration: Double = 0.14
+    static let morph = Animation.easeOut(duration: morphDuration)
 }
 
 /// Where the overlay sits: the notch (or a notch-sized spot on a screen without one).
@@ -29,36 +28,6 @@ public struct NotchMetrics: Equatable, Sendable {
     public var capsuleHeight: CGFloat { max(notchHeight, 28) }
 
     public func capsuleWidth(wide: Bool) -> CGFloat { notchWidth + 2 * (wide ? OverlayStyle.wing + 64 : OverlayStyle.wing) }
-}
-
-/// The black island around the notch: flush with the top edge, small concave flares where it meets the screen edge
-/// (like the hardware notch), and round lower corners.
-struct IslandShape: Shape {
-    var bottomRadius: CGFloat
-    var flare: CGFloat = 7
-
-    var animatableData: CGFloat {
-        get { bottomRadius }
-        set { bottomRadius = newValue }
-    }
-
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        let f = min(flare, r.width / 4)
-        let br = min(bottomRadius, (r.height) / 1.0, (r.width - 2 * f) / 2)
-        p.move(to: CGPoint(x: r.minX, y: r.minY))
-        p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
-        // top-right flare (concave)
-        p.addQuadCurve(to: CGPoint(x: r.maxX - f, y: r.minY + f), control: CGPoint(x: r.maxX - f, y: r.minY))
-        p.addLine(to: CGPoint(x: r.maxX - f, y: r.maxY - br))
-        p.addQuadCurve(to: CGPoint(x: r.maxX - f - br, y: r.maxY), control: CGPoint(x: r.maxX - f, y: r.maxY))
-        p.addLine(to: CGPoint(x: r.minX + f + br, y: r.maxY))
-        p.addQuadCurve(to: CGPoint(x: r.minX + f, y: r.maxY - br), control: CGPoint(x: r.minX + f, y: r.maxY))
-        p.addLine(to: CGPoint(x: r.minX + f, y: r.minY + f))
-        p.addQuadCurve(to: CGPoint(x: r.minX, y: r.minY), control: CGPoint(x: r.minX + f, y: r.minY))
-        p.closeSubpath()
-        return p
-    }
 }
 
 /// The live dot.
@@ -200,7 +169,7 @@ struct ChipRow: View {
                 HStack(spacing: 5 * scale) {
                     Text(c.text).foregroundStyle(.white.opacity(0.92)).lineLimit(1).truncationMode(.tail)
                     Text("·").foregroundStyle(.white.opacity(0.4))
-                    Text(c.source).foregroundStyle(.white.opacity(0.55)).lineLimit(1).fixedSize()
+                    Text(c.source).foregroundStyle(.white.opacity(0.62)).lineLimit(1).fixedSize()
                 }
                 .font(.system(size: (12 * scale).rounded(), weight: .medium))
                 .padding(.horizontal, 8 * scale)
@@ -332,7 +301,10 @@ struct ResizeGrip: View {
     }
 }
 
-/// Everything under the notch: the island, and the card or status message that grows out of it.
+/// Everything under the notch, as one surface: the black band around the notch with the capsule's dot and tag, and
+/// the card, status message or topic row below it. The glass is a single hanging silhouette that grows out of the
+/// notch (Moonglade's shape and glass, see `HangingNotchGeometry` and `NotchGlass`); only that surface animates.
+/// Text is laid out at its final place and full opacity at once, never animated.
 public struct OverlayView: View {
     @ObservedObject var model: OverlayModel
     @ObservedObject var settings: AppSettings
@@ -340,8 +312,11 @@ public struct OverlayView: View {
     var onOpenSettings: (String) -> Void
     var onSizeChange: (CGSize) -> Void
 
-    @Namespace private var ns
     @State private var dragStart: (width: Double, height: Double)?
+    /// The size the glass shows now; it follows `target` with the morph.
+    @State private var surface: CGSize = .zero
+    /// The content's own size plus the shoulders.
+    @State private var target: CGSize = .zero
 
     public init(model: OverlayModel, settings: AppSettings, metrics: NotchMetrics,
                 onOpenSettings: @escaping (String) -> Void = { _ in }, onSizeChange: @escaping (CGSize) -> Void = { _ in }) {
@@ -356,68 +331,72 @@ public struct OverlayView: View {
     private var scale: CGFloat { settings.textScale.factor }
     private var showPanel: Bool { state.status?.needsPanel ?? false }
     private var showTopics: Bool { state.card == nil && !showPanel && !state.topics.isEmpty }
-    private var expanded: Bool { state.card != nil || showPanel || showTopics }
+    private static let shoulder = HangingNotchMetrics.topShoulderRadius
+    private var capsuleWidth: CGFloat { metrics.capsuleWidth(wide: false) }
 
-    /// Lower corners follow the card's corner radius when expanded, so the island and the card read as one family.
-    private var islandRadius: CGFloat { metrics.capsuleHeight / 2 - 1 }
-
-    /// The glass itself stays clear-ish; a dark veil inside it carries the contrast, so white text stays readable over a
-    /// white page (measured >= 7:1) and over a bright window in a video frame.
-    private var cardGlass: Glass { .regular.tint(Color(white: 0.05).opacity(0.35)) }
-    private static let veil = Color(white: 0.02).opacity(0.46)
+    /// The size the surface has before the first measurement: the compact capsule.
+    private var compactSize: CGSize { CGSize(width: capsuleWidth + 2 * Self.shoulder, height: metrics.capsuleHeight) }
 
     public var body: some View {
-        GlassEffectContainer(spacing: 24) {
-            VStack(spacing: OverlayStyle.cardGap) {
-                CapsuleView(state: state, metrics: metrics)
-                    .background(IslandShape(bottomRadius: islandRadius).fill(Color.black))
-                    .glassEffect(.identity, in: IslandShape(bottomRadius: islandRadius))
-                    .glassEffectID("island", in: ns)
+        let shown = surface == .zero ? compactSize : surface
+        ZStack(alignment: .top) {
+            ZStack {
+                NotchGlassBackdrop()
+                NotchGlassScrim(bandHeight: metrics.capsuleHeight)
+            }
+            .frame(width: shown.width, height: shown.height)
 
-                if showPanel, let s = state.status {
-                    StatusPanelView(status: s, scale: scale, onOpenSettings: onOpenSettings, onDismiss: { model.dismissStatus() })
-                        .frame(width: CGFloat(min(settings.cardWidth, 520)))
-                        .background(Self.veil, in: RoundedRectangle(cornerRadius: OverlayStyle.cardRadius, style: .continuous))
-                        .glassEffect(cardGlass, in: RoundedRectangle(cornerRadius: OverlayStyle.cardRadius, style: .continuous))
-                        .glassEffectID("panel", in: ns)
-                        .glassEffectTransition(.matchedGeometry)
-                } else if showTopics {
-                    ChipRow(chips: state.topics, scale: scale, leading: 0)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .frame(maxWidth: CGFloat(settings.cardWidth))
-                        .fixedSize()
-                        .transaction { $0.animation = nil }
-                        .background(Self.veil, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
-                        .glassEffect(cardGlass, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
-                        .glassEffectID("topics", in: ns)
-                        .glassEffectTransition(.matchedGeometry)
-                } else if let card = state.card {
-                    VStack(spacing: 0) {
-                        ScrollView(.vertical, showsIndicators: false) {
-                            CardView(card: card, scale: scale)
-                        }
-                        .scrollBounceBehavior(.basedOnSize)
-                        .frame(maxHeight: CGFloat(settings.cardMaxHeight))
-                        .fixedSize(horizontal: false, vertical: true)
-                        ResizeGrip(onDrag: resize, onEnd: { dragStart = nil })
-                            .padding(.bottom, 2)
+            content
+                .padding(.horizontal, Self.shoulder)
+                .fixedSize()
+                .transaction { $0.animation = nil }
+                .onGeometryChange(for: CGSize.self, of: { $0.size }, action: { surfaceTargetChanged($0) })
+        }
+        .frame(width: max(shown.width, target.width), height: max(shown.height, target.height), alignment: .top)
+        .environment(\.colorScheme, .dark)
+        .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    /// The band (capsule row) and, under it, whatever is open. The band keeps the capsule's width and stays centred,
+    /// so the dot and the tag do not move when the surface grows.
+    private var content: some View {
+        VStack(spacing: 0) {
+            CapsuleView(state: state, metrics: metrics)
+            if showPanel, let s = state.status {
+                StatusPanelView(status: s, scale: scale, onOpenSettings: onOpenSettings, onDismiss: { model.dismissStatus() })
+                    .frame(width: max(capsuleWidth, CGFloat(min(settings.cardWidth, 520))))
+            } else if showTopics {
+                ChipRow(chips: state.topics, scale: scale, leading: 0)
+                    .frame(maxWidth: CGFloat(settings.cardWidth) - 32)
+                    .fixedSize()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 6)
+                    .padding(.bottom, 12)
+                    .frame(minWidth: capsuleWidth)
+            } else if let card = state.card {
+                VStack(spacing: 0) {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        CardView(card: card, scale: scale)
                     }
-                    .frame(width: CGFloat(settings.cardWidth))
-                    .background(Self.veil, in: RoundedRectangle(cornerRadius: OverlayStyle.cardRadius, style: .continuous))
-                    .glassEffect(cardGlass, in: RoundedRectangle(cornerRadius: OverlayStyle.cardRadius, style: .continuous))
-                    .glassEffectID("card", in: ns)
-                    .glassEffectTransition(.matchedGeometry)
+                    .scrollBounceBehavior(.basedOnSize)
+                    .frame(maxHeight: CGFloat(settings.cardMaxHeight))
+                    .fixedSize(horizontal: false, vertical: true)
+                    ResizeGrip(onDrag: resize, onEnd: { dragStart = nil })
+                        .padding(.bottom, 4)
                 }
+                .frame(width: CGFloat(settings.cardWidth))
             }
         }
-        .animation(OverlayStyle.morph, value: expanded)
-        .animation(OverlayStyle.morph, value: state.status)
-        .environment(\.colorScheme, .dark)
-        // The panel follows the content's own size (measured before any outer frame, so it can't feed back).
-        .fixedSize()
-        .onGeometryChange(for: CGSize.self, of: { $0.size }, action: { onSizeChange($0) })
-        .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    private func surfaceTargetChanged(_ size: CGSize) {
+        target = size
+        onSizeChange(size)
+        if surface == .zero {
+            surface = size
+        } else {
+            withAnimation(OverlayStyle.morph) { surface = size }
+        }
     }
 
     private func resize(_ t: CGSize) {

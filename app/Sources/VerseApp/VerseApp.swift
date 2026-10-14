@@ -101,6 +101,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             return
         }
+        if let names = launch.previewOverlay {
+            let seconds = Double(ProcessInfo.processInfo.environment["VERSE_PREVIEW_SECONDS"] ?? "") ?? 2
+            Task { @MainActor in
+                await ScreenRenderer.preview(names: names, seconds: min(max(seconds, 0.5), 10), settings: settings)
+                Self.terminateSoon()
+            }
+            return
+        }
         if launch.autostart { controller.start() }
     }
 

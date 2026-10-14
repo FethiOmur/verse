@@ -55,3 +55,43 @@ bundle, so ship FluidAudio's `LICENSE` and `ThirdPartyLicenses/` with it. Not au
 
 `Speech` (`SpeechTranscriber`, `DictationTranscriber`, `SpeechAnalyzer`), `AVFoundation`, `CoreAudio`, `CoreML` are
 system frameworks under the Apple SDK agreement; no redistribution of their models by Verse.
+
+## Code adapted from Moonglade
+
+Moonglade (https://github.com/ixjosemi/Moonglade, local checkout `~/Developer/Moonglade`, read 2026-10-14), MIT licence; `LICENSE` read
+in full in the checkout. Verse adapts code from it in these files, each with a one-line header naming the source:
+
+| Verse file | Adapted from |
+|---|---|
+| `app/Sources/VerseUI/HangingNotchGeometry.swift` | `Sources/MoongladeCore/Presentation/HangingNotchGeometry.swift` |
+| `app/Sources/VerseUI/NotchGlass.swift` | `Sources/MoongladeApp/NotchGlassBackground.swift`, `Sources/MoongladeCore/Presentation/NotchGlassStyle.swift` |
+| `app/Sources/VerseUI/NotchPanel.swift` (silhouette hit testing only) | `Sources/MoongladeApp/NotchPanel.swift` |
+
+The MIT licence requires the notice below in all copies or substantial portions; keep it with any distribution of Verse.
+
+```
+MIT License
+
+Copyright (c) 2026 Josemi Hernandez
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+The glass uses private Core Animation classes (`CABackdropLayer`, `CASDFLayer`, `CAFilter` type `glassBackground`),
+resolved at run time with a public fallback. Fine for a directly distributed app; Mac App Store review would reject it.

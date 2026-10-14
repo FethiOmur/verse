@@ -10,6 +10,9 @@ public struct LaunchOptions: Sendable {
     public var session: String?
     public var autostart = false
     public var renderScreensDir: String?
+    /// `--preview-overlay capsule-idle,card-question`: shows those sample states (ScreenRenderer names) in the real
+    /// notch panel, `VERSE_PREVIEW_SECONDS` (default 2) each, then quits. For checking placement on the real screen.
+    public var previewOverlay: [String]?
 
     public init(arguments: [String] = CommandLine.arguments) {
         var it = arguments.dropFirst().makeIterator()
@@ -20,6 +23,7 @@ public struct LaunchOptions: Sendable {
             case "--session": session = it.next()
             case "--autostart": autostart = true
             case "--render-screens": renderScreensDir = it.next()
+            case "--preview-overlay": previewOverlay = it.next()?.split(separator: ",").map(String.init)
             default: break
             }
         }

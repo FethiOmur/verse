@@ -88,6 +88,28 @@ public enum ScreenRenderer {
         ]
     }
 
+    /// Shows the named sample states one after the other in the real notch panel (`--preview-overlay`), then closes
+    /// it. The panel is the same one a session uses, so this checks the real placement against the notch.
+    public static func preview(names: [String], seconds: Double, settings: AppSettings) async {
+        let shots = sampleShots()
+        let model = OverlayModel()
+        // A state before the panel exists: the panel hides itself on an idle state, and its subscription delivers
+        // the first value a run-loop turn later, so an empty start would hide the first preview right after show().
+        if let first = shots.first(where: { names.contains($0.name) }) { model.show(first.state) }
+        let panel = NotchPanelController(model: model, settings: settings, onOpenSettings: { _ in })
+        defer { panel.close() }
+        for name in names {
+            guard let shot = shots.first(where: { $0.name == name }) else {
+                FileHandle.standardError.write(Data("preview: no sample state \(name)\n".utf8))
+                continue
+            }
+            model.show(shot.state)
+            panel.show()
+            print("preview: \(name) window \(panel.windowNumber)")
+            try? await Task.sleep(for: .seconds(seconds))
+        }
+    }
+
     /// Renders every shot over both backdrops into `dir`. Returns the written paths.
     public static func renderAll(to dir: URL, shots: [Shot] = sampleShots(), scales: [TextScale] = [.medium]) async throws -> [URL] {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -119,7 +141,7 @@ public enum ScreenRenderer {
         let scene = ZStack(alignment: .top) {
             BackdropView(kind: backdrop)
             // The hardware notch stand-in.
-            IslandShape(bottomRadius: 10, flare: 0).fill(Color.black)
+            UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous).fill(Color.black)
                 .frame(width: metrics.notchWidth, height: metrics.notchHeight)
             OverlayView(model: model, settings: settings, metrics: metrics)
         }

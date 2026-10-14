@@ -1,3 +1,4 @@
+// Hit testing adapted from Moonglade (MIT, Copyright (c) 2026 Josemi Hernandez), Sources/MoongladeApp/NotchPanel.swift; see docs/licences.md.
 import AppKit
 import Combine
 import SwiftUI
@@ -6,6 +7,25 @@ import SwiftUI
 final class OverlayPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
+}
+
+/// Hosting view that takes clicks only inside the hanging silhouette: the transparent shoulders and corner pockets of
+/// the window pass through to the app below.
+final class OverlayHostingView: NSHostingView<AnyView> {
+    /// The surface's size, centred at the top of the view. Zero takes every click (before the first measurement).
+    var surfaceSize: CGSize = .zero
+
+    /// The panel never becomes key, so every click is a first mouse; act on it at once.
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard surfaceSize != .zero else { return super.hitTest(point) }
+        let local = superview.map { convert(point, from: $0) } ?? point
+        let fromTop = isFlipped ? local.y - bounds.minY : bounds.maxY - local.y
+        let x = local.x - (bounds.midX - surfaceSize.width / 2)
+        guard HangingNotchGeometry.contains(CGPoint(x: x, y: fromTop), size: surfaceSize) else { return nil }
+        return super.hitTest(point)
+    }
 }
 
 /// The notch overlay window: a non-activating panel at the top center of the screen with the notch, above the menu
@@ -22,7 +42,7 @@ public final class NotchPanelController {
     private var contentSize = CGSize(width: 300, height: 32)
     private var screenObserver: NSObjectProtocol?
     private var stateSub: AnyCancellable?
-    private var hostingView: NSHostingView<AnyView>?
+    private var hostingView: OverlayHostingView?
     private var layoutPending = false
 
     public init(model: OverlayModel, settings: AppSettings, onOpenSettings: @escaping (String) -> Void) {
@@ -48,7 +68,7 @@ public final class NotchPanelController {
 
         let root = OverlayView(model: model, settings: settings, metrics: metrics, onOpenSettings: onOpenSettings,
                                onSizeChange: { [weak self] size in self?.contentSizeChanged(size) })
-        let host = NSHostingView(rootView: AnyView(root.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)))
+        let host = OverlayHostingView(rootView: AnyView(root.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)))
         host.sizingOptions = []
         // The hosting view sits inside a plain container so it never drives the window's size itself (as a window's
         // content view it resizes the window from inside the display cycle, which AppKit aborts on).
@@ -106,6 +126,7 @@ public final class NotchPanelController {
     /// Called from SwiftUI's layout pass: the window frame is never changed right there, only on the next turn of the
     /// run loop (growing) or after the morph (shrinking).
     private func contentSizeChanged(_ size: CGSize) {
+        hostingView?.surfaceSize = size
         let grow = size.width > contentSize.width || size.height > contentSize.height
         contentSize = size
         if grow {
@@ -133,10 +154,19 @@ public final class NotchPanelController {
         // Never wider than the screen, whatever the content reports.
         contentSize.width = min(contentSize.width, f.width)
         contentSize.height = min(contentSize.height, f.height * 0.8)
-        let w = ceil(max(contentSize.width, metrics.capsuleWidth(wide: false))) + 16   // room for the glass rim
-        let h = ceil(max(contentSize.height, metrics.capsuleHeight)) + 12
-        let frame = NSRect(x: f.midX - w / 2, y: f.maxY - h, width: w, height: h)
+        // Exactly the surface: no shadow, the glass rim lies inside the silhouette, and the top edge is the screen's.
+        let w = ceil(max(contentSize.width, metrics.capsuleWidth(wide: false) + 2 * HangingNotchMetrics.topShoulderRadius))
+        let h = ceil(max(contentSize.height, metrics.capsuleHeight))
+        let frame = NSRect(x: (Self.notchCenterX(on: screen) - w / 2).rounded(), y: f.maxY - h, width: w, height: h)
         if panel.frame != frame { panel.setFrame(frame, display: true) }
+    }
+
+    /// The middle of the camera housing (between the two menu-bar areas beside it), else the screen's middle.
+    static func notchCenterX(on s: NSScreen) -> CGFloat {
+        if s.safeAreaInsets.top > 0, let l = s.auxiliaryTopLeftArea, let r = s.auxiliaryTopRightArea {
+            return (l.maxX + r.minX) / 2
+        }
+        return s.frame.midX
     }
 
     /// The built-in screen with the notch, else the main screen.
