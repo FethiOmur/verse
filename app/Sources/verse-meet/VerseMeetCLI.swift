@@ -8,8 +8,15 @@ import VerseMeet
 //   verse-meet prep --event-id ID [--repo PATH] [--live] [--lang L] [--brain-dir DIR] [--python PATH] [--out DIR]
 // Calendar data is personal: output is counts, titles and times only.
 
-func err(_ s: String) { FileHandle.standardError.write(Data((s + "\n").utf8)) }
-func out(_ s: String) { print(s); fflush(stdout) }
+/// Calendar titles, app names and ids come from other people's invites: strip control characters (ESC, CSI, BEL…)
+/// so a crafted event title can't drive the terminal. Newlines and tabs stay.
+func terminalSafe(_ s: String) -> String {
+    String(String.UnicodeScalarView(s.unicodeScalars.filter { u in
+        u == "\n" || u == "\t" || !(u.value < 0x20 || (0x7F...0x9F).contains(u.value))
+    }))
+}
+func err(_ s: String) { FileHandle.standardError.write(Data((terminalSafe(s) + "\n").utf8)) }
+func out(_ s: String) { print(terminalSafe(s)); fflush(stdout) }
 
 func usage() -> Never {
     err("""
