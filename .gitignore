@@ -23,3 +23,8 @@ bench/api/results/_stub/
 *.egg-info/
 .pytest_cache/
 brain/tests/out/
+bench/stt-models/
+*.mlmodelc/
+*.mlpackage/
+*.safetensors
+*.onnx
