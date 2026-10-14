@@ -1,0 +1,182 @@
+{
+ "id": "d11",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid",
+  "Tomas"
+ ],
+ "voices": {
+  "Ingrid": "Tessa",
+  "Tomas": "Mara"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview",
+ "speakers": 3,
+ "duration_s": 68.1,
+ "utterances": [
+  {
+   "speaker": "Tomas",
+   "text": "Where does your past work overlap with routing and logistics?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b018",
+   "t_start": 1.01,
+   "t_end": 4.32,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 5.489,
+   "t_end": 11.789,
+   "gap_before": 1.12,
+   "silent_s": 6.3
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Alex, take your time with this one.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 12.989,
+   "t_end": 15.259,
+   "gap_before": 1.15
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Where do you see yourself in five years?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 16.288,
+   "t_end": 18.888,
+   "gap_before": 0.99
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 20.068,
+   "t_end": 25.168,
+   "gap_before": 1.13,
+   "silent_s": 5.1
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Tomas, are you still on the line?",
+   "category": "other",
+   "is_question": true,
+   "addressee": "other",
+   "bank_id": null,
+   "t_start": 26.218,
+   "t_end": 28.428,
+   "gap_before": 1.05
+  },
+  {
+   "speaker": "Tomas",
+   "text": "Yes, I'm here.",
+   "category": "reply",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 29.772,
+   "t_end": 31.142,
+   "gap_before": 1.3
+  },
+  {
+   "speaker": "Tomas",
+   "text": "What results did Lantern deliver?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b004",
+   "t_start": 32.257,
+   "t_end": 34.107,
+   "gap_before": 1.09
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 35.327,
+   "t_end": 40.927,
+   "gap_before": 1.21,
+   "silent_s": 5.6
+  },
+  {
+   "speaker": "Tomas",
+   "text": "What is your habit when beginning a greenfield build?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b020",
+   "t_start": 41.897,
+   "t_end": 44.507,
+   "gap_before": 0.96
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 45.567,
+   "t_end": 52.067,
+   "gap_before": 1.01,
+   "silent_s": 6.5
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Tomas, did you want to follow up on that?",
+   "category": "other",
+   "is_question": true,
+   "addressee": "other",
+   "bank_id": null,
+   "t_start": 53.187,
+   "t_end": 55.947,
+   "gap_before": 1.12
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Do you have any questions for us?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b014",
+   "t_start": 57.207,
+   "t_end": 59.217,
+   "gap_before": 1.18
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 60.407,
+   "t_end": 68.107,
+   "gap_before": 1.14,
+   "silent_s": 7.7
+  }
+ ]
+}

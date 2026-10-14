@@ -1,0 +1,169 @@
+{
+ "id": "d01",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid"
+ ],
+ "voices": {
+  "Ingrid": "Samantha"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview",
+ "speakers": 2,
+ "duration_s": 66.9,
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "Hi Alex, thanks for making the time today.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 1.02,
+   "t_end": 3.72,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Can you tell me about yourself and your background?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b001",
+   "t_start": 5.109,
+   "t_end": 7.619,
+   "gap_before": 1.35
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 8.959,
+   "t_end": 16.759,
+   "gap_before": 1.29,
+   "silent_s": 7.8
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "What drew you to Halden in the first place?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b002",
+   "t_start": 17.859,
+   "t_end": 19.919,
+   "gap_before": 1.1
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 21.059,
+   "t_end": 26.259,
+   "gap_before": 1.09,
+   "silent_s": 5.2
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Okay, that's helpful.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 27.489,
+   "t_end": 29.029,
+   "gap_before": 1.22
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "What was the hardest part of building Lantern?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 30.163,
+   "t_end": 32.393,
+   "gap_before": 1.1
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 33.631,
+   "t_end": 41.331,
+   "gap_before": 1.19,
+   "silent_s": 7.7
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "When could you start if we made an offer?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b015",
+   "t_start": 42.541,
+   "t_end": 44.391,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 45.356,
+   "t_end": 53.356,
+   "gap_before": 0.93,
+   "silent_s": 8.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Right, okay.",
+   "category": "fragment",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 54.626,
+   "t_end": 55.736,
+   "gap_before": 1.27
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Did Lantern actually move the needle? Show us figures.",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b004",
+   "t_start": 57.03,
+   "t_end": 60.18,
+   "gap_before": 1.25
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 61.59,
+   "t_end": 66.89,
+   "gap_before": 1.36,
+   "silent_s": 5.3
+  }
+ ]
+}

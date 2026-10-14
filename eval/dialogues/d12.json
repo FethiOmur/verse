@@ -1,0 +1,194 @@
+{
+ "id": "d12",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid",
+  "Tomas"
+ ],
+ "voices": {
+  "Ingrid": "Tara",
+  "Tomas": "Rishi"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview",
+ "speakers": 3,
+ "duration_s": 77.1,
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "What would a former manager say you need to work on?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b005",
+   "t_start": 1.01,
+   "t_end": 2.78,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 3.98,
+   "t_end": 10.18,
+   "gap_before": 1.17,
+   "silent_s": 6.2
+  },
+  {
+   "speaker": "Tomas",
+   "text": "How accurate was the Lantern pipeline?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b011",
+   "t_start": 11.2,
+   "t_end": 13.52,
+   "gap_before": 1.0
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 14.523,
+   "t_end": 20.023,
+   "gap_before": 0.98,
+   "silent_s": 5.5
+  },
+  {
+   "speaker": "Tomas",
+   "text": "Have you used Terraform or any infrastructure as code tools?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 21.173,
+   "t_end": 24.853,
+   "gap_before": 1.11
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 26.003,
+   "t_end": 31.703,
+   "gap_before": 1.1,
+   "silent_s": 5.7
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Tomas, can you share the interview notes with me?",
+   "category": "other",
+   "is_question": true,
+   "addressee": "other",
+   "bank_id": null,
+   "t_start": 33.063,
+   "t_end": 35.633,
+   "gap_before": 1.36
+  },
+  {
+   "speaker": "Tomas",
+   "text": "Sending them now.",
+   "category": "reply",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 36.843,
+   "t_end": 37.893,
+   "gap_before": 1.14
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Assuming an offer, what is the soonest you could be on board?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b015",
+   "t_start": 39.272,
+   "t_end": 42.352,
+   "gap_before": 1.35
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 43.782,
+   "t_end": 48.882,
+   "gap_before": 1.38,
+   "silent_s": 5.1
+  },
+  {
+   "speaker": "Tomas",
+   "text": "Did the economics stack up against doing the work by hand?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b012",
+   "t_start": 50.022,
+   "t_end": 53.612,
+   "gap_before": 1.14
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 54.742,
+   "t_end": 60.642,
+   "gap_before": 1.08,
+   "silent_s": 5.9
+  },
+  {
+   "speaker": "Tomas",
+   "text": "Ingrid, shall we move on to the next topic?",
+   "category": "other",
+   "is_question": true,
+   "addressee": "other",
+   "bank_id": null,
+   "t_start": 61.621,
+   "t_end": 64.322,
+   "gap_before": 0.98
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "How would you approach building an LLM-assisted dispatcher?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b013",
+   "t_start": 65.622,
+   "t_end": 67.692,
+   "gap_before": 1.21
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 69.076,
+   "t_end": 77.076,
+   "gap_before": 1.34,
+   "silent_s": 8.0
+  }
+ ]
+}

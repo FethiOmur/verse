@@ -1,0 +1,170 @@
+{
+ "id": "d05",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid"
+ ],
+ "voices": {
+  "Ingrid": "Tessa"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview",
+ "speakers": 2,
+ "duration_s": 79.3,
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "Have you had language models serving real users?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b017",
+   "t_start": 1.03,
+   "t_end": 3.96,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 5.09,
+   "t_end": 11.79,
+   "gap_before": 1.08,
+   "silent_s": 6.7
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Tell me about the route optimiser you built for the courier pilot.",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b007",
+   "t_start": 13.02,
+   "t_end": 16.94,
+   "gap_before": 1.23
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 18.13,
+   "t_end": 26.33,
+   "gap_before": 1.14,
+   "silent_s": 8.2
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "How did you decide when to retry a failed extraction?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 27.54,
+   "t_end": 30.99,
+   "gap_before": 1.19
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 32.095,
+   "t_end": 38.995,
+   "gap_before": 1.06,
+   "silent_s": 6.9
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "What drove the choice of model size?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b019",
+   "t_start": 40.295,
+   "t_end": 42.495,
+   "gap_before": 1.3
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 43.845,
+   "t_end": 51.945,
+   "gap_before": 1.3,
+   "silent_s": 8.1
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Good, thank you.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 53.185,
+   "t_end": 54.475,
+   "gap_before": 1.23
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "What does ETA drift mean to you?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b022",
+   "t_start": 55.715,
+   "t_end": 57.835,
+   "gap_before": 1.19
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 58.798,
+   "t_end": 65.798,
+   "gap_before": 0.92,
+   "silent_s": 7.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "How do you kick off something from scratch?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b020",
+   "t_start": 67.108,
+   "t_end": 69.648,
+   "gap_before": 1.29
+  },
+  {
+   "speaker": "Alex",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 70.768,
+   "t_end": 79.268,
+   "gap_before": 1.07,
+   "silent_s": 8.5
+  }
+ ]
+}
