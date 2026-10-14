@@ -1,0 +1,37 @@
+### gpu_p2k_ctx8192 idle_before=71.2 args: --backend gpu --ctx 8192 --prompt p2k --reps 4 --warm
+gpu_p2k_ctx8192: load 1.03s prompt~2081 tok | TTFT p50 4.796713770949282 | SAY line p50 5.384020854369737 | tok/s p50 25.703796363513362 | errors []
+  warm: {'n': 4, 'p50': 0.48766174947377294, 'min': 0.47735875006765127, 'max': 0.5128564590122551} {'n': 4, 'p50': 1.0005299999611452, 'min': 0.9152327501215041, 'max': 1.1863697909284383}
+ 904003584 maximum resident set size; 1545227744 peak memory footprint;
+### gpu_p3k_ctx8192b idle_before=59.9 args: --backend gpu --ctx 8192 --prompt p3k --reps 4 --warm
+gpu_p3k_ctx8192b: load 1.08s prompt~3628 tok | TTFT p50 8.751847458421253 | SAY line p50 9.433786166948266 | tok/s p50 25.2649577333206 | errors []
+  warm: {'n': 4, 'p50': 0.4712720828829333, 'min': 0.44842825015075505, 'max': 0.5253974590450525} {'n': 4, 'p50': 1.155895603937097, 'min': 0.9433867500629276, 'max': 1.294531166087836}
+ 1175388160 maximum resident set size; 1822903872 peak memory footprint;
+### gpu_p5k_ctx8192 idle_before=0.0 args: --backend gpu --ctx 8192 --prompt p5k --reps 4 --warm
+gpu_p5k_ctx8192: load 1.58s prompt~4930 tok | TTFT p50 12.431121166446246 | SAY line p50 13.16112779150717 | tok/s p50 22.811358253820636 | errors []
+  warm: {'n': 4, 'p50': 0.5276591670699418, 'min': 0.4687770421151072, 'max': 0.5649321670643985} {'n': 4, 'p50': 1.1313961249543354, 'min': 0.8735419169533998, 'max': 1.3637742090504616}
+ 1342357504 maximum resident set size; 1974030056 peak memory footprint;
+### cpu_p2k_ctx8192 idle_before=34.80 args: --backend cpu --ctx 8192 --prompt p2k --reps 3 --warm
+cpu_p2k_ctx8192: load 7.34s prompt~2081 tok | TTFT p50 11.124322083080187 | SAY line p50 12.594124458031729 | tok/s p50 10.041595087708393 | errors []
+  warm: {'n': 3, 'p50': 0.6876724998001009, 'min': 0.6859125420451164, 'max': 0.7026238748803735} {'n': 3, 'p50': 2.160410625161603, 'min': 1.8634115420281887, 'max': 2.448908290825784}
+ 3770630144 maximum resident set size; 1883772736 peak memory footprint;
+### cpu_p3k_ctx8192 idle_before=67.27 args: --backend cpu --ctx 8192 --prompt p3k --reps 3 --warm
+cpu_p3k_ctx8192: load 0.58s prompt~3628 tok | TTFT p50 46.34227441716939 | SAY line p50 51.55397349991836 | tok/s p50 3.2931874859809516 | errors []
+  warm: {'n': 3, 'p50': 2.2142815419938415, 'min': 1.0542282091919333, 'max': 2.4778885829728097} {'n': 3, 'p50': 7.470226125093177, 'min': 2.3755576671101153, 'max': 9.604959791060537}
+ 3986276352 maximum resident set size; 1719588408 peak memory footprint;
+### cpu_p5k_ctx8192 idle_before=0.0 args: --backend cpu --ctx 8192 --prompt p5k --reps 3 --warm
+cpu_p5k_ctx8192: load 0.81s prompt~4930 tok | TTFT p50 50.29566170903854 | SAY line p50 55.02621495909989 | tok/s p50 5.35481198625194 | errors []
+  warm: {'n': 3, 'p50': 0.7734667919576168, 'min': 0.7206606660038233, 'max': 1.6849693751428276} {'n': 3, 'p50': 2.6086535840295255, 'min': 1.8355473328847438, 'max': 5.502606583992019}
+ 3805708288 maximum resident set size; 1719899704 peak memory footprint;
+### gpu_p3k_ctx4096 idle_before=0.38 args: --backend gpu --ctx 4096 --prompt p3k --reps 1
+gpu_p3k_ctx4096: load 13.26s prompt~3628 tok | TTFT p50 9.484030792023987 | SAY line p50 10.385452541988343 | tok/s p50 21.11753607014556 | errors []
+ 1970503680 maximum resident set size; 1475514184 peak memory footprint;
+### gpu_p5k_ctx4096 idle_before=3.39 args: --backend gpu --ctx 4096 --prompt p5k --reps 1
+gpu_p5k_ctx4096: load 1.72s prompt~4930 tok | TTFT p50 None | SAY line p50 None | tok/s p50 None | errors ["RuntimeError('INVALID_ARGUMENT: Input token ids are too long. Exceeding the maximum number of tokens allowed: 4944 >= 4096')"]
+ 613285888 maximum resident set size; 630115448 peak memory footprint;
+### gpu_p12000_ctx16384 idle_before=1.26 args: --backend gpu --ctx 16384 --prompt p12000 --reps 1
+gpu_p12000_ctx16384: load 14.78s prompt~12020 tok | TTFT p50 30.425271457992494 | SAY line p50 31.560393374878913 | tok/s p50 17.79829372925526 | errors []
+ 1456734208 maximum resident set size; 2856046672 peak memory footprint;
+### gpu_p30000_ctx32768 idle_before=0.0 args: --backend gpu --ctx 32768 --prompt p30000 --reps 1
+gpu_p30000_ctx32768: load 19.77s prompt~30019 tok | TTFT p50 129.23022775002755 | SAY line p50 130.21230283309706 | tok/s p50 18.666304197505166 | errors []
+ 2439380992 maximum resident set size; 4460974688 peak memory footprint;
+### done idle=78.13

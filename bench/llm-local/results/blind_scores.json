@@ -1,0 +1,13 @@
+{"scored_before_unblinding": true, "scale": "G = groundedness (5 = every number/name/claim traceable to the pack, 1 = invented claims); U = usefulness for Alex to say right now (5 = directly answers, sayable)",
+ "scores": {
+  "q01": {"X": {"G": 5, "U": 4}, "Y": {"G": 5, "U": 4}},
+  "q02": {"X": {"G": 5, "U": 4}, "Y": {"G": 5, "U": 4}},
+  "q03": {"X": {"G": 5, "U": 5}, "Y": {"G": 5, "U": 5}},
+  "q04": {"X": {"G": 5, "U": 4}, "Y": {"G": 5, "U": 5}},
+  "q05": {"X": {"G": 2, "U": 3}, "Y": {"G": 2, "U": 3}},
+  "q06": {"X": {"G": 5, "U": 2}, "Y": {"G": 3, "U": 4}},
+  "q07": {"X": {"G": 5, "U": 5}, "Y": {"G": 5, "U": 5}},
+  "q08": {"X": {"G": 1, "U": 2}, "Y": {"G": 5, "U": 5}},
+  "q09": {"X": {"G": 5, "U": 4}, "Y": {"G": 4, "U": 5}},
+  "q10": {"X": {"G": 3, "U": 2}, "Y": {"G": 4, "U": 4}}
+ }}

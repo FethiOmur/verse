@@ -1,0 +1,132 @@
+[
+ {
+  "qid": "q01",
+  "question": "Could you describe Lantern for us?",
+  "text": "SAY: Sure, Lantern is the project I can speak about in the most detail.\n- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.\n- It cut manual data entry from 11 minutes to 2 minutes per invoice.\nBANK: b003",
+  "seconds": 1.619576915865764,
+  "usage": {
+   "input": 96,
+   "output": 100,
+   "cache_read": 0,
+   "cache_write": 4621
+  },
+  "usd": 0.000637225
+ },
+ {
+  "qid": "q02",
+  "question": "Did Lantern actually move the needle? Show us figures.",
+  "text": "SAY: Yes, it did, and I can give you the numbers.\n- Manual data entry dropped from 11 minutes to 2 minutes per invoice, across 38,000 invoices a month.\n- Accuracy on the held-out set was 96.4 percent for totals and 91 percent for line items.\nBANK: b004",
+  "seconds": 1.1346917499322444,
+  "usage": {
+   "input": 103,
+   "output": 106,
+   "cache_read": 4621,
+   "cache_write": 0
+  },
+  "usd": 0.00010951
+ },
+ {
+  "qid": "q03",
+  "question": "What do you do when the model gives a bad or uncertain answer?",
+  "text": "SAY: I build explicit safeguards so I never trust the model blindly.\n- Extraction is schema-validated with one retry, then escalated; the model never guesses a total.\n- Fields below 0.8 confidence go to a human operator, about 7 percent of invoices.\nBANK: b010",
+  "seconds": 1.3053154160734266,
+  "usage": {
+   "input": 104,
+   "output": 96,
+   "cache_read": 4621,
+   "cache_write": 0
+  },
+  "usd": 0.00010461000000000002
+ },
+ {
+  "qid": "q04",
+  "question": "How expensive was the inference compared with the labour it replaced?",
+  "text": "SAY: I tracked that directly, and the model was far cheaper than the labour it replaced.\n- Monthly model cost was around EUR 1,900.\n- That compared with EUR 9,500 of manual labour saved, at 38,000 invoices a month.\nBANK: b012",
+  "seconds": 1.2346453331410885,
+  "usage": {
+   "input": 103,
+   "output": 92,
+   "cache_read": 4621,
+   "cache_write": 0
+  },
+  "usd": 0.00010251
+ },
+ {
+  "qid": "q05",
+  "question": "Assuming an offer, what is the soonest you could be on board?",
+  "text": "SAY: The soonest I could start is mid-December 2026, since my notice period is 30 days.\n- My notice period at my current company is 30 days.\n- That makes my earliest start mid-December 2026.\nBANK: b015",
+  "seconds": 1.2107047920580953,
+  "usage": {
+   "input": 104,
+   "output": 74,
+   "cache_read": 4621,
+   "cache_write": 0
+  },
+  "usd": 9.361000000000002e-05
+ },
+ {
+  "qid": "q06",
+  "question": "What kind of package would you want?",
+  "text": "SAY: I'd want to understand the full package first, but base salary and equity are my main priorities.\n- My expectation is EUR 70,000 to 80,000 gross per year, and I'm flexible on equity.\n- Happy to hear how your package is structured, including benefits and growth.\nBANK: b016",
+  "seconds": 1.3484863329213113,
+  "usage": {
+   "input": 93,
+   "output": 99,
+   "cache_read": 4621,
+   "cache_write": 0
+  },
+  "usd": 0.00010501
+ },
+ {
+  "qid": "q07",
+  "question": "Where does your past work overlap with routing and logistics?",
+  "text": "SAY: There's a direct overlap, and I can point to a specific project.\n- I built a small route optimiser for a courier pilot that reduced empty runs by 14 percent.\n- The pilot ran for 10 weeks across 23 vans in Milan.\nBANK: b018",
+  "seconds": 1.400297333020717,
+  "usage": {
+   "input": 101,
+   "output": 91,
+   "cache_read": 4621,
+   "cache_write": 0
+  },
+  "usd": 0.00010181
+ },
+ {
+  "qid": "q08",
+  "question": "Name an area where you are not as strong as you would like to be.",
+  "text": "SAY: One area I'm still building is UI-heavy frontend work, since most of my time has been on backend and data pipelines.\n- I've been deliberately practising it by shipping small frontend pieces with a colleague reviewing them.\n- I'm also aware it's an area to watch when I start, so I'd flag it early rather than let it slip.\nBANK: b005",
+  "seconds": 1.4932560408487916,
+  "usage": {
+   "input": 102,
+   "output": 118,
+   "cache_read": 4621,
+   "cache_write": 0
+  },
+  "usd": 0.00011541000000000001
+ },
+ {
+  "qid": "q09",
+  "question": "Do you have experience with Kubernetes and container orchestration?",
+  "text": "SAY: I haven't run Kubernetes in production myself, so I'll be upfront about that.\n- My work has been on the LLM pipeline and the courier route optimiser, not cluster operations.\n- I'm comfortable learning the stack quickly, and I'd want to understand how your platform team runs it.\nBANK: none",
+  "seconds": 1.5039256250020117,
+  "usage": {
+   "input": 104,
+   "output": 106,
+   "cache_read": 4621,
+   "cache_write": 0
+  },
+  "usd": 0.00010961000000000002
+ },
+ {
+  "qid": "q10",
+  "question": "How many people were on the Lantern team, and what did you personally build?",
+  "text": "SAY: The team size isn't in my notes, so let me focus on what I personally built.\n- I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices.\n- I designed the schema validation with one retry, then escalation, so the model never guesses a total.\nBANK: none",
+  "seconds": 1.2572771669365466,
+  "usage": {
+   "input": 104,
+   "output": 98,
+   "cache_read": 4621,
+   "cache_write": 0
+  },
+  "usd": 0.00010561000000000001
+ }
+]

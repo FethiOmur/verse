@@ -1,0 +1,86 @@
+{
+ "cfg": {
+  "backend": "cpu",
+  "ctx": 8192,
+  "prompt": "p3k",
+  "reps": 3,
+  "warm": false,
+  "fresh_cache": false,
+  "questions": "q02,q04,q05",
+  "out": "quality_cpu_diag",
+  "max_new": 120
+ },
+ "rss_before_mb": 43.58144,
+ "cache": "cache",
+ "load_s": 0.8573283751029521,
+ "rss_after_load_mb": 747.945984,
+ "prompt_tokens_text": 3628,
+ "prompt_chars": 12473,
+ "runs": [
+  {
+   "text": "SAY: I can give you concrete numbers on the results Lantern delivered.\n- Manual data entry dropped from 11 minutes to 2 minutes per invoice.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\nBANK: b004",
+   "t_first": 38.46309904102236,
+   "t_say_line": 40.75660674995743,
+   "t_end": 50.87373233307153,
+   "chunks": 67,
+   "qid": "q02",
+   "out_tokens": 67,
+   "decode_tok_s": 5.318020317487156
+  },
+  {
+   "text": "SAY: I can give you a concrete comparison of the costs.\n- Monthly model cost was around EUR 1,900.\n- That compared with EUR 9,500 of manual labour saved.\nBANK: b012",
+   "t_first": 25.68890945892781,
+   "t_say_line": 27.056533999973908,
+   "t_end": 30.75013633398339,
+   "chunks": 53,
+   "qid": "q04",
+   "out_tokens": 53,
+   "decode_tok_s": 10.2741887063557
+  },
+  {
+   "text": "SAY: I can give you the exact timing for my start date.\n- My notice period at my current company is 30 days.\n- That makes my earliest start mid-December 2026.\nBANK: b015",
+   "t_first": 24.36100266710855,
+   "t_say_line": 25.729011666961014,
+   "t_end": 29.146463209064677,
+   "chunks": 53,
+   "qid": "q05",
+   "out_tokens": 53,
+   "decode_tok_s": 10.866247782025226
+  }
+ ],
+ "warm_runs": [],
+ "errors": [],
+ "summary": {
+  "t_first": {
+   "n": 3,
+   "p50": 25.68890945892781,
+   "min": 24.36100266710855,
+   "max": 38.46309904102236
+  },
+  "t_say_line": {
+   "n": 3,
+   "p50": 27.056533999973908,
+   "min": 25.729011666961014,
+   "max": 40.75660674995743
+  },
+  "t_end": {
+   "n": 3,
+   "p50": 30.75013633398339,
+   "min": 29.146463209064677,
+   "max": 50.87373233307153
+  },
+  "decode_tok_s": {
+   "n": 3,
+   "p50": 10.2741887063557,
+   "min": 5.318020317487156,
+   "max": 10.866247782025226
+  },
+  "out_tokens": {
+   "n": 3,
+   "p50": 53,
+   "min": 53,
+   "max": 67
+  }
+ },
+ "rss_peak_mb": 3392.782336
+}

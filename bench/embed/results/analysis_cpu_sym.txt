@@ -1,0 +1,130 @@
+n-gram Python port vs Swift: {'queries': 880, 'max_abs_score_diff_vs_swift': np.float64(2.986096684365336e-07), 'top1_mismatch': 0}
+background mean score: n-gram 0.034, embedding 0.805
+
+para n=60, distractors tune n=20, held-out n=20
+
+=== top-1 accuracy ignoring any threshold (ranking quality) ===
+ngram (current)                  50%:  30.0   75%:  36.7   100%:  38.3
+embedding                        50%:  53.3   75%:  73.3   100%:  81.7
+hybrid max(norm)                 50%:  56.7   75%:  73.3   100%:  81.7
+hybrid 0.5/0.5 (norm)            50%:  48.3   75%:  66.7   100%:  81.7
+hybrid 0.3 ng/0.7 emb (norm)     50%:  55.0   75%:  73.3   100%:  83.3
+
+=== tuned rule (max accepted-correct s.t. <= 1/20 wrong hits on tuning distractors) ===
+method                                    T      M |   hit% wrongID%  miss% | dist-tune% dist-held% | hit@50% hit@75% wrongID@50% wrongID@75%
+ngram (current)                       0.240  0.005 |   16.7     13.3   70.0 |        5.0        5.0 |   20.0   13.3       23.3       18.3
+embedding                             0.865  0.005 |   78.3     11.7   10.0 |        5.0       15.0 |   38.3   65.0       18.3       15.0
+hybrid max(norm)                      0.295  0.025 |   78.3     13.3    8.3 |        5.0       15.0 |   40.0   65.0       16.7       16.7
+hybrid 0.5/0.5 (norm)                 0.205  0.005 |   78.3     11.7   10.0 |        5.0       10.0 |   40.0   56.7       35.0       25.0
+hybrid 0.3 ng/0.7 emb (norm)          0.245  0.005 |   80.0     11.7    8.3 |        5.0       10.0 |   45.0   63.3       30.0       20.0
+ngram (current) [tuned on all 40 dist, <=2]  0.200  0.040 |   23.3     10.0   66.7 |       10.0        0.0 |   20.0   18.3       16.7       16.7
+embedding [tuned on all 40 dist, <=2]  0.875  0.005 |   71.7     10.0   18.3 |        0.0        5.0 |   31.7   53.3       11.7       10.0
+hybrid max(norm) [tuned on all 40 dist, <=2]  0.340  0.025 |   73.3     10.0   16.7 |        0.0       10.0 |   38.3   58.3       13.3       16.7
+ngram @ product defaults 0.55/0.08    0.550  0.080 |    0.0      0.0  100.0 |        0.0        0.0 |    0.0    0.0        0.0        0.0
+
+=== prefix wrong-accept on distractors and lock-on ===
+ngram (current)                      distractor prefixes(>=3w, <full) accepted:  16.3% | distractors ever accepted (of 40): 17 | lock-on first (median/mean): 31%/40%, stable median 44%, never 38/60, wrong-before-hit 11 | ignoring prefixes <3 words: lock median 44%, never 42/60, wrong-before-hit 7
+embedding                            distractor prefixes(>=3w, <full) accepted:  19.4% | distractors ever accepted (of 40): 21 | lock-on first (median/mean): 57%/57%, stable median 59%, never 6/60, wrong-before-hit 41 | ignoring prefixes <3 words: lock median 58%, never 7/60, wrong-before-hit 31
+hybrid max(norm)                     distractor prefixes(>=3w, <full) accepted:  24.3% | distractors ever accepted (of 40): 24 | lock-on first (median/mean): 54%/55%, stable median 56%, never 7/60, wrong-before-hit 39 | ignoring prefixes <3 words: lock median 55%, never 8/60, wrong-before-hit 32
+hybrid 0.5/0.5 (norm)                distractor prefixes(>=3w, <full) accepted:  31.6% | distractors ever accepted (of 40): 24 | lock-on first (median/mean): 50%/54%, stable median 55%, never 7/60, wrong-before-hit 37 | ignoring prefixes <3 words: lock median 54%, never 8/60, wrong-before-hit 31
+hybrid 0.3 ng/0.7 emb (norm)         distractor prefixes(>=3w, <full) accepted:  27.4% | distractors ever accepted (of 40): 22 | lock-on first (median/mean): 54%/53%, stable median 54%, never 6/60, wrong-before-hit 38 | ignoring prefixes <3 words: lock median 54%, never 7/60, wrong-before-hit 34
+ngram (current) [tuned on all 40 dist, <=2] distractor prefixes(>=3w, <full) accepted:  22.4% | distractors ever accepted (of 40): 22 | lock-on first (median/mean): 41%/49%, stable median 44%, never 36/60, wrong-before-hit 9 | ignoring prefixes <3 words: lock median 50%, never 40/60, wrong-before-hit 7
+embedding [tuned on all 40 dist, <=2] distractor prefixes(>=3w, <full) accepted:  12.2% | distractors ever accepted (of 40): 17 | lock-on first (median/mean): 58%/57%, stable median 60%, never 10/60, wrong-before-hit 33 | ignoring prefixes <3 words: lock median 58%, never 11/60, wrong-before-hit 24
+hybrid max(norm) [tuned on all 40 dist, <=2] distractor prefixes(>=3w, <full) accepted:  14.8% | distractors ever accepted (of 40): 19 | lock-on first (median/mean): 54%/55%, stable median 55%, never 8/60, wrong-before-hit 35 | ignoring prefixes <3 words: lock median 55%, never 9/60, wrong-before-hit 27
+ngram @ product defaults 0.55/0.08   distractor prefixes(>=3w, <full) accepted:   0.8% | distractors ever accepted (of 40):  2 | lock-on first (median/mean): -/-, stable median -, never 60/60, wrong-before-hit 0 | ignoring prefixes <3 words: lock median -, never 60/60, wrong-before-hit 0
+
+=== 95 % Wilson CI of hit rate (n=60) ===
+ngram (current)                                           16.7%  [9, 28]
+embedding                                                 78.3%  [66, 87]
+hybrid max(norm)                                          78.3%  [66, 87]
+hybrid 0.5/0.5 (norm)                                     78.3%  [66, 87]
+hybrid 0.3 ng/0.7 emb (norm)                              80.0%  [68, 88]
+ngram (current) [tuned on all 40 dist, <=2]               23.3%  [14, 35]
+embedding [tuned on all 40 dist, <=2]                     71.7%  [59, 81]
+hybrid max(norm) [tuned on all 40 dist, <=2]              73.3%  [61, 83]
+ngram @ product defaults 0.55/0.08                         0.0%  [-0, 6]
+
+=== paraphrases not hit (full text), by method ===
+-- ngram (current): 50 not hit
+    b001.0 'To kick things off, could you sketch out your career path fo' -> top b015 0.117 (2nd 0.114) rejected
+    b001.1 'Tell us who you are and what you have been up to professiona' -> top b005 0.291 (2nd 0.173) ACCEPTED-WRONG
+    b001.2 'How did you end up where you are today?' -> top b012 0.146 (2nd 0.134) rejected
+    b002.0 'What drew you to Halden in the first place?' -> top b002 0.134 (2nd 0.132) rejected
+    b002.1 'Why this company rather than somewhere else?' -> top b008 0.133 (2nd 0.114) rejected
+    b002.2 'What is your motivation for wanting to work here?' -> top b015 0.181 (2nd 0.160) rejected
+    b003.0 'Could you describe Lantern for us?' -> top b003 0.185 (2nd 0.174) rejected
+    b003.1 'Give us the details on the supplier invoice system you were ' -> top b004 0.191 (2nd 0.136) rejected
+    b003.2 'What exactly did you build with the Lantern pipeline?' -> top b011 0.390 (2nd 0.228) ACCEPTED-WRONG
+    b004.0 'What outcomes came out of Lantern?' -> top b003 0.176 (2nd 0.154) rejected
+    b004.1 'Did Lantern actually move the needle? Show us figures.' -> top b004 0.183 (2nd 0.160) rejected
+    b004.2 'How much better were things after you shipped the invoice to' -> top b017 0.237 (2nd 0.158) rejected
+    b005.0 'Where do you feel you fall short?' -> top b005 0.205 (2nd 0.113) rejected
+    b005.1 'What would a former manager say you need to work on?' -> top b013 0.132 (2nd 0.128) rejected
+    b005.2 'Name an area where you are not as strong as you would like t' -> top b014 0.194 (2nd 0.110) rejected
+    b006.0 'Looking back, which architectural calls do you consider the ' -> top b003 0.136 (2nd 0.134) rejected
+    b007.1 'How did the vehicle routing system you wrote perform in the ' -> top b011 0.238 (2nd 0.150) rejected
+    b007.2 'What was your part in cutting empty runs for the couriers?' -> top b007 0.208 (2nd 0.128) rejected
+    b008.0 'How much homework have you done on Halden?' -> top b018 0.335 (2nd 0.201) ACCEPTED-WRONG
+    b008.1 'Give us your read on what our business is about.' -> top b001 0.162 (2nd 0.158) rejected
+    b009.0 'Before shipping an LLM feature, how do you verify it is good' -> top b009 0.202 (2nd 0.123) rejected
+    b009.1 'What is your approach to QA for language model pipelines?' -> top b017 0.233 (2nd 0.220) rejected
+    b009.2 'How do you make sure a release does not make the model worse' -> top b009 0.198 (2nd 0.188) rejected
+    b010.0 'What do you do when the model gives a bad or uncertain answe' -> top b019 0.159 (2nd 0.133) rejected
+    b010.1 'How did you cope with shaky outputs from the LLM?' -> top b010 0.176 (2nd 0.109) rejected
+    b010.2 'Describe your fallback when an extraction cannot be trusted.' -> top b011 0.169 (2nd 0.140) rejected
+    b011.0 'How reliable was the system, in numbers?' -> top b010 0.198 (2nd 0.187) rejected
+    b011.1 'What percentage of fields did it get right?' -> top b003 0.135 (2nd 0.099) rejected
+    b011.2 'Can you quantify the precision of the invoice parser?' -> top b004 0.239 (2nd 0.227) rejected
+    b012.0 'What was the running cost, and did it pay off?' -> top b003 0.271 (2nd 0.243) ACCEPTED-WRONG
+    b012.1 'Did the economics stack up against doing the work by hand?' -> top b012 0.103 (2nd 0.084) rejected
+    b012.2 'How expensive was the inference compared with the labour it ' -> top b011 0.156 (2nd 0.152) rejected
+    b013.2 'What would the first version of an AI driven dispatch tool l' -> top b009 0.182 (2nd 0.170) rejected
+    b014.0 'What can I answer for you?' -> top b012 0.133 (2nd 0.109) rejected
+    b014.2 'Do you want to ask us something before we wrap up?' -> top b005 0.242 (2nd 0.208) ACCEPTED-WRONG
+    b015.0 'How long until you could begin if you accepted?' -> top b015 0.111 (2nd 0.062) rejected
+    b015.1 'When would you be free to join?' -> top b002 0.219 (2nd 0.209) rejected
+    b015.2 'Assuming an offer, what is the soonest you could be on board' -> top b015 0.225 (2nd 0.107) rejected
+    b016.0 'What are you hoping to earn?' -> top b016 0.197 (2nd 0.150) rejected
+    b016.1 'Give us a figure for the pay you would expect.' -> top b001 0.199 (2nd 0.112) rejected
+    b016.2 'What kind of package would you want?' -> top b002 0.133 (2nd 0.133) rejected
+    b017.1 'Tell us about live deployments of generative AI you have bee' -> top b021 0.190 (2nd 0.181) rejected
+    b017.2 'How much hands-on time do you have with LLMs outside of prot' -> top b007 0.271 (2nd 0.179) ACCEPTED-WRONG
+    b018.1 'What transfers from your background to optimising delivery r' -> top b001 0.243 (2nd 0.231) ACCEPTED-WRONG
+    b018.2 'Why do you think you are a fit for a route planning company?' -> top b007 0.252 (2nd 0.218) ACCEPTED-WRONG
+    b019.0 'Did you mix cheap and expensive models, and how did you deci' -> top b019 0.216 (2nd 0.175) rejected
+    b019.1 'What drove the choice of model size?' -> top b006 0.128 (2nd 0.108) rejected
+    b019.2 'When is a bigger LLM worth paying for?' -> top b005 0.144 (2nd 0.135) rejected
+    b020.1 'What is your habit when beginning a greenfield build?' -> top b017 0.161 (2nd 0.150) rejected
+    b020.2 'How do you stop yourself from gold plating early versions?' -> top b001 0.150 (2nd 0.115) rejected
+-- embedding: 13 not hit
+    b001.0 'To kick things off, could you sketch out your career path fo' -> top b020 0.864 (2nd 0.862) rejected
+    b002.1 'Why this company rather than somewhere else?' -> top b008 0.857 (2nd 0.840) rejected
+    b003.2 'What exactly did you build with the Lantern pipeline?' -> top b011 0.918 (2nd 0.898) ACCEPTED-WRONG
+    b005.1 'What would a former manager say you need to work on?' -> top b013 0.891 (2nd 0.869) ACCEPTED-WRONG
+    b009.1 'What is your approach to QA for language model pipelines?' -> top b012 0.880 (2nd 0.875) ACCEPTED-WRONG
+    b009.2 'How do you make sure a release does not make the model worse' -> top b010 0.889 (2nd 0.875) ACCEPTED-WRONG
+    b011.2 'Can you quantify the precision of the invoice parser?' -> top b004 0.879 (2nd 0.870) ACCEPTED-WRONG
+    b012.1 'Did the economics stack up against doing the work by hand?' -> top b012 0.858 (2nd 0.849) rejected
+    b013.2 'What would the first version of an AI driven dispatch tool l' -> top b013 0.863 (2nd 0.833) rejected
+    b016.2 'What kind of package would you want?' -> top b018 0.865 (2nd 0.847) rejected
+    b017.1 'Tell us about live deployments of generative AI you have bee' -> top b003 0.869 (2nd 0.862) ACCEPTED-WRONG
+    b018.1 'What transfers from your background to optimising delivery r' -> top b007 0.888 (2nd 0.885) rejected
+    b019.2 'When is a bigger LLM worth paying for?' -> top b012 0.916 (2nd 0.893) ACCEPTED-WRONG
+-- hybrid 0.5/0.5 (norm): 13 not hit
+    b001.0 'To kick things off, could you sketch out your career path fo' -> top b015 0.187 (2nd 0.159) rejected
+    b002.1 'Why this company rather than somewhere else?' -> top b008 0.184 (2nd 0.130) rejected
+    b003.2 'What exactly did you build with the Lantern pipeline?' -> top b011 0.474 (2nd 0.338) ACCEPTED-WRONG
+    b005.1 'What would a former manager say you need to work on?' -> top b013 0.272 (2nd 0.198) ACCEPTED-WRONG
+    b006.0 'Looking back, which architectural calls do you consider the ' -> top b006 0.182 (2nd 0.166) rejected
+    b009.1 'What is your approach to QA for language model pipelines?' -> top b012 0.288 (2nd 0.261) ACCEPTED-WRONG
+    b009.2 'How do you make sure a release does not make the model worse' -> top b010 0.293 (2nd 0.265) ACCEPTED-WRONG
+    b011.2 'Can you quantify the precision of the invoice parser?' -> top b004 0.294 (2nd 0.207) ACCEPTED-WRONG
+    b012.1 'Did the economics stack up against doing the work by hand?' -> top b012 0.170 (2nd 0.118) rejected
+    b016.2 'What kind of package would you want?' -> top b018 0.193 (2nd 0.159) rejected
+    b017.1 'Tell us about live deployments of generative AI you have bee' -> top b003 0.241 (2nd 0.218) ACCEPTED-WRONG
+    b018.2 'Why do you think you are a fit for a route planning company?' -> top b007 0.351 (2nd 0.346) rejected
+    b019.2 'When is a bigger LLM worth paying for?' -> top b012 0.313 (2nd 0.277) ACCEPTED-WRONG
+
+=== score distributions (full text, top-1 score) ===
+ngram (current): paraphrase correct top1 [min 0.103 p10 0.142 med 0.216 p90 0.314 max 0.432]  paraphrase wrong top1 [min 0.117 p10 0.133 med 0.182 p90 0.271 max 0.390]  distractors [min 0.055 p10 0.092 med 0.131 p90 0.190 max 0.290]
+embedding: paraphrase correct top1 [min 0.858 p10 0.871 med 0.904 p90 0.939 max 0.963]  paraphrase wrong top1 [min 0.857 p10 0.864 med 0.880 p90 0.916 max 0.918]  distractors [min 0.766 p10 0.796 med 0.840 p90 0.868 max 0.876]

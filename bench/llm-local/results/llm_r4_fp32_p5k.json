@@ -1,0 +1,161 @@
+{
+ "cfg": {
+  "backend": "gpu",
+  "ctx": 8192,
+  "prompt": "p5k",
+  "reps": 4,
+  "warm": true,
+  "fresh_cache": false,
+  "questions": "q01,q02,q03,q04,q05",
+  "out": "r4_fp32_p5k",
+  "max_new": 120,
+  "act": "FLOAT32",
+  "mtp": false
+ },
+ "rss_before_mb": 43.237376,
+ "cache": "cache",
+ "load_s": 0.9447216249536723,
+ "rss_after_load_mb": 516.83328,
+ "prompt_tokens_text": 4930,
+ "prompt_chars": 18169,
+ "runs": [
+  {
+   "text": "SAY: Happy to; it's the project I can speak about in the most detail.\n- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.\n- It cut manual data entry from 11 minutes to 2 minutes per invoice.\nBANK: b003",
+   "t_first": 19.186023249989375,
+   "t_say_line": 19.938577041961253,
+   "t_end": 21.654874625150114,
+   "chunks": 67,
+   "qid": "q01",
+   "out_tokens": 67,
+   "decode_tok_s": 26.73307946522417
+  },
+  {
+   "text": "SAY: I can give you concrete numbers on the results Lantern delivered.\n- Manual data entry dropped from 11 minutes to 2 minutes per invoice.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\nBANK: b004",
+   "t_first": 19.71263483306393,
+   "t_say_line": 20.306153957964852,
+   "t_end": 22.277145666070282,
+   "chunks": 67,
+   "qid": "q02",
+   "out_tokens": 67,
+   "decode_tok_s": 25.73590220425344
+  },
+  {
+   "text": "SAY: I built explicit safeguards around the model rather than trusting it blindly.\n- Extraction is schema-validated with one retry, then escalated.\n- Low-confidence fields, below 0.8, go to a human operator; that was about 7 percent of invoices.\nBANK: b010",
+   "t_first": 18.215202291030437,
+   "t_say_line": 18.794054500060156,
+   "t_end": 20.611589208012447,
+   "chunks": 65,
+   "qid": "q03",
+   "out_tokens": 65,
+   "decode_tok_s": 26.70687256154823
+  },
+  {
+   "text": "SAY: I tracked the cost against the labour it replaced, so I can give you the comparison.\n- Monthly model cost was around EUR 1,900.\n- That compared with EUR 9,500 of manual labour saved.\nBANK: b012",
+   "t_first": 19.215753583004698,
+   "t_say_line": 20.075902540935203,
+   "t_end": 21.576025374932215,
+   "chunks": 60,
+   "qid": "q04",
+   "out_tokens": 60,
+   "decode_tok_s": 24.997121179767877
+  }
+ ],
+ "warm_runs": [
+  {
+   "text": "SAY: I can give you concrete numbers on that.\n- Manual data entry dropped from 11 minutes to 2 minutes per invoice.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\nBANK: b004",
+   "t_first": 0.6645882911980152,
+   "t_say_line": 1.1041237500030547,
+   "t_end": 3.000540583161637,
+   "chunks": 64,
+   "qid": "q02",
+   "out_tokens": 64
+  },
+  {
+   "text": "SAY: I built explicit safeguards around the model rather than trusting it blindly.\n- Extraction is schema-validated with one retry, then escalated.\n- Low-confidence fields, below 0.8, go to a human operator; that was about 7 percent of invoices.\nBANK: b010",
+   "t_first": 0.7625140841118991,
+   "t_say_line": 1.3814507920760661,
+   "t_end": 3.246073584072292,
+   "chunks": 65,
+   "qid": "q03",
+   "out_tokens": 65
+  },
+  {
+   "text": "SAY: I tracked cost against the labour it replaced, so I can give you the comparison.\n- Monthly model cost was around EUR 1,900.\n- That compared with EUR 9,500 of manual labour saved.\nBANK: b012",
+   "t_first": 0.658850000007078,
+   "t_say_line": 1.4252339580561966,
+   "t_end": 2.800525000086054,
+   "chunks": 59,
+   "qid": "q04",
+   "out_tokens": 59
+  },
+  {
+   "text": "SAY: I can give you the exact timing.\n- My notice period at my current company is 30 days.\n- That makes my earliest start mid-December 2026.\nBANK: b015",
+   "t_first": 0.7763745000120252,
+   "t_say_line": 1.200250041903928,
+   "t_end": 2.6135255000554025,
+   "chunks": 49,
+   "qid": "q05",
+   "out_tokens": 49
+  }
+ ],
+ "errors": [],
+ "summary": {
+  "t_first": {
+   "n": 4,
+   "p50": 19.200888416497037,
+   "min": 18.215202291030437,
+   "max": 19.71263483306393
+  },
+  "t_say_line": {
+   "n": 4,
+   "p50": 20.007239791448228,
+   "min": 18.794054500060156,
+   "max": 20.306153957964852
+  },
+  "t_end": {
+   "n": 4,
+   "p50": 21.615450000041164,
+   "min": 20.611589208012447,
+   "max": 22.277145666070282
+  },
+  "decode_tok_s": {
+   "n": 4,
+   "p50": 26.221387382900836,
+   "min": 24.997121179767877,
+   "max": 26.73307946522417
+  },
+  "out_tokens": {
+   "n": 4,
+   "p50": 66.0,
+   "min": 60,
+   "max": 67
+  }
+ },
+ "summary_warm": {
+  "t_first": {
+   "n": 4,
+   "p50": 0.7135511876549572,
+   "min": 0.658850000007078,
+   "max": 0.7763745000120252
+  },
+  "t_say_line": {
+   "n": 4,
+   "p50": 1.290850416989997,
+   "min": 1.1041237500030547,
+   "max": 1.4252339580561966
+  },
+  "t_end": {
+   "n": 4,
+   "p50": 2.9005327916238457,
+   "min": 2.6135255000554025,
+   "max": 3.246073584072292
+  },
+  "out_tokens": {
+   "n": 4,
+   "p50": 61.5,
+   "min": 49,
+   "max": 65
+  }
+ },
+ "rss_peak_mb": 1078.083584
+}

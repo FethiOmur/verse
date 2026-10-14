@@ -1,0 +1,142 @@
+{
+ "cfg": {
+  "backend": "gpu",
+  "ctx": 8192,
+  "prompt": "p3k",
+  "reps": 3,
+  "warm": true,
+  "fresh_cache": true,
+  "questions": "q02,q04,q05",
+  "out": "diag_gpu_fp32",
+  "max_new": 120,
+  "act": "FLOAT32",
+  "mtp": false
+ },
+ "rss_before_mb": 43.25376,
+ "cache": "cache_cold_1791983935",
+ "load_s": 8.448518082965165,
+ "rss_after_load_mb": 3017.129984,
+ "prompt_tokens_text": 3628,
+ "prompt_chars": 12473,
+ "runs": [
+  {
+   "text": "SAY: I can give you concrete numbers on the results Lantern delivered.\n- Manual data entry dropped from 11 minutes to 2 minutes per invoice.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\nBANK: b004",
+   "t_first": 13.090656332904473,
+   "t_say_line": 13.65055387490429,
+   "t_end": 15.669793291948736,
+   "chunks": 67,
+   "qid": "q02",
+   "out_tokens": 67,
+   "decode_tok_s": 25.5899554959878
+  },
+  {
+   "text": "SAY: I can give you concrete numbers on that comparison.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\n- It ran on 38,000 invoices a month.\nBANK: b012",
+   "t_first": 11.768291542073712,
+   "t_say_line": 12.263497000094503,
+   "t_end": 14.15300870896317,
+   "chunks": 63,
+   "qid": "q04",
+   "out_tokens": 63,
+   "decode_tok_s": 25.998890292248205
+  },
+  {
+   "text": "SAY: I can give you the exact timing for when I could start.\n- My notice period at my current company is 30 days.\n- That makes my earliest start mid-December 2026.\nBANK: b015",
+   "t_first": 13.330186708131805,
+   "t_say_line": 14.112144292099401,
+   "t_end": 15.799066042061895,
+   "chunks": 54,
+   "qid": "q05",
+   "out_tokens": 54,
+   "decode_tok_s": 21.467229795970567
+  }
+ ],
+ "warm_runs": [
+  {
+   "text": "SAY: I tracked cost against the labour it replaced, so I can give you the comparison.\n- Monthly model cost was around EUR 1,900.\n- That compared with EUR 9,500 of manual labour saved.\nBANK: b012",
+   "t_first": 0.7120132918935269,
+   "t_say_line": 1.4766087089665234,
+   "t_end": 2.9612289587967098,
+   "chunks": 59,
+   "qid": "q04",
+   "out_tokens": 59
+  },
+  {
+   "text": "SAY: I can give you the exact timing for my start date.\n- My notice period at my current company is 30 days.\n- That makes my earliest start mid-December 2026.\nBANK: b015",
+   "t_first": 0.6849371250718832,
+   "t_say_line": 1.2577625000849366,
+   "t_end": 2.683491542004049,
+   "chunks": 53,
+   "qid": "q05",
+   "out_tokens": 53
+  },
+  {
+   "text": "SAY: I can give you concrete numbers on the results Lantern delivered.\n- Manual data entry dropped from 11 minutes to 2 minutes per invoice.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\nBANK: b004",
+   "t_first": 0.8821842910256237,
+   "t_say_line": 1.541422458132729,
+   "t_end": 3.6905651250854135,
+   "chunks": 67,
+   "qid": "q02",
+   "out_tokens": 67
+  }
+ ],
+ "errors": [],
+ "summary": {
+  "t_first": {
+   "n": 3,
+   "p50": 13.090656332904473,
+   "min": 11.768291542073712,
+   "max": 13.330186708131805
+  },
+  "t_say_line": {
+   "n": 3,
+   "p50": 13.65055387490429,
+   "min": 12.263497000094503,
+   "max": 14.112144292099401
+  },
+  "t_end": {
+   "n": 3,
+   "p50": 15.669793291948736,
+   "min": 14.15300870896317,
+   "max": 15.799066042061895
+  },
+  "decode_tok_s": {
+   "n": 3,
+   "p50": 25.5899554959878,
+   "min": 21.467229795970567,
+   "max": 25.998890292248205
+  },
+  "out_tokens": {
+   "n": 3,
+   "p50": 63,
+   "min": 54,
+   "max": 67
+  }
+ },
+ "summary_warm": {
+  "t_first": {
+   "n": 3,
+   "p50": 0.7120132918935269,
+   "min": 0.6849371250718832,
+   "max": 0.8821842910256237
+  },
+  "t_say_line": {
+   "n": 3,
+   "p50": 1.4766087089665234,
+   "min": 1.2577625000849366,
+   "max": 1.541422458132729
+  },
+  "t_end": {
+   "n": 3,
+   "p50": 2.9612289587967098,
+   "min": 2.683491542004049,
+   "max": 3.6905651250854135
+  },
+  "out_tokens": {
+   "n": 3,
+   "p50": 59,
+   "min": 53,
+   "max": 67
+  }
+ },
+ "rss_peak_mb": 3017.129984
+}

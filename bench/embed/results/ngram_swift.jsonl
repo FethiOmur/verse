@@ -1,0 +1,881 @@
+{"header":true,"entries":22,"index_ms_median":1.619334,"index_ms_min":1.561583,"index_ms_max":1.791125}
+{"q":"To","top":[{"id":"b002","score":0.1399613320827484},{"id":"b022","score":0.1264384537935257}],"ms_median":0.000917,"ms_max":0.020625}
+{"q":"To kick","top":[{"id":"b001","score":0.0907101258635521},{"id":"b014","score":0.09048062562942505}],"ms_median":0.001958,"ms_max":0.004792}
+{"q":"To kick things","top":[{"id":"b014","score":0.12562641501426697},{"id":"b012","score":0.1241450384259224}],"ms_median":0.003167,"ms_max":0.006125}
+{"q":"To kick things off,","top":[{"id":"b014","score":0.10949143022298813},{"id":"b012","score":0.10820028185844421}],"ms_median":0.004208,"ms_max":0.00725}
+{"q":"To kick things off, could","top":[{"id":"b015","score":0.11863928288221359},{"id":"b012","score":0.10311642289161682}],"ms_median":0.005042,"ms_max":0.008125}
+{"q":"To kick things off, could you","top":[{"id":"b015","score":0.1575668305158615},{"id":"b014","score":0.1254800409078598}],"ms_median":0.005958,"ms_max":0.008959}
+{"q":"To kick things off, could you sketch","top":[{"id":"b015","score":0.15071891248226166},{"id":"b014","score":0.10759809613227844}],"ms_median":0.007042,"ms_max":0.011334}
+{"q":"To kick things off, could you sketch out","top":[{"id":"b015","score":0.14275509119033813},{"id":"b014","score":0.10191270709037781}],"ms_median":0.008,"ms_max":0.01075}
+{"q":"To kick things off, could you sketch out your","top":[{"id":"b015","score":0.13922438025474548},{"id":"b001","score":0.10066977888345718}],"ms_median":0.008833,"ms_max":0.011917}
+{"q":"To kick things off, could you sketch out your career","top":[{"id":"b015","score":0.13088487088680267},{"id":"b013","score":0.10392732918262482}],"ms_median":0.00975,"ms_max":0.013917}
+{"q":"To kick things off, could you sketch out your career path","top":[{"id":"b015","score":0.1234639585018158},{"id":"b013","score":0.1207968071103096}],"ms_median":0.0105,"ms_max":0.014041}
+{"q":"To kick things off, could you sketch out your career path for","top":[{"id":"b015","score":0.11902649700641632},{"id":"b013","score":0.11645521968603134}],"ms_median":0.011084,"ms_max":0.013834}
+{"q":"To kick things off, could you sketch out your career path for us?","top":[{"id":"b015","score":0.11662020534276962},{"id":"b013","score":0.11381834000349045}],"ms_median":0.011625,"ms_max":0.013875}
+{"q":"Tell","top":[{"id":"b003","score":0.27552056312561035},{"id":"b006","score":0.23866942524909973}],"ms_median":0.001458,"ms_max":0.002667}
+{"q":"Tell us","top":[{"id":"b003","score":0.42252305150032043},{"id":"b005","score":0.2923567295074463}],"ms_median":0.002,"ms_max":0.003291}
+{"q":"Tell us who","top":[{"id":"b003","score":0.2941727936267853},{"id":"b005","score":0.20354722440242767}],"ms_median":0.002833,"ms_max":0.0045}
+{"q":"Tell us who you","top":[{"id":"b003","score":0.27978378534317017},{"id":"b001","score":0.21525226533412933}],"ms_median":0.003667,"ms_max":0.005917}
+{"q":"Tell us who you are","top":[{"id":"b001","score":0.3172454535961151},{"id":"b003","score":0.24946437776088715}],"ms_median":0.00475,"ms_max":0.00725}
+{"q":"Tell us who you are and","top":[{"id":"b001","score":0.286253422498703},{"id":"b003","score":0.22509391605854034}],"ms_median":0.005292,"ms_max":0.007917}
+{"q":"Tell us who you are and what","top":[{"id":"b001","score":0.26884040236473083},{"id":"b003","score":0.21036189794540405}],"ms_median":0.006167,"ms_max":0.0085}
+{"q":"Tell us who you are and what you","top":[{"id":"b001","score":0.2574571371078491},{"id":"b003","score":0.24092997610569}],"ms_median":0.006666,"ms_max":0.008666}
+{"q":"Tell us who you are and what you have","top":[{"id":"b001","score":0.24611133337020874},{"id":"b003","score":0.2261066734790802}],"ms_median":0.008,"ms_max":0.012209}
+{"q":"Tell us who you are and what you have been","top":[{"id":"b001","score":0.2180822789669037},{"id":"b003","score":0.20035582780838013}],"ms_median":0.008708,"ms_max":0.011917}
+{"q":"Tell us who you are and what you have been up","top":[{"id":"b001","score":0.20467810332775116},{"id":"b003","score":0.18804119527339935}],"ms_median":0.009125,"ms_max":0.010958}
+{"q":"Tell us who you are and what you have been up to","top":[{"id":"b001","score":0.20473235845565796},{"id":"b003","score":0.17938295006752014}],"ms_median":0.009583,"ms_max":0.013333}
+{"q":"Tell us who you are and what you have been up to professionally.","top":[{"id":"b005","score":0.290677011013031},{"id":"b001","score":0.17265845835208893}],"ms_median":0.011875,"ms_max":0.018583}
+{"q":"How","top":[{"id":"b015","score":0.15660309791564941},{"id":"b022","score":0.1554497331380844}],"ms_median":0.00125,"ms_max":0.002417}
+{"q":"How did","top":[{"id":"b004","score":0.28683918714523315},{"id":"b012","score":0.28240740299224854}],"ms_median":0.002084,"ms_max":0.003292}
+{"q":"How did you","top":[{"id":"b004","score":0.3438839614391327},{"id":"b007","score":0.31006792187690735}],"ms_median":0.003167,"ms_max":0.004792}
+{"q":"How did you end","top":[{"id":"b004","score":0.2221032977104187},{"id":"b007","score":0.20026259124279022}],"ms_median":0.003833,"ms_max":0.005459}
+{"q":"How did you end up","top":[{"id":"b004","score":0.17924056947231293},{"id":"b007","score":0.1616148054599762}],"ms_median":0.004584,"ms_max":0.006708}
+{"q":"How did you end up where","top":[{"id":"b005","score":0.16040916740894318},{"id":"b004","score":0.1518562287092209}],"ms_median":0.005458,"ms_max":0.00825}
+{"q":"How did you end up where you","top":[{"id":"b005","score":0.15831777453422546},{"id":"b004","score":0.1501639187335968}],"ms_median":0.005916,"ms_max":0.007625}
+{"q":"How did you end up where you are","top":[{"id":"b005","score":0.15088897943496704},{"id":"b004","score":0.14330291748046875}],"ms_median":0.006667,"ms_max":0.010958}
+{"q":"How did you end up where you are today?","top":[{"id":"b012","score":0.14632903039455414},{"id":"b005","score":0.1342032104730606}],"ms_median":0.008084,"ms_max":0.012416}
+{"q":"What","top":[{"id":"b003","score":0.26351645588874817},{"id":"b008","score":0.23364794254302979}],"ms_median":0.001542,"ms_max":0.002459}
+{"q":"What drew","top":[{"id":"b003","score":0.12813608348369598},{"id":"b022","score":0.1110062301158905}],"ms_median":0.002375,"ms_max":0.003917}
+{"q":"What drew you","top":[{"id":"b003","score":0.10768497735261917},{"id":"b022","score":0.10351629555225372}],"ms_median":0.003333,"ms_max":0.00525}
+{"q":"What drew you to","top":[{"id":"b002","score":0.1734386682510376},{"id":"b022","score":0.1150311827659607}],"ms_median":0.003958,"ms_max":0.006125}
+{"q":"What drew you to Halden","top":[{"id":"b008","score":0.19322337210178375},{"id":"b002","score":0.188882514834404}],"ms_median":0.005333,"ms_max":0.008625}
+{"q":"What drew you to Halden in","top":[{"id":"b002","score":0.1794925332069397},{"id":"b008","score":0.17757947742938995}],"ms_median":0.005708,"ms_max":0.007833}
+{"q":"What drew you to Halden in the","top":[{"id":"b002","score":0.1714400053024292},{"id":"b008","score":0.16961273550987244}],"ms_median":0.00625,"ms_max":0.008542}
+{"q":"What drew you to Halden in the first","top":[{"id":"b002","score":0.14838668704032898},{"id":"b008","score":0.14680515229701996}],"ms_median":0.007708,"ms_max":0.011959}
+{"q":"What drew you to Halden in the first place?","top":[{"id":"b002","score":0.1337769627571106},{"id":"b008","score":0.1323511153459549}],"ms_median":0.008583,"ms_max":0.012666}
+{"q":"Why","top":[{"id":"b002","score":0.22841356694698334},{"id":"b003","score":0.013544395565986633}],"ms_median":0.001167,"ms_max":0.001916}
+{"q":"Why this","top":[{"id":"b002","score":0.27726131677627563},{"id":"b012","score":0.060714058578014374}],"ms_median":0.002167,"ms_max":0.003959}
+{"q":"Why this company","top":[{"id":"b008","score":0.23865340650081635},{"id":"b002","score":0.1885254830121994}],"ms_median":0.003541,"ms_max":0.006458}
+{"q":"Why this company rather","top":[{"id":"b008","score":0.18783751130104065},{"id":"b002","score":0.148383229970932}],"ms_median":0.004792,"ms_max":0.007792}
+{"q":"Why this company rather than","top":[{"id":"b008","score":0.16964887082576752},{"id":"b002","score":0.13584646582603455}],"ms_median":0.005458,"ms_max":0.007917}
+{"q":"Why this company rather than somewhere","top":[{"id":"b008","score":0.14330226182937622},{"id":"b002","score":0.12345972657203674}],"ms_median":0.007375,"ms_max":0.012}
+{"q":"Why this company rather than somewhere else?","top":[{"id":"b008","score":0.1325628012418747},{"id":"b002","score":0.11420734226703644}],"ms_median":0.008083,"ms_max":0.012042}
+{"q":"What is","top":[{"id":"b015","score":0.376928448677063},{"id":"b005","score":0.36211878061294556}],"ms_median":0.002125,"ms_max":0.0035}
+{"q":"What is your","top":[{"id":"b015","score":0.49546387791633606},{"id":"b005","score":0.4759969711303711}],"ms_median":0.003292,"ms_max":0.00525}
+{"q":"What is your motivation","top":[{"id":"b015","score":0.2789860665798187},{"id":"b005","score":0.24801182746887207}],"ms_median":0.005167,"ms_max":0.008458}
+{"q":"What is your motivation for","top":[{"id":"b015","score":0.2511545717716217},{"id":"b005","score":0.22327031195163727}],"ms_median":0.006,"ms_max":0.046917}
+{"q":"What is your motivation for wanting","top":[{"id":"b015","score":0.2129991203546524},{"id":"b005","score":0.18935109674930573}],"ms_median":0.007583,"ms_max":0.013333}
+{"q":"What is your motivation for wanting to","top":[{"id":"b015","score":0.20420107245445251},{"id":"b005","score":0.1815297156572342}],"ms_median":0.008084,"ms_max":0.011542}
+{"q":"What is your motivation for wanting to work","top":[{"id":"b015","score":0.19290363788604736},{"id":"b005","score":0.17148661613464355}],"ms_median":0.008834,"ms_max":0.013416}
+{"q":"What is your motivation for wanting to work here?","top":[{"id":"b015","score":0.1805339902639389},{"id":"b005","score":0.16049031913280487}],"ms_median":0.009417,"ms_max":0.012708}
+{"q":"Could","top":[{"id":"b015","score":0.3664526641368866},{"id":"b022","score":0.1344667375087738}],"ms_median":0.001625,"ms_max":0.003666}
+{"q":"Could you","top":[{"id":"b015","score":0.42831915616989136},{"id":"b022","score":0.22899580001831055}],"ms_median":0.002584,"ms_max":0.004917}
+{"q":"Could you describe","top":[{"id":"b015","score":0.20589527487754822},{"id":"b022","score":0.17821986973285675}],"ms_median":0.004375,"ms_max":0.008291}
+{"q":"Could you describe Lantern","top":[{"id":"b003","score":0.2136496603488922},{"id":"b011","score":0.19331327080726624}],"ms_median":0.005458,"ms_max":0.010166}
+{"q":"Could you describe Lantern for","top":[{"id":"b003","score":0.19547253847122192},{"id":"b011","score":0.1768662929534912}],"ms_median":0.006,"ms_max":0.008291}
+{"q":"Could you describe Lantern for us?","top":[{"id":"b003","score":0.18528760969638824},{"id":"b015","score":0.1737726628780365}],"ms_median":0.006542,"ms_max":0.009125}
+{"q":"Give","top":[{"id":"b001","score":0.29414212703704834},{"id":"b013","score":0.06793024390935898}],"ms_median":0.001375,"ms_max":0.002875}
+{"q":"Give us","top":[{"id":"b001","score":0.4093109965324402},{"id":"b013","score":0.058864690363407135}],"ms_median":0.001958,"ms_max":0.003375}
+{"q":"Give us the","top":[{"id":"b001","score":0.3442677855491638},{"id":"b011","score":0.08497190475463867}],"ms_median":0.002833,"ms_max":0.00475}
+{"q":"Give us the details","top":[{"id":"b001","score":0.22546082735061646},{"id":"b011","score":0.05564805492758751}],"ms_median":0.004292,"ms_max":0.007459}
+{"q":"Give us the details on","top":[{"id":"b001","score":0.21465030312538147},{"id":"b011","score":0.062042590230703354}],"ms_median":0.00475,"ms_max":0.007583}
+{"q":"Give us the details on the","top":[{"id":"b001","score":0.21746526658535004},{"id":"b012","score":0.13436780869960785}],"ms_median":0.005208,"ms_max":0.007958}
+{"q":"Give us the details on the supplier","top":[{"id":"b001","score":0.17904947698116302},{"id":"b012","score":0.13596712052822113}],"ms_median":0.006417,"ms_max":0.011333}
+{"q":"Give us the details on the supplier invoice","top":[{"id":"b004","score":0.21401777863502502},{"id":"b001","score":0.1665371209383011}],"ms_median":0.008084,"ms_max":0.014916}
+{"q":"Give us the details on the supplier invoice system","top":[{"id":"b004","score":0.19867558777332306},{"id":"b001","score":0.15459872782230377}],"ms_median":0.009125,"ms_max":0.014375}
+{"q":"Give us the details on the supplier invoice system you","top":[{"id":"b004","score":0.19525451958179474},{"id":"b001","score":0.15415659546852112}],"ms_median":0.009708,"ms_max":0.016042}
+{"q":"Give us the details on the supplier invoice system you were","top":[{"id":"b004","score":0.18741253018379211},{"id":"b001","score":0.15025819838047028}],"ms_median":0.010542,"ms_max":0.016166}
+{"q":"Give us the details on the supplier invoice system you were in","top":[{"id":"b004","score":0.19136860966682434},{"id":"b001","score":0.14854450523853302}],"ms_median":0.010958,"ms_max":0.01325}
+{"q":"Give us the details on the supplier invoice system you were in charge","top":[{"id":"b004","score":0.17982830107212067},{"id":"b001","score":0.1395866572856903}],"ms_median":0.012958,"ms_max":0.021166}
+{"q":"Give us the details on the supplier invoice system you were in charge of.","top":[{"id":"b004","score":0.19090503454208374},{"id":"b001","score":0.1364646852016449}],"ms_median":0.013583,"ms_max":0.017292}
+{"q":"What exactly","top":[{"id":"b003","score":0.05635526776313782},{"id":"b002","score":0.05496804043650627}],"ms_median":0.002875,"ms_max":0.005375}
+{"q":"What exactly did","top":[{"id":"b011","score":0.12806273996829987},{"id":"b003","score":0.09299363195896149}],"ms_median":0.003584,"ms_max":0.006417}
+{"q":"What exactly did you","top":[{"id":"b011","score":0.16880618035793304},{"id":"b007","score":0.12315690517425537}],"ms_median":0.00475,"ms_max":0.00775}
+{"q":"What exactly did you build","top":[{"id":"b010","score":0.269279420375824},{"id":"b008","score":0.16437602043151855}],"ms_median":0.005583,"ms_max":0.009208}
+{"q":"What exactly did you build with","top":[{"id":"b010","score":0.2440118044614792},{"id":"b008","score":0.1489519327878952}],"ms_median":0.006417,"ms_max":0.010083}
+{"q":"What exactly did you build with the","top":[{"id":"b010","score":0.2501544952392578},{"id":"b022","score":0.1644500195980072}],"ms_median":0.007709,"ms_max":0.013125}
+{"q":"What exactly did you build with the Lantern","top":[{"id":"b010","score":0.22877918183803558},{"id":"b003","score":0.21934834122657776}],"ms_median":0.008875,"ms_max":0.013208}
+{"q":"What exactly did you build with the Lantern pipeline?","top":[{"id":"b011","score":0.389828085899353},{"id":"b003","score":0.22789564728736877}],"ms_median":0.010292,"ms_max":0.016042}
+{"q":"What outcomes","top":[{"id":"b008","score":0.08536651730537415},{"id":"b003","score":0.055750057101249695}],"ms_median":0.003084,"ms_max":0.0055}
+{"q":"What outcomes came","top":[{"id":"b006","score":0.07707428932189941},{"id":"b008","score":0.06904379278421402}],"ms_median":0.004208,"ms_max":0.006917}
+{"q":"What outcomes came out","top":[{"id":"b008","score":0.0805995762348175},{"id":"b007","score":0.07072531431913376}],"ms_median":0.004708,"ms_max":0.006916}
+{"q":"What outcomes came out of","top":[{"id":"b008","score":0.1087966337800026},{"id":"b004","score":0.0825762078166008}],"ms_median":0.005042,"ms_max":0.007625}
+{"q":"What outcomes came out of Lantern?","top":[{"id":"b003","score":0.176430806517601},{"id":"b004","score":0.15423569083213806}],"ms_median":0.006292,"ms_max":0.01}
+{"q":"Did","top":[{"id":"b007","score":0.188406303524971},{"id":"b003","score":0.1878996640443802}],"ms_median":0.001167,"ms_max":0.002}
+{"q":"Did Lantern","top":[{"id":"b004","score":0.5194427371025085},{"id":"b003","score":0.38082215189933777}],"ms_median":0.002833,"ms_max":0.004583}
+{"q":"Did Lantern actually","top":[{"id":"b004","score":0.3084401786327362},{"id":"b003","score":0.2793923616409302}],"ms_median":0.004417,"ms_max":0.008083}
+{"q":"Did Lantern actually move","top":[{"id":"b004","score":0.2688199281692505},{"id":"b003","score":0.2435034215450287}],"ms_median":0.005083,"ms_max":0.008041}
+{"q":"Did Lantern actually move the","top":[{"id":"b004","score":0.25515297055244446},{"id":"b003","score":0.23112356662750244}],"ms_median":0.005834,"ms_max":0.008042}
+{"q":"Did Lantern actually move the needle?","top":[{"id":"b004","score":0.21922597289085388},{"id":"b003","score":0.1985800415277481}],"ms_median":0.007458,"ms_max":0.011958}
+{"q":"Did Lantern actually move the needle? Show","top":[{"id":"b004","score":0.20388782024383545},{"id":"b003","score":0.1846863478422165}],"ms_median":0.008125,"ms_max":0.012334}
+{"q":"Did Lantern actually move the needle? Show us","top":[{"id":"b004","score":0.19597648084163666},{"id":"b003","score":0.17752014100551605}],"ms_median":0.008625,"ms_max":0.01125}
+{"q":"Did Lantern actually move the needle? Show us figures.","top":[{"id":"b004","score":0.18293485045433044},{"id":"b003","score":0.1596762239933014}],"ms_median":0.0095,"ms_max":0.014042}
+{"q":"How much","top":[{"id":"b012","score":0.38521265983581543},{"id":"b013","score":0.05228424072265625}],"ms_median":0.002208,"ms_max":0.00425}
+{"q":"How much better","top":[{"id":"b012","score":0.24255076050758362},{"id":"b013","score":0.062404509633779526}],"ms_median":0.003333,"ms_max":0.006167}
+{"q":"How much better were","top":[{"id":"b012","score":0.20982876420021057},{"id":"b011","score":0.10054600238800049}],"ms_median":0.004375,"ms_max":0.007458}
+{"q":"How much better were things","top":[{"id":"b012","score":0.18342240154743195},{"id":"b011","score":0.12603124976158142}],"ms_median":0.005334,"ms_max":0.008875}
+{"q":"How much better were things after","top":[{"id":"b012","score":0.1588800996541977},{"id":"b011","score":0.10916798561811447}],"ms_median":0.00625,"ms_max":0.009042}
+{"q":"How much better were things after you","top":[{"id":"b012","score":0.15380793809890747},{"id":"b011","score":0.10726574063301086}],"ms_median":0.007625,"ms_max":0.013417}
+{"q":"How much better were things after you shipped","top":[{"id":"b017","score":0.27719956636428833},{"id":"b012","score":0.13927555084228516}],"ms_median":0.008709,"ms_max":0.014}
+{"q":"How much better were things after you shipped the","top":[{"id":"b017","score":0.26952236890792847},{"id":"b012","score":0.13541822135448456}],"ms_median":0.00925,"ms_max":0.012084}
+{"q":"How much better were things after you shipped the invoice","top":[{"id":"b017","score":0.2506512999534607},{"id":"b004","score":0.16714099049568176}],"ms_median":0.010417,"ms_max":0.015333}
+{"q":"How much better were things after you shipped the invoice tool?","top":[{"id":"b017","score":0.2371145486831665},{"id":"b004","score":0.15811438858509064}],"ms_median":0.011125,"ms_max":0.015167}
+{"q":"Where","top":[{"id":"b005","score":0.31328052282333374},{"id":"b010","score":0.25600871443748474}],"ms_median":0.001542,"ms_max":0.003125}
+{"q":"Where do","top":[{"id":"b005","score":0.4284304678440094},{"id":"b010","score":0.206248477101326}],"ms_median":0.002167,"ms_max":0.004209}
+{"q":"Where do you","top":[{"id":"b005","score":0.4602261483669281},{"id":"b010","score":0.24089813232421875}],"ms_median":0.00325,"ms_max":0.005625}
+{"q":"Where do you feel","top":[{"id":"b005","score":0.31612616777420044},{"id":"b010","score":0.17310449481010437}],"ms_median":0.0065,"ms_max":0.050084}
+{"q":"Where do you feel you","top":[{"id":"b005","score":0.2863886058330536},{"id":"b010","score":0.1580134779214859}],"ms_median":0.004667,"ms_max":0.007833}
+{"q":"Where do you feel you fall","top":[{"id":"b005","score":0.24026285111904144},{"id":"b010","score":0.13256382942199707}],"ms_median":0.005209,"ms_max":0.010459}
+{"q":"Where do you feel you fall short?","top":[{"id":"b005","score":0.2047645002603531},{"id":"b010","score":0.1129777804017067}],"ms_median":0.006167,"ms_max":0.0105}
+{"q":"What would","top":[{"id":"b014","score":0.4144532084465027},{"id":"b013","score":0.3038749694824219}],"ms_median":0.00275,"ms_max":0.00675}
+{"q":"What would a","top":[{"id":"b014","score":0.32468459010124207},{"id":"b006","score":0.24133247137069702}],"ms_median":0.003,"ms_max":0.005958}
+{"q":"What would a former","top":[{"id":"b014","score":0.20500360429286957},{"id":"b013","score":0.16168202459812164}],"ms_median":0.004334,"ms_max":0.008292}
+{"q":"What would a former manager","top":[{"id":"b014","score":0.15612034499645233},{"id":"b013","score":0.12913301587104797}],"ms_median":0.005292,"ms_max":0.008625}
+{"q":"What would a former manager say","top":[{"id":"b014","score":0.14201118052005768},{"id":"b013","score":0.11746282875537872}],"ms_median":0.005875,"ms_max":0.008541}
+{"q":"What would a former manager say you","top":[{"id":"b014","score":0.14074106514453888},{"id":"b013","score":0.11660919338464737}],"ms_median":0.007583,"ms_max":0.012208}
+{"q":"What would a former manager say you need","top":[{"id":"b014","score":0.12850122153759003},{"id":"b013","score":0.10646805167198181}],"ms_median":0.007916,"ms_max":0.011}
+{"q":"What would a former manager say you need to","top":[{"id":"b014","score":0.13556058704853058},{"id":"b013","score":0.11059664189815521}],"ms_median":0.008375,"ms_max":0.011208}
+{"q":"What would a former manager say you need to work","top":[{"id":"b013","score":0.136826753616333},{"id":"b014","score":0.13210973143577576}],"ms_median":0.009208,"ms_max":0.012834}
+{"q":"What would a former manager say you need to work on?","top":[{"id":"b013","score":0.13223542273044586},{"id":"b014","score":0.12767669558525085}],"ms_median":0.009583,"ms_max":0.011875}
+{"q":"Name","top":[{"id":"b003","score":0.022702356800436974},{"id":"b001","score":0.019206257537007332}],"ms_median":0.001333,"ms_max":0.002292}
+{"q":"Name an","top":[{"id":"b015","score":0.07888641208410263},{"id":"b009","score":0.07304088771343231}],"ms_median":0.001916,"ms_max":0.003917}
+{"q":"Name an area","top":[{"id":"b015","score":0.056785594671964645},{"id":"b009","score":0.052577756345272064}],"ms_median":0.002791,"ms_max":0.005291}
+{"q":"Name an area where","top":[{"id":"b005","score":0.12636758387088776},{"id":"b010","score":0.09865914285182953}],"ms_median":0.004042,"ms_max":0.006958}
+{"q":"Name an area where you","top":[{"id":"b005","score":0.12806671857833862},{"id":"b010","score":0.10008280724287033}],"ms_median":0.004875,"ms_max":0.007583}
+{"q":"Name an area where you are","top":[{"id":"b005","score":0.12167035788297653},{"id":"b001","score":0.1158936470746994}],"ms_median":0.005292,"ms_max":0.007708}
+{"q":"Name an area where you are not","top":[{"id":"b005","score":0.10929077863693237},{"id":"b001","score":0.10410184413194656}],"ms_median":0.005916,"ms_max":0.00975}
+{"q":"Name an area where you are not as","top":[{"id":"b005","score":0.1030864417552948},{"id":"b001","score":0.09819207340478897}],"ms_median":0.006333,"ms_max":0.009541}
+{"q":"Name an area where you are not as strong","top":[{"id":"b010","score":0.12020441889762878},{"id":"b005","score":0.11929984390735626}],"ms_median":0.007875,"ms_max":0.013375}
+{"q":"Name an area where you are not as strong as","top":[{"id":"b010","score":0.1145629957318306},{"id":"b005","score":0.11370085179805756}],"ms_median":0.00825,"ms_max":0.010666}
+{"q":"Name an area where you are not as strong as you","top":[{"id":"b010","score":0.11393890529870987},{"id":"b005","score":0.11366242170333862}],"ms_median":0.008708,"ms_max":0.011542}
+{"q":"Name an area where you are not as strong as you would","top":[{"id":"b005","score":0.11217107623815536},{"id":"b010","score":0.10959833115339279}],"ms_median":0.009458,"ms_max":0.014208}
+{"q":"Name an area where you are not as strong as you would like","top":[{"id":"b014","score":0.14651602506637573},{"id":"b005","score":0.10721169412136078}],"ms_median":0.01025,"ms_max":0.013875}
+{"q":"Name an area where you are not as strong as you would like to","top":[{"id":"b014","score":0.2006359100341797},{"id":"b005","score":0.11391391605138779}],"ms_median":0.010667,"ms_max":0.01375}
+{"q":"Name an area where you are not as strong as you would like to be.","top":[{"id":"b014","score":0.19365350902080536},{"id":"b005","score":0.10994953662157059}],"ms_median":0.011291,"ms_max":0.014125}
+{"q":"Looking","top":[{"id":"b016","score":0.4127683937549591},{"id":"b009","score":0.14323043823242188}],"ms_median":0.001917,"ms_max":0.003583}
+{"q":"Looking back,","top":[{"id":"b016","score":0.28259560465812683},{"id":"b001","score":0.09983251243829727}],"ms_median":0.002834,"ms_max":0.004833}
+{"q":"Looking back, which","top":[{"id":"b016","score":0.22452817857265472},{"id":"b006","score":0.17184896767139435}],"ms_median":0.004166,"ms_max":0.007}
+{"q":"Looking back, which architectural","top":[{"id":"b016","score":0.16140425205230713},{"id":"b006","score":0.11977499723434448}],"ms_median":0.005958,"ms_max":0.010875}
+{"q":"Looking back, which architectural calls","top":[{"id":"b016","score":0.14658614993095398},{"id":"b006","score":0.11358046531677246}],"ms_median":0.007333,"ms_max":0.011958}
+{"q":"Looking back, which architectural calls do","top":[{"id":"b016","score":0.14184167981147766},{"id":"b006","score":0.10990426689386368}],"ms_median":0.00775,"ms_max":0.010458}
+{"q":"Looking back, which architectural calls do you","top":[{"id":"b016","score":0.14440691471099854},{"id":"b006","score":0.11275635659694672}],"ms_median":0.008667,"ms_max":0.011041}
+{"q":"Looking back, which architectural calls do you consider","top":[{"id":"b016","score":0.1331578940153122},{"id":"b006","score":0.10177911072969437}],"ms_median":0.009834,"ms_max":0.01525}
+{"q":"Looking back, which architectural calls do you consider the","top":[{"id":"b016","score":0.12996354699134827},{"id":"b006","score":0.09933754056692123}],"ms_median":0.010417,"ms_max":0.0135}
+{"q":"Looking back, which architectural calls do you consider the smartest,","top":[{"id":"b016","score":0.12014085799455643},{"id":"b006","score":0.0918295606970787}],"ms_median":0.013208,"ms_max":0.021792}
+{"q":"Looking back, which architectural calls do you consider the smartest, and","top":[{"id":"b016","score":0.11737417429685593},{"id":"b006","score":0.09200010448694229}],"ms_median":0.01375,"ms_max":0.017209}
+{"q":"Looking back, which architectural calls do you consider the smartest, and what","top":[{"id":"b016","score":0.12602481245994568},{"id":"b006","score":0.09133805334568024}],"ms_median":0.014333,"ms_max":0.018416}
+{"q":"Looking back, which architectural calls do you consider the smartest, and what did","top":[{"id":"b003","score":0.1459868848323822},{"id":"b016","score":0.12427801638841629}],"ms_median":0.014792,"ms_max":0.018625}
+{"q":"Looking back, which architectural calls do you consider the smartest, and what did they","top":[{"id":"b003","score":0.14159700274467468},{"id":"b016","score":0.12054089456796646}],"ms_median":0.0155,"ms_max":0.01925}
+{"q":"Looking back, which architectural calls do you consider the smartest, and what did they cost","top":[{"id":"b003","score":0.13761551678180695},{"id":"b012","score":0.135832279920578}],"ms_median":0.016084,"ms_max":0.01975}
+{"q":"Looking back, which architectural calls do you consider the smartest, and what did they cost you?","top":[{"id":"b003","score":0.13573040068149567},{"id":"b012","score":0.13397158682346344}],"ms_median":0.016625,"ms_max":0.019208}
+{"q":"Describe","top":[{"id":"b006","score":0.05829276517033577},{"id":"b022","score":0.010922107845544815}],"ms_median":0.001959,"ms_max":0.003542}
+{"q":"Describe a","top":[{"id":"b006","score":0.05286281555891037},{"id":"b019","score":0.04030703380703926}],"ms_median":0.002459,"ms_max":0.004125}
+{"q":"Describe a design","top":[{"id":"b006","score":0.24767836928367615},{"id":"b019","score":0.030473660677671432}],"ms_median":0.003416,"ms_max":0.005875}
+{"q":"Describe a design choice","top":[{"id":"b006","score":0.42456284165382385},{"id":"b004","score":0.05410071462392807}],"ms_median":0.004667,"ms_max":0.008875}
+{"q":"Describe a design choice you","top":[{"id":"b006","score":0.4149886965751648},{"id":"b004","score":0.054246313869953156}],"ms_median":0.005458,"ms_max":0.008167}
+{"q":"Describe a design choice you would","top":[{"id":"b006","score":0.39083218574523926},{"id":"b022","score":0.10198978334665298}],"ms_median":0.006375,"ms_max":0.009958}
+{"q":"Describe a design choice you would stand","top":[{"id":"b006","score":0.36141958832740784},{"id":"b022","score":0.09348271042108536}],"ms_median":0.007792,"ms_max":0.022875}
+{"q":"Describe a design choice you would stand behind","top":[{"id":"b006","score":0.3271711468696594},{"id":"b022","score":0.0841100886464119}],"ms_median":0.008791,"ms_max":0.084417}
+{"q":"Describe a design choice you would stand behind and","top":[{"id":"b006","score":0.31678956747055054},{"id":"b008","score":0.09745284914970398}],"ms_median":0.009208,"ms_max":0.012375}
+{"q":"Describe a design choice you would stand behind and what","top":[{"id":"b006","score":0.3114062249660492},{"id":"b008","score":0.11831871420145035}],"ms_median":0.009958,"ms_max":0.014416}
+{"q":"Describe a design choice you would stand behind and what you","top":[{"id":"b006","score":0.307681143283844},{"id":"b008","score":0.11849755793809891}],"ms_median":0.010416,"ms_max":0.013}
+{"q":"Describe a design choice you would stand behind and what you sacrificed","top":[{"id":"b006","score":0.2773827910423279},{"id":"b008","score":0.10542242228984833}],"ms_median":0.013084,"ms_max":0.021541}
+{"q":"Describe a design choice you would stand behind and what you sacrificed to","top":[{"id":"b006","score":0.27238255739212036},{"id":"b008","score":0.10352202504873276}],"ms_median":0.013625,"ms_max":0.016375}
+{"q":"Describe a design choice you would stand behind and what you sacrificed to make","top":[{"id":"b006","score":0.2619461417198181},{"id":"b013","score":0.11018776893615723}],"ms_median":0.01425,"ms_max":0.019208}
+{"q":"Describe a design choice you would stand behind and what you sacrificed to make it.","top":[{"id":"b006","score":0.256625771522522},{"id":"b013","score":0.10794969648122787}],"ms_median":0.01475,"ms_max":0.018667}
+{"q":"What is the","top":[{"id":"b015","score":0.27470317482948303},{"id":"b005","score":0.2639099955558777}],"ms_median":0.002875,"ms_max":0.006708}
+{"q":"What is the best","top":[{"id":"b005","score":0.22465622425079346},{"id":"b015","score":0.19135698676109314}],"ms_median":0.003667,"ms_max":0.005875}
+{"q":"What is the best technical","top":[{"id":"b006","score":0.29044109582901},{"id":"b005","score":0.16250301897525787}],"ms_median":0.005459,"ms_max":0.009541}
+{"q":"What is the best technical call","top":[{"id":"b006","score":0.2575242519378662},{"id":"b005","score":0.14132735133171082}],"ms_median":0.006208,"ms_max":0.008583}
+{"q":"What is the best technical call you","top":[{"id":"b006","score":0.24715037643909454},{"id":"b005","score":0.1360916644334793}],"ms_median":0.007542,"ms_max":0.011583}
+{"q":"What is the best technical call you made,","top":[{"id":"b006","score":0.36667880415916443},{"id":"b005","score":0.12752044200897217}],"ms_median":0.008333,"ms_max":0.012083}
+{"q":"What is the best technical call you made, and","top":[{"id":"b006","score":0.35580500960350037},{"id":"b015","score":0.12956999242305756}],"ms_median":0.008958,"ms_max":0.011791}
+{"q":"What is the best technical call you made, and what","top":[{"id":"b006","score":0.3433130383491516},{"id":"b003","score":0.13960346579551697}],"ms_median":0.009667,"ms_max":0.011709}
+{"q":"What is the best technical call you made, and what was","top":[{"id":"b006","score":0.33264315128326416},{"id":"b003","score":0.22005796432495117}],"ms_median":0.010208,"ms_max":0.013833}
+{"q":"What is the best technical call you made, and what was the","top":[{"id":"b006","score":0.3207032382488251},{"id":"b003","score":0.21215912699699402}],"ms_median":0.010583,"ms_max":0.012375}
+{"q":"What is the best technical call you made, and what was the downside?","top":[{"id":"b006","score":0.290396124124527},{"id":"b003","score":0.19028693437576294}],"ms_median":0.011791,"ms_max":0.016334}
+{"q":"Say","top":[{"id":"b016","score":0.03027244098484516},{"id":"b012","score":0.025881201028823853}],"ms_median":0.001084,"ms_max":0.001917}
+{"q":"Say more","top":[{"id":"b019","score":0.17078068852424622},{"id":"b012","score":0.05753527954220772}],"ms_median":0.002042,"ms_max":0.004167}
+{"q":"Say more about","top":[{"id":"b003","score":0.14445240795612335},{"id":"b019","score":0.1411062330007553}],"ms_median":0.003208,"ms_max":0.005709}
+{"q":"Say more about the","top":[{"id":"b003","score":0.24083545804023743},{"id":"b014","score":0.18438246846199036}],"ms_median":0.00425,"ms_max":0.006666}
+{"q":"Say more about the delivery","top":[{"id":"b004","score":0.1939575970172882},{"id":"b003","score":0.18270868062973022}],"ms_median":0.005459,"ms_max":0.009167}
+{"q":"Say more about the delivery routing","top":[{"id":"b004","score":0.17079351842403412},{"id":"b003","score":0.1635178029537201}],"ms_median":0.007333,"ms_max":0.013333}
+{"q":"Say more about the delivery routing tool","top":[{"id":"b004","score":0.15537212789058685},{"id":"b003","score":0.1487533152103424}],"ms_median":0.007917,"ms_max":0.011875}
+{"q":"Say more about the delivery routing tool you","top":[{"id":"b004","score":0.1492869108915329},{"id":"b003","score":0.14760899543762207}],"ms_median":0.008708,"ms_max":0.011292}
+{"q":"Say more about the delivery routing tool you made","top":[{"id":"b006","score":0.18456442654132843},{"id":"b004","score":0.14222848415374756}],"ms_median":0.009209,"ms_max":0.012333}
+{"q":"Say more about the delivery routing tool you made for","top":[{"id":"b006","score":0.17664441466331482},{"id":"b007","score":0.14512525498867035}],"ms_median":0.00975,"ms_max":0.012667}
+{"q":"Say more about the delivery routing tool you made for that","top":[{"id":"b007","score":0.1732039749622345},{"id":"b006","score":0.16945214569568634}],"ms_median":0.010667,"ms_max":0.014}
+{"q":"Say more about the delivery routing tool you made for that courier","top":[{"id":"b007","score":0.2549026906490326},{"id":"b006","score":0.15928059816360474}],"ms_median":0.012833,"ms_max":0.0205}
+{"q":"Say more about the delivery routing tool you made for that courier trial.","top":[{"id":"b007","score":0.24223628640174866},{"id":"b006","score":0.1601085513830185}],"ms_median":0.013667,"ms_max":0.017583}
+{"q":"How did the","top":[{"id":"b012","score":0.435875803232193},{"id":"b011","score":0.342765748500824}],"ms_median":0.002917,"ms_max":0.005042}
+{"q":"How did the vehicle","top":[{"id":"b012","score":0.23117855191230774},{"id":"b011","score":0.1817951500415802}],"ms_median":0.004333,"ms_max":0.007125}
+{"q":"How did the vehicle routing","top":[{"id":"b012","score":0.20082704722881317},{"id":"b011","score":0.15441347658634186}],"ms_median":0.0055,"ms_max":0.008792}
+{"q":"How did the vehicle routing system","top":[{"id":"b012","score":0.17503809928894043},{"id":"b009","score":0.15541449189186096}],"ms_median":0.007083,"ms_max":0.011542}
+{"q":"How did the vehicle routing system you","top":[{"id":"b012","score":0.16775943338871002},{"id":"b009","score":0.15321700274944305}],"ms_median":0.00775,"ms_max":0.010667}
+{"q":"How did the vehicle routing system you wrote","top":[{"id":"b012","score":0.1510755568742752},{"id":"b009","score":0.14272215962409973}],"ms_median":0.008625,"ms_max":0.012333}
+{"q":"How did the vehicle routing system you wrote perform","top":[{"id":"b011","score":0.2569993734359741},{"id":"b012","score":0.13682794570922852}],"ms_median":0.00975,"ms_max":0.014208}
+{"q":"How did the vehicle routing system you wrote perform in","top":[{"id":"b011","score":0.24810165166854858},{"id":"b012","score":0.1320907175540924}],"ms_median":0.010292,"ms_max":0.01225}
+{"q":"How did the vehicle routing system you wrote perform in the","top":[{"id":"b011","score":0.254223495721817},{"id":"b022","score":0.15561659634113312}],"ms_median":0.010875,"ms_max":0.013333}
+{"q":"How did the vehicle routing system you wrote perform in the pilot?","top":[{"id":"b011","score":0.23849859833717346},{"id":"b007","score":0.15049758553504944}],"ms_median":0.011583,"ms_max":0.016042}
+{"q":"What was","top":[{"id":"b003","score":0.4210570454597473},{"id":"b004","score":0.3211155831813812}],"ms_median":0.002292,"ms_max":0.003834}
+{"q":"What was your","top":[{"id":"b003","score":0.3096156716346741},{"id":"b004","score":0.2826049327850342}],"ms_median":0.003333,"ms_max":0.005416}
+{"q":"What was your part","top":[{"id":"b003","score":0.22643737494945526},{"id":"b004","score":0.20668315887451172}],"ms_median":0.004416,"ms_max":0.007542}
+{"q":"What was your part in","top":[{"id":"b003","score":0.20219719409942627},{"id":"b004","score":0.19194665551185608}],"ms_median":0.004833,"ms_max":0.007}
+{"q":"What was your part in cutting","top":[{"id":"b003","score":0.15390104055404663},{"id":"b004","score":0.14609889686107635}],"ms_median":0.005959,"ms_max":0.008875}
+{"q":"What was your part in cutting empty","top":[{"id":"b003","score":0.13139134645462036},{"id":"b004","score":0.12473034858703613}],"ms_median":0.008125,"ms_max":0.08775}
+{"q":"What was your part in cutting empty runs","top":[{"id":"b003","score":0.1197400689125061},{"id":"b004","score":0.1136697456240654}],"ms_median":0.008125,"ms_max":0.014833}
+{"q":"What was your part in cutting empty runs for","top":[{"id":"b020","score":0.1331864595413208},{"id":"b012","score":0.12479210644960403}],"ms_median":0.008584,"ms_max":0.012333}
+{"q":"What was your part in cutting empty runs for the","top":[{"id":"b012","score":0.13495807349681854},{"id":"b020","score":0.129330575466156}],"ms_median":0.009459,"ms_max":0.012125}
+{"q":"What was your part in cutting empty runs for the couriers?","top":[{"id":"b007","score":0.2075093686580658},{"id":"b012","score":0.12796074151992798}],"ms_median":0.01075,"ms_max":0.016125}
+{"q":"How much homework","top":[{"id":"b012","score":0.23665279150009155},{"id":"b021","score":0.07034631073474884}],"ms_median":0.003583,"ms_max":0.007375}
+{"q":"How much homework have","top":[{"id":"b012","score":0.21723368763923645},{"id":"b017","score":0.20974379777908325}],"ms_median":0.004708,"ms_max":0.008584}
+{"q":"How much homework have you","top":[{"id":"b017","score":0.2547362148761749},{"id":"b018","score":0.23358826339244843}],"ms_median":0.005583,"ms_max":0.010125}
+{"q":"How much homework have you done","top":[{"id":"b018","score":0.3901080787181854},{"id":"b017","score":0.2318888157606125}],"ms_median":0.00625,"ms_max":0.009875}
+{"q":"How much homework have you done on","top":[{"id":"b018","score":0.3700670301914215},{"id":"b017","score":0.2199760377407074}],"ms_median":0.007292,"ms_max":0.011542}
+{"q":"How much homework have you done on Halden?","top":[{"id":"b018","score":0.33536291122436523},{"id":"b017","score":0.20079731941223145}],"ms_median":0.008375,"ms_max":0.012375}
+{"q":"Give us your","top":[{"id":"b001","score":0.3428749442100525},{"id":"b015","score":0.09022855013608932}],"ms_median":0.003,"ms_max":0.005333}
+{"q":"Give us your read","top":[{"id":"b001","score":0.25858184695243835},{"id":"b007","score":0.08072477579116821}],"ms_median":0.003833,"ms_max":0.006125}
+{"q":"Give us your read on","top":[{"id":"b001","score":0.2414635270833969},{"id":"b007","score":0.07831136137247086}],"ms_median":0.004583,"ms_max":0.007167}
+{"q":"Give us your read on what","top":[{"id":"b001","score":0.22349019348621368},{"id":"b007","score":0.1014254242181778}],"ms_median":0.005458,"ms_max":0.007875}
+{"q":"Give us your read on what our","top":[{"id":"b001","score":0.20625200867652893},{"id":"b018","score":0.1079048216342926}],"ms_median":0.005959,"ms_max":0.008417}
+{"q":"Give us your read on what our business","top":[{"id":"b001","score":0.17270147800445557},{"id":"b005","score":0.15094105899333954}],"ms_median":0.007875,"ms_max":0.012916}
+{"q":"Give us your read on what our business is","top":[{"id":"b005","score":0.16631349921226501},{"id":"b001","score":0.16496528685092926}],"ms_median":0.008041,"ms_max":0.01075}
+{"q":"Give us your read on what our business is about.","top":[{"id":"b001","score":0.16176506876945496},{"id":"b005","score":0.15804798901081085}],"ms_median":0.009042,"ms_max":0.012958}
+{"q":"What is your understanding","top":[{"id":"b008","score":0.39451080560684204},{"id":"b015","score":0.2386884242296219}],"ms_median":0.0055,"ms_max":0.010042}
+{"q":"What is your understanding of","top":[{"id":"b008","score":0.36558446288108826},{"id":"b015","score":0.2211872786283493}],"ms_median":0.005958,"ms_max":0.007958}
+{"q":"What is your understanding of the","top":[{"id":"b008","score":0.34085971117019653},{"id":"b015","score":0.20622827112674713}],"ms_median":0.006583,"ms_max":0.009041}
+{"q":"What is your understanding of the product","top":[{"id":"b008","score":0.3066224753856659},{"id":"b017","score":0.24229314923286438}],"ms_median":0.008334,"ms_max":0.013209}
+{"q":"What is your understanding of the product we","top":[{"id":"b008","score":0.3407323360443115},{"id":"b017","score":0.23253598809242249}],"ms_median":0.00875,"ms_max":0.011042}
+{"q":"What is your understanding of the product we sell?","top":[{"id":"b008","score":0.3153921365737915},{"id":"b017","score":0.21524223685264587}],"ms_median":0.009542,"ms_max":0.01325}
+{"q":"Before","top":[{"id":"b009","score":0.3431326448917389},{"id":"b018","score":0.3060731291770935}],"ms_median":0.00175,"ms_max":0.003334}
+{"q":"Before shipping","top":[{"id":"b017","score":0.19348131120204926},{"id":"b009","score":0.18267890810966492}],"ms_median":0.00325,"ms_max":0.005834}
+{"q":"Before shipping an","top":[{"id":"b009","score":0.18901990354061127},{"id":"b017","score":0.17933504283428192}],"ms_median":0.004125,"ms_max":0.0065}
+{"q":"Before shipping an LLM","top":[{"id":"b009","score":0.27408847212791443},{"id":"b017","score":0.2174513041973114}],"ms_median":0.004666,"ms_max":0.007125}
+{"q":"Before shipping an LLM feature,","top":[{"id":"b009","score":0.22205306589603424},{"id":"b017","score":0.17449401319026947}],"ms_median":0.00575,"ms_max":0.009208}
+{"q":"Before shipping an LLM feature, how","top":[{"id":"b009","score":0.22420062124729156},{"id":"b017","score":0.16606518626213074}],"ms_median":0.007,"ms_max":0.010916}
+{"q":"Before shipping an LLM feature, how do","top":[{"id":"b009","score":0.25416311621665955},{"id":"b017","score":0.16321641206741333}],"ms_median":0.0075,"ms_max":0.010292}
+{"q":"Before shipping an LLM feature, how do you","top":[{"id":"b009","score":0.2730257213115692},{"id":"b017","score":0.16680897772312164}],"ms_median":0.008375,"ms_max":0.01075}
+{"q":"Before shipping an LLM feature, how do you verify","top":[{"id":"b009","score":0.24378804862499237},{"id":"b017","score":0.1489458531141281}],"ms_median":0.009333,"ms_max":0.013791}
+{"q":"Before shipping an LLM feature, how do you verify it","top":[{"id":"b009","score":0.23437924683094025},{"id":"b017","score":0.14319737255573273}],"ms_median":0.009666,"ms_max":0.012042}
+{"q":"Before shipping an LLM feature, how do you verify it is","top":[{"id":"b009","score":0.22792866826057434},{"id":"b017","score":0.1392562836408615}],"ms_median":0.010083,"ms_max":0.012584}
+{"q":"Before shipping an LLM feature, how do you verify it is good","top":[{"id":"b009","score":0.21628133952617645},{"id":"b017","score":0.13214020431041718}],"ms_median":0.01075,"ms_max":0.013625}
+{"q":"Before shipping an LLM feature, how do you verify it is good enough?","top":[{"id":"b009","score":0.20180922746658325},{"id":"b017","score":0.12329824268817902}],"ms_median":0.012958,"ms_max":0.0205}
+{"q":"What is your approach","top":[{"id":"b015","score":0.2892071306705475},{"id":"b005","score":0.277844101190567}],"ms_median":0.004834,"ms_max":0.008459}
+{"q":"What is your approach to","top":[{"id":"b015","score":0.2605423033237457},{"id":"b005","score":0.2503054440021515}],"ms_median":0.005292,"ms_max":0.007167}
+{"q":"What is your approach to QA","top":[{"id":"b015","score":0.23182716965675354},{"id":"b005","score":0.22271853685379028}],"ms_median":0.005667,"ms_max":0.007292}
+{"q":"What is your approach to QA for","top":[{"id":"b015","score":0.2118961364030838},{"id":"b005","score":0.2035706639289856}],"ms_median":0.006333,"ms_max":0.008917}
+{"q":"What is your approach to QA for language","top":[{"id":"b017","score":0.18865753710269928},{"id":"b015","score":0.1808115839958191}],"ms_median":0.008375,"ms_max":0.01425}
+{"q":"What is your approach to QA for language model","top":[{"id":"b017","score":0.251570463180542},{"id":"b015","score":0.17256218194961548}],"ms_median":0.009167,"ms_max":0.012834}
+{"q":"What is your approach to QA for language model pipelines?","top":[{"id":"b017","score":0.23275171220302582},{"id":"b012","score":0.21976882219314575}],"ms_median":0.010625,"ms_max":0.015625}
+{"q":"How do","top":[{"id":"b009","score":0.2906804084777832},{"id":"b020","score":0.23920965194702148}],"ms_median":0.001958,"ms_max":0.003416}
+{"q":"How do you","top":[{"id":"b009","score":0.35245731472969055},{"id":"b020","score":0.2900477647781372}],"ms_median":0.003042,"ms_max":0.0045}
+{"q":"How do you make","top":[{"id":"b013","score":0.3303258419036865},{"id":"b009","score":0.20356851816177368}],"ms_median":0.00375,"ms_max":0.005541}
+{"q":"How do you make sure","top":[{"id":"b013","score":0.2482369840145111},{"id":"b004","score":0.23519764840602875}],"ms_median":0.004916,"ms_max":0.008041}
+{"q":"How do you make sure a","top":[{"id":"b013","score":0.23642341792583466},{"id":"b004","score":0.21893863379955292}],"ms_median":0.005125,"ms_max":0.006625}
+{"q":"How do you make sure a release","top":[{"id":"b009","score":0.2946276068687439},{"id":"b013","score":0.19457979500293732}],"ms_median":0.00625,"ms_max":0.0095}
+{"q":"How do you make sure a release does","top":[{"id":"b009","score":0.270315945148468},{"id":"b013","score":0.18307435512542725}],"ms_median":0.007542,"ms_max":0.01125}
+{"q":"How do you make sure a release does not","top":[{"id":"b009","score":0.24784064292907715},{"id":"b013","score":0.1678527593612671}],"ms_median":0.008083,"ms_max":0.010583}
+{"q":"How do you make sure a release does not make","top":[{"id":"b009","score":0.22179755568504333},{"id":"b013","score":0.20439989864826202}],"ms_median":0.0085,"ms_max":0.010875}
+{"q":"How do you make sure a release does not make the","top":[{"id":"b009","score":0.21557436883449554},{"id":"b013","score":0.20206394791603088}],"ms_median":0.009125,"ms_max":0.012125}
+{"q":"How do you make sure a release does not make the model","top":[{"id":"b009","score":0.20855742692947388},{"id":"b010","score":0.19732141494750977}],"ms_median":0.01025,"ms_max":0.035667}
+{"q":"How do you make sure a release does not make the model worse?","top":[{"id":"b009","score":0.19762523472309113},{"id":"b013","score":0.18770265579223633}],"ms_median":0.011042,"ms_max":0.015292}
+{"q":"What do","top":[{"id":"b003","score":0.3438435196876526},{"id":"b008","score":0.3230016827583313}],"ms_median":0.002125,"ms_max":0.003834}
+{"q":"What do you","top":[{"id":"b008","score":0.36319565773010254},{"id":"b003","score":0.29344719648361206}],"ms_median":0.003167,"ms_max":0.00475}
+{"q":"What do you do","top":[{"id":"b007","score":0.31204885244369507},{"id":"b008","score":0.2937281131744385}],"ms_median":0.003542,"ms_max":0.004875}
+{"q":"What do you do when","top":[{"id":"b007","score":0.22789759933948517},{"id":"b019","score":0.22590374946594238}],"ms_median":0.00475,"ms_max":0.007459}
+{"q":"What do you do when the","top":[{"id":"b007","score":0.27984359860420227},{"id":"b010","score":0.22512412071228027}],"ms_median":0.00525,"ms_max":0.007625}
+{"q":"What do you do when the model","top":[{"id":"b019","score":0.29024696350097656},{"id":"b007","score":0.2489122599363327}],"ms_median":0.00625,"ms_max":0.008583}
+{"q":"What do you do when the model gives","top":[{"id":"b019","score":0.23505038022994995},{"id":"b007","score":0.2015763372182846}],"ms_median":0.007625,"ms_max":0.011542}
+{"q":"What do you do when the model gives a","top":[{"id":"b019","score":0.23289091885089874},{"id":"b007","score":0.19251693785190582}],"ms_median":0.007917,"ms_max":0.009792}
+{"q":"What do you do when the model gives a bad","top":[{"id":"b019","score":0.21007192134857178},{"id":"b007","score":0.17365379631519318}],"ms_median":0.008375,"ms_max":0.011125}
+{"q":"What do you do when the model gives a bad or","top":[{"id":"b019","score":0.19938838481903076},{"id":"b007","score":0.16482238471508026}],"ms_median":0.008792,"ms_max":0.011667}
+{"q":"What do you do when the model gives a bad or uncertain","top":[{"id":"b019","score":0.16847097873687744},{"id":"b010","score":0.14473488926887512}],"ms_median":0.010042,"ms_max":0.014958}
+{"q":"What do you do when the model gives a bad or uncertain answer?","top":[{"id":"b019","score":0.15944698452949524},{"id":"b007","score":0.13259164988994598}],"ms_median":0.011125,"ms_max":0.015875}
+{"q":"How did you cope","top":[{"id":"b019","score":0.2108604460954666},{"id":"b004","score":0.19974395632743835}],"ms_median":0.003916,"ms_max":0.0075}
+{"q":"How did you cope with","top":[{"id":"b010","score":0.23441126942634583},{"id":"b019","score":0.1764981746673584}],"ms_median":0.004916,"ms_max":0.007667}
+{"q":"How did you cope with shaky","top":[{"id":"b010","score":0.18419094383716583},{"id":"b019","score":0.13868525624275208}],"ms_median":0.005625,"ms_max":0.008334}
+{"q":"How did you cope with shaky outputs","top":[{"id":"b010","score":0.15368059277534485},{"id":"b007","score":0.1196579858660698}],"ms_median":0.007417,"ms_max":0.01275}
+{"q":"How did you cope with shaky outputs from","top":[{"id":"b010","score":0.14178194105625153},{"id":"b013","score":0.11325855553150177}],"ms_median":0.008,"ms_max":0.011791}
+{"q":"How did you cope with shaky outputs from the","top":[{"id":"b010","score":0.13545790314674377},{"id":"b013","score":0.10820678621530533}],"ms_median":0.00875,"ms_max":0.012417}
+{"q":"How did you cope with shaky outputs from the LLM?","top":[{"id":"b010","score":0.1755577027797699},{"id":"b003","score":0.10920774936676025}],"ms_median":0.009291,"ms_max":0.01275}
+{"q":"Describe your","top":[{"id":"b016","score":0.057465992867946625},{"id":"b006","score":0.055221885442733765}],"ms_median":0.003083,"ms_max":0.005667}
+{"q":"Describe your fallback","top":[{"id":"b018","score":0.06381677836179733},{"id":"b001","score":0.05997058004140854}],"ms_median":0.004625,"ms_max":0.007625}
+{"q":"Describe your fallback when","top":[{"id":"b019","score":0.07860366255044937},{"id":"b015","score":0.06442965567111969}],"ms_median":0.005292,"ms_max":0.008041}
+{"q":"Describe your fallback when an","top":[{"id":"b015","score":0.07689498364925385},{"id":"b019","score":0.0747184008359909}],"ms_median":0.00575,"ms_max":0.008}
+{"q":"Describe your fallback when an extraction","top":[{"id":"b011","score":0.21051515638828278},{"id":"b003","score":0.17152482271194458}],"ms_median":0.007875,"ms_max":0.014083}
+{"q":"Describe your fallback when an extraction cannot","top":[{"id":"b011","score":0.1911713033914566},{"id":"b003","score":0.15576370060443878}],"ms_median":0.00875,"ms_max":0.01375}
+{"q":"Describe your fallback when an extraction cannot be","top":[{"id":"b011","score":0.1827864646911621},{"id":"b003","score":0.1489318460226059}],"ms_median":0.009167,"ms_max":0.012042}
+{"q":"Describe your fallback when an extraction cannot be trusted.","top":[{"id":"b011","score":0.1686488687992096},{"id":"b003","score":0.14030934870243073}],"ms_median":0.010375,"ms_max":0.015333}
+{"q":"How reliable","top":[{"id":"b010","score":0.34070834517478943},{"id":"b016","score":0.07461745291948318}],"ms_median":0.002917,"ms_max":0.00575}
+{"q":"How reliable was","top":[{"id":"b010","score":0.291684627532959},{"id":"b011","score":0.15025070309638977}],"ms_median":0.003542,"ms_max":0.006}
+{"q":"How reliable was the","top":[{"id":"b010","score":0.2944853901863098},{"id":"b011","score":0.24068555235862732}],"ms_median":0.0045,"ms_max":0.007375}
+{"q":"How reliable was the system,","top":[{"id":"b010","score":0.24957750737667084},{"id":"b011","score":0.20398184657096863}],"ms_median":0.005583,"ms_max":0.008875}
+{"q":"How reliable was the system, in","top":[{"id":"b010","score":0.23220041394233704},{"id":"b011","score":0.18977944552898407}],"ms_median":0.006,"ms_max":0.008125}
+{"q":"How reliable was the system, in numbers?","top":[{"id":"b010","score":0.19798770546913147},{"id":"b004","score":0.1868722289800644}],"ms_median":0.007792,"ms_max":0.012792}
+{"q":"What percentage","top":[{"id":"b020","score":0.12376651167869568},{"id":"b015","score":0.08140181005001068}],"ms_median":0.003375,"ms_max":0.006416}
+{"q":"What percentage of","top":[{"id":"b020","score":0.11231304705142975},{"id":"b006","score":0.07755874842405319}],"ms_median":0.004167,"ms_max":0.006417}
+{"q":"What percentage of fields","top":[{"id":"b020","score":0.0900694951415062},{"id":"b006","score":0.06219828128814697}],"ms_median":0.005,"ms_max":0.008}
+{"q":"What percentage of fields did","top":[{"id":"b010","score":0.10604154318571091},{"id":"b020","score":0.08563558757305145}],"ms_median":0.005542,"ms_max":0.0085}
+{"q":"What percentage of fields did it","top":[{"id":"b003","score":0.15872041881084442},{"id":"b012","score":0.11579909175634384}],"ms_median":0.006083,"ms_max":0.0085}
+{"q":"What percentage of fields did it get","top":[{"id":"b003","score":0.14774009585380554},{"id":"b012","score":0.1077881008386612}],"ms_median":0.007291,"ms_max":0.01175}
+{"q":"What percentage of fields did it get right?","top":[{"id":"b003","score":0.1350543200969696},{"id":"b012","score":0.09853282570838928}],"ms_median":0.008042,"ms_max":0.012833}
+{"q":"Can","top":[{"id":"b003","score":0.22112905979156494},{"id":"b012","score":0.20259983837604523}],"ms_median":0.001166,"ms_max":0.002042}
+{"q":"Can you","top":[{"id":"b003","score":0.3208140432834625},{"id":"b012","score":0.29393190145492554}],"ms_median":0.002208,"ms_max":0.003541}
+{"q":"Can you quantify","top":[{"id":"b012","score":0.2343202382326126},{"id":"b003","score":0.14213934540748596}],"ms_median":0.003667,"ms_max":0.006084}
+{"q":"Can you quantify the","top":[{"id":"b012","score":0.3593699336051941},{"id":"b003","score":0.15825480222702026}],"ms_median":0.004625,"ms_max":0.0075}
+{"q":"Can you quantify the precision","top":[{"id":"b012","score":0.2849617600440979},{"id":"b003","score":0.12810610234737396}],"ms_median":0.005917,"ms_max":0.009875}
+{"q":"Can you quantify the precision of","top":[{"id":"b012","score":0.2692684829235077},{"id":"b006","score":0.12146963179111481}],"ms_median":0.006417,"ms_max":0.008459}
+{"q":"Can you quantify the precision of the","top":[{"id":"b012","score":0.2744982838630676},{"id":"b003","score":0.1275164783000946}],"ms_median":0.007459,"ms_max":0.011208}
+{"q":"Can you quantify the precision of the invoice","top":[{"id":"b012","score":0.2491353303194046},{"id":"b004","score":0.24027413129806519}],"ms_median":0.008625,"ms_max":0.012791}
+{"q":"Can you quantify the precision of the invoice parser?","top":[{"id":"b004","score":0.23910628259181976},{"id":"b012","score":0.22670646011829376}],"ms_median":0.009542,"ms_max":0.013375}
+{"q":"What was the","top":[{"id":"b004","score":0.4155929684638977},{"id":"b012","score":0.37090837955474854}],"ms_median":0.003084,"ms_max":0.005333}
+{"q":"What was the running","top":[{"id":"b017","score":0.32830893993377686},{"id":"b004","score":0.26890555024147034}],"ms_median":0.004667,"ms_max":0.008167}
+{"q":"What was the running cost,","top":[{"id":"b012","score":0.2784165143966675},{"id":"b017","score":0.27797776460647583}],"ms_median":0.005375,"ms_max":0.00775}
+{"q":"What was the running cost, and","top":[{"id":"b012","score":0.25369206070899963},{"id":"b017","score":0.2532922327518463}],"ms_median":0.005959,"ms_max":0.008667}
+{"q":"What was the running cost, and did","top":[{"id":"b012","score":0.23467735946178436},{"id":"b017","score":0.23430751264095306}],"ms_median":0.006708,"ms_max":0.009584}
+{"q":"What was the running cost, and did it","top":[{"id":"b003","score":0.3179777264595032},{"id":"b012","score":0.28534066677093506}],"ms_median":0.007791,"ms_max":0.017792}
+{"q":"What was the running cost, and did it pay","top":[{"id":"b003","score":0.2897028923034668},{"id":"b012","score":0.25996795296669006}],"ms_median":0.009583,"ms_max":0.065}
+{"q":"What was the running cost, and did it pay off?","top":[{"id":"b003","score":0.2705896496772766},{"id":"b012","score":0.24281646311283112}],"ms_median":0.008875,"ms_max":0.012}
+{"q":"Did the","top":[{"id":"b012","score":0.37209364771842957},{"id":"b011","score":0.2818043828010559}],"ms_median":0.002,"ms_max":0.003417}
+{"q":"Did the economics","top":[{"id":"b012","score":0.15651752054691315},{"id":"b011","score":0.11853823065757751}],"ms_median":0.003708,"ms_max":0.006542}
+{"q":"Did the economics stack","top":[{"id":"b012","score":0.13031934201717377},{"id":"b011","score":0.09869708865880966}],"ms_median":0.004708,"ms_max":0.008083}
+{"q":"Did the economics stack up","top":[{"id":"b012","score":0.12093063443899155},{"id":"b011","score":0.09158656746149063}],"ms_median":0.005167,"ms_max":0.007458}
+{"q":"Did the economics stack up against","top":[{"id":"b012","score":0.10671903192996979},{"id":"b011","score":0.07746671885251999}],"ms_median":0.006834,"ms_max":0.01075}
+{"q":"Did the economics stack up against doing","top":[{"id":"b012","score":0.1021733358502388},{"id":"b011","score":0.07193168997764587}],"ms_median":0.007708,"ms_max":0.012}
+{"q":"Did the economics stack up against doing the","top":[{"id":"b012","score":0.11600925028324127},{"id":"b011","score":0.07815852761268616}],"ms_median":0.008083,"ms_max":0.010375}
+{"q":"Did the economics stack up against doing the work","top":[{"id":"b012","score":0.11186350136995316},{"id":"b005","score":0.09151585400104523}],"ms_median":0.008875,"ms_max":0.012792}
+{"q":"Did the economics stack up against doing the work by","top":[{"id":"b012","score":0.10751530528068542},{"id":"b005","score":0.08795856684446335}],"ms_median":0.009167,"ms_max":0.01175}
+{"q":"Did the economics stack up against doing the work by hand?","top":[{"id":"b012","score":0.10305427014827728},{"id":"b005","score":0.08430897444486618}],"ms_median":0.009958,"ms_max":0.013584}
+{"q":"How expensive","top":[{"id":"b016","score":0.07563567906618118},{"id":"b018","score":0.07482940703630447}],"ms_median":0.002959,"ms_max":0.005541}
+{"q":"How expensive was","top":[{"id":"b011","score":0.13106726109981537},{"id":"b012","score":0.06837131828069687}],"ms_median":0.003625,"ms_max":0.00625}
+{"q":"How expensive was the","top":[{"id":"b011","score":0.21832923591136932},{"id":"b004","score":0.14471882581710815}],"ms_median":0.004625,"ms_max":0.007542}
+{"q":"How expensive was the inference","top":[{"id":"b011","score":0.16958314180374146},{"id":"b004","score":0.1574859917163849}],"ms_median":0.005917,"ms_max":0.010125}
+{"q":"How expensive was the inference compared","top":[{"id":"b012","score":0.18157431483268738},{"id":"b011","score":0.1489322930574417}],"ms_median":0.00775,"ms_max":0.01425}
+{"q":"How expensive was the inference compared with","top":[{"id":"b012","score":0.17225807905197144},{"id":"b011","score":0.1412908434867859}],"ms_median":0.008583,"ms_max":0.012417}
+{"q":"How expensive was the inference compared with the","top":[{"id":"b012","score":0.1843460202217102},{"id":"b011","score":0.14719466865062714}],"ms_median":0.008917,"ms_max":0.011125}
+{"q":"How expensive was the inference compared with the labour","top":[{"id":"b011","score":0.17713777720928192},{"id":"b012","score":0.17230643332004547}],"ms_median":0.010041,"ms_max":0.015}
+{"q":"How expensive was the inference compared with the labour it","top":[{"id":"b011","score":0.17200128734111786},{"id":"b012","score":0.16731002926826477}],"ms_median":0.010333,"ms_max":0.012792}
+{"q":"How expensive was the inference compared with the labour it replaced?","top":[{"id":"b011","score":0.15619108080863953},{"id":"b012","score":0.151931032538414}],"ms_median":0.012709,"ms_max":0.020958}
+{"q":"If","top":[{"id":"b015","score":0.19146093726158142}],"ms_median":0.000792,"ms_max":0.001375}
+{"q":"If we","top":[{"id":"b015","score":0.3629318177700043},{"id":"b008","score":0.0632345899939537}],"ms_median":0.001542,"ms_max":0.002708}
+{"q":"If we asked","top":[{"id":"b015","score":0.22349344193935394},{"id":"b014","score":0.07822174578905106}],"ms_median":0.002708,"ms_max":0.0045}
+{"q":"If we asked you","top":[{"id":"b015","score":0.23038212954998016},{"id":"b014","score":0.07897074520587921}],"ms_median":0.003541,"ms_max":0.005834}
+{"q":"If we asked you to","top":[{"id":"b015","score":0.21357350051403046},{"id":"b002","score":0.18635447323322296}],"ms_median":0.004416,"ms_max":0.0085}
+{"q":"If we asked you to put","top":[{"id":"b015","score":0.18379537761211395},{"id":"b002","score":0.16037143766880035}],"ms_median":0.004958,"ms_max":0.0075}
+{"q":"If we asked you to put an","top":[{"id":"b015","score":0.19001777470111847},{"id":"b002","score":0.1587221622467041}],"ms_median":0.005292,"ms_max":0.007667}
+{"q":"If we asked you to put an LLM","top":[{"id":"b015","score":0.1802224963903427},{"id":"b002","score":0.15054017305374146}],"ms_median":0.006,"ms_max":0.008917}
+{"q":"If we asked you to put an LLM into","top":[{"id":"b015","score":0.163249209523201},{"id":"b002","score":0.13920678198337555}],"ms_median":0.00725,"ms_max":0.011917}
+{"q":"If we asked you to put an LLM into our","top":[{"id":"b015","score":0.15531684458255768},{"id":"b002","score":0.1324426382780075}],"ms_median":0.007833,"ms_max":0.010917}
+{"q":"If we asked you to put an LLM into our dispatching,","top":[{"id":"b013","score":0.25041308999061584},{"id":"b015","score":0.1356998085975647}],"ms_median":0.009666,"ms_max":0.015209}
+{"q":"If we asked you to put an LLM into our dispatching, where","top":[{"id":"b013","score":0.23752889037132263},{"id":"b015","score":0.14025762677192688}],"ms_median":0.0105,"ms_max":0.015167}
+{"q":"If we asked you to put an LLM into our dispatching, where would","top":[{"id":"b013","score":0.27799737453460693},{"id":"b015","score":0.156995952129364}],"ms_median":0.011458,"ms_max":0.016041}
+{"q":"If we asked you to put an LLM into our dispatching, where would you","top":[{"id":"b013","score":0.2946818768978119},{"id":"b015","score":0.17367801070213318}],"ms_median":0.011792,"ms_max":0.013625}
+{"q":"If we asked you to put an LLM into our dispatching, where would you start?","top":[{"id":"b013","score":0.2830488383769989},{"id":"b015","score":0.2761364281177521}],"ms_median":0.014084,"ms_max":0.022833}
+{"q":"How would","top":[{"id":"b022","score":0.4448888599872589},{"id":"b018","score":0.3742676377296448}],"ms_median":0.002333,"ms_max":0.004416}
+{"q":"How would you","top":[{"id":"b022","score":0.49636101722717285},{"id":"b013","score":0.4156569838523865}],"ms_median":0.003375,"ms_max":0.005084}
+{"q":"How would you design","top":[{"id":"b022","score":0.3910776972770691},{"id":"b006","score":0.35604703426361084}],"ms_median":0.004792,"ms_max":0.008166}
+{"q":"How would you design a","top":[{"id":"b022","score":0.3547149896621704},{"id":"b006","score":0.32294151186943054}],"ms_median":0.005042,"ms_max":0.006625}
+{"q":"How would you design a language","top":[{"id":"b022","score":0.2745632827281952},{"id":"b006","score":0.24996936321258545}],"ms_median":0.006459,"ms_max":0.010916}
+{"q":"How would you design a language model","top":[{"id":"b017","score":0.3145969808101654},{"id":"b022","score":0.2563658058643341}],"ms_median":0.007917,"ms_max":0.012416}
+{"q":"How would you design a language model assistant","top":[{"id":"b017","score":0.2625735104084015},{"id":"b013","score":0.21512442827224731}],"ms_median":0.009291,"ms_max":0.0145}
+{"q":"How would you design a language model assistant for","top":[{"id":"b017","score":0.25087952613830566},{"id":"b013","score":0.20554359257221222}],"ms_median":0.009791,"ms_max":0.0125}
+{"q":"How would you design a language model assistant for our","top":[{"id":"b017","score":0.23979194462299347},{"id":"b013","score":0.19645968079566956}],"ms_median":0.010291,"ms_max":0.014042}
+{"q":"How would you design a language model assistant for our dispatchers?","top":[{"id":"b013","score":0.30870258808135986},{"id":"b017","score":0.21501955389976501}],"ms_median":0.013167,"ms_max":0.021292}
+{"q":"What would the","top":[{"id":"b014","score":0.3599819839000702},{"id":"b013","score":0.2287496030330658}],"ms_median":0.003375,"ms_max":0.00675}
+{"q":"What would the first","top":[{"id":"b014","score":0.23878102004528046},{"id":"b013","score":0.15738070011138916}],"ms_median":0.004584,"ms_max":0.007167}
+{"q":"What would the first version","top":[{"id":"b014","score":0.18519438803195953},{"id":"b006","score":0.15151353180408478}],"ms_median":0.005584,"ms_max":0.009708}
+{"q":"What would the first version of","top":[{"id":"b014","score":0.17369332909584045},{"id":"b006","score":0.1421041041612625}],"ms_median":0.006083,"ms_max":0.00875}
+{"q":"What would the first version of an","top":[{"id":"b014","score":0.16565145552158356},{"id":"b006","score":0.13552477955818176}],"ms_median":0.007166,"ms_max":0.011334}
+{"q":"What would the first version of an AI","top":[{"id":"b014","score":0.15512198209762573},{"id":"b006","score":0.12691032886505127}],"ms_median":0.00775,"ms_max":0.0695}
+{"q":"What would the first version of an AI driven","top":[{"id":"b014","score":0.13843365013599396},{"id":"b006","score":0.11325705051422119}],"ms_median":0.0085,"ms_max":0.015541}
+{"q":"What would the first version of an AI driven dispatch","top":[{"id":"b013","score":0.20604048669338226},{"id":"b014","score":0.1267016977071762}],"ms_median":0.009667,"ms_max":0.015792}
+{"q":"What would the first version of an AI driven dispatch tool","top":[{"id":"b013","score":0.19357462227344513},{"id":"b014","score":0.12216618657112122}],"ms_median":0.010417,"ms_max":0.018417}
+{"q":"What would the first version of an AI driven dispatch tool look","top":[{"id":"b013","score":0.18451812863349915},{"id":"b014","score":0.11645055562257767}],"ms_median":0.010917,"ms_max":0.017084}
+{"q":"What would the first version of an AI driven dispatch tool look like","top":[{"id":"b009","score":0.18344074487686157},{"id":"b013","score":0.17821505665779114}],"ms_median":0.012875,"ms_max":0.023333}
+{"q":"What would the first version of an AI driven dispatch tool look like in","top":[{"id":"b009","score":0.1795826107263565},{"id":"b013","score":0.17782868444919586}],"ms_median":0.0135,"ms_max":0.018208}
+{"q":"What would the first version of an AI driven dispatch tool look like in your","top":[{"id":"b009","score":0.18950757384300232},{"id":"b013","score":0.17646321654319763}],"ms_median":0.014208,"ms_max":0.021166}
+{"q":"What would the first version of an AI driven dispatch tool look like in your hands?","top":[{"id":"b009","score":0.18204958736896515},{"id":"b013","score":0.1695185750722885}],"ms_median":0.015375,"ms_max":0.021125}
+{"q":"What can","top":[{"id":"b004","score":0.13593564927577972},{"id":"b016","score":0.13346144556999207}],"ms_median":0.00225,"ms_max":0.004625}
+{"q":"What can I","top":[{"id":"b004","score":0.10371558368206024},{"id":"b016","score":0.10182783007621765}],"ms_median":0.003084,"ms_max":0.003875}
+{"q":"What can I answer","top":[{"id":"b004","score":0.06782753765583038},{"id":"b016","score":0.0665929988026619}],"ms_median":0.003667,"ms_max":0.006625}
+{"q":"What can I answer for","top":[{"id":"b016","score":0.10908729583024979},{"id":"b020","score":0.07379191368818283}],"ms_median":0.004542,"ms_max":0.008083}
+{"q":"What can I answer for you?","top":[{"id":"b012","score":0.13349932432174683},{"id":"b016","score":0.10905509442090988}],"ms_median":0.005417,"ms_max":0.008833}
+{"q":"Over","top":[{"id":"b020","score":0.29259389638900757},{"id":"b013","score":0.24171218276023865}],"ms_median":0.001375,"ms_max":0.002833}
+{"q":"Over to","top":[{"id":"b020","score":0.1948188990354538},{"id":"b013","score":0.18171975016593933}],"ms_median":0.001958,"ms_max":0.003625}
+{"q":"Over to you:","top":[{"id":"b020","score":0.20318181812763214},{"id":"b013","score":0.17056503891944885}],"ms_median":0.003041,"ms_max":0.005542}
+{"q":"Over to you: is","top":[{"id":"b020","score":0.16875123977661133},{"id":"b013","score":0.14166156947612762}],"ms_median":0.003458,"ms_max":0.005834}
+{"q":"Over to you: is there","top":[{"id":"b014","score":0.2480844110250473},{"id":"b020","score":0.1537064164876938}],"ms_median":0.004792,"ms_max":0.008875}
+{"q":"Over to you: is there anything","top":[{"id":"b014","score":0.4209289252758026},{"id":"b020","score":0.14034917950630188}],"ms_median":0.006042,"ms_max":0.010875}
+{"q":"Over to you: is there anything you","top":[{"id":"b014","score":0.40451523661613464},{"id":"b005","score":0.1738782674074173}],"ms_median":0.006583,"ms_max":0.008583}
+{"q":"Over to you: is there anything you would","top":[{"id":"b014","score":0.3760903775691986},{"id":"b005","score":0.16520850360393524}],"ms_median":0.008125,"ms_max":0.013167}
+{"q":"Over to you: is there anything you would like","top":[{"id":"b014","score":0.4314384162425995},{"id":"b005","score":0.15262241661548615}],"ms_median":0.008708,"ms_max":0.012208}
+{"q":"Over to you: is there anything you would like to","top":[{"id":"b014","score":0.4614112377166748},{"id":"b005","score":0.15478450059890747}],"ms_median":0.009083,"ms_max":0.011459}
+{"q":"Over to you: is there anything you would like to know?","top":[{"id":"b014","score":0.43220725655555725},{"id":"b005","score":0.14498773217201233}],"ms_median":0.010125,"ms_max":0.014166}
+{"q":"Do","top":[{"id":"b009","score":0.12003041803836823},{"id":"b016","score":0.11804179847240448}],"ms_median":0.000834,"ms_max":0.001708}
+{"q":"Do you","top":[{"id":"b009","score":0.23267653584480286},{"id":"b016","score":0.22882162034511566}],"ms_median":0.002084,"ms_max":0.003542}
+{"q":"Do you want","top":[{"id":"b002","score":0.3832065761089325},{"id":"b014","score":0.306863009929657}],"ms_median":0.003042,"ms_max":0.006041}
+{"q":"Do you want to","top":[{"id":"b002","score":0.4463217556476593},{"id":"b014","score":0.3845394253730774}],"ms_median":0.003542,"ms_max":0.005584}
+{"q":"Do you want to ask","top":[{"id":"b002","score":0.3648513853549957},{"id":"b014","score":0.3143466114997864}],"ms_median":0.0045,"ms_max":0.007708}
+{"q":"Do you want to ask us","top":[{"id":"b002","score":0.3204973042011261},{"id":"b014","score":0.2761322557926178}],"ms_median":0.004916,"ms_max":0.007292}
+{"q":"Do you want to ask us something","top":[{"id":"b005","score":0.3063078820705414},{"id":"b020","score":0.2912038266658783}],"ms_median":0.006417,"ms_max":0.010959}
+{"q":"Do you want to ask us something before","top":[{"id":"b005","score":0.27033430337905884},{"id":"b020","score":0.2538844645023346}],"ms_median":0.007833,"ms_max":0.0125}
+{"q":"Do you want to ask us something before we","top":[{"id":"b005","score":0.27518904209136963},{"id":"b020","score":0.2411731630563736}],"ms_median":0.008167,"ms_max":0.010917}
+{"q":"Do you want to ask us something before we wrap","top":[{"id":"b005","score":0.25376737117767334},{"id":"b020","score":0.21862463653087616}],"ms_median":0.008917,"ms_max":0.012125}
+{"q":"Do you want to ask us something before we wrap up?","top":[{"id":"b005","score":0.24183231592178345},{"id":"b020","score":0.2083422988653183}],"ms_median":0.009458,"ms_max":0.012083}
+{"q":"How long","top":[{"id":"b010","score":0.075421541929245},{"id":"b020","score":0.04345669597387314}],"ms_median":0.002166,"ms_max":0.004666}
+{"q":"How long until","top":[{"id":"b010","score":0.06240810826420784},{"id":"b020","score":0.029002444818615913}],"ms_median":0.003125,"ms_max":0.005334}
+{"q":"How long until you","top":[{"id":"b010","score":0.062044642865657806},{"id":"b020","score":0.032455332577228546}],"ms_median":0.00425,"ms_max":0.006916}
+{"q":"How long until you could","top":[{"id":"b015","score":0.1473221629858017},{"id":"b022","score":0.07193934172391891}],"ms_median":0.005042,"ms_max":0.008583}
+{"q":"How long until you could begin","top":[{"id":"b015","score":0.13378919661045074},{"id":"b022","score":0.06197671592235565}],"ms_median":0.005917,"ms_max":0.009625}
+{"q":"How long until you could begin if","top":[{"id":"b015","score":0.12592823803424835},{"id":"b022","score":0.058335185050964355}],"ms_median":0.006334,"ms_max":0.009458}
+{"q":"How long until you could begin if you","top":[{"id":"b015","score":0.12537778913974762},{"id":"b022","score":0.06006091088056564}],"ms_median":0.007416,"ms_max":0.011375}
+{"q":"How long until you could begin if you accepted?","top":[{"id":"b015","score":0.11069803684949875},{"id":"b013","score":0.06232234463095665}],"ms_median":0.008584,"ms_max":0.01475}
+{"q":"When","top":[{"id":"b019","score":0.30036598443984985},{"id":"b015","score":0.2462032437324524}],"ms_median":0.001417,"ms_max":0.002958}
+{"q":"When would","top":[{"id":"b015","score":0.19660578668117523},{"id":"b022","score":0.172994926571846}],"ms_median":0.002666,"ms_max":0.005042}
+{"q":"When would you","top":[{"id":"b015","score":0.24417173862457275},{"id":"b022","score":0.23905551433563232}],"ms_median":0.003541,"ms_max":0.006083}
+{"q":"When would you be","top":[{"id":"b013","score":0.20876739919185638},{"id":"b015","score":0.2016676664352417}],"ms_median":0.004,"ms_max":0.005834}
+{"q":"When would you be free","top":[{"id":"b013","score":0.16482196748256683},{"id":"b015","score":0.1592167317867279}],"ms_median":0.004916,"ms_max":0.008125}
+{"q":"When would you be free to","top":[{"id":"b014","score":0.1893467903137207},{"id":"b013","score":0.15931418538093567}],"ms_median":0.005416,"ms_max":0.007834}
+{"q":"When would you be free to join?","top":[{"id":"b002","score":0.2188829928636551},{"id":"b015","score":0.20942853391170502}],"ms_median":0.00625,"ms_max":0.009542}
+{"q":"Assuming","top":[{"id":"b013","score":0.06623788177967072},{"id":"b020","score":0.03500606119632721}],"ms_median":0.002041,"ms_max":0.00425}
+{"q":"Assuming an","top":[{"id":"b013","score":0.17057356238365173},{"id":"b020","score":0.0650990754365921}],"ms_median":0.00275,"ms_max":0.005417}
+{"q":"Assuming an offer,","top":[{"id":"b015","score":0.2851458191871643},{"id":"b013","score":0.14357495307922363}],"ms_median":0.003667,"ms_max":0.007}
+{"q":"Assuming an offer, what","top":[{"id":"b015","score":0.26310449838638306},{"id":"b013","score":0.1315196305513382}],"ms_median":0.004833,"ms_max":0.008292}
+{"q":"Assuming an offer, what is","top":[{"id":"b015","score":0.25787365436553955},{"id":"b005","score":0.12547947466373444}],"ms_median":0.005292,"ms_max":0.00825}
+{"q":"Assuming an offer, what is the","top":[{"id":"b015","score":0.245205819606781},{"id":"b005","score":0.11931543052196503}],"ms_median":0.006042,"ms_max":0.008333}
+{"q":"Assuming an offer, what is the soonest","top":[{"id":"b015","score":0.20984525978565216},{"id":"b005","score":0.13671144843101501}],"ms_median":0.00775,"ms_max":0.013125}
+{"q":"Assuming an offer, what is the soonest you","top":[{"id":"b015","score":0.206951305270195},{"id":"b005","score":0.1341797262430191}],"ms_median":0.008375,"ms_max":0.010875}
+{"q":"Assuming an offer, what is the soonest you could","top":[{"id":"b015","score":0.26404115557670593},{"id":"b005","score":0.12615269422531128}],"ms_median":0.009,"ms_max":0.012666}
+{"q":"Assuming an offer, what is the soonest you could be","top":[{"id":"b015","score":0.25155162811279297},{"id":"b005","score":0.12018550932407379}],"ms_median":0.009792,"ms_max":0.011709}
+{"q":"Assuming an offer, what is the soonest you could be on","top":[{"id":"b015","score":0.24410347640514374},{"id":"b005","score":0.11662693321704865}],"ms_median":0.00975,"ms_max":0.012792}
+{"q":"Assuming an offer, what is the soonest you could be on board?","top":[{"id":"b015","score":0.2245466262102127},{"id":"b005","score":0.10728312283754349}],"ms_median":0.010625,"ms_max":0.015625}
+{"q":"What are","top":[{"id":"b016","score":0.3855278193950653},{"id":"b002","score":0.14697760343551636}],"ms_median":0.00225,"ms_max":0.004292}
+{"q":"What are you","top":[{"id":"b016","score":0.43389108777046204},{"id":"b008","score":0.20692585408687592}],"ms_median":0.00325,"ms_max":0.005708}
+{"q":"What are you hoping","top":[{"id":"b016","score":0.25804805755615234},{"id":"b008","score":0.1230650246143341}],"ms_median":0.004541,"ms_max":0.007292}
+{"q":"What are you hoping to","top":[{"id":"b016","score":0.23476289212703705},{"id":"b005","score":0.17915478348731995}],"ms_median":0.004958,"ms_max":0.006875}
+{"q":"What are you hoping to earn?","top":[{"id":"b016","score":0.19710931181907654},{"id":"b005","score":0.15042023360729218}],"ms_median":0.005709,"ms_max":0.008542}
+{"q":"Give us a","top":[{"id":"b001","score":0.46338847279548645},{"id":"b003","score":0.09641937911510468}],"ms_median":0.002833,"ms_max":0.0045}
+{"q":"Give us a figure","top":[{"id":"b001","score":0.31076541543006897},{"id":"b003","score":0.0637839287519455}],"ms_median":0.0035,"ms_max":0.006167}
+{"q":"Give us a figure for","top":[{"id":"b001","score":0.27965816855430603},{"id":"b014","score":0.0878763198852539}],"ms_median":0.004458,"ms_max":0.02325}
+{"q":"Give us a figure for the","top":[{"id":"b001","score":0.26417872309684753},{"id":"b007","score":0.12226102501153946}],"ms_median":0.005084,"ms_max":0.014541}
+{"q":"Give us a figure for the pay","top":[{"id":"b001","score":0.23770155012607574},{"id":"b007","score":0.11000745743513107}],"ms_median":0.005583,"ms_max":0.008458}
+{"q":"Give us a figure for the pay you","top":[{"id":"b001","score":0.23019900918006897},{"id":"b007","score":0.1081559881567955}],"ms_median":0.006334,"ms_max":0.0095}
+{"q":"Give us a figure for the pay you would","top":[{"id":"b001","score":0.2177116870880127},{"id":"b007","score":0.10228896886110306}],"ms_median":0.008125,"ms_max":0.012666}
+{"q":"Give us a figure for the pay you would expect.","top":[{"id":"b001","score":0.19898836314678192},{"id":"b016","score":0.11216989159584045}],"ms_median":0.009,"ms_max":0.0315}
+{"q":"What kind","top":[{"id":"b016","score":0.11585736274719238},{"id":"b003","score":0.08073005080223083}],"ms_median":0.00225,"ms_max":0.004959}
+{"q":"What kind of","top":[{"id":"b006","score":0.11769770830869675},{"id":"b016","score":0.09693901240825653}],"ms_median":0.002959,"ms_max":0.005958}
+{"q":"What kind of package","top":[{"id":"b006","score":0.08207625895738602},{"id":"b016","score":0.06760022044181824}],"ms_median":0.004417,"ms_max":0.007333}
+{"q":"What kind of package would","top":[{"id":"b020","score":0.11977794766426086},{"id":"b014","score":0.1059492975473404}],"ms_median":0.004625,"ms_max":0.007958}
+{"q":"What kind of package would you","top":[{"id":"b014","score":0.14281083643436432},{"id":"b022","score":0.12808012962341309}],"ms_median":0.005875,"ms_max":0.008083}
+{"q":"What kind of package would you want?","top":[{"id":"b002","score":0.13326215744018555},{"id":"b014","score":0.132529616355896}],"ms_median":0.007292,"ms_max":0.01225}
+{"q":"Have","top":[{"id":"b017","score":0.25043970346450806},{"id":"b016","score":0.24733607470989227}],"ms_median":0.001375,"ms_max":0.003042}
+{"q":"Have you","top":[{"id":"b017","score":0.33810028433799744},{"id":"b018","score":0.3100314140319824}],"ms_median":0.002375,"ms_max":0.0045}
+{"q":"Have you had","top":[{"id":"b016","score":0.23192666471004486},{"id":"b014","score":0.22148536145687103}],"ms_median":0.003,"ms_max":0.004708}
+{"q":"Have you had language","top":[{"id":"b017","score":0.3829059302806854},{"id":"b016","score":0.1504424810409546}],"ms_median":0.004667,"ms_max":0.009208}
+{"q":"Have you had language models","top":[{"id":"b017","score":0.49605032801628113},{"id":"b019","score":0.19200851023197174}],"ms_median":0.005667,"ms_max":0.010125}
+{"q":"Have you had language models serving","top":[{"id":"b017","score":0.40636739134788513},{"id":"b019","score":0.15729458630084991}],"ms_median":0.007584,"ms_max":0.012291}
+{"q":"Have you had language models serving real","top":[{"id":"b017","score":0.4417896568775177},{"id":"b019","score":0.14456672966480255}],"ms_median":0.009,"ms_max":0.014208}
+{"q":"Have you had language models serving real users?","top":[{"id":"b017","score":0.4171610474586487},{"id":"b019","score":0.13166414201259613}],"ms_median":0.008833,"ms_max":0.013041}
+{"q":"Tell us about","top":[{"id":"b003","score":0.5712941884994507},{"id":"b005","score":0.40210238099098206}],"ms_median":0.003041,"ms_max":0.006125}
+{"q":"Tell us about live","top":[{"id":"b003","score":0.43512648344039917},{"id":"b005","score":0.30626145005226135}],"ms_median":0.004167,"ms_max":0.007209}
+{"q":"Tell us about live deployments","top":[{"id":"b003","score":0.3140887916088104},{"id":"b021","score":0.2454085350036621}],"ms_median":0.00575,"ms_max":0.010667}
+{"q":"Tell us about live deployments of","top":[{"id":"b003","score":0.2976171374320984},{"id":"b021","score":0.27608776092529297}],"ms_median":0.006209,"ms_max":0.008709}
+{"q":"Tell us about live deployments of generative","top":[{"id":"b003","score":0.23884578049182892},{"id":"b021","score":0.2236345410346985}],"ms_median":0.008167,"ms_max":0.013333}
+{"q":"Tell us about live deployments of generative AI","top":[{"id":"b003","score":0.2287457436323166},{"id":"b021","score":0.21417778730392456}],"ms_median":0.008459,"ms_max":0.011292}
+{"q":"Tell us about live deployments of generative AI you","top":[{"id":"b003","score":0.2258179783821106},{"id":"b021","score":0.21157561242580414}],"ms_median":0.009083,"ms_max":0.012375}
+{"q":"Tell us about live deployments of generative AI you have","top":[{"id":"b021","score":0.23078732192516327},{"id":"b003","score":0.21981343626976013}],"ms_median":0.009792,"ms_max":0.014417}
+{"q":"Tell us about live deployments of generative AI you have been","top":[{"id":"b021","score":0.21832145750522614},{"id":"b003","score":0.20794029533863068}],"ms_median":0.0105,"ms_max":0.014667}
+{"q":"Tell us about live deployments of generative AI you have been responsible","top":[{"id":"b021","score":0.1948697715997696},{"id":"b003","score":0.1856037825345993}],"ms_median":0.013042,"ms_max":0.022041}
+{"q":"Tell us about live deployments of generative AI you have been responsible for.","top":[{"id":"b021","score":0.18979571759700775},{"id":"b003","score":0.18077102303504944}],"ms_median":0.014042,"ms_max":0.017791}
+{"q":"How much hands-on","top":[{"id":"b007","score":0.2639056444168091},{"id":"b012","score":0.24917583167552948}],"ms_median":0.004584,"ms_max":0.008292}
+{"q":"How much hands-on time","top":[{"id":"b007","score":0.22186371684074402},{"id":"b012","score":0.209480419754982}],"ms_median":0.004625,"ms_max":0.008}
+{"q":"How much hands-on time do","top":[{"id":"b007","score":0.21858729422092438},{"id":"b012","score":0.19715170562267303}],"ms_median":0.005083,"ms_max":0.007208}
+{"q":"How much hands-on time do you","top":[{"id":"b007","score":0.24161700904369354},{"id":"b012","score":0.1939854621887207}],"ms_median":0.005916,"ms_max":0.008542}
+{"q":"How much hands-on time do you have","top":[{"id":"b007","score":0.31783348321914673},{"id":"b012","score":0.18358296155929565}],"ms_median":0.007209,"ms_max":0.010959}
+{"q":"How much hands-on time do you have with","top":[{"id":"b007","score":0.37344712018966675},{"id":"b012","score":0.17638720571994781}],"ms_median":0.007875,"ms_max":0.011459}
+{"q":"How much hands-on time do you have with LLMs","top":[{"id":"b007","score":0.3475739359855652},{"id":"b012","score":0.16416673362255096}],"ms_median":0.008584,"ms_max":0.012083}
+{"q":"How much hands-on time do you have with LLMs outside","top":[{"id":"b007","score":0.3126080632209778},{"id":"b012","score":0.1444840282201767}],"ms_median":0.009542,"ms_max":0.013208}
+{"q":"How much hands-on time do you have with LLMs outside of","top":[{"id":"b007","score":0.3036250174045563},{"id":"b012","score":0.14033211767673492}],"ms_median":0.010084,"ms_max":0.015}
+{"q":"How much hands-on time do you have with LLMs outside of prototypes?","top":[{"id":"b007","score":0.27103304862976074},{"id":"b020","score":0.1789824217557907}],"ms_median":0.01275,"ms_max":0.020834}
+{"q":"Where does","top":[{"id":"b005","score":0.32392314076423645},{"id":"b022","score":0.1834597885608673}],"ms_median":0.002542,"ms_max":0.00475}
+{"q":"Where does your","top":[{"id":"b005","score":0.28878554701805115},{"id":"b009","score":0.25652897357940674}],"ms_median":0.0035,"ms_max":0.00575}
+{"q":"Where does your past","top":[{"id":"b005","score":0.2339293509721756},{"id":"b013","score":0.23165780305862427}],"ms_median":0.004542,"ms_max":0.007792}
+{"q":"Where does your past work","top":[{"id":"b013","score":0.3317071795463562},{"id":"b005","score":0.30681294202804565}],"ms_median":0.00525,"ms_max":0.007625}
+{"q":"Where does your past work overlap","top":[{"id":"b013","score":0.3086024224758148},{"id":"b005","score":0.24151404201984406}],"ms_median":0.0065,"ms_max":0.009958}
+{"q":"Where does your past work overlap with","top":[{"id":"b013","score":0.28563374280929565},{"id":"b005","score":0.22353847324848175}],"ms_median":0.007584,"ms_max":0.011583}
+{"q":"Where does your past work overlap with routing","top":[{"id":"b013","score":0.26194778084754944},{"id":"b005","score":0.20500175654888153}],"ms_median":0.008791,"ms_max":0.01325}
+{"q":"Where does your past work overlap with routing and","top":[{"id":"b013","score":0.25258681178092957},{"id":"b005","score":0.20093759894371033}],"ms_median":0.009333,"ms_max":0.011916}
+{"q":"Where does your past work overlap with routing and logistics?","top":[{"id":"b018","score":0.27907848358154297},{"id":"b013","score":0.2246132344007492}],"ms_median":0.010916,"ms_max":0.018792}
+{"q":"What transfers","top":[{"id":"b006","score":0.09381894767284393},{"id":"b004","score":0.07216038554906845}],"ms_median":0.003125,"ms_max":0.006}
+{"q":"What transfers from","top":[{"id":"b004","score":0.16373997926712036},{"id":"b013","score":0.10853764414787292}],"ms_median":0.004167,"ms_max":0.007459}
+{"q":"What transfers from your","top":[{"id":"b004","score":0.24486516416072845},{"id":"b013","score":0.188093364238739}],"ms_median":0.004959,"ms_max":0.008083}
+{"q":"What transfers from your background","top":[{"id":"b001","score":0.3410094380378723},{"id":"b018","score":0.3259698152542114}],"ms_median":0.007167,"ms_max":0.012291}
+{"q":"What transfers from your background to","top":[{"id":"b001","score":0.3281257450580597},{"id":"b018","score":0.31365448236465454}],"ms_median":0.007625,"ms_max":0.010167}
+{"q":"What transfers from your background to optimising","top":[{"id":"b001","score":0.280364066362381},{"id":"b018","score":0.2679991126060486}],"ms_median":0.009292,"ms_max":0.056125}
+{"q":"What transfers from your background to optimising delivery","top":[{"id":"b001","score":0.2536582946777344},{"id":"b018","score":0.24247117340564728}],"ms_median":0.011,"ms_max":0.031083}
+{"q":"What transfers from your background to optimising delivery routes?","top":[{"id":"b001","score":0.24329319596290588},{"id":"b018","score":0.2310010939836502}],"ms_median":0.0115,"ms_max":0.019209}
+{"q":"Why do","top":[{"id":"b002","score":0.32838428020477295},{"id":"b016","score":0.12780651450157166}],"ms_median":0.001833,"ms_max":0.003791}
+{"q":"Why do you","top":[{"id":"b002","score":0.36025136709213257},{"id":"b016","score":0.1971074938774109}],"ms_median":0.002875,"ms_max":0.004625}
+{"q":"Why do you think","top":[{"id":"b002","score":0.23012351989746094},{"id":"b020","score":0.13675424456596375}],"ms_median":0.003875,"ms_max":0.007}
+{"q":"Why do you think you","top":[{"id":"b002","score":0.20735935866832733},{"id":"b020","score":0.1253172755241394}],"ms_median":0.004542,"ms_max":0.006791}
+{"q":"Why do you think you are","top":[{"id":"b002","score":0.1907850205898285},{"id":"b001","score":0.13295267522335052}],"ms_median":0.005458,"ms_max":0.008375}
+{"q":"Why do you think you are a","top":[{"id":"b002","score":0.18058332800865173},{"id":"b001","score":0.13325285911560059}],"ms_median":0.005292,"ms_max":0.009083}
+{"q":"Why do you think you are a fit","top":[{"id":"b002","score":0.16053138673305511},{"id":"b001","score":0.11845646798610687}],"ms_median":0.005875,"ms_max":0.009083}
+{"q":"Why do you think you are a fit for","top":[{"id":"b002","score":0.14962637424468994},{"id":"b001","score":0.11040965467691422}],"ms_median":0.006459,"ms_max":0.009334}
+{"q":"Why do you think you are a fit for a","top":[{"id":"b002","score":0.14259591698646545},{"id":"b001","score":0.10927735269069672}],"ms_median":0.007292,"ms_max":0.010417}
+{"q":"Why do you think you are a fit for a route","top":[{"id":"b002","score":0.13203033804893494},{"id":"b007","score":0.11715199053287506}],"ms_median":0.008084,"ms_max":0.011458}
+{"q":"Why do you think you are a fit for a route planning","top":[{"id":"b007","score":0.2745758593082428},{"id":"b018","score":0.23688295483589172}],"ms_median":0.00925,"ms_max":0.014792}
+{"q":"Why do you think you are a fit for a route planning company?","top":[{"id":"b007","score":0.25244396924972534},{"id":"b018","score":0.21778924763202667}],"ms_median":0.010542,"ms_max":0.016083}
+{"q":"Did you","top":[{"id":"b007","score":0.2833569049835205},{"id":"b004","score":0.25395119190216064}],"ms_median":0.002166,"ms_max":0.004125}
+{"q":"Did you mix","top":[{"id":"b004","score":0.18298792839050293},{"id":"b007","score":0.14323388040065765}],"ms_median":0.003667,"ms_max":0.005}
+{"q":"Did you mix cheap","top":[{"id":"b004","score":0.12217088788747787},{"id":"b007","score":0.09562931209802628}],"ms_median":0.003792,"ms_max":0.006083}
+{"q":"Did you mix cheap and","top":[{"id":"b004","score":0.10929712653160095},{"id":"b019","score":0.10464824736118317}],"ms_median":0.00475,"ms_max":0.00775}
+{"q":"Did you mix cheap and expensive","top":[{"id":"b004","score":0.08627849817276001},{"id":"b019","score":0.08260869979858398}],"ms_median":0.006083,"ms_max":0.010209}
+{"q":"Did you mix cheap and expensive models,","top":[{"id":"b019","score":0.17737634479999542},{"id":"b010","score":0.11112132668495178}],"ms_median":0.007625,"ms_max":0.012542}
+{"q":"Did you mix cheap and expensive models, and","top":[{"id":"b019","score":0.18404628336429596},{"id":"b011","score":0.1533227264881134}],"ms_median":0.008125,"ms_max":0.010375}
+{"q":"Did you mix cheap and expensive models, and how","top":[{"id":"b019","score":0.18927277624607086},{"id":"b011","score":0.159598708152771}],"ms_median":0.008875,"ms_max":0.012458}
+{"q":"Did you mix cheap and expensive models, and how did","top":[{"id":"b019","score":0.22101056575775146},{"id":"b011","score":0.1923050433397293}],"ms_median":0.00925,"ms_max":0.011875}
+{"q":"Did you mix cheap and expensive models, and how did you","top":[{"id":"b019","score":0.2325853556394577},{"id":"b011","score":0.188518688082695}],"ms_median":0.0095,"ms_max":0.010708}
+{"q":"Did you mix cheap and expensive models, and how did you decide?","top":[{"id":"b019","score":0.21625225245952606},{"id":"b011","score":0.1752801537513733}],"ms_median":0.011333,"ms_max":0.01725}
+{"q":"What drove","top":[{"id":"b005","score":0.1590428650379181},{"id":"b003","score":0.12341530621051788}],"ms_median":0.002625,"ms_max":0.004833}
+{"q":"What drove the","top":[{"id":"b005","score":0.13560710847377777},{"id":"b007","score":0.11146511882543564}],"ms_median":0.003291,"ms_max":0.005292}
+{"q":"What drove the choice","top":[{"id":"b006","score":0.1770378202199936},{"id":"b007","score":0.12313783168792725}],"ms_median":0.004583,"ms_max":0.007833}
+{"q":"What drove the choice of","top":[{"id":"b006","score":0.16232828795909882},{"id":"b004","score":0.13706088066101074}],"ms_median":0.004917,"ms_max":0.007166}
+{"q":"What drove the choice of model","top":[{"id":"b006","score":0.1454392671585083},{"id":"b004","score":0.12280073016881943}],"ms_median":0.005833,"ms_max":0.008834}
+{"q":"What drove the choice of model size?","top":[{"id":"b006","score":0.12761007249355316},{"id":"b004","score":0.10774677246809006}],"ms_median":0.007209,"ms_max":0.011042}
+{"q":"When is","top":[{"id":"b019","score":0.1758933812379837},{"id":"b010","score":0.1444094479084015}],"ms_median":0.001917,"ms_max":0.0035}
+{"q":"When is a","top":[{"id":"b019","score":0.16383320093154907},{"id":"b010","score":0.12207134068012238}],"ms_median":0.00225,"ms_max":0.003417}
+{"q":"When is a bigger","top":[{"id":"b005","score":0.22081923484802246},{"id":"b019","score":0.16228315234184265}],"ms_median":0.003458,"ms_max":0.006375}
+{"q":"When is a bigger LLM","top":[{"id":"b005","score":0.20019181072711945},{"id":"b019","score":0.147123783826828}],"ms_median":0.00425,"ms_max":0.007}
+{"q":"When is a bigger LLM worth","top":[{"id":"b005","score":0.17601870000362396},{"id":"b017","score":0.16413599252700806}],"ms_median":0.005125,"ms_max":0.008333}
+{"q":"When is a bigger LLM worth paying","top":[{"id":"b005","score":0.1514626443386078},{"id":"b017","score":0.14123770594596863}],"ms_median":0.006083,"ms_max":0.009875}
+{"q":"When is a bigger LLM worth paying for?","top":[{"id":"b005","score":0.14438381791114807},{"id":"b017","score":0.13463671505451202}],"ms_median":0.007375,"ms_max":0.012125}
+{"q":"How do you kick","top":[{"id":"b009","score":0.1827457845211029},{"id":"b020","score":0.1503870040178299}],"ms_median":0.003667,"ms_max":0.006542}
+{"q":"How do you kick off","top":[{"id":"b009","score":0.14755851030349731},{"id":"b020","score":0.12143035233020782}],"ms_median":0.004583,"ms_max":0.007166}
+{"q":"How do you kick off something","top":[{"id":"b020","score":0.316419780254364},{"id":"b005","score":0.24917800724506378}],"ms_median":0.005917,"ms_max":0.0095}
+{"q":"How do you kick off something from","top":[{"id":"b020","score":0.2855693995952606},{"id":"b005","score":0.22488360106945038}],"ms_median":0.007167,"ms_max":0.011083}
+{"q":"How do you kick off something from scratch?","top":[{"id":"b020","score":0.24517302215099335},{"id":"b005","score":0.19307172298431396}],"ms_median":0.008291,"ms_max":0.012208}
+{"q":"What is your habit","top":[{"id":"b015","score":0.30181267857551575},{"id":"b005","score":0.28995436429977417}],"ms_median":0.004292,"ms_max":0.007666}
+{"q":"What is your habit when","top":[{"id":"b015","score":0.26251962780952454},{"id":"b005","score":0.25971662998199463}],"ms_median":0.005,"ms_max":0.007333}
+{"q":"What is your habit when beginning","top":[{"id":"b017","score":0.21586111187934875},{"id":"b015","score":0.2006983906030655}],"ms_median":0.006709,"ms_max":0.012542}
+{"q":"What is your habit when beginning a","top":[{"id":"b017","score":0.20952750742435455},{"id":"b015","score":0.19480961561203003}],"ms_median":0.007167,"ms_max":0.011125}
+{"q":"What is your habit when beginning a greenfield","top":[{"id":"b017","score":0.17146329581737518},{"id":"b015","score":0.15941926836967468}],"ms_median":0.008584,"ms_max":0.014125}
+{"q":"What is your habit when beginning a greenfield build?","top":[{"id":"b017","score":0.16133332252502441},{"id":"b015","score":0.15000079572200775}],"ms_median":0.009333,"ms_max":0.013459}
+{"q":"How do you stop","top":[{"id":"b009","score":0.19093535840511322},{"id":"b020","score":0.16854694485664368}],"ms_median":0.003667,"ms_max":0.006125}
+{"q":"How do you stop yourself","top":[{"id":"b001","score":0.26977598667144775},{"id":"b009","score":0.13456720113754272}],"ms_median":0.005125,"ms_max":0.008542}
+{"q":"How do you stop yourself from","top":[{"id":"b001","score":0.23417872190475464},{"id":"b004","score":0.13711291551589966}],"ms_median":0.005792,"ms_max":0.00875}
+{"q":"How do you stop yourself from gold","top":[{"id":"b001","score":0.20548921823501587},{"id":"b004","score":0.12031503021717072}],"ms_median":0.006417,"ms_max":0.009417}
+{"q":"How do you stop yourself from gold plating","top":[{"id":"b001","score":0.18115803599357605},{"id":"b004","score":0.10606899857521057}],"ms_median":0.00825,"ms_max":0.012916}
+{"q":"How do you stop yourself from gold plating early","top":[{"id":"b001","score":0.1667071133852005},{"id":"b020","score":0.12746348977088928}],"ms_median":0.009,"ms_max":0.013334}
+{"q":"How do you stop yourself from gold plating early versions?","top":[{"id":"b001","score":0.15024760365486145},{"id":"b020","score":0.11487860232591629}],"ms_median":0.010125,"ms_max":0.01575}
+{"q":"What is your favourite","top":[{"id":"b015","score":0.25665780901908875},{"id":"b005","score":0.24657361209392548}],"ms_median":0.004833,"ms_max":0.00825}
+{"q":"What is your favourite programming","top":[{"id":"b015","score":0.2000139057636261},{"id":"b005","score":0.182631254196167}],"ms_median":0.006875,"ms_max":0.011667}
+{"q":"What is your favourite programming language","top":[{"id":"b017","score":0.17777732014656067},{"id":"b015","score":0.17639054358005524}],"ms_median":0.008042,"ms_max":0.012708}
+{"q":"What is your favourite programming language and","top":[{"id":"b017","score":0.1717369556427002},{"id":"b015","score":0.17039728164672852}],"ms_median":0.009,"ms_max":0.066958}
+{"q":"What is your favourite programming language and why?","top":[{"id":"b017","score":0.16528166830539703},{"id":"b015","score":0.16508007049560547}],"ms_median":0.009542,"ms_max":0.012166}
+{"q":"Do you have","top":[{"id":"b016","score":0.43330052495002747},{"id":"b014","score":0.41379353404045105}],"ms_median":0.003042,"ms_max":0.006125}
+{"q":"Do you have experience","top":[{"id":"b007","score":0.47481629252433777},{"id":"b017","score":0.3002280592918396}],"ms_median":0.004958,"ms_max":0.009917}
+{"q":"Do you have experience with","top":[{"id":"b007","score":0.5670433044433594},{"id":"b021","score":0.3814965486526489}],"ms_median":0.005791,"ms_max":0.009375}
+{"q":"Do you have experience with Kubernetes","top":[{"id":"b007","score":0.40576377511024475},{"id":"b021","score":0.2729906737804413}],"ms_median":0.007542,"ms_max":0.012333}
+{"q":"Do you have experience with Kubernetes and","top":[{"id":"b007","score":0.3907017409801483},{"id":"b021","score":0.26303669810295105}],"ms_median":0.008084,"ms_max":0.014625}
+{"q":"Do you have experience with Kubernetes and container","top":[{"id":"b007","score":0.3349902033805847},{"id":"b021","score":0.22552935779094696}],"ms_median":0.0095,"ms_max":0.015209}
+{"q":"Do you have experience with Kubernetes and container orchestration?","top":[{"id":"b007","score":0.2901191711425781},{"id":"b021","score":0.19774658977985382}],"ms_median":0.012459,"ms_max":0.021917}
+{"q":"How do you feel","top":[{"id":"b009","score":0.18363481760025024},{"id":"b019","score":0.16046464443206787}],"ms_median":0.003625,"ms_max":0.005833}
+{"q":"How do you feel about","top":[{"id":"b009","score":0.1492195725440979},{"id":"b008","score":0.14661924540996552}],"ms_median":0.004833,"ms_max":0.007917}
+{"q":"How do you feel about remote","top":[{"id":"b009","score":0.11499549448490143},{"id":"b008","score":0.1129915863275528}],"ms_median":0.005792,"ms_max":0.0095}
+{"q":"How do you feel about remote work","top":[{"id":"b021","score":0.12866608798503876},{"id":"b009","score":0.10678788274526596}],"ms_median":0.006542,"ms_max":0.010167}
+{"q":"How do you feel about remote work versus","top":[{"id":"b021","score":0.11023858189582825},{"id":"b008","score":0.09986742585897446}],"ms_median":0.008,"ms_max":0.012916}
+{"q":"How do you feel about remote work versus coming","top":[{"id":"b021","score":0.09975821524858475},{"id":"b008","score":0.09477246552705765}],"ms_median":0.008917,"ms_max":0.012833}
+{"q":"How do you feel about remote work versus coming into","top":[{"id":"b013","score":0.10149503499269485},{"id":"b021","score":0.09396395832300186}],"ms_median":0.009542,"ms_max":0.0125}
+{"q":"How do you feel about remote work versus coming into the","top":[{"id":"b012","score":0.11233732104301453},{"id":"b013","score":0.09886028617620468}],"ms_median":0.010167,"ms_max":0.01375}
+{"q":"How do you feel about remote work versus coming into the office?","top":[{"id":"b012","score":0.10450348258018494},{"id":"b013","score":0.09196627885103226}],"ms_median":0.011125,"ms_max":0.015958}
+{"q":"Where do you see","top":[{"id":"b005","score":0.34065482020378113},{"id":"b010","score":0.17831043899059296}],"ms_median":0.00375,"ms_max":0.00675}
+{"q":"Where do you see yourself","top":[{"id":"b001","score":0.26067179441452026},{"id":"b005","score":0.2603723704814911}],"ms_median":0.005292,"ms_max":0.008667}
+{"q":"Where do you see yourself in","top":[{"id":"b001","score":0.23927251994609833},{"id":"b005","score":0.23899763822555542}],"ms_median":0.005625,"ms_max":0.00775}
+{"q":"Where do you see yourself in five","top":[{"id":"b001","score":0.2108072191476822},{"id":"b005","score":0.21056503057479858}],"ms_median":0.006375,"ms_max":0.009417}
+{"q":"Where do you see yourself in five years?","top":[{"id":"b001","score":0.18629096448421478},{"id":"b005","score":0.18607698380947113}],"ms_median":0.007667,"ms_max":0.012042}
+{"q":"Can you describe","top":[{"id":"b006","score":0.21546898782253265},{"id":"b003","score":0.13446716964244843}],"ms_median":0.00375,"ms_max":0.006625}
+{"q":"Can you describe a","top":[{"id":"b006","score":0.20051336288452148},{"id":"b003","score":0.131739541888237}],"ms_median":0.00425,"ms_max":0.008292}
+{"q":"Can you describe a conflict","top":[{"id":"b006","score":0.15129448473453522},{"id":"b003","score":0.10638593137264252}],"ms_median":0.005292,"ms_max":0.008833}
+{"q":"Can you describe a conflict you","top":[{"id":"b006","score":0.14857877790927887},{"id":"b001","score":0.11387273669242859}],"ms_median":0.005791,"ms_max":0.007917}
+{"q":"Can you describe a conflict you had","top":[{"id":"b006","score":0.13893699645996094},{"id":"b001","score":0.10648314654827118}],"ms_median":0.006333,"ms_max":0.009167}
+{"q":"Can you describe a conflict you had with","top":[{"id":"b010","score":0.13543906807899475},{"id":"b006","score":0.13082633912563324}],"ms_median":0.007542,"ms_max":0.011833}
+{"q":"Can you describe a conflict you had with a","top":[{"id":"b010","score":0.1313142329454422},{"id":"b006","score":0.12684199213981628}],"ms_median":0.007875,"ms_max":0.009792}
+{"q":"Can you describe a conflict you had with a teammate?","top":[{"id":"b010","score":0.11730986833572388},{"id":"b006","score":0.11331458389759064}],"ms_median":0.009,"ms_max":0.01425}
+{"q":"What kind of management","top":[{"id":"b021","score":0.08527018874883652},{"id":"b006","score":0.0751848891377449}],"ms_median":0.004667,"ms_max":0.008583}
+{"q":"What kind of management style","top":[{"id":"b021","score":0.07437469810247421},{"id":"b006","score":0.06557806581258774}],"ms_median":0.005417,"ms_max":0.008083}
+{"q":"What kind of management style brings","top":[{"id":"b013","score":0.0909719318151474},{"id":"b021","score":0.06652205437421799}],"ms_median":0.007084,"ms_max":0.011333}
+{"q":"What kind of management style brings out","top":[{"id":"b013","score":0.08692746609449387},{"id":"b021","score":0.06406541168689728}],"ms_median":0.008167,"ms_max":0.012791}
+{"q":"What kind of management style brings out your","top":[{"id":"b013","score":0.08619286119937897},{"id":"b001","score":0.08615372329950333}],"ms_median":0.008416,"ms_max":0.012167}
+{"q":"What kind of management style brings out your best?","top":[{"id":"b004","score":0.1309291571378708},{"id":"b001","score":0.09822339564561844}],"ms_median":0.00925,"ms_max":0.012583}
+{"q":"Have you ever","top":[{"id":"b017","score":0.18058371543884277},{"id":"b018","score":0.165591761469841}],"ms_median":0.003167,"ms_max":0.005833}
+{"q":"Have you ever contributed","top":[{"id":"b018","score":0.13127538561820984},{"id":"b017","score":0.11258578300476074}],"ms_median":0.005292,"ms_max":0.00875}
+{"q":"Have you ever contributed to","top":[{"id":"b018","score":0.12425288558006287},{"id":"b017","score":0.10656309872865677}],"ms_median":0.00575,"ms_max":0.008542}
+{"q":"Have you ever contributed to open","top":[{"id":"b018","score":0.11144532263278961},{"id":"b017","score":0.09557892382144928}],"ms_median":0.006416,"ms_max":0.009958}
+{"q":"Have you ever contributed to open source","top":[{"id":"b018","score":0.09826954454183578},{"id":"b017","score":0.08427897095680237}],"ms_median":0.007875,"ms_max":0.01275}
+{"q":"Have you ever contributed to open source projects?","top":[{"id":"b004","score":0.12501825392246246},{"id":"b007","score":0.11118189990520477}],"ms_median":0.009166,"ms_max":0.014584}
+{"q":"Do you hold","top":[{"id":"b016","score":0.15178591012954712},{"id":"b014","score":0.14495255053043365}],"ms_median":0.002958,"ms_max":0.004791}
+{"q":"Do you hold any","top":[{"id":"b014","score":0.20206484198570251},{"id":"b016","score":0.12279492616653442}],"ms_median":0.003541,"ms_max":0.006084}
+{"q":"Do you hold any certifications","top":[{"id":"b014","score":0.19174505770206451},{"id":"b016","score":0.09466654062271118}],"ms_median":0.005792,"ms_max":0.010333}
+{"q":"Do you hold any certifications in","top":[{"id":"b014","score":0.1829994171857834},{"id":"b016","score":0.09098227322101593}],"ms_median":0.00625,"ms_max":0.008667}
+{"q":"Do you hold any certifications in cloud","top":[{"id":"b014","score":0.16292262077331543},{"id":"b016","score":0.08100064098834991}],"ms_median":0.007625,"ms_max":0.011916}
+{"q":"Do you hold any certifications in cloud platforms?","top":[{"id":"b014","score":0.1465674787759781},{"id":"b016","score":0.07030283659696579}],"ms_median":0.008958,"ms_max":0.014042}
+{"q":"Sorry,","top":[{"id":"b013","score":0.06410424411296844},{"id":"b001","score":0.05166321247816086}],"ms_median":0.001833,"ms_max":0.002667}
+{"q":"Sorry, can","top":[{"id":"b003","score":0.07743703573942184},{"id":"b012","score":0.07094831019639969}],"ms_median":0.002333,"ms_max":0.004458}
+{"q":"Sorry, can you","top":[{"id":"b003","score":0.15295825898647308},{"id":"b012","score":0.1401413381099701}],"ms_median":0.003667,"ms_max":0.065291}
+{"q":"Sorry, can you hear","top":[{"id":"b003","score":0.1217331737279892},{"id":"b012","score":0.11153270304203033}],"ms_median":0.004458,"ms_max":0.011708}
+{"q":"Sorry, can you hear me","top":[{"id":"b003","score":0.14016076922416687},{"id":"b001","score":0.12109982222318649}],"ms_median":0.005,"ms_max":0.006917}
+{"q":"Sorry, can you hear me okay?","top":[{"id":"b003","score":0.12055307626724243},{"id":"b001","score":0.1041586622595787}],"ms_median":0.0055,"ms_max":0.008125}
+{"q":"Sorry, can you hear me okay? The","top":[{"id":"b012","score":0.15218742191791534},{"id":"b003","score":0.13528873026371002}],"ms_median":0.006416,"ms_max":0.009167}
+{"q":"Sorry, can you hear me okay? The audio","top":[{"id":"b012","score":0.13485966622829437},{"id":"b003","score":0.12410500645637512}],"ms_median":0.0075,"ms_max":0.012375}
+{"q":"Sorry, can you hear me okay? The audio cut","top":[{"id":"b012","score":0.12609067559242249},{"id":"b003","score":0.12017914652824402}],"ms_median":0.007959,"ms_max":0.011291}
+{"q":"Sorry, can you hear me okay? The audio cut out","top":[{"id":"b003","score":0.12558498978614807},{"id":"b012","score":0.12126274406909943}],"ms_median":0.007834,"ms_max":0.011333}
+{"q":"Sorry, can you hear me okay? The audio cut out for","top":[{"id":"b003","score":0.12102779000997543},{"id":"b012","score":0.11686240881681442}],"ms_median":0.009167,"ms_max":0.012584}
+{"q":"Sorry, can you hear me okay? The audio cut out for a","top":[{"id":"b003","score":0.11801836639642715},{"id":"b012","score":0.1139565259218216}],"ms_median":0.008583,"ms_max":0.011459}
+{"q":"Sorry, can you hear me okay? The audio cut out for a second.","top":[{"id":"b003","score":0.10869164019823074},{"id":"b012","score":0.10757806152105331}],"ms_median":0.009375,"ms_max":0.013041}
+{"q":"Let","top":[{"id":"b003","score":0.04036126285791397},{"id":"b021","score":0.03567873314023018}],"ms_median":0.001,"ms_max":0.002041}
+{"q":"Let us","top":[{"id":"b021","score":0.08055580407381058},{"id":"b003","score":0.07196322828531265}],"ms_median":0.001875,"ms_max":0.003125}
+{"q":"Let us wait","top":[{"id":"b021","score":0.055224619805812836},{"id":"b003","score":0.049334026873111725}],"ms_median":0.00325,"ms_max":0.006167}
+{"q":"Let us wait a","top":[{"id":"b021","score":0.060723744332790375},{"id":"b005","score":0.055437833070755005}],"ms_median":0.002625,"ms_max":0.004417}
+{"q":"Let us wait a minute","top":[{"id":"b016","score":0.05138416588306427},{"id":"b021","score":0.04766111448407173}],"ms_median":0.003833,"ms_max":0.008333}
+{"q":"Let us wait a minute for","top":[{"id":"b014","score":0.07091798633337021},{"id":"b007","score":0.049869563430547714}],"ms_median":0.00475,"ms_max":0.006417}
+{"q":"Let us wait a minute for Tomas","top":[{"id":"b007","score":0.06884794682264328},{"id":"b021","score":0.06483131647109985}],"ms_median":0.005542,"ms_max":0.009292}
+{"q":"Let us wait a minute for Tomas to","top":[{"id":"b007","score":0.06615425646305084},{"id":"b021","score":0.062294766306877136}],"ms_median":0.006042,"ms_max":0.008792}
+{"q":"Let us wait a minute for Tomas to join","top":[{"id":"b002","score":0.14073710143566132},{"id":"b015","score":0.11321986466646194}],"ms_median":0.007292,"ms_max":0.012333}
+{"q":"Let us wait a minute for Tomas to join the","top":[{"id":"b002","score":0.13706697523593903},{"id":"b015","score":0.11026731878519058}],"ms_median":0.007125,"ms_max":0.009917}
+{"q":"Let us wait a minute for Tomas to join the call.","top":[{"id":"b002","score":0.12946754693984985},{"id":"b015","score":0.10415375232696533}],"ms_median":0.008667,"ms_max":0.012375}
+{"q":"The","top":[{"id":"b012","score":0.240578293800354},{"id":"b014","score":0.2065708041191101}],"ms_median":0.001166,"ms_max":0.001958}
+{"q":"The weather","top":[{"id":"b012","score":0.06276988238096237},{"id":"b007","score":0.06056131422519684}],"ms_median":0.002625,"ms_max":0.005292}
+{"q":"The weather in","top":[{"id":"b004","score":0.07024995982646942},{"id":"b012","score":0.054990530014038086}],"ms_median":0.003042,"ms_max":0.004625}
+{"q":"The weather in Milan","top":[{"id":"b022","score":0.06880885362625122},{"id":"b002","score":0.05644320696592331}],"ms_median":0.004,"ms_max":0.006542}
+{"q":"The weather in Milan has","top":[{"id":"b022","score":0.061856549233198166},{"id":"b004","score":0.056241072714328766}],"ms_median":0.004917,"ms_max":0.007292}
+{"q":"The weather in Milan has been","top":[{"id":"b022","score":0.055720314383506775},{"id":"b004","score":0.05066189542412758}],"ms_median":0.005834,"ms_max":0.008959}
+{"q":"The weather in Milan has been really","top":[{"id":"b017","score":0.08112065494060516},{"id":"b022","score":0.04988111928105354}],"ms_median":0.00725,"ms_max":0.012333}
+{"q":"The weather in Milan has been really nice","top":[{"id":"b017","score":0.07556191086769104},{"id":"b004","score":0.060301654040813446}],"ms_median":0.007708,"ms_max":0.011458}
+{"q":"The weather in Milan has been really nice this","top":[{"id":"b002","score":0.0938567966222763},{"id":"b017","score":0.07210280746221542}],"ms_median":0.008417,"ms_max":0.0115}
+{"q":"The weather in Milan has been really nice this week.","top":[{"id":"b002","score":0.08831750601530075},{"id":"b017","score":0.06784740835428238}],"ms_median":0.009166,"ms_max":0.01225}
+{"q":"Did you manage","top":[{"id":"b004","score":0.1499292254447937},{"id":"b007","score":0.11735714226961136}],"ms_median":0.003375,"ms_max":0.006875}
+{"q":"Did you manage to","top":[{"id":"b013","score":0.13737033307552338},{"id":"b004","score":0.13478481769561768}],"ms_median":0.003916,"ms_max":0.006042}
+{"q":"Did you manage to find","top":[{"id":"b013","score":0.11166846007108688},{"id":"b004","score":0.10956671833992004}],"ms_median":0.004875,"ms_max":0.008084}
+{"q":"Did you manage to find the","top":[{"id":"b010","score":0.14769522845745087},{"id":"b012","score":0.1386927217245102}],"ms_median":0.005417,"ms_max":0.008291}
+{"q":"Did you manage to find the meeting","top":[{"id":"b010","score":0.1439647674560547},{"id":"b012","score":0.12065508216619492}],"ms_median":0.00725,"ms_max":0.011584}
+{"q":"Did you manage to find the meeting link","top":[{"id":"b010","score":0.1311255246400833},{"id":"b012","score":0.10989469289779663}],"ms_median":0.007792,"ms_max":0.011459}
+{"q":"Did you manage to find the meeting link without","top":[{"id":"b010","score":0.1179903969168663},{"id":"b012","score":0.09888631105422974}],"ms_median":0.008875,"ms_max":0.013334}
+{"q":"Did you manage to find the meeting link without trouble?","top":[{"id":"b010","score":0.11010681837797165},{"id":"b012","score":0.08972659707069397}],"ms_median":0.009958,"ms_max":0.014958}
+{"q":"What did","top":[{"id":"b003","score":0.4183186888694763},{"id":"b007","score":0.35835903882980347}],"ms_median":0.00225,"ms_max":0.004042}
+{"q":"What did you","top":[{"id":"b007","score":0.41619157791137695},{"id":"b003","score":0.36019065976142883}],"ms_median":0.00325,"ms_max":0.005167}
+{"q":"What did you have","top":[{"id":"b007","score":0.31607937812805176},{"id":"b016","score":0.29774507880210876}],"ms_median":0.004125,"ms_max":0.006459}
+{"q":"What did you have for","top":[{"id":"b014","score":0.26920774579048157},{"id":"b007","score":0.24771618843078613}],"ms_median":0.005,"ms_max":0.007583}
+{"q":"What did you have for lunch","top":[{"id":"b014","score":0.20154260098934174},{"id":"b007","score":0.18545286357402802}],"ms_median":0.005709,"ms_max":0.008583}
+{"q":"What did you have for lunch today?","top":[{"id":"b014","score":0.16772489249706268},{"id":"b007","score":0.15433496236801147}],"ms_median":0.006667,"ms_max":0.009625}
+{"q":"I","top":[],"ms_median":0.000459,"ms_max":0.000875}
+{"q":"I will","top":[{"id":"b021","score":0.04681750386953354},{"id":"b005","score":0.021037492901086807}],"ms_median":0.001709,"ms_max":0.003}
+{"q":"I will share","top":[{"id":"b004","score":0.1694876253604889},{"id":"b008","score":0.0359935462474823}],"ms_median":0.002792,"ms_max":0.005083}
+{"q":"I will share my","top":[{"id":"b004","score":0.14827153086662292},{"id":"b008","score":0.03148795664310455}],"ms_median":0.003291,"ms_max":0.005042}
+{"q":"I will share my screen","top":[{"id":"b004","score":0.11940281838178635},{"id":"b019","score":0.03972519934177399}],"ms_median":0.004458,"ms_max":0.007625}
+{"q":"I will share my screen in","top":[{"id":"b004","score":0.11239930987358093},{"id":"b019","score":0.03739514201879501}],"ms_median":0.004917,"ms_max":0.006833}
+{"q":"I will share my screen in just","top":[{"id":"b004","score":0.10626521706581116},{"id":"b012","score":0.07561066746711731}],"ms_median":0.005625,"ms_max":0.008375}
+{"q":"I will share my screen in just a","top":[{"id":"b004","score":0.10323400795459747},{"id":"b012","score":0.0734538733959198}],"ms_median":0.006084,"ms_max":0.008083}
+{"q":"I will share my screen in just a second.","top":[{"id":"b004","score":0.09239179641008377},{"id":"b012","score":0.06874752044677734}],"ms_median":0.007583,"ms_max":0.012042}
+{"q":"How was","top":[{"id":"b011","score":0.1689591407775879},{"id":"b012","score":0.13822749257087708}],"ms_median":0.002,"ms_max":0.00375}
+{"q":"How was your","top":[{"id":"b018","score":0.14617735147476196},{"id":"b004","score":0.13452057540416718}],"ms_median":0.003167,"ms_max":0.004916}
+{"q":"How was your weekend,","top":[{"id":"b018","score":0.09592461585998535},{"id":"b004","score":0.08345640450716019}],"ms_median":0.004667,"ms_max":0.0075}
+{"q":"How was your weekend, did","top":[{"id":"b003","score":0.10195976495742798},{"id":"b012","score":0.09108468890190125}],"ms_median":0.00525,"ms_max":0.007416}
+{"q":"How was your weekend, did you","top":[{"id":"b007","score":0.10397716611623764},{"id":"b003","score":0.09949656575918198}],"ms_median":0.005875,"ms_max":0.007959}
+{"q":"How was your weekend, did you get","top":[{"id":"b020","score":0.18012699484825134},{"id":"b007","score":0.09458104521036148}],"ms_median":0.006584,"ms_max":0.009541}
+{"q":"How was your weekend, did you get out","top":[{"id":"b020","score":0.1684471070766449},{"id":"b007","score":0.129229336977005}],"ms_median":0.007625,"ms_max":0.011958}
+{"q":"How was your weekend, did you get out anywhere?","top":[{"id":"b020","score":0.14664863049983978},{"id":"b007","score":0.1125059649348259}],"ms_median":0.00875,"ms_max":0.013375}
+{"q":"Thanks","top":[{"id":"b019","score":0.1189003512263298},{"id":"b014","score":0.044924698770046234}],"ms_median":0.00175,"ms_max":0.004042}
+{"q":"Thanks for","top":[{"id":"b014","score":0.14798441529273987},{"id":"b020","score":0.13223674893379211}],"ms_median":0.003125,"ms_max":0.004375}
+{"q":"Thanks for making","top":[{"id":"b014","score":0.10988997668027878},{"id":"b016","score":0.10271771252155304}],"ms_median":0.004208,"ms_max":0.007667}
+{"q":"Thanks for making the","top":[{"id":"b014","score":0.10106087476015091},{"id":"b005","score":0.09734468907117844}],"ms_median":0.004458,"ms_max":0.007291}
+{"q":"Thanks for making the time","top":[{"id":"b014","score":0.08895234018564224},{"id":"b005","score":0.08568138629198074}],"ms_median":0.005042,"ms_max":0.007708}
+{"q":"Thanks for making the time to","top":[{"id":"b005","score":0.09304921329021454},{"id":"b014","score":0.09166240692138672}],"ms_median":0.0055,"ms_max":0.008125}
+{"q":"Thanks for making the time to speak","top":[{"id":"b005","score":0.08253076672554016},{"id":"b014","score":0.08130071312189102}],"ms_median":0.006917,"ms_max":0.011292}
+{"q":"Thanks for making the time to speak with","top":[{"id":"b021","score":0.09337553381919861},{"id":"b022","score":0.08685308694839478}],"ms_median":0.007583,"ms_max":0.015625}
+{"q":"Thanks for making the time to speak with us","top":[{"id":"b021","score":0.08970922976732254},{"id":"b014","score":0.08542753756046295}],"ms_median":0.007958,"ms_max":0.010834}
+{"q":"Thanks for making the time to speak with us today.","top":[{"id":"b021","score":0.08263510465621948},{"id":"b014","score":0.07869108021259308}],"ms_median":0.008792,"ms_max":0.012667}
+{"q":"What football","top":[{"id":"b012","score":0.06362336874008179},{"id":"b003","score":0.053960878401994705}],"ms_median":0.002959,"ms_max":0.005333}
+{"q":"What football team","top":[{"id":"b014","score":0.16299882531166077},{"id":"b012","score":0.05305202305316925}],"ms_median":0.004125,"ms_max":0.006875}
+{"q":"What football team do","top":[{"id":"b014","score":0.15009047091007233},{"id":"b003","score":0.05457521229982376}],"ms_median":0.004541,"ms_max":0.00675}
+{"q":"What football team do you","top":[{"id":"b014","score":0.15405148267745972},{"id":"b008","score":0.07909185439348221}],"ms_median":0.005291,"ms_max":0.008}
+{"q":"What football team do you support?","top":[{"id":"b014","score":0.12655270099639893},{"id":"b008","score":0.06497363746166229}],"ms_median":0.006584,"ms_max":0.009917}
+{"q":"We","top":[{"id":"b008","score":0.1556229293346405},{"id":"b015","score":0.1474708467721939}],"ms_median":0.000834,"ms_max":0.001459}
+{"q":"We have","top":[{"id":"b014","score":0.26223024725914},{"id":"b007","score":0.16369590163230896}],"ms_median":0.002167,"ms_max":0.033542}
+{"q":"We have a","top":[{"id":"b014","score":0.22429747879505157},{"id":"b007","score":0.1352955847978592}],"ms_median":0.002334,"ms_max":0.004666}
+{"q":"We have a company","top":[{"id":"b008","score":0.2410499006509781},{"id":"b014","score":0.16059495508670807}],"ms_median":0.0045,"ms_max":0.007833}
+{"q":"We have a company offsite","top":[{"id":"b008","score":0.18331050872802734},{"id":"b014","score":0.12212716042995453}],"ms_median":0.005,"ms_max":0.008625}
+{"q":"We have a company offsite planned","top":[{"id":"b007","score":0.18594211339950562},{"id":"b008","score":0.15746890008449554}],"ms_median":0.006708,"ms_max":0.013084}
+{"q":"We have a company offsite planned in","top":[{"id":"b007","score":0.17845778167247772},{"id":"b008","score":0.15113066136837006}],"ms_median":0.00725,"ms_max":0.012542}
+{"q":"We have a company offsite planned in Lisbon","top":[{"id":"b007","score":0.16114631295204163},{"id":"b008","score":0.13438180088996887}],"ms_median":0.008,"ms_max":0.012167}
+{"q":"We have a company offsite planned in Lisbon next","top":[{"id":"b007","score":0.1500978171825409},{"id":"b008","score":0.1251683384180069}],"ms_median":0.008625,"ms_max":0.012083}
+{"q":"We have a company offsite planned in Lisbon next spring.","top":[{"id":"b007","score":0.14668704569339752},{"id":"b018","score":0.11835362017154694}],"ms_median":0.009791,"ms_max":0.01425}
+{"q":"Could you mute","top":[{"id":"b015","score":0.26181989908218384},{"id":"b013","score":0.15015217661857605}],"ms_median":0.003417,"ms_max":0.006542}
+{"q":"Could you mute your","top":[{"id":"b015","score":0.23471543192863464},{"id":"b018","score":0.1437208652496338}],"ms_median":0.0045,"ms_max":0.00725}
+{"q":"Could you mute your microphone","top":[{"id":"b015","score":0.15363721549510956},{"id":"b018","score":0.09407508373260498}],"ms_median":0.005834,"ms_max":0.00925}
+{"q":"Could you mute your microphone while","top":[{"id":"b015","score":0.13562124967575073},{"id":"b018","score":0.08304356038570404}],"ms_median":0.007291,"ms_max":0.013917}
+{"q":"Could you mute your microphone while Ingrid","top":[{"id":"b015","score":0.12090279161930084},{"id":"b018","score":0.07403115928173065}],"ms_median":0.008125,"ms_max":0.01225}
+{"q":"Could you mute your microphone while Ingrid is","top":[{"id":"b015","score":0.11670461297035217},{"id":"b018","score":0.07146050781011581}],"ms_median":0.008542,"ms_max":0.01125}
+{"q":"Could you mute your microphone while Ingrid is talking?","top":[{"id":"b015","score":0.10652712732553482},{"id":"b018","score":0.0652286633849144}],"ms_median":0.009667,"ms_max":0.014208}
+{"q":"Can you explain","top":[{"id":"b022","score":0.5167149305343628},{"id":"b003","score":0.15414033830165863}],"ms_median":0.003667,"ms_max":0.007125}
+{"q":"Can you explain how","top":[{"id":"b022","score":0.45317795872688293},{"id":"b003","score":0.13518676161766052}],"ms_median":0.004667,"ms_max":0.007334}
+{"q":"Can you explain how a","top":[{"id":"b022","score":0.42152488231658936},{"id":"b003","score":0.12574443221092224}],"ms_median":0.005042,"ms_max":0.006875}
+{"q":"Can you explain how a hash","top":[{"id":"b022","score":0.35004302859306335},{"id":"b003","score":0.10442078113555908}],"ms_median":0.0055,"ms_max":0.008041}
+{"q":"Can you explain how a hash map","top":[{"id":"b022","score":0.31301555037498474},{"id":"b003","score":0.09337515383958817}],"ms_median":0.006583,"ms_max":0.008375}
+{"q":"Can you explain how a hash map handles","top":[{"id":"b022","score":0.2711690664291382},{"id":"b010","score":0.11689352989196777}],"ms_median":0.00775,"ms_max":0.012959}
+{"q":"Can you explain how a hash map handles collisions?","top":[{"id":"b022","score":0.2373407781124115},{"id":"b010","score":0.10114791989326477}],"ms_median":0.009292,"ms_max":0.014875}
+{"q":"Do you prefer","top":[{"id":"b019","score":0.0861637219786644},{"id":"b009","score":0.08336592465639114}],"ms_median":0.003208,"ms_max":0.005958}
+{"q":"Do you prefer working","top":[{"id":"b020","score":0.22982633113861084},{"id":"b005","score":0.18603940308094025}],"ms_median":0.004791,"ms_max":0.008458}
+{"q":"Do you prefer working in","top":[{"id":"b020","score":0.20914340019226074},{"id":"b005","score":0.16929703950881958}],"ms_median":0.005125,"ms_max":0.007167}
+{"q":"Do you prefer working in a","top":[{"id":"b020","score":0.19735659658908844},{"id":"b005","score":0.15975584089756012}],"ms_median":0.005458,"ms_max":0.007333}
+{"q":"Do you prefer working in a team","top":[{"id":"b020","score":0.17810367047786713},{"id":"b005","score":0.14417104423046112}],"ms_median":0.006209,"ms_max":0.009041}
+{"q":"Do you prefer working in a team or","top":[{"id":"b020","score":0.16800536215305328},{"id":"b005","score":0.13599662482738495}],"ms_median":0.007291,"ms_max":0.011666}
+{"q":"Do you prefer working in a team or on","top":[{"id":"b020","score":0.15963315963745117},{"id":"b005","score":0.12921954691410065}],"ms_median":0.008125,"ms_max":0.010291}
+{"q":"Do you prefer working in a team or on your","top":[{"id":"b020","score":0.15581224858760834},{"id":"b005","score":0.12633530795574188}],"ms_median":0.008541,"ms_max":0.011791}
+{"q":"Do you prefer working in a team or on your own?","top":[{"id":"b020","score":0.14391887187957764},{"id":"b005","score":0.116691954433918}],"ms_median":0.008958,"ms_max":0.011917}
+{"q":"What is your favourite part","top":[{"id":"b015","score":0.23574969172477722},{"id":"b005","score":0.215261310338974}],"ms_median":0.0055,"ms_max":0.011292}
+{"q":"What is your favourite part of","top":[{"id":"b015","score":0.22171343863010406},{"id":"b005","score":0.2024448812007904}],"ms_median":0.006,"ms_max":0.008125}
+{"q":"What is your favourite part of working","top":[{"id":"b015","score":0.1978338062763214},{"id":"b005","score":0.18064065277576447}],"ms_median":0.00775,"ms_max":0.012666}
+{"q":"What is your favourite part of working with","top":[{"id":"b015","score":0.18658429384231567},{"id":"b005","score":0.17036877572536469}],"ms_median":0.008333,"ms_max":0.012542}
+{"q":"What is your favourite part of working with data?","top":[{"id":"b015","score":0.1735198199748993},{"id":"b005","score":0.15843969583511353}],"ms_median":0.009125,"ms_max":0.012625}
+{"q":"Have you used","top":[{"id":"b017","score":0.3900631368160248},{"id":"b019","score":0.2026708722114563}],"ms_median":0.00325,"ms_max":0.006583}
+{"q":"Have you used Terraform","top":[{"id":"b017","score":0.22701385617256165},{"id":"b019","score":0.11795292794704437}],"ms_median":0.004917,"ms_max":0.008958}
+{"q":"Have you used Terraform or","top":[{"id":"b017","score":0.21011731028556824},{"id":"b011","score":0.11281148344278336}],"ms_median":0.005375,"ms_max":0.007417}
+{"q":"Have you used Terraform or any","top":[{"id":"b017","score":0.1925741285085678},{"id":"b014","score":0.13059160113334656}],"ms_median":0.006041,"ms_max":0.008542}
+{"q":"Have you used Terraform or any infrastructure","top":[{"id":"b017","score":0.153457909822464},{"id":"b014","score":0.09843415766954422}],"ms_median":0.0085,"ms_max":0.014667}
+{"q":"Have you used Terraform or any infrastructure as","top":[{"id":"b017","score":0.14832079410552979},{"id":"b014","score":0.09892500936985016}],"ms_median":0.008834,"ms_max":0.012}
+{"q":"Have you used Terraform or any infrastructure as code","top":[{"id":"b017","score":0.14303646981716156},{"id":"b014","score":0.09327546507120132}],"ms_median":0.009458,"ms_max":0.013416}
+{"q":"Have you used Terraform or any infrastructure as code tools?","top":[{"id":"b017","score":0.1394936740398407},{"id":"b014","score":0.08753018826246262}],"ms_median":0.010458,"ms_max":0.015208}
+{"q":"How do you stay","top":[{"id":"b020","score":0.20159779489040375},{"id":"b009","score":0.19620275497436523}],"ms_median":0.003708,"ms_max":0.007292}
+{"q":"How do you stay up","top":[{"id":"b020","score":0.1635589450597763},{"id":"b009","score":0.15918190777301788}],"ms_median":0.004417,"ms_max":0.006959}
+{"q":"How do you stay up to","top":[{"id":"b020","score":0.14482271671295166},{"id":"b009","score":0.14094707369804382}],"ms_median":0.004875,"ms_max":0.006666}
+{"q":"How do you stay up to date","top":[{"id":"b015","score":0.15740326046943665},{"id":"b020","score":0.12437091767787933}],"ms_median":0.005625,"ms_max":0.008334}
+{"q":"How do you stay up to date with","top":[{"id":"b015","score":0.14467523992061615},{"id":"b007","score":0.12907269597053528}],"ms_median":0.006375,"ms_max":0.008792}
+{"q":"How do you stay up to date with new","top":[{"id":"b020","score":0.14973504841327667},{"id":"b015","score":0.13135650753974915}],"ms_median":0.007459,"ms_max":0.012}
+{"q":"How do you stay up to date with new research","top":[{"id":"b020","score":0.13118833303451538},{"id":"b015","score":0.1198519691824913}],"ms_median":0.008584,"ms_max":0.013708}
+{"q":"How do you stay up to date with new research in","top":[{"id":"b020","score":0.1263130009174347},{"id":"b015","score":0.11539795249700546}],"ms_median":0.009,"ms_max":0.011875}
+{"q":"How do you stay up to date with new research in machine","top":[{"id":"b020","score":0.1201060488820076},{"id":"b015","score":0.10450294613838196}],"ms_median":0.010042,"ms_max":0.0155}
+{"q":"How do you stay up to date with new research in machine learning?","top":[{"id":"b020","score":0.11669940501451492},{"id":"b007","score":0.10339426249265671}],"ms_median":0.011334,"ms_max":0.017208}
+{"q":"Tell us about a","top":[{"id":"b003","score":0.5179845690727234},{"id":"b005","score":0.4421503245830536}],"ms_median":0.003542,"ms_max":0.006875}
+{"q":"Tell us about a time","top":[{"id":"b003","score":0.3962985575199127},{"id":"b005","score":0.3382793962955475}],"ms_median":0.004584,"ms_max":0.012083}
+{"q":"Tell us about a time you","top":[{"id":"b003","score":0.380855530500412},{"id":"b005","score":0.32396408915519714}],"ms_median":0.005584,"ms_max":0.0405}
+{"q":"Tell us about a time you missed","top":[{"id":"b003","score":0.3177807331085205},{"id":"b005","score":0.26554909348487854}],"ms_median":0.006209,"ms_max":0.012833}
+{"q":"Tell us about a time you missed a","top":[{"id":"b003","score":0.3043758273124695},{"id":"b005","score":0.25784435868263245}],"ms_median":0.006458,"ms_max":0.008667}
+{"q":"Tell us about a time you missed a deadline.","top":[{"id":"b003","score":0.2602775990962982},{"id":"b005","score":0.2381432205438614}],"ms_median":0.0085,"ms_max":0.014}
+{"q":"What books","top":[{"id":"b003","score":0.06297124177217484},{"id":"b008","score":0.05583372339606285}],"ms_median":0.002584,"ms_max":0.004708}
+{"q":"What books or","top":[{"id":"b003","score":0.053890932351350784},{"id":"b016","score":0.05121045559644699}],"ms_median":0.003042,"ms_max":0.005333}
+{"q":"What books or podcasts","top":[{"id":"b020","score":0.049608711153268814},{"id":"b003","score":0.03850289806723595}],"ms_median":0.004584,"ms_max":0.008333}
+{"q":"What books or podcasts do","top":[{"id":"b004","score":0.056695278733968735},{"id":"b020","score":0.05516956001520157}],"ms_median":0.004583,"ms_max":0.006417}
+{"q":"What books or podcasts do you","top":[{"id":"b020","score":0.07692991942167282},{"id":"b008","score":0.06975121051073074}],"ms_median":0.005375,"ms_max":0.008}
+{"q":"What books or podcasts do you follow","top":[{"id":"b020","score":0.06898326426744461},{"id":"b008","score":0.060915857553482056}],"ms_median":0.007459,"ms_max":0.012167}
+{"q":"What books or podcasts do you follow at","top":[{"id":"b020","score":0.06624118238687515},{"id":"b008","score":0.06403010338544846}],"ms_median":0.007833,"ms_max":0.01075}
+{"q":"What books or podcasts do you follow at the","top":[{"id":"b020","score":0.11350252479314804},{"id":"b014","score":0.07744154334068298}],"ms_median":0.007583,"ms_max":0.010834}
+{"q":"What books or podcasts do you follow at the moment?","top":[{"id":"b020","score":0.10497970879077911},{"id":"b010","score":0.08413974940776825}],"ms_median":0.008542,"ms_max":0.012583}
+{"q":"Is","top":[{"id":"b015","score":0.180540531873703},{"id":"b005","score":0.17344701290130615}],"ms_median":0.00075,"ms_max":0.001416}
+{"q":"Is the","top":[{"id":"b014","score":0.23204565048217773},{"id":"b011","score":0.13995741307735443}],"ms_median":0.001666,"ms_max":0.003208}
+{"q":"Is the call","top":[{"id":"b014","score":0.13832423090934753},{"id":"b012","score":0.10866288840770721}],"ms_median":0.00275,"ms_max":0.004375}
+{"q":"Is the call being","top":[{"id":"b014","score":0.1129845604300499},{"id":"b012","score":0.08437715470790863}],"ms_median":0.003625,"ms_max":0.006042}
+{"q":"Is the call being recorded","top":[{"id":"b014","score":0.08820673823356628},{"id":"b012","score":0.0630284920334816}],"ms_median":0.005083,"ms_max":0.008375}
+{"q":"Is the call being recorded for","top":[{"id":"b014","score":0.08250952512025833},{"id":"b007","score":0.07726570218801498}],"ms_median":0.00575,"ms_max":0.008042}
+{"q":"Is the call being recorded for the","top":[{"id":"b007","score":0.13635852932929993},{"id":"b014","score":0.10063961148262024}],"ms_median":0.007166,"ms_max":0.010584}
+{"q":"Is the call being recorded for the hiring","top":[{"id":"b007","score":0.12212266772985458},{"id":"b014","score":0.0958351120352745}],"ms_median":0.006875,"ms_max":0.011167}
+{"q":"Is the call being recorded for the hiring committee?","top":[{"id":"b007","score":0.10885681957006454},{"id":"b014","score":0.08365413546562195}],"ms_median":0.008792,"ms_max":0.013666}
+{"q":"Give me","top":[{"id":"b001","score":0.203206405043602},{"id":"b003","score":0.052909545600414276}],"ms_median":0.001958,"ms_max":0.003458}
+{"q":"Give me one","top":[{"id":"b001","score":0.15671974420547485},{"id":"b019","score":0.11416653543710709}],"ms_median":0.002667,"ms_max":0.004625}
+{"q":"Give me one second,","top":[{"id":"b001","score":0.11370673030614853},{"id":"b019","score":0.08283261209726334}],"ms_median":0.003708,"ms_max":0.006583}
+{"q":"Give me one second, I","top":[{"id":"b001","score":0.10660675913095474},{"id":"b019","score":0.0776604413986206}],"ms_median":0.004334,"ms_max":0.006042}
+{"q":"Give me one second, I need","top":[{"id":"b001","score":0.09347929060459137},{"id":"b019","score":0.06809740513563156}],"ms_median":0.005042,"ms_max":0.007625}
+{"q":"Give me one second, I need to","top":[{"id":"b001","score":0.0996219590306282},{"id":"b019","score":0.06520145386457443}],"ms_median":0.0055,"ms_max":0.007625}
+{"q":"Give me one second, I need to refill","top":[{"id":"b001","score":0.0877886712551117},{"id":"b019","score":0.057456694543361664}],"ms_median":0.007,"ms_max":0.01125}
+{"q":"Give me one second, I need to refill my","top":[{"id":"b001","score":0.08388272672891617},{"id":"b019","score":0.05490029603242874}],"ms_median":0.007417,"ms_max":0.010084}
+{"q":"Give me one second, I need to refill my coffee.","top":[{"id":"b001","score":0.07624898105859756},{"id":"b019","score":0.04990409314632416}],"ms_median":0.008375,"ms_max":0.013458}
+{"q":"It","top":[{"id":"b012","score":0.2910149097442627},{"id":"b003","score":0.18793365359306335}],"ms_median":0.000792,"ms_max":0.001459}
+{"q":"It has","top":[{"id":"b012","score":0.1207614317536354},{"id":"b003","score":0.08767116069793701}],"ms_median":0.00175,"ms_max":0.003166}
+{"q":"It has been","top":[{"id":"b012","score":0.08288131654262543},{"id":"b008","score":0.06852273643016815}],"ms_median":0.002667,"ms_max":0.005042}
+{"q":"It has been raining","top":[{"id":"b012","score":0.06204582005739212},{"id":"b018","score":0.05466712638735771}],"ms_median":0.004208,"ms_max":0.007375}
+{"q":"It has been raining all","top":[{"id":"b019","score":0.06687187403440475},{"id":"b012","score":0.0561707504093647}],"ms_median":0.00475,"ms_max":0.007375}
+{"q":"It has been raining all morning","top":[{"id":"b019","score":0.06087840721011162},{"id":"b007","score":0.060815587639808655}],"ms_median":0.005708,"ms_max":0.008709}
+{"q":"It has been raining all morning here","top":[{"id":"b019","score":0.056633755564689636},{"id":"b007","score":0.056575313210487366}],"ms_median":0.006958,"ms_max":0.011458}
+{"q":"It has been raining all morning here in","top":[{"id":"b017","score":0.06402654200792313},{"id":"b018","score":0.06216484680771828}],"ms_median":0.007333,"ms_max":0.010334}
+{"q":"It has been raining all morning here in Gothenburg.","top":[{"id":"b017","score":0.05521396920084953},{"id":"b018","score":0.05360851064324379}],"ms_median":0.008791,"ms_max":0.013917}
+{"q":"We are","top":[{"id":"b016","score":0.167024165391922},{"id":"b008","score":0.10386588424444199}],"ms_median":0.001833,"ms_max":0.003375}
+{"q":"We are running","top":[{"id":"b017","score":0.3153894543647766},{"id":"b018","score":0.12898050248622894}],"ms_median":0.003167,"ms_max":0.006125}
+{"q":"We are running about","top":[{"id":"b017","score":0.27036428451538086},{"id":"b008","score":0.11872401833534241}],"ms_median":0.004459,"ms_max":0.00725}
+{"q":"We are running about ten","top":[{"id":"b017","score":0.2404303252696991},{"id":"b003","score":0.1270376443862915}],"ms_median":0.005042,"ms_max":0.008}
+{"q":"We are running about ten minutes","top":[{"id":"b017","score":0.1954135149717331},{"id":"b003","score":0.10325181484222412}],"ms_median":0.006125,"ms_max":0.009708}
+{"q":"We are running about ten minutes behind","top":[{"id":"b017","score":0.1710345298051834},{"id":"b016","score":0.11161940544843674}],"ms_median":0.007667,"ms_max":0.012625}
+{"q":"We are running about ten minutes behind schedule.","top":[{"id":"b017","score":0.1482996940612793},{"id":"b016","score":0.0967823714017868}],"ms_median":0.008875,"ms_max":0.013209}
+{"q":"Which","top":[{"id":"b006","score":0.36426007747650146},{"id":"b011","score":0.023053137585520744}],"ms_median":0.001541,"ms_max":0.002792}
+{"q":"Which database","top":[{"id":"b006","score":0.23260138928890228},{"id":"b011","score":0.0867975503206253}],"ms_median":0.003,"ms_max":0.005208}
+{"q":"Which database would","top":[{"id":"b006","score":0.20505563914775848},{"id":"b022","score":0.09904039651155472}],"ms_median":0.004333,"ms_max":0.007875}
+{"q":"Which database would you","top":[{"id":"b006","score":0.20625735819339752},{"id":"b022","score":0.14286093413829803}],"ms_median":0.005083,"ms_max":0.007917}
+{"q":"Which database would you pick","top":[{"id":"b006","score":0.18041539192199707},{"id":"b022","score":0.12496189028024673}],"ms_median":0.005917,"ms_max":0.008791}
+{"q":"Which database would you pick for","top":[{"id":"b006","score":0.1678846776485443},{"id":"b022","score":0.11628268659114838}],"ms_median":0.006375,"ms_max":0.008708}
+{"q":"Which database would you pick for a","top":[{"id":"b006","score":0.16118572652339935},{"id":"b022","score":0.11164278537034988}],"ms_median":0.007208,"ms_max":0.010833}
+{"q":"Which database would you pick for a high","top":[{"id":"b006","score":0.14669232070446014},{"id":"b022","score":0.10160414129495621}],"ms_median":0.007833,"ms_max":0.011}
+{"q":"Which database would you pick for a high write","top":[{"id":"b006","score":0.13373826444149017},{"id":"b022","score":0.09263170510530472}],"ms_median":0.0085,"ms_max":0.012292}
+{"q":"Which database would you pick for a high write workload?","top":[{"id":"b006","score":0.12088814377784729},{"id":"b022","score":0.08591701835393906}],"ms_median":0.01,"ms_max":0.013875}
+{"q":"How big","top":[{"id":"b005","score":0.10144124925136566},{"id":"b015","score":0.04291009530425072}],"ms_median":0.001959,"ms_max":0.003708}
+{"q":"How big is","top":[{"id":"b005","score":0.12439948320388794},{"id":"b010","score":0.05241202935576439}],"ms_median":0.002625,"ms_max":0.004083}
+{"q":"How big is the","top":[{"id":"b014","score":0.11616866290569305},{"id":"b005","score":0.11134079098701477}],"ms_median":0.00325,"ms_max":0.004916}
+{"q":"How big is the team","top":[{"id":"b014","score":0.26051822304725647},{"id":"b005","score":0.09591763466596603}],"ms_median":0.004375,"ms_max":0.00725}
+{"q":"How big is the team you","top":[{"id":"b014","score":0.24918247759342194},{"id":"b005","score":0.09208481013774872}],"ms_median":0.005083,"ms_max":0.00775}
+{"q":"How big is the team you currently","top":[{"id":"b014","score":0.18980729579925537},{"id":"b005","score":0.07014283537864685}],"ms_median":0.006542,"ms_max":0.010542}
+{"q":"How big is the team you currently work","top":[{"id":"b014","score":0.18185096979141235},{"id":"b013","score":0.08382165431976318}],"ms_median":0.007708,"ms_max":0.012125}
+{"q":"How big is the team you currently work in?","top":[{"id":"b014","score":0.1743326038122177},{"id":"b013","score":0.080356165766716}],"ms_median":0.008167,"ms_max":0.010667}
+{"q":"Do you speak","top":[{"id":"b012","score":0.08205908536911011},{"id":"b009","score":0.08147644251585007}],"ms_median":0.003125,"ms_max":0.005667}
+{"q":"Do you speak any","top":[{"id":"b014","score":0.1394517570734024},{"id":"b008","score":0.0938994511961937}],"ms_median":0.003708,"ms_max":0.005625}
+{"q":"Do you speak any other","top":[{"id":"b014","score":0.1109972596168518},{"id":"b008","score":0.07473968714475632}],"ms_median":0.004875,"ms_max":0.008042}
+{"q":"Do you speak any other languages","top":[{"id":"b017","score":0.16938558220863342},{"id":"b014","score":0.08935562521219254}],"ms_median":0.006209,"ms_max":0.011333}
+{"q":"Do you speak any other languages besides","top":[{"id":"b017","score":0.14646004140377045},{"id":"b009","score":0.08077594637870789}],"ms_median":0.008125,"ms_max":0.013042}
+{"q":"Do you speak any other languages besides English?","top":[{"id":"b017","score":0.13011381030082703},{"id":"b009","score":0.07176065444946289}],"ms_median":0.009208,"ms_max":0.01525}
+{"q":"Are","top":[{"id":"b008","score":0.21051640808582306},{"id":"b016","score":0.20377403497695923}],"ms_median":0.001166,"ms_max":0.002}
+{"q":"Are you","top":[{"id":"b008","score":0.3075282871723175},{"id":"b016","score":0.28502851724624634}],"ms_median":0.002208,"ms_max":0.003625}
+{"q":"Are you comfortable","top":[{"id":"b016","score":0.15830528736114502},{"id":"b008","score":0.13656705617904663}],"ms_median":0.004375,"ms_max":0.007708}
+{"q":"Are you comfortable travelling","top":[{"id":"b016","score":0.11873164027929306},{"id":"b008","score":0.10242763161659241}],"ms_median":0.00575,"ms_max":0.00975}
+{"q":"Are you comfortable travelling for","top":[{"id":"b016","score":0.20351295173168182},{"id":"b008","score":0.09665806591510773}],"ms_median":0.006959,"ms_max":0.010916}
+{"q":"Are you comfortable travelling for work","top":[{"id":"b016","score":0.19213637709617615},{"id":"b008","score":0.10105885565280914}],"ms_median":0.00775,"ms_max":0.010792}
+{"q":"Are you comfortable travelling for work a","top":[{"id":"b016","score":0.1856590211391449},{"id":"b008","score":0.09765197336673737}],"ms_median":0.007875,"ms_max":0.009709}
+{"q":"Are you comfortable travelling for work a few","top":[{"id":"b016","score":0.17352212965488434},{"id":"b008","score":0.09126824885606766}],"ms_median":0.008833,"ms_max":0.013791}
+{"q":"Are you comfortable travelling for work a few times","top":[{"id":"b016","score":0.1595343053340912},{"id":"b008","score":0.08391102403402328}],"ms_median":0.009208,"ms_max":0.012291}
+{"q":"Are you comfortable travelling for work a few times a","top":[{"id":"b016","score":0.15620151162147522},{"id":"b008","score":0.08215805888175964}],"ms_median":0.009459,"ms_max":0.010917}
+{"q":"Are you comfortable travelling for work a few times a year?","top":[{"id":"b016","score":0.14739994704723358},{"id":"b008","score":0.08504997938871384}],"ms_median":0.010292,"ms_max":0.01425}
+{"q":"What do you do outside","top":[{"id":"b007","score":0.23849032819271088},{"id":"b008","score":0.1736331731081009}],"ms_median":0.004958,"ms_max":0.009125}
+{"q":"What do you do outside of","top":[{"id":"b007","score":0.2188659906387329},{"id":"b008","score":0.1593456268310547}],"ms_median":0.005416,"ms_max":0.007958}
+{"q":"What do you do outside of work","top":[{"id":"b007","score":0.1964922696352005},{"id":"b018","score":0.15453706681728363}],"ms_median":0.006083,"ms_max":0.008875}
+{"q":"What do you do outside of work to","top":[{"id":"b007","score":0.18671739101409912},{"id":"b013","score":0.16243867576122284}],"ms_median":0.006542,"ms_max":0.009459}
+{"q":"What do you do outside of work to relax?","top":[{"id":"b018","score":0.18761049211025238},{"id":"b007","score":0.16420774161815643}],"ms_median":0.007958,"ms_max":0.012625}
+{"q":"Could you repeat","top":[{"id":"b015","score":0.22665606439113617},{"id":"b022","score":0.1211790218949318}],"ms_median":0.003667,"ms_max":0.006583}
+{"q":"Could you repeat that","top":[{"id":"b015","score":0.19566252827644348},{"id":"b014","score":0.11388303339481354}],"ms_median":0.004709,"ms_max":0.007417}
+{"q":"Could you repeat that last","top":[{"id":"b015","score":0.16657353937625885},{"id":"b014","score":0.09695213288068771}],"ms_median":0.005291,"ms_max":0.008209}
+{"q":"Could you repeat that last part,","top":[{"id":"b015","score":0.14916354417800903},{"id":"b013","score":0.09104729443788528}],"ms_median":0.006167,"ms_max":0.009208}
+{"q":"Could you repeat that last part, the","top":[{"id":"b015","score":0.14159545302391052},{"id":"b020","score":0.10687613487243652}],"ms_median":0.007292,"ms_max":0.011209}
+{"q":"Could you repeat that last part, the line","top":[{"id":"b015","score":0.13243119418621063},{"id":"b014","score":0.10482776910066605}],"ms_median":0.009208,"ms_max":0.013292}
+{"q":"Could you repeat that last part, the line was","top":[{"id":"b011","score":0.1549404263496399},{"id":"b015","score":0.12596724927425385}],"ms_median":0.008542,"ms_max":0.011708}
+{"q":"Could you repeat that last part, the line was breaking","top":[{"id":"b011","score":0.13696877658367157},{"id":"b015","score":0.11135625094175339}],"ms_median":0.009833,"ms_max":0.01425}
+{"q":"Could you repeat that last part, the line was breaking up.","top":[{"id":"b011","score":0.13169249892234802},{"id":"b015","score":0.10706661641597748}],"ms_median":0.010333,"ms_max":0.013709}
+{"q":"How would you explain","top":[{"id":"b022","score":0.36848780512809753},{"id":"b013","score":0.2513991594314575}],"ms_median":0.004875,"ms_max":0.008625}
+{"q":"How would you explain gradient","top":[{"id":"b022","score":0.2622871696949005},{"id":"b013","score":0.17894421517848969}],"ms_median":0.006,"ms_max":0.00975}
+{"q":"How would you explain gradient descent","top":[{"id":"b022","score":0.21882031857967377},{"id":"b013","score":0.14928919076919556}],"ms_median":0.007625,"ms_max":0.01175}
+{"q":"How would you explain gradient descent to","top":[{"id":"b022","score":0.21282893419265747},{"id":"b013","score":0.1486840546131134}],"ms_median":0.008042,"ms_max":0.01075}
+{"q":"How would you explain gradient descent to a","top":[{"id":"b022","score":0.20739907026290894},{"id":"b013","score":0.144890695810318}],"ms_median":0.008375,"ms_max":0.010208}
+{"q":"How would you explain gradient descent to a child?","top":[{"id":"b022","score":0.18931320309638977},{"id":"b013","score":0.1348382979631424}],"ms_median":0.009167,"ms_max":0.01275}
+{"q":"I think","top":[{"id":"b014","score":0.04947192966938019},{"id":"b002","score":0.04587759077548981}],"ms_median":0.001875,"ms_max":0.003125}
+{"q":"I think we","top":[{"id":"b014","score":0.0658104345202446},{"id":"b008","score":0.038380954414606094}],"ms_median":0.002542,"ms_max":0.004166}
+{"q":"I think we can","top":[{"id":"b003","score":0.06574821472167969},{"id":"b012","score":0.06293770670890808}],"ms_median":0.003125,"ms_max":0.005125}
+{"q":"I think we can start","top":[{"id":"b015","score":0.1473134607076645},{"id":"b020","score":0.12181131541728973}],"ms_median":0.004333,"ms_max":0.007541}
+{"q":"I think we can start with","top":[{"id":"b015","score":0.13389720022678375},{"id":"b020","score":0.11071757972240448}],"ms_median":0.005042,"ms_max":0.007625}
+{"q":"I think we can start with a","top":[{"id":"b015","score":0.12806712090969086},{"id":"b020","score":0.10589680075645447}],"ms_median":0.005375,"ms_max":0.007125}
+{"q":"I think we can start with a few","top":[{"id":"b015","score":0.11621799319982529},{"id":"b020","score":0.09609892964363098}],"ms_median":0.005958,"ms_max":0.008459}
+{"q":"I think we can start with a few introductions","top":[{"id":"b001","score":0.20919683575630188},{"id":"b017","score":0.10704242438077927}],"ms_median":0.008333,"ms_max":0.015666}
+{"q":"I think we can start with a few introductions around","top":[{"id":"b001","score":0.20471028983592987},{"id":"b018","score":0.1071905568242073}],"ms_median":0.009334,"ms_max":0.014583}
+{"q":"I think we can start with a few introductions around the","top":[{"id":"b001","score":0.20001734793186188},{"id":"b010","score":0.15548588335514069}],"ms_median":0.01,"ms_max":0.013209}
+{"q":"I think we can start with a few introductions around the table.","top":[{"id":"b001","score":0.1881975382566452},{"id":"b010","score":0.1462976485490799}],"ms_median":0.010917,"ms_max":0.015458}
+{"q":"Our","top":[{"id":"b018","score":0.2320869415998459},{"id":"b008","score":0.18282097578048706}],"ms_median":0.001125,"ms_max":0.00225}
+{"q":"Our office","top":[{"id":"b018","score":0.07470858842134476},{"id":"b015","score":0.06965158134698868}],"ms_median":0.0025,"ms_max":0.00425}
+{"q":"Our office is","top":[{"id":"b015","score":0.0992279052734375},{"id":"b004","score":0.07215366512537003}],"ms_median":0.002917,"ms_max":0.004666}
+{"q":"Our office is close","top":[{"id":"b015","score":0.07796616852283478},{"id":"b004","score":0.05669316649436951}],"ms_median":0.004125,"ms_max":0.008667}
+{"q":"Our office is close to","top":[{"id":"b015","score":0.07392915338277817},{"id":"b004","score":0.053757648915052414}],"ms_median":0.004667,"ms_max":0.007}
+{"q":"Our office is close to the","top":[{"id":"b012","score":0.14144742488861084},{"id":"b002","score":0.08913677930831909}],"ms_median":0.005125,"ms_max":0.008042}
+{"q":"Our office is close to the central","top":[{"id":"b012","score":0.14253556728363037},{"id":"b002","score":0.0827784389257431}],"ms_median":0.006792,"ms_max":0.011083}
+{"q":"Our office is close to the central station","top":[{"id":"b012","score":0.12975941598415375},{"id":"b002","score":0.07535862177610397}],"ms_median":0.007833,"ms_max":0.012208}
+{"q":"Our office is close to the central station if","top":[{"id":"b012","score":0.1241346076130867},{"id":"b002","score":0.0720919743180275}],"ms_median":0.00825,"ms_max":0.011792}
+{"q":"Our office is close to the central station if that","top":[{"id":"b012","score":0.1205153837800026},{"id":"b014","score":0.07757359743118286}],"ms_median":0.008958,"ms_max":0.012833}
+{"q":"Our office is close to the central station if that matters.","top":[{"id":"b012","score":0.11066826432943344},{"id":"b002","score":0.07893025875091553}],"ms_median":0.010125,"ms_max":0.015}
+{"q":"What is the difference","top":[{"id":"b017","score":0.1593075841665268},{"id":"b015","score":0.1530531346797943}],"ms_median":0.00475,"ms_max":0.00875}
+{"q":"What is the difference between","top":[{"id":"b019","score":0.2352326512336731},{"id":"b017","score":0.13062264025211334}],"ms_median":0.005833,"ms_max":0.009833}
+{"q":"What is the difference between a","top":[{"id":"b019","score":0.2252819538116455},{"id":"b017","score":0.12509706616401672}],"ms_median":0.006167,"ms_max":0.008333}
+{"q":"What is the difference between a process","top":[{"id":"b019","score":0.20514902472496033},{"id":"b020","score":0.14557795226573944}],"ms_median":0.008042,"ms_max":0.013708}
+{"q":"What is the difference between a process and","top":[{"id":"b019","score":0.2195250242948532},{"id":"b020","score":0.1402469426393509}],"ms_median":0.009292,"ms_max":0.057042}
+{"q":"What is the difference between a process and a","top":[{"id":"b019","score":0.2132018506526947},{"id":"b020","score":0.1362072080373764}],"ms_median":0.008709,"ms_max":0.013625}
+{"q":"What is the difference between a process and a thread?","top":[{"id":"b019","score":0.192690908908844},{"id":"b020","score":0.12310346961021423}],"ms_median":0.009666,"ms_max":0.013708}

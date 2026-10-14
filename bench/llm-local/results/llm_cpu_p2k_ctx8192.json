@@ -1,0 +1,140 @@
+{
+ "cfg": {
+  "backend": "cpu",
+  "ctx": 8192,
+  "prompt": "p2k",
+  "reps": 3,
+  "warm": true,
+  "fresh_cache": false,
+  "questions": "q01,q02,q03,q04,q05",
+  "out": "cpu_p2k_ctx8192",
+  "max_new": 120
+ },
+ "rss_before_mb": 43.302912,
+ "cache": "cache",
+ "load_s": 7.336160375038162,
+ "rss_after_load_mb": 3001.253888,
+ "prompt_tokens_text": 2081,
+ "prompt_chars": 7037,
+ "runs": [
+  {
+   "text": "SAY: Happy to; it's the project I can speak about in the most detail.\n- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.\n- It cut manual data entry from 11 minutes to 2 minutes per invoice.\nBANK: b003",
+   "t_first": 13.54097883310169,
+   "t_say_line": 15.49448254215531,
+   "t_end": 20.11363979219459,
+   "chunks": 67,
+   "qid": "q01",
+   "out_tokens": 67,
+   "decode_tok_s": 10.041595087708393
+  },
+  {
+   "text": "SAY: I can give you concrete numbers on the results Lantern delivered.\n- Manual data entry dropped from 11 minutes to 2 minutes per invoice.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\nBANK: b004",
+   "t_first": 11.124322083080187,
+   "t_say_line": 12.594124458031729,
+   "t_end": 17.517455333145335,
+   "chunks": 67,
+   "qid": "q02",
+   "out_tokens": 67,
+   "decode_tok_s": 10.323576471572439
+  },
+  {
+   "text": "SAY: We have a defined process for handling low-confidence fields.\n- Fields below a confidence of 0.8 go to a human operator.\n- About 7 percent of invoices had low-confidence fields that went to a human operator.\nBANK: b003",
+   "t_first": 10.273188957944512,
+   "t_say_line": 11.770070208003744,
+   "t_end": 16.083786708069965,
+   "chunks": 59,
+   "qid": "q03",
+   "out_tokens": 59,
+   "decode_tok_s": 9.981761342668706
+  }
+ ],
+ "warm_runs": [
+  {
+   "text": "SAY: I can give you concrete numbers on that.\n- Manual data entry dropped from 11 minutes to 2 minutes per invoice.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\nBANK: b004",
+   "t_first": 0.7026238748803735,
+   "t_say_line": 1.8634115420281887,
+   "t_end": 6.713505874853581,
+   "chunks": 64,
+   "qid": "q02",
+   "out_tokens": 64
+  },
+  {
+   "text": "SAY: Fields below a confidence of 0.8 go to a human operator.\n- About 7 percent of invoices had low-confidence fields that went to a human operator.\nBANK: none",
+   "t_first": 0.6876724998001009,
+   "t_say_line": 2.448908290825784,
+   "t_end": 4.681757374899462,
+   "chunks": 42,
+   "qid": "q03",
+   "out_tokens": 42
+  },
+  {
+   "text": "SAY: I can give you concrete numbers on the cost savings.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\n- It ran on 38,000 invoices a month.\nBANK: b004",
+   "t_first": 0.6859125420451164,
+   "t_say_line": 2.160410625161603,
+   "t_end": 7.097896417137235,
+   "chunks": 64,
+   "qid": "q04",
+   "out_tokens": 64
+  }
+ ],
+ "errors": [],
+ "summary": {
+  "t_first": {
+   "n": 3,
+   "p50": 11.124322083080187,
+   "min": 10.273188957944512,
+   "max": 13.54097883310169
+  },
+  "t_say_line": {
+   "n": 3,
+   "p50": 12.594124458031729,
+   "min": 11.770070208003744,
+   "max": 15.49448254215531
+  },
+  "t_end": {
+   "n": 3,
+   "p50": 17.517455333145335,
+   "min": 16.083786708069965,
+   "max": 20.11363979219459
+  },
+  "decode_tok_s": {
+   "n": 3,
+   "p50": 10.041595087708393,
+   "min": 9.981761342668706,
+   "max": 10.323576471572439
+  },
+  "out_tokens": {
+   "n": 3,
+   "p50": 67,
+   "min": 59,
+   "max": 67
+  }
+ },
+ "summary_warm": {
+  "t_first": {
+   "n": 3,
+   "p50": 0.6876724998001009,
+   "min": 0.6859125420451164,
+   "max": 0.7026238748803735
+  },
+  "t_say_line": {
+   "n": 3,
+   "p50": 2.160410625161603,
+   "min": 1.8634115420281887,
+   "max": 2.448908290825784
+  },
+  "t_end": {
+   "n": 3,
+   "p50": 6.713505874853581,
+   "min": 4.681757374899462,
+   "max": 7.097896417137235
+  },
+  "out_tokens": {
+   "n": 3,
+   "p50": 64,
+   "min": 42,
+   "max": 64
+  }
+ },
+ "rss_peak_mb": 3770.630144
+}

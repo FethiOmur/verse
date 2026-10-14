@@ -1,0 +1,20 @@
+### r3_fp32_p2k idle_before=76.76 args: --backend gpu --act FLOAT32 --ctx 8192 --prompt p2k --reps 4 --warm
+r3_fp32_p2k: load 8.56s prompt~2081 tok | TTFT p50 5.112423083046451 | SAY line p50 5.779847166500986 | tok/s p50 31.733107155471764 | errors []
+  warm: {'n': 4, 'p50': 0.5303312500473112, 'min': 0.4797278339974582, 'max': 0.6284996659960598} {'n': 4, 'p50': 1.0015660830540583, 'min': 0.8441450418904424, 'max': 1.2614153330214322}
+ 2717122560 maximum resident set size; 2113998496 peak memory footprint;
+   idle_after=0.0
+### r3_fp32_p3k idle_before=0.16 args: --backend gpu --act FLOAT32 --ctx 8192 --prompt p3k --reps 4 --warm
+r3_fp32_p3k: load 1.34s prompt~3628 tok | TTFT p50 15.775692875031382 | SAY line p50 16.517698167008348 | tok/s p50 22.509253160805276 | errors []
+  warm: {'n': 4, 'p50': 0.8856891875620931, 'min': 0.6607980001717806, 'max': 0.992228209041059} {'n': 4, 'p50': 1.7012133755488321, 'min': 1.1774810841307044, 'max': 1.8092651669867337}
+ 1202749440 maximum resident set size; 2296925880 peak memory footprint;
+   idle_after=27.21
+### r3_fp32_p5k idle_before=6.74 args: --backend gpu --act FLOAT32 --ctx 8192 --prompt p5k --reps 4 --warm
+r3_fp32_p5k: load 1.11s prompt~4930 tok | TTFT p50 24.677924645598978 | SAY line p50 25.600223271059804 | tok/s p50 22.11388668436024 | errors []
+  warm: {'n': 4, 'p50': 0.7769620005274191, 'min': 0.7605152088217437, 'max': 0.9440433338750154} {'n': 4, 'p50': 1.4898898333776742, 'min': 1.212551417062059, 'max': 1.6208808328956366}
+ 1158889472 maximum resident set size; 2443169536 peak memory footprint;
+   idle_after=65.9
+### quality_fp32 idle_before=40.75 args: --backend gpu --act FLOAT32 --ctx 8192 --prompt p3k --reps 10 --questions q01,q02,q03,q04,q05,q06,q07,q08,q09,q10
+quality_fp32: load 1.03s prompt~3628 tok | TTFT p50 20.226440562517382 | SAY line p50 21.155101458658464 | tok/s p50 20.196154501761924 | errors []
+ 1212252160 maximum resident set size; 2149240432 peak memory footprint;
+   idle_after=65.96
+### done idle=70.72

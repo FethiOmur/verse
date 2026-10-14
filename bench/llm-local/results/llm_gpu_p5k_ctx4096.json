@@ -1,0 +1,32 @@
+{
+ "cfg": {
+  "backend": "gpu",
+  "ctx": 4096,
+  "prompt": "p5k",
+  "reps": 1,
+  "warm": false,
+  "fresh_cache": false,
+  "questions": "q01,q02,q03,q04,q05",
+  "out": "gpu_p5k_ctx4096",
+  "max_new": 120
+ },
+ "rss_before_mb": 43.450368,
+ "cache": "cache",
+ "load_s": 1.7172947919461876,
+ "rss_after_load_mb": 583.548928,
+ "prompt_tokens_text": 4930,
+ "prompt_chars": 18169,
+ "runs": [],
+ "warm_runs": [],
+ "errors": [
+  "RuntimeError('INVALID_ARGUMENT: Input token ids are too long. Exceeding the maximum number of tokens allowed: 4944 >= 4096')"
+ ],
+ "summary": {
+  "t_first": null,
+  "t_say_line": null,
+  "t_end": null,
+  "decode_tok_s": null,
+  "out_tokens": null
+ },
+ "rss_peak_mb": 588.087296
+}

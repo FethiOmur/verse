@@ -1,0 +1,42 @@
+{
+ "q01": {
+  "X": "haiku",
+  "Y": "gemma"
+ },
+ "q02": {
+  "X": "haiku",
+  "Y": "gemma"
+ },
+ "q03": {
+  "X": "gemma",
+  "Y": "haiku"
+ },
+ "q04": {
+  "X": "gemma",
+  "Y": "haiku"
+ },
+ "q05": {
+  "X": "gemma",
+  "Y": "haiku"
+ },
+ "q06": {
+  "X": "gemma",
+  "Y": "haiku"
+ },
+ "q07": {
+  "X": "gemma",
+  "Y": "haiku"
+ },
+ "q08": {
+  "X": "haiku",
+  "Y": "gemma"
+ },
+ "q09": {
+  "X": "gemma",
+  "Y": "haiku"
+ },
+ "q10": {
+  "X": "gemma",
+  "Y": "haiku"
+ }
+}

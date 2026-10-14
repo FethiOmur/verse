@@ -1,0 +1,119 @@
+=== q01 [grounded] Q: Could you describe Lantern for us?
+--- X:
+SAY: Sure, Lantern is the project I can speak about in the most detail.
+- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.
+- It cut manual data entry from 11 minutes to 2 minutes per invoice.
+BANK: b003
+--- Y:
+SAY: Happy to; it's the project I can speak about in the most detail.
+- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.
+- It cut manual data entry from 11 minutes to 2 minutes per invoice.
+BANK: b003
+
+=== q02 [grounded] Q: Did Lantern actually move the needle? Show us figures.
+--- X:
+SAY: Yes, it did, and I can give you the numbers.
+- Manual data entry dropped from 11 minutes to 2 minutes per invoice, across 38,000 invoices a month.
+- Accuracy on the held-out set was 96.4 percent for totals and 91 percent for line items.
+BANK: b004
+--- Y:
+SAY: I can give you concrete numbers on the results Lantern delivered.
+- Manual data entry dropped from 11 minutes to 2 minutes per invoice.
+- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.
+BANK: b004
+
+=== q03 [grounded] Q: What do you do when the model gives a bad or uncertain answer?
+--- X:
+SAY: I built explicit safeguards around the model rather than trusting it blindly.
+- Extraction is schema-validated with one retry, then escalated.
+- Low-confidence fields, below 0.8, go to a human operator; that was about 7 percent of invoices.
+BANK: b010
+--- Y:
+SAY: I build explicit safeguards so I never trust the model blindly.
+- Extraction is schema-validated with one retry, then escalated; the model never guesses a total.
+- Fields below 0.8 confidence go to a human operator, about 7 percent of invoices.
+BANK: b010
+
+=== q04 [grounded] Q: How expensive was the inference compared with the labour it replaced?
+--- X:
+SAY: I can give you concrete numbers on that comparison.
+- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.
+- It ran on 38,000 invoices a month.
+BANK: b012
+--- Y:
+SAY: I tracked that directly, and the model was far cheaper than the labour it replaced.
+- Monthly model cost was around EUR 1,900.
+- That compared with EUR 9,500 of manual labour saved, at 38,000 invoices a month.
+BANK: b012
+
+=== q05 [grounded] Q: Assuming an offer, what is the soonest you could be on board?
+--- X:
+SAY: I can give you the exact timing for when I could start.
+- My notice period at my current company is 30 days.
+- That makes my earliest start mid-December 2026.
+BANK: b015
+--- Y:
+SAY: The soonest I could start is mid-December 2026, since my notice period is 30 days.
+- My notice period at my current company is 30 days.
+- That makes my earliest start mid-December 2026.
+BANK: b015
+
+=== q06 [grounded] Q: What kind of package would you want?
+--- X:
+SAY: I'm looking for a role where I can build and scale LLM systems.
+- I'm particularly interested in the transition to an LLM-assisted dispatcher.
+- I'm keen to apply my experience with production LLM pipelines to Compass.
+BANK: b002
+--- Y:
+SAY: I'd want to understand the full package first, but base salary and equity are my main priorities.
+- My expectation is EUR 70,000 to 80,000 gross per year, and I'm flexible on equity.
+- Happy to hear how your package is structured, including benefits and growth.
+BANK: b016
+
+=== q07 [grounded] Q: Where does your past work overlap with routing and logistics?
+--- X:
+SAY: My work has direct overlap, particularly with route optimization.
+- I built a small route optimiser for a courier pilot that reduced empty runs by 14 percent.
+- The pilot ran for 10 weeks across 23 vans in Milan.
+BANK: b018
+--- Y:
+SAY: There's a direct overlap, and I can point to a specific project.
+- I built a small route optimiser for a courier pilot that reduced empty runs by 14 percent.
+- The pilot ran for 10 weeks across 23 vans in Milan.
+BANK: b018
+
+=== q08 [grounded] Q: Name an area where you are not as strong as you would like to be.
+--- X:
+SAY: One area I'm still building is UI-heavy frontend work, since most of my time has been on backend and data pipelines.
+- I've been deliberately practising it by shipping small frontend pieces with a colleague reviewing them.
+- I'm also aware it's an area to watch when I start, so I'd flag it early rather than let it slip.
+BANK: b005
+--- Y:
+SAY: One area I've actively worked on is how I approach early prototypes.
+- I used to over-engineer early prototypes.
+- Now I ship a thin version in the first week.
+BANK: b005
+
+=== q09 [trap_not_in_pack] Q: Do you have experience with Kubernetes and container orchestration?
+--- X:
+SAY: I haven't worked directly with Kubernetes or container orchestration.
+- My experience is more focused on LLM pipelines and route optimization.
+- I've built systems that run on real-world data volumes and processes.
+BANK: none
+--- Y:
+SAY: I haven't run Kubernetes in production myself, so I'll be upfront about that.
+- My work has been on the LLM pipeline and the courier route optimiser, not cluster operations.
+- I'm comfortable learning the stack quickly, and I'd want to understand how your platform team runs it.
+BANK: none
+
+=== q10 [trap_not_in_pack] Q: How many people were on the Lantern team, and what did you personally build?
+--- X:
+SAY: I personally built Lantern, an LLM pipeline for supplier invoices.
+- I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices.
+- I also built a small route optimiser for a courier pilot that reduced empty runs by 14 percent.
+BANK: b001
+--- Y:
+SAY: The team size isn't in my notes, so let me focus on what I personally built.
+- I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices.
+- I designed the schema validation with one retry, then escalation, so the model never guesses a total.
+BANK: none

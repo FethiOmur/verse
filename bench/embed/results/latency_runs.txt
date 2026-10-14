@@ -1,0 +1,6 @@
+run 1 gpu idle_before=69.60 idle_after=68.98 p50=22.0 p90=23.7 p99=25.4 max=28.6 load_s=0.63 index_s=2.26 rss_peak_mb=336
+run 1 cpu idle_before=74.66 idle_after=64.59 p50=31.8 p90=32.7 p99=43.1 max=76.6 load_s=0.10 index_s=3.22 rss_peak_mb=336
+run 2 gpu idle_before=68.57 idle_after=65.72 p50=18.9 p90=19.3 p99=20.3 max=20.6 load_s=0.37 index_s=1.95 rss_peak_mb=337
+run 2 cpu idle_before=71.98 idle_after=63.44 p50=32.5 p90=47.4 p99=88.9 max=104.6 load_s=0.12 index_s=3.48 rss_peak_mb=324
+run 3 gpu idle_before=37.4 idle_after=0.0 p50=20.5 p90=24.9 p99=32.1 max=51.5 load_s=0.40 index_s=1.63 rss_peak_mb=340
+run 3 cpu idle_before=0.0 idle_after=35.73 p50=127.6 p90=192.7 p99=321.5 max=607.4 load_s=0.28 index_s=7.99 rss_peak_mb=323

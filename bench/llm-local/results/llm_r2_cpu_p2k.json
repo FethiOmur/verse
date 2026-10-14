@@ -1,0 +1,140 @@
+{
+ "cfg": {
+  "backend": "cpu",
+  "ctx": 8192,
+  "prompt": "p2k",
+  "reps": 3,
+  "warm": true,
+  "fresh_cache": false,
+  "questions": "q01,q02,q03,q04,q05",
+  "out": "r2_cpu_p2k",
+  "max_new": 120
+ },
+ "rss_before_mb": 43.25376,
+ "cache": "cache",
+ "load_s": 0.8108824170194566,
+ "rss_after_load_mb": 721.354752,
+ "prompt_tokens_text": 2081,
+ "prompt_chars": 7037,
+ "runs": [
+  {
+   "text": "SAY: Happy to; it's the project I can speak about in the most detail.\n- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.\n- It cut manual data entry from 11 minutes to 2 minutes per invoice.\nBANK: b003",
+   "t_first": 17.680179541930556,
+   "t_say_line": 20.678708750056103,
+   "t_end": 26.151205375092104,
+   "chunks": 67,
+   "qid": "q01",
+   "out_tokens": 67,
+   "decode_tok_s": 7.791264163264574
+  },
+  {
+   "text": "SAY: I can give you concrete numbers on the results Lantern delivered.\n- Manual data entry dropped from 11 minutes to 2 minutes per invoice.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\nBANK: b004",
+   "t_first": 18.020012208959088,
+   "t_say_line": 19.95667316694744,
+   "t_end": 25.78687533386983,
+   "chunks": 67,
+   "qid": "q02",
+   "out_tokens": 67,
+   "decode_tok_s": 8.497639129022051
+  },
+  {
+   "text": "SAY: We have a defined process for handling low-confidence fields.\n- Fields below a confidence of 0.8 go to a human operator.\n- About 7 percent of invoices had low-confidence fields that went to a human operator.\nBANK: b003",
+   "t_first": 17.109664833871648,
+   "t_say_line": 19.658084749942645,
+   "t_end": 25.36962104192935,
+   "chunks": 59,
+   "qid": "q03",
+   "out_tokens": 59,
+   "decode_tok_s": 7.021828995100506
+  }
+ ],
+ "warm_runs": [
+  {
+   "text": "SAY: I can give you concrete numbers on that.\n- Manual data entry dropped from 11 minutes to 2 minutes per invoice.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\nBANK: b004",
+   "t_first": 1.0907382920850068,
+   "t_say_line": 2.539716625120491,
+   "t_end": 9.065549416933209,
+   "chunks": 64,
+   "qid": "q02",
+   "out_tokens": 64
+  },
+  {
+   "text": "SAY: Fields below a confidence of 0.8 go to a human operator.\n- About 7 percent of invoices had low-confidence fields that went to a human operator.\nBANK: none",
+   "t_first": 1.0832081250846386,
+   "t_say_line": 3.168221917003393,
+   "t_end": 5.78885899996385,
+   "chunks": 42,
+   "qid": "q03",
+   "out_tokens": 42
+  },
+  {
+   "text": "SAY: I can give you concrete numbers on the cost savings.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\n- It ran on 38,000 invoices a month.\nBANK: b004",
+   "t_first": 0.9149278339464217,
+   "t_say_line": 2.551256624981761,
+   "t_end": 8.57555341697298,
+   "chunks": 64,
+   "qid": "q04",
+   "out_tokens": 64
+  }
+ ],
+ "errors": [],
+ "summary": {
+  "t_first": {
+   "n": 3,
+   "p50": 17.680179541930556,
+   "min": 17.109664833871648,
+   "max": 18.020012208959088
+  },
+  "t_say_line": {
+   "n": 3,
+   "p50": 19.95667316694744,
+   "min": 19.658084749942645,
+   "max": 20.678708750056103
+  },
+  "t_end": {
+   "n": 3,
+   "p50": 25.78687533386983,
+   "min": 25.36962104192935,
+   "max": 26.151205375092104
+  },
+  "decode_tok_s": {
+   "n": 3,
+   "p50": 7.791264163264574,
+   "min": 7.021828995100506,
+   "max": 8.497639129022051
+  },
+  "out_tokens": {
+   "n": 3,
+   "p50": 67,
+   "min": 59,
+   "max": 67
+  }
+ },
+ "summary_warm": {
+  "t_first": {
+   "n": 3,
+   "p50": 1.0832081250846386,
+   "min": 0.9149278339464217,
+   "max": 1.0907382920850068
+  },
+  "t_say_line": {
+   "n": 3,
+   "p50": 2.551256624981761,
+   "min": 2.539716625120491,
+   "max": 3.168221917003393
+  },
+  "t_end": {
+   "n": 3,
+   "p50": 8.57555341697298,
+   "min": 5.78885899996385,
+   "max": 9.065549416933209
+  },
+  "out_tokens": {
+   "n": 3,
+   "p50": 64,
+   "min": 42,
+   "max": 64
+  }
+ },
+ "rss_peak_mb": 3443.965952
+}

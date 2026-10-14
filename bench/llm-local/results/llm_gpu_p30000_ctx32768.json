@@ -1,0 +1,66 @@
+{
+ "cfg": {
+  "backend": "gpu",
+  "ctx": 32768,
+  "prompt": "p30000",
+  "reps": 1,
+  "warm": false,
+  "fresh_cache": false,
+  "questions": "q01,q02,q03,q04,q05",
+  "out": "gpu_p30000_ctx32768",
+  "max_new": 120
+ },
+ "rss_before_mb": 43.646976,
+ "cache": "cache",
+ "load_s": 19.773498374968767,
+ "rss_after_load_mb": 2439.380992,
+ "prompt_tokens_text": 30019,
+ "prompt_chars": 126906,
+ "runs": [
+  {
+   "text": "SAY: I led Lantern, an LLM pipeline that extracts structured fields from invoices.\n-\n- It cut manual data entry from 1111111111111111111111 minutes to 2 minutes per invoice\nBANK: b0000000000000000000000000000000000000000000000000000000000",
+   "t_first": 129.23022775002755,
+   "t_say_line": 130.21230283309706,
+   "t_end": 135.60535154212266,
+   "chunks": 120,
+   "qid": "q01",
+   "out_tokens": 120,
+   "decode_tok_s": 18.666304197505166
+  }
+ ],
+ "warm_runs": [],
+ "errors": [],
+ "summary": {
+  "t_first": {
+   "n": 1,
+   "p50": 129.23022775002755,
+   "min": 129.23022775002755,
+   "max": 129.23022775002755
+  },
+  "t_say_line": {
+   "n": 1,
+   "p50": 130.21230283309706,
+   "min": 130.21230283309706,
+   "max": 130.21230283309706
+  },
+  "t_end": {
+   "n": 1,
+   "p50": 135.60535154212266,
+   "min": 135.60535154212266,
+   "max": 135.60535154212266
+  },
+  "decode_tok_s": {
+   "n": 1,
+   "p50": 18.666304197505166,
+   "min": 18.666304197505166,
+   "max": 18.666304197505166
+  },
+  "out_tokens": {
+   "n": 1,
+   "p50": 120,
+   "min": 120,
+   "max": 120
+  }
+ },
+ "rss_peak_mb": 2439.380992
+}

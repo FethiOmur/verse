@@ -1,0 +1,66 @@
+{
+ "cfg": {
+  "backend": "gpu",
+  "ctx": 131072,
+  "prompt": "p3k",
+  "reps": 1,
+  "warm": false,
+  "fresh_cache": false,
+  "questions": "q01,q02,q03,q04,q05",
+  "out": "r2_gpu_p3k_ctx131072",
+  "max_new": 120
+ },
+ "rss_before_mb": 43.352064,
+ "cache": "cache",
+ "load_s": 1.5259078750386834,
+ "rss_after_load_mb": 479.461376,
+ "prompt_tokens_text": 3628,
+ "prompt_chars": 12473,
+ "runs": [
+  {
+   "text": "SAY: Happy to; it's the project I can speak about in the most detail.\n- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.\n- It cut manual data entry from 111 minutes to 2 minutes per invoice.\nBANK: b003",
+   "t_first": 10.868471292080358,
+   "t_say_line": 11.857358375098556,
+   "t_end": 13.793377374997362,
+   "chunks": 68,
+   "qid": "q01",
+   "out_tokens": 68,
+   "decode_tok_s": 22.906718404161882
+  }
+ ],
+ "warm_runs": [],
+ "errors": [],
+ "summary": {
+  "t_first": {
+   "n": 1,
+   "p50": 10.868471292080358,
+   "min": 10.868471292080358,
+   "max": 10.868471292080358
+  },
+  "t_say_line": {
+   "n": 1,
+   "p50": 11.857358375098556,
+   "min": 11.857358375098556,
+   "max": 11.857358375098556
+  },
+  "t_end": {
+   "n": 1,
+   "p50": 13.793377374997362,
+   "min": 13.793377374997362,
+   "max": 13.793377374997362
+  },
+  "decode_tok_s": {
+   "n": 1,
+   "p50": 22.906718404161882,
+   "min": 22.906718404161882,
+   "max": 22.906718404161882
+  },
+  "out_tokens": {
+   "n": 1,
+   "p50": 68,
+   "min": 68,
+   "max": 68
+  }
+ },
+ "rss_peak_mb": 1172.013056
+}

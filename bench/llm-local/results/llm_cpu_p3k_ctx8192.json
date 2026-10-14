@@ -1,0 +1,140 @@
+{
+ "cfg": {
+  "backend": "cpu",
+  "ctx": 8192,
+  "prompt": "p3k",
+  "reps": 3,
+  "warm": true,
+  "fresh_cache": false,
+  "questions": "q01,q02,q03,q04,q05",
+  "out": "cpu_p3k_ctx8192",
+  "max_new": 120
+ },
+ "rss_before_mb": 43.33568,
+ "cache": "cache",
+ "load_s": 0.5824268329888582,
+ "rss_after_load_mb": 747.798528,
+ "prompt_tokens_text": 3628,
+ "prompt_chars": 12473,
+ "runs": [
+  {
+   "text": "SAY: Happy to; it's the project I can speak about in the most detail.\n- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.\n- It cut manual data entry from 11 minutes to 2 minutes per invoice.\nBANK: b003",
+   "t_first": 20.337052416987717,
+   "t_say_line": 23.203055709134787,
+   "t_end": 28.01247658394277,
+   "chunks": 67,
+   "qid": "q01",
+   "out_tokens": 67,
+   "decode_tok_s": 8.598873308415879
+  },
+  {
+   "text": "SAY: I can give you concrete numbers on the results Lantern delivered.\n- Manual data entry dropped from 11 minutes to 2 minutes per invoice.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\nBANK: b004",
+   "t_first": 46.8943239999935,
+   "t_say_line": 51.55397349991836,
+   "t_end": 66.93569737486541,
+   "chunks": 67,
+   "qid": "q02",
+   "out_tokens": 67,
+   "decode_tok_s": 3.2931874859809516
+  },
+  {
+   "text": "SAY: I built explicit safeguards around the model rather than trusting it blindly.\n- Extraction is schema-validated with one retry, then escalated.\n- Low-confidence fields, below 0.8, go to a human operator; that was about 7 percent of invoices.\nBANK: b010",
+   "t_first": 46.34227441716939,
+   "t_say_line": 51.89116895804182,
+   "t_end": 68.75454304204322,
+   "chunks": 65,
+   "qid": "q03",
+   "out_tokens": 65,
+   "decode_tok_s": 2.8555788381445155
+  }
+ ],
+ "warm_runs": [
+  {
+   "text": "SAY: I can give you concrete numbers on that.\n- Manual data entry dropped from 11 minutes to 2 minutes per invoice.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\nBANK: b004",
+   "t_first": 1.0542282091919333,
+   "t_say_line": 2.3755576671101153,
+   "t_end": 7.456703125033528,
+   "chunks": 64,
+   "qid": "q02",
+   "out_tokens": 64
+  },
+  {
+   "text": "SAY: I built explicit safeguards around the model rather than trusting it blindly.\n- Extraction is schema-validated with one retry, then escalated.\n- Low-confidence fields, below 0.8, go to a human operator; that was about 7 percent of invoices.\nBANK: b010",
+   "t_first": 2.2142815419938415,
+   "t_say_line": 7.470226125093177,
+   "t_end": 22.854207792086527,
+   "chunks": 65,
+   "qid": "q03",
+   "out_tokens": 65
+  },
+  {
+   "text": "SAY: I tracked cost against the labour it replaced, so I can give you the comparison.\n- Monthly model cost was around EUR 1,900.\n- That compared with EUR 9,500 of manual labour saved.\nBANK: b012",
+   "t_first": 2.4778885829728097,
+   "t_say_line": 9.604959791060537,
+   "t_end": 23.698476375080645,
+   "chunks": 59,
+   "qid": "q04",
+   "out_tokens": 59
+  }
+ ],
+ "errors": [],
+ "summary": {
+  "t_first": {
+   "n": 3,
+   "p50": 46.34227441716939,
+   "min": 20.337052416987717,
+   "max": 46.8943239999935
+  },
+  "t_say_line": {
+   "n": 3,
+   "p50": 51.55397349991836,
+   "min": 23.203055709134787,
+   "max": 51.89116895804182
+  },
+  "t_end": {
+   "n": 3,
+   "p50": 66.93569737486541,
+   "min": 28.01247658394277,
+   "max": 68.75454304204322
+  },
+  "decode_tok_s": {
+   "n": 3,
+   "p50": 3.2931874859809516,
+   "min": 2.8555788381445155,
+   "max": 8.598873308415879
+  },
+  "out_tokens": {
+   "n": 3,
+   "p50": 67,
+   "min": 65,
+   "max": 67
+  }
+ },
+ "summary_warm": {
+  "t_first": {
+   "n": 3,
+   "p50": 2.2142815419938415,
+   "min": 1.0542282091919333,
+   "max": 2.4778885829728097
+  },
+  "t_say_line": {
+   "n": 3,
+   "p50": 7.470226125093177,
+   "min": 2.3755576671101153,
+   "max": 9.604959791060537
+  },
+  "t_end": {
+   "n": 3,
+   "p50": 22.854207792086527,
+   "min": 7.456703125033528,
+   "max": 23.698476375080645
+  },
+  "out_tokens": {
+   "n": 3,
+   "p50": 64,
+   "min": 59,
+   "max": 65
+  }
+ },
+ "rss_peak_mb": 3986.276352
+}

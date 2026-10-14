@@ -1,0 +1,11 @@
+### r4_fp32_p3k idle_before=69.17 args: --backend gpu --act FLOAT32 --ctx 8192 --prompt p3k --reps 4 --warm
+r4_fp32_p3k: load 1.05s prompt~3628 tok | TTFT p50 14.898428291315213 | SAY line p50 15.665318145416677 | tok/s p50 25.80500663764932 | errors []
+  warm: {'n': 4, 'p50': 0.7218054789118469, 'min': 0.6504966670181602, 'max': 0.8190891249105334} {'n': 4, 'p50': 1.2417065834160894, 'min': 1.213908040896058, 'max': 1.6322724579367787}
+ 998801408 maximum resident set size; 2279722536 peak memory footprint;
+   idle_after=55.0
+### r4_fp32_p5k idle_before=53.82 args: --backend gpu --act FLOAT32 --ctx 8192 --prompt p5k --reps 4 --warm
+r4_fp32_p5k: load 0.94s prompt~4930 tok | TTFT p50 19.200888416497037 | SAY line p50 20.007239791448228 | tok/s p50 26.221387382900836 | errors []
+  warm: {'n': 4, 'p50': 0.7135511876549572, 'min': 0.658850000007078, 'max': 0.7763745000120252} {'n': 4, 'p50': 1.290850416989997, 'min': 1.1041237500030547, 'max': 1.4252339580561966}
+ 1078083584 maximum resident set size; 2443841256 peak memory footprint;
+   idle_after=51.63
+### done idle=43.3

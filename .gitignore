@@ -28,3 +28,4 @@ bench/stt-models/
 *.mlpackage/
 *.safetensors
 *.onnx
+bench/embed/results/*.npz

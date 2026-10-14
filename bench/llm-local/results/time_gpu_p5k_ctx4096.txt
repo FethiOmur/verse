@@ -1,0 +1,21 @@
+E0000 00:00:1791982667.515451 41788945 engine_advanced_impl.cc:112] EngineAdvancedImpl destructed with 1 living sessions!
+E0000 00:00:1791982667.515714 41788945 threaded_execution_manager.cc:100] Not all sessions are released before the execution manager is destroyed.
+E0000 00:00:1791982667.600549 41788945 session_advanced.cc:495] Execution manager is not available.
+        2.37 real         1.08 user         0.40 sys
+           613285888  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               37169  page reclaims
+               16720  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                 706  voluntary context switches
+               22586  involuntary context switches
+         11490695507  instructions retired
+          5502289411  cycles elapsed
+           630115448  peak memory footprint

@@ -1,0 +1,27 @@
+{
+ "backend": "gpu",
+ "mode": "sym",
+ "threads": null,
+ "rss_mb_before_load": 51.44576,
+ "load_s": 0.3707665840629488,
+ "first_embed_ms": 85.2066669613123,
+ "rss_mb_after_load": 334.577664,
+ "index_seq_s": 1.9493635001126677,
+ "index_docs": 88,
+ "index_batch_s": 1.689316499978304,
+ "batch_vs_seq_max_abs_diff": 0.0,
+ "latency_n": 300,
+ "latency_ms": {
+  "p50": 18.929915968328714,
+  "p90": 19.277167040854692,
+  "p99": 20.286958198994398,
+  "max": 20.583249861374497,
+  "mean": 18.901464433098834
+ },
+ "embed_only_ms": {
+  "p50": 18.99208384566009,
+  "p99": 21.642958046868443
+ },
+ "embed_all_queries_s": 17.214174333028495,
+ "rss_mb_peak": 336.805888
+}

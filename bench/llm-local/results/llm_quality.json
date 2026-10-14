@@ -1,0 +1,156 @@
+{
+ "cfg": {
+  "backend": "gpu",
+  "ctx": 8192,
+  "prompt": "p3k",
+  "reps": 10,
+  "warm": false,
+  "fresh_cache": false,
+  "questions": "q01,q02,q03,q04,q05,q06,q07,q08,q09,q10",
+  "out": "quality",
+  "max_new": 120
+ },
+ "rss_before_mb": 43.368448,
+ "cache": "cache",
+ "load_s": 4.092750207986683,
+ "rss_after_load_mb": 603.635712,
+ "prompt_tokens_text": 3628,
+ "prompt_chars": 12473,
+ "runs": [
+  {
+   "text": "SAY: Happy to; it's the project I can speak about in the most detail.\n- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.\n- It cut manual data entry from 111 minutes to 2 minutes per invoice.\nBANK: b003",
+   "t_first": 12.287534999893978,
+   "t_say_line": 13.461487082997337,
+   "t_end": 16.018653166946024,
+   "chunks": 68,
+   "qid": "q01",
+   "out_tokens": 68,
+   "decode_tok_s": 17.957083372928032
+  },
+  {
+   "text": "SAY: I can give you concrete numbers on the results Lantern delivered.\n- Manual data entry dropped from 111 minutes to 2 minutes per invoice.\n- Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.\nBANK: b004",
+   "t_first": 9.85237995791249,
+   "t_say_line": 10.520656832959503,
+   "t_end": 13.229586707893759,
+   "chunks": 68,
+   "qid": "q02",
+   "out_tokens": 68,
+   "decode_tok_s": 19.83888016342843
+  },
+  {
+   "text": "SAY: I built explicit safeguards around the model rather than trusting it blindly.\n- Extraction is schema-validated with one retry, then escalated.\n- Low- Low-confidence fields below 0.8 go to a human operator.\nBANK: b10",
+   "t_first": 9.32490187487565,
+   "t_say_line": 9.929103541886434,
+   "t_end": 11.372092749923468,
+   "chunks": 55,
+   "qid": "q03",
+   "out_tokens": 55,
+   "decode_tok_s": 26.377608780001367
+  },
+  {
+   "text": "SAY: I can give you a comparison of the cost against the labour it replaced.\n- Monthly model cost was around EUR 1,9000.\n- That compared with EUR 9,5000 of manual labour saved.\nBANK: b12",
+   "t_first": 8.221077000023797,
+   "t_say_line": 8.863429750083014,
+   "t_end": 10.160367792006582,
+   "chunks": 58,
+   "qid": "q04",
+   "out_tokens": 58,
+   "decode_tok_s": 29.392188234814242
+  },
+  {
+   "text": "SAY: I can give you the exact timing.\n- My notice period at my current company is 30 days.\n- That makes my earliest start mid-December 20206.\nBANK: b01",
+   "t_first": 7.840977082960308,
+   "t_say_line": 8.173242415999994,
+   "t_end": 9.303823583060876,
+   "chunks": 49,
+   "qid": "q05",
+   "out_tokens": 49,
+   "decode_tok_s": 32.81273872323589
+  },
+  {
+   "text": "SAY: I'm looking for a role that lets me apply my LLM and optimization skills.\n- I led Lantern, an LLM pipeline that cut manual data entry from 11 minutes to 2.\n- I also built a route optimiser for a courier pilot that reduced empty runs by 14 percent.\nBANK: b001",
+   "t_first": 8.09914741688408,
+   "t_say_line": 8.801864207955077,
+   "t_end": 10.576785542070866,
+   "chunks": 75,
+   "qid": "q06",
+   "out_tokens": 75,
+   "decode_tok_s": 29.86715422552728
+  },
+  {
+   "text": "SAY: My work has a direct overlap, and I can point to a specific project.\n- I built a small route optimiser for a courier pilot that reduced empty runs by 14 percent.\n- The pilot ran for 10 weeks across 23 vans in Milan.\nBANK: b18",
+   "t_first": 7.537553292000666,
+   "t_say_line": 8.138388541992754,
+   "t_end": 9.591863249894232,
+   "chunks": 66,
+   "qid": "q07",
+   "out_tokens": 66,
+   "decode_tok_s": 31.64079488114309
+  },
+  {
+   "text": "SAY: One area I've actively worked on is how I approach early prototypes.\n- I used to over-engineer early prototypes, but now I ship a thin version in the first week.\nBANK: b0005",
+   "t_first": 7.286120416130871,
+   "t_say_line": 7.834853291045874,
+   "t_end": 8.766335083171725,
+   "chunks": 49,
+   "qid": "q08",
+   "out_tokens": 49,
+   "decode_tok_s": 32.427728942828516
+  },
+  {
+   "text": "SAY: I haven't worked directly with Kubernetes, but I have experience with similar systems.\n- I led Lantern, an LLM pipeline that ran on 38,00 invoices a month.\n- I also built a route optimiser for a courier pilot.\nBANK: none",
+   "t_first": 7.465471792034805,
+   "t_say_line": 8.144744500052184,
+   "t_end": 9.630772792035714,
+   "chunks": 61,
+   "qid": "q09",
+   "out_tokens": 61,
+   "decode_tok_s": 27.709773375606815
+  },
+  {
+   "text": "SAY: I led the Lantern project, which was an LLM pipeline for supplier invoices.\n- I cut manual data entry from 111 minutes to 2 minutes per invoice.\n- I also built a small route optimiser for a courier pilot.\nBANK: b001",
+   "t_first": 8.30486479215324,
+   "t_say_line": 9.191695709014311,
+   "t_end": 10.841695167124271,
+   "chunks": 61,
+   "qid": "q10",
+   "out_tokens": 61,
+   "decode_tok_s": 23.65156164636555
+  }
+ ],
+ "warm_runs": [],
+ "errors": [],
+ "summary": {
+  "t_first": {
+   "n": 10,
+   "p50": 8.160112208453938,
+   "min": 7.286120416130871,
+   "max": 12.287534999893978
+  },
+  "t_say_line": {
+   "n": 10,
+   "p50": 8.832646979019046,
+   "min": 7.834853291045874,
+   "max": 13.461487082997337
+  },
+  "t_end": {
+   "n": 10,
+   "p50": 10.368576667038724,
+   "min": 8.766335083171725,
+   "max": 16.018653166946024
+  },
+  "decode_tok_s": {
+   "n": 10,
+   "p50": 28.55098080521053,
+   "min": 17.957083372928032,
+   "max": 32.81273872323589
+  },
+  "out_tokens": {
+   "n": 10,
+   "p50": 61.0,
+   "min": 49,
+   "max": 75
+  }
+ },
+ "rss_peak_mb": 795.164672
+}
