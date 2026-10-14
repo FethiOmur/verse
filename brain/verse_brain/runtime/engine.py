@@ -7,23 +7,33 @@ Output contract towards Swift (in addition to the plan's event list):
   deltas, then the rest live. Every `delta` Swift receives is therefore meant to be shown.
 - `BANK:` / `OPENER_*` lines are never sent as text; they become `bank_verdict` / `opener_status` events.
 - `metric` events carry wall-clock `t` (time.time(), epoch seconds) plus `id`/`tier` and stage details.
+- F2 incremental summary, lowest priority. Tier R (Haiku, the S/F tuple and cached prefix, lane 1, no hedge) runs
+  every `summary_every_turns` finalized turns or `summary_every_s` of speech, only when no turn is open and no
+  S/F/D call is in flight and the Haiku bucket and the budget have room; its lines are merged (deduped) into a
+  running list and sent as `actions{items}` plus `summary{decisions,actions,open}`. Tier A (Sonnet, the D tuple,
+  lane 1, no hedge) runs on `control stop|summarize`, merges everything and writes `summary.md` into the session
+  folder; its `summary` event adds `final`, `conflicts`, `text`, `path` (and `draft_reason` when the merge failed and
+  summary.md holds the rolling notes only). R and A never emit `delta`, and spend counts in the session budget.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 import time
 from dataclasses import dataclass, field
 from itertools import count
+from pathlib import Path
 
 from ..prep.model import Usage, spend_usd
 from .lines import LineAssembler
-from .prompt import (SUMMARIZE_TAIL, WARMUP_TAIL, Turn, build_request, deep_tail, fast_tail)
+from .prompt import (WARMUP_TAIL, Turn, build_request, deep_tail, fast_tail, final_tail, rolling_tail)
 from .protocol import Emitter, Session, load_session
 from .ratelimit import ModelLimiter
 from .settings import HAIKU, MODEL_ROUTE, SONNET, Config, route_params
+from .summary import Running, parse_lines, render_markdown
 from .transport import (AuthFailed, BadRequest, CreditExhausted, Offline, Overloaded, RateLimited, Transport,
                         TransportError)
 
@@ -59,7 +69,8 @@ _seq = count(1)
 
 
 class Call:
-    """One model call (S, F, D, or A = summarize) with hedging, line parsing and buffered/live output."""
+    """One model call (S, F, D; R = rolling summary, A = final summary) with hedging, line parsing and
+    buffered/live output."""
 
     def __init__(self, brain: "Brain", tier: str, turn_id: str, input_text: str, request: dict, *,
                  buffered: bool, route: str) -> None:
@@ -87,7 +98,9 @@ class Call:
         self.hedged = False
         self.winner_lane: int | None = None
         self.new_connection: bool | None = None
-        self.retries_left = 1 if tier in ("D", "A") else 0  # S/F: max_retries 0; D: one retry
+        self.retries_left = 1 if tier in ("D", "A") else 0  # S/F/R: max_retries 0; D, A: one retry
+        self.lane = 1 if tier in ("R", "A") else 0   # summaries keep off the S/F/D connection (lane 0)
+        self.summary_lines: list[str] = []
         self.t: dict[str, float] = {}
         self.done = asyncio.Event()
         self.bank_known = asyncio.Event()
@@ -131,8 +144,11 @@ class Call:
 
     # ---- line handling
     def _on_text(self, chunk: str, line_done: bool, line: str) -> None:
-        if self.tier != "A":  # summarize output becomes one `actions` event, not deltas
-            self._out(self.brain.emitter.delta(self.id, self.turn_id, self.tier, chunk, line_done))
+        if self.tier in ("R", "A"):  # summary output becomes `summary`/`actions` events, never deltas
+            if line_done:
+                self.summary_lines.append(line.strip())
+            return
+        self._out(self.brain.emitter.delta(self.id, self.turn_id, self.tier, chunk, line_done))
         if line_done:
             s = line.strip()
             if s.startswith("SAY:") and self.say_line is None:
@@ -173,7 +189,7 @@ class Call:
         try:
             while True:
                 try:
-                    self._stage("fire", words=len(self.input_tokens), hedge_after_s=b.config.hedge_after_s)
+                    self._stage("fire", words=len(self.input_tokens), hedge_after_s=b._hedge_after(self))
                     await b.hedged_stream(self)
                     break
                 except (RateLimited, Overloaded) as e:
@@ -192,8 +208,8 @@ class Call:
             b.on_call_error(self, e)
         finally:
             self.bank_known.set()  # waiters re-check bank_id; a call without a BANK line must not stall D
+            self.done.set()        # before on_call_done: its follow-ups (next summary pass) must see this call as over
             b.on_call_done(self)
-            self.done.set()
             self._stage("done", stop_reason=self.stop_reason, usage=self.usage, hedged=self.hedged,
                         winner_lane=self.winner_lane, new_connection=self.new_connection,
                         error=self.error.kind if self.error else None, discarded=self.discarded,
@@ -249,6 +265,20 @@ class Brain:
         self.tasks: set[asyncio.Task] = set()
         self.stopped = asyncio.Event()
         self.start_background = True
+        # F2 incremental summary
+        self.running = Running()
+        self.summary_spend = 0.0
+        self.closing = False
+        self._rolled_n = 0                       # finalized turns covered by the last rolling pass
+        self._roll_t0: float | None = None       # audio clock when that pass started (first turn's end before)
+        self._last_audio_end: float | None = None
+        self._last_partial_t = 0.0
+        self._roll_call: Call | None = None
+        self._deciding = 0                       # `_decide_d` tasks pending (D not yet fired or skipped)
+        self._defer_reason: str | None = None
+        self._final_task: asyncio.Task | None = None
+        self._final_n = -1
+        self._final_events: list[dict] = []
 
     # ------------------------------------------------------------------ helpers
     def _spawn(self, coro) -> asyncio.Task:
@@ -288,7 +318,7 @@ class Brain:
         elif t == "control":
             a = msg.get("action")
             if a == "stop":
-                await self.shutdown()
+                await self.stop()
             elif a == "summarize":
                 self._spawn(self.summarize())
 
@@ -398,8 +428,9 @@ class Brain:
         if self.spend >= self.config.budget_usd:
             self._halt("error", f"budget cap ${self.config.budget_usd:.2f} reached")
             return None
-        route = tier if tier in ("S", "F", "D") else "D"
-        req = build_request(route, route_params(route), self.session.pack, turns, tail)
+        route = {"R": "S", "A": "D"}.get(tier, tier)   # summaries ride the S/F and D tuples (and their caches)
+        max_tokens = {"R": self.config.summary_max_tokens, "A": self.config.final_max_tokens}.get(tier)
+        req = build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack, turns, tail)
         model = req["model"]
         est_in = sum(len(b.get("text", "")) for b in req["messages"][0]["content"]) // 4
         if not self.limiters[model].try_acquire(est_in, req["max_tokens"]):
@@ -413,7 +444,9 @@ class Brain:
         call.task = self._spawn(call.run())
         return call
 
-    def _hedge_after(self, call: Call) -> float:
+    def _hedge_after(self, call: Call) -> float | None:
+        if call.tier in ("R", "A"):   # a duplicate summary is pure cost: no hedging
+            return None
         return self.config.hedge_after_s_d if call.route == "D" else self.config.hedge_after_s
 
     async def hedged_stream(self, call: Call) -> None:
@@ -444,18 +477,19 @@ class Brain:
                 await stream.aclose()
 
         loop = asyncio.get_running_loop()
-        tasks[0] = loop.create_task(attempt(0))
+        lane0 = call.lane
+        hedge_after = self._hedge_after(call)
+        tasks[lane0] = loop.create_task(attempt(lane0))
         try:
             waiter = loop.create_task(first.wait())
             try:
-                await asyncio.wait({waiter, tasks[0]}, timeout=self._hedge_after(call),
-                                   return_when=asyncio.FIRST_COMPLETED)
+                await asyncio.wait({waiter, tasks[lane0]}, timeout=hedge_after, return_when=asyncio.FIRST_COMPLETED)
             finally:
                 waiter.cancel()
-            if not first.is_set() and not tasks[0].done():
+            if hedge_after is not None and not first.is_set() and not tasks[lane0].done():
                 call.hedged = True
-                call._stage("hedge", after_s=self._hedge_after(call))
-                tasks[1] = loop.create_task(attempt(1))
+                call._stage("hedge", after_s=hedge_after)
+                tasks[1 - lane0] = loop.create_task(attempt(1 - lane0))
             results = await asyncio.gather(*tasks.values(), return_exceptions=True)
         finally:
             for t in tasks.values():
@@ -479,6 +513,8 @@ class Brain:
             return False
         if isinstance(e, RateLimited) and e.retry_after is not None and e.retry_after > self.config.d_retry_max_wait_s:
             return False
+        if call.tier == "A":   # the final summary belongs to the whole meeting, not to one turn
+            return True
         # still relevant: the turn is the newest remote turn (or still being spoken)
         return call.turn_id in (self.latest_remote_turn, self.active_remote)
 
@@ -499,6 +535,8 @@ class Brain:
             if call.tier in ("D", "A"):
                 self._status("rate_limited", "429 from the API", turn_id=call.turn_id, id=call.id)
             # S/F: dropped silently (the metric records it)
+        elif call.tier == "R":
+            pass   # a failed rolling pass is silent (the metric records it); the next window retries
         elif isinstance(e, BadRequest):
             self._status("error", f"request rejected: {e}", turn_id=call.turn_id, id=call.id)
         else:
@@ -507,13 +545,17 @@ class Brain:
 
     def on_call_done(self, call: Call) -> None:
         if call.usage:
-            self.spend += spend_usd(call.model, usage_obj(call.usage))
-        if call.stop_reason == "refusal" and not call.buffered and not call.discarded:
+            cost = spend_usd(call.model, usage_obj(call.usage))
+            self.spend += cost
+            if call.tier in ("R", "A"):
+                self.summary_spend += cost
+        if call.stop_reason == "refusal" and call.tier in ("S", "F", "D") and not call.buffered and not call.discarded:
             self._status("refusal", f"{call.tier} declined this turn", turn_id=call.turn_id, id=call.id)
-        if call.tier == "A" and not call.discarded and call.error is None:
-            self.emitter.emit({"type": "actions", "items": list(call.points)})
+        if call.tier == "R":
+            self._rolling_done(call)
         if self.spend >= self.config.budget_usd and not self.halted:
             self._halt("error", f"budget cap ${self.config.budget_usd:.2f} reached")
+        self._maybe_roll()
 
     # ------------------------------------------------------------------ partials: S and early D
     def on_partial(self, msg: dict) -> None:
@@ -528,6 +570,7 @@ class Brain:
                 if old.d_call:
                     old.d_call.discard()
         self.active_remote = tid
+        self._last_partial_t = time.monotonic()
         st = self._ts(tid)
         if st.finished:
             return
@@ -620,6 +663,15 @@ class Brain:
 
     # ------------------------------------------------------------------ endpoint: select S or fire F; decide D
     def on_turn(self, msg: dict) -> None:
+        ta = msg.get("t_audio_end")
+        if isinstance(ta, (int, float)) and not isinstance(ta, bool):
+            self._last_audio_end = float(ta)
+            if self._roll_t0 is None:
+                self._roll_t0 = float(ta)
+        self._on_turn(msg)
+        self._maybe_roll()     # after the tiers have been launched: a summary only ever runs in a quiet moment
+
+    def _on_turn(self, msg: dict) -> None:
         tid = msg["turn_id"]
         speaker = msg.get("speaker", "remote")
         text = msg.get("text", "")
@@ -679,7 +731,15 @@ class Brain:
         else:
             st.fast = self._launch("F", st.turn_id, st.final_text, fast_tail(st.final_text, self.lang, final=True),
                                    st.turns_before, buffered=False)
-        self._spawn(self._decide_d(st))
+        self._deciding += 1
+        self._spawn(self._decide_d_tracked(st))
+
+    async def _decide_d_tracked(self, st: TurnState) -> None:
+        try:
+            await self._decide_d(st)
+        finally:
+            self._deciding -= 1
+            self._maybe_roll()
 
     async def _decide_d(self, st: TurnState) -> None:
         cfg = self.config
@@ -726,13 +786,156 @@ class Brain:
         self.emitter.metric(tid, "offline_retry")
         self._endpoint(st)
 
-    # ------------------------------------------------------------------ summarize / stop
-    async def summarize(self) -> None:
-        if self.session is None:
+    # ------------------------------------------------------------------ F2: rolling summary (tier R)
+    def _roll_due(self) -> bool:
+        cfg = self.config
+        new = len(self.turns) - self._rolled_n
+        if new <= 0:
+            return False
+        if new >= cfg.summary_every_turns:
+            return True
+        return (self._roll_t0 is not None and self._last_audio_end is not None
+                and self._last_audio_end - self._roll_t0 >= cfg.summary_every_s)
+
+    def _turn_in_flight(self) -> bool:
+        """A question is being spoken or answered: S/F/D own the connection, the rate bucket and the moment."""
+        if self._deciding > 0:
+            return True
+        if self.active_remote is not None and time.monotonic() - self._last_partial_t < self.config.summary_partial_stale_s:
+            return True
+        return any(c.tier in ("S", "F", "D") and not c.done.is_set() for c in self.calls)
+
+    def _defer(self, reason: str) -> None:
+        if reason != self._defer_reason:    # one metric per reason, not one per event
+            self._defer_reason = reason
+            self.emitter.metric("", "summary_deferred", reason=reason)
+
+    def _maybe_roll(self) -> None:
+        cfg = self.config
+        if self.session is None or self.closing or self.halted or self.offline or self.stopped.is_set():
             return
-        call = self._launch("A", "", "", SUMMARIZE_TAIL, list(self.turns), buffered=False)
+        if not self._roll_due():
+            self._defer_reason = None
+            return
+        if self._roll_call is not None and not self._roll_call.done.is_set():
+            return
+        if self._final_task is not None and not self._final_task.done():
+            return
+        if self._turn_in_flight():
+            return self._defer("turn_in_flight")
+        if self.limiters[HAIKU].fraction_left() < cfg.summary_bucket_min:
+            return self._defer("bucket_low")
+        if self.spend >= cfg.budget_usd * cfg.summary_budget_frac:
+            return self._defer("budget")
+        self._defer_reason = None
+        n = len(self.turns)
+        call = self._launch("R", "", "", rolling_tail(self.lang, self.running.as_lines()), list(self.turns),
+                            buffered=False)
         if call is not None:
+            # this window is used up even if the pass fails: a failing call is not retried in a loop
+            self._rolled_n, self._roll_t0, self._roll_call = n, self._last_audio_end, call
+
+    @staticmethod
+    def _summary_lines(call: Call) -> list[str]:
+        lines = list(call.summary_lines)
+        if call.stop_reason == "max_tokens" and lines:
+            lines.pop()          # the last line was cut off mid-sentence
+        return lines
+
+    def _rolling_done(self, call: Call) -> None:
+        if call.discarded or call.error is not None or call.stop_reason == "refusal":
+            return
+        if self.running.merge_lines(parse_lines(self._summary_lines(call))):
+            self.emitter.emit({"type": "actions", "items": list(self.running.actions)})
+            self.emitter.emit({"type": "summary", **self.running.lists()})
+
+    # ------------------------------------------------------------------ F2: final summary (tier A) / stop
+    def _write_summary(self, r: Running, *, note: str | None, n: int) -> Path | None:
+        assert self.session is not None
+        md = render_markdown(r, text=r.text, meta={"session": self.session.meta.get("session_id"), "turns": n,
+                                                   "model": SONNET if note is None else HAIKU}, note=note)
+        path = self.session.path / "summary.md"
+        tmp = path.with_name(".summary.md.tmp")
+        try:
+            tmp.write_text(md, encoding="utf-8")
+            os.replace(tmp, path)
+        except OSError as e:
+            self._status("error", f"cannot write summary.md: {type(e).__name__}")
+            return None
+        return path
+
+    async def summarize(self, timeout: float | None = None) -> None:
+        """Final merge (one Sonnet call on the D prefix) into summary.md. Idempotent for an unchanged transcript."""
+        if self.session is None or not self.turns:
+            return
+        task = self._final_task
+        if task is None or task.done():
+            if self._final_n == len(self.turns) and self._final_events:
+                for ev in self._final_events:
+                    self.emitter.emit(ev)
+                return
+            task = self._final_task = self._spawn(self._run_final(len(self.turns)))
+        try:
+            await asyncio.wait_for(asyncio.shield(task), timeout)
+        except asyncio.TimeoutError:
+            log.warning("final summary still running after %.0f s; closing with the draft on disk", timeout or 0)
+
+    async def _run_final(self, n: int) -> None:
+        draft = self.running.copy()
+        self._write_summary(draft, note="final merge pending", n=n)    # on disk even if the merge never finishes
+        reason: str | None = None
+        final = draft
+        call = self._launch("A", "", "", final_tail(self.lang, draft.as_lines()), list(self.turns), buffered=False)
+        if call is None:
+            reason = "not started (halted, budget or rate limit)"
+        else:
             await call.done.wait()
+            if call.discarded:
+                reason = "cancelled"
+            elif call.error is not None:
+                reason = call.error.kind
+            elif call.stop_reason == "refusal":
+                reason = "refusal"
+            else:
+                got = Running()
+                got.merge_lines(parse_lines(self._summary_lines(call)))
+                if got.is_empty():
+                    reason = "empty answer"
+                else:
+                    if call.stop_reason == "max_tokens":   # truncated: keep what the rolling pass had as well
+                        for kind, items in (("DECISION", draft.decisions), ("ACTION", draft.actions), ("OPEN", draft.open)):
+                            for x in items:
+                                got.add(kind, x)
+                    final = got
+        note = None if reason is None else f"final merge unavailable ({reason}); rolling notes only"
+        path = self._write_summary(final, note=note, n=n)
+        if reason is None:
+            self.running = final.copy()
+        ev = {"type": "summary", **final.lists(), "final": reason is None, "conflicts": list(final.conflicts),
+              "text": final.text, "path": str(path) if path else None}
+        if reason is not None:
+            ev["draft_reason"] = reason
+        events = [{"type": "actions", "items": list(final.actions)}, ev]
+        for e in events:
+            self.emitter.emit(e)
+        self.emitter.metric("", "summary_final", ok=reason is None, reason=reason, turns=n,
+                            cost_usd=round(spend_usd(SONNET, usage_obj(call.usage)), 6) if call and call.usage else 0.0)
+        if reason is None:
+            self._final_n, self._final_events = n, events
+
+    async def stop(self) -> None:
+        """`control stop`: drop whatever S/F/D/R is in flight (as before), run the final merge, then shut down."""
+        if self.stopped.is_set():
+            return
+        self.closing = True
+        for c in self.calls:
+            if not c.done.is_set() and c.tier != "A":
+                c.discard()
+        try:
+            await self.summarize(timeout=self.config.final_timeout_s)
+        except Exception:  # noqa: BLE001 - a summary problem must never keep the process from exiting
+            log.exception("final summary failed")
+        await self.shutdown()
 
     async def shutdown(self) -> None:
         if self.stopped.is_set():

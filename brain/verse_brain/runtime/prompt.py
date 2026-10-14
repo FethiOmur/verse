@@ -30,7 +30,16 @@ Rules:
 - When an answer-bank entry fits the question, reuse its opener and its two most relevant points, shortened if \
 needed.
 - Answer in the language named with the question.
-- No preamble, no markdown, no blank lines. Do not include internal or system XML tags in your response."""
+- No preamble, no markdown, no blank lines. Do not include internal or system XML tags in your response.
+
+For a request that starts with SUMMARIZE-INCREMENTAL, the answer format above does not apply. Read the transcript \
+and write only lines of these three kinds, in the language of the transcript, one item per line:
+DECISION: <something the participants agreed or settled together (a choice, a date, a go or no-go), at most 25 words>
+ACTION: <owner> — <what they committed or were asked to do later, by when if stated, at most 25 words>
+OPEN: <a question or topic that was raised and is still unresolved, at most 25 words>
+What one person merely said or answered is not a decision, and a question that was answered is not open. Record \
+only what was actually said, never invent. Skip everything listed under ALREADY RECORDED. If a kind has no items, \
+write no line of that kind. If there is nothing new at all, write NONE."""
 
 SYSTEM_DEEP = """You are the deep tier of Verse, a live meeting assistant for Alex. Alex is on a call. A short \
 opener has already been shown to him for the current question; you add detail points he can read and say.
@@ -53,8 +62,18 @@ pack does not support a claim, leave it out.
 - Answer in the language named with the question.
 - No preamble, no markdown, no blank lines. Do not include internal or system XML tags in your response.
 
-For a request that starts with SUMMARIZE, skip line 1 and write only "- " lines: the action items and \
-commitments from the transcript (who does what, by when if stated), at most 8."""
+For a request that starts with SUMMARIZE-FINAL, skip line 1 and the opener rules. Merge the draft notes with the \
+transcript (the transcript wins where they disagree) and write only these lines, in the language of the transcript:
+SUMMARY: <2 to 3 sentences: what the meeting was about and where it ended>
+DECISION: <something that was decided or agreed, at most 25 words>
+ACTION: <owner> — <what they will do, by when if stated, at most 25 words>
+OPEN: <a question or topic left unresolved, at most 25 words>
+CONFLICT: <a fact, number, date or name said in the meeting that differs from the meeting pack: what was said, \
+what the pack says (source ref, e.g. f001)>
+Merge duplicates, drop notes the transcript does not support, keep every real commitment with its owner. Every line \
+stands alone: never comment on the draft notes or on your own edits. If a kind \
+has no items, write no line of that kind: for example, write a CONFLICT line only for a real disagreement with \
+the pack."""
 
 SYSTEMS = {"S": SYSTEM_FAST, "F": SYSTEM_FAST, "D": SYSTEM_DEEP}
 
@@ -115,7 +134,26 @@ def deep_tail(question: str, lang: str, final: bool, shown_opener: str | None, b
     return "\n".join(lines)
 
 
-SUMMARIZE_TAIL = "SUMMARIZE the transcript above into action items."
+def _recorded(lines: list[str]) -> str:
+    return "\n".join(lines) if lines else "(nothing yet)"
+
+
+def rolling_tail(lang: str, recorded: list[str]) -> str:
+    """Incremental summary pass (Haiku, on the S/F prefix): only items not recorded yet."""
+    return (f"SUMMARIZE-INCREMENTAL\nLanguage: {LANG_NAME.get(lang, lang)}\n"
+            f"ALREADY RECORDED:\n{_recorded(recorded)}\n"
+            "Summarize the transcript above: list the decisions, action items (with owner) and open questions that "
+            "are not recorded yet.")
+
+
+def final_tail(lang: str, draft: list[str]) -> str:
+    """Final merge at stop (Sonnet, on the D prefix): the rolling notes are a draft to be checked."""
+    return (f"SUMMARIZE-FINAL\nLanguage: {LANG_NAME.get(lang, lang)}\n"
+            f"DRAFT NOTES FROM THE INCREMENTAL PASS (may be incomplete or repeat each other):\n{_recorded(draft)}\n"
+            "Write the final summary of the whole meeting above, and list facts mentioned in it that conflict with "
+            "the meeting pack.")
+
+
 WARMUP_TAIL = "warmup"
 
 

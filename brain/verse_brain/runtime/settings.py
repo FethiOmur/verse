@@ -73,5 +73,14 @@ class Config:
     keepalive_idle_s: float = 240.0
     keepalive_check_s: float = 10.0
     bucket_fraction: float = 0.80
+    # F2 incremental summary (lowest priority: never competes with S/F/D)
+    summary_every_turns: int = 6        # finalized turns (both speakers) between rolling passes
+    summary_every_s: float = 180.0      # ...or this much speech (audio clock), whichever comes first
+    summary_max_tokens: int = 400       # rolling pass output cap (not part of the settings tuple)
+    summary_bucket_min: float = 0.5     # skip the rolling pass while the Haiku bucket is below this fraction
+    summary_budget_frac: float = 0.9    # ...or the session spend is above this fraction of the budget
+    summary_partial_stale_s: float = 5.0   # a remote partial untouched this long no longer counts as "a turn is open"
+    final_max_tokens: int = 1500        # the Sonnet merge writes a whole summary; 600 (D) would truncate it
+    final_timeout_s: float = 45.0       # `control stop` waits this long for the merge, then closes with the draft
     # spend
     budget_usd: float = 3.0

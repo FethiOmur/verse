@@ -51,6 +51,13 @@ class ModelLimiter:
                 self.limits[k] = lim
                 self.buckets[k].set_capacity(lim * self.fraction, now)
 
+    def fraction_left(self) -> float:
+        """The emptiest bucket as a fraction of its capacity (1.0 = full). Used to keep low-priority calls out."""
+        now = time.monotonic()
+        for b in self.buckets.values():
+            b._refill(now)
+        return min(b.level / b.capacity for b in self.buckets.values() if b.capacity > 0)
+
     def try_acquire(self, input_tokens: int, output_tokens: int) -> bool:
         """All-or-nothing: one request plus the estimated uncached input and the output cap."""
         now = time.monotonic()

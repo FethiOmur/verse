@@ -134,7 +134,19 @@ class FakeTransport:
         return [c for c in self.calls if c.route == route]
 
 
+ROLLING_CANNED = ("DECISION: Start the pilot with one depot in shadow mode\n"
+                  "ACTION: Alex — share the pilot plan by Friday\nOPEN: Who approves the budget?")
+FINAL_CANNED = ("SUMMARY: The pilot starts with one depot in shadow mode; the budget owner is still open.\n"
+                "DECISION: Start the pilot with one depot in shadow mode\n"
+                "ACTION: Alex — share the pilot plan by Friday\nOPEN: Who approves the budget?\n"
+                "CONFLICT: Said entry takes 3 minutes; the fact sheet says 2 minutes (f001)")
+
+
 def default_responder(info: CallInfo) -> Script:
+    if info.tail.startswith("SUMMARIZE-INCREMENTAL"):
+        return lines_script(ROLLING_CANNED)
+    if info.tail.startswith("SUMMARIZE-FINAL"):
+        return lines_script(FINAL_CANNED)
     if info.route == "D":
         return lines_script("OPENER_OK\n- A detail point from the pack (prep:L1)\n- Another detail (f001)")
     return lines_script("SAY: Sure, here is the short answer.\n- First point.\n- Second point.\nBANK: none")

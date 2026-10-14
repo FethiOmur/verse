@@ -142,6 +142,7 @@ def run_live(session: Path, out: Path, word_ms: int, budget: float, fake: bool =
     out.parent.mkdir(parents=True, exist_ok=True)
     proc = Proc(budget, out.with_name("live-runtime.log"), fake=fake)
     turn_log: list[dict] = []
+    summarize_s = None
     try:
         proc.send({"type": "start", "session_dir": str(session), "lang": "en"})
         proc.pump(time.time() + 90, stop=lambda evs: any(e.get("type") == "status" and e.get("state") in
@@ -172,8 +173,11 @@ def run_live(session: Path, out: Path, word_ms: int, budget: float, fake: bool =
                 proc.send({"type": "turn", "turn_id": f"m{i:02d}", "speaker": "me", "text": reply,
                            "addressee": "unknown", "t_audio_end": time.time()})
             proc.pump(time.time() + 1.0)
-        proc.send({"type": "control", "action": "summarize"})
-        proc.pump(time.time() + 30, stop=lambda evs: any(e.get("type") == "actions" for _, e in evs))
+        t_summarize = time.time()
+        proc.send({"type": "control", "action": "summarize"})   # the final Sonnet merge -> summary.md (F2)
+        proc.pump(time.time() + 60, stop=lambda evs: any(e.get("type") == "summary" and e.get("final") is not None
+                                                         for _, e in evs))
+        summarize_s = round(time.time() - t_summarize, 2)
     finally:
         proc.close()
     # drain what is left
@@ -184,7 +188,9 @@ def run_live(session: Path, out: Path, word_ms: int, budget: float, fake: bool =
             break
         if ev is not None:
             proc.events.append((t, ev))
-    return analyse(proc.events, turn_log, session)
+    res = analyse(proc.events, turn_log, session)
+    res["summarize_s"] = summarize_s
+    return res
 
 
 def analyse(events: list[tuple[float, dict]], turn_log: list[dict], session: Path) -> dict:
@@ -260,6 +266,8 @@ def analyse(events: list[tuple[float, dict]], turn_log: list[dict], session: Pat
     spend = sum(r["cost_usd"] or 0 for r in rows) + sum(w.get("cost_usd") or 0 for w in warm)
     statuses = [e for _, e in events if e.get("type") == "status"]
     actions = [e for _, e in events if e.get("type") == "actions"]
+    summaries = [e for _, e in events if e.get("type") == "summary"]
+    sum_calls = [r for r in rows if r["tier"] in ("R", "A")]
     result = {
         "session": str(session),
         "note": "t=0 is the moment the replay sent `turn` (ASR lag and endpoint decision excluded); "
@@ -282,6 +290,10 @@ def analyse(events: list[tuple[float, dict]], turn_log: list[dict], session: Pat
         "errors": [r for r in rows if r["error"]],
         "statuses": statuses,
         "actions": actions,
+        "summary_events": summaries,
+        "summary_calls": [{k: r[k] for k in ("id", "tier", "turn_id", "req_to_first_byte_ms", "req_to_first_delta_ms", "usage",
+                                              "cost_usd", "error", "stop_reason", "discarded")} for r in sum_calls],
+        "summary_spend_usd": round(sum(r["cost_usd"] or 0 for r in sum_calls), 6),
         "spend_usd": round(spend, 6),
         "turns": turn_log,
         "calls": rows,
@@ -307,6 +319,12 @@ def print_table(res: dict) -> None:
           f"{c['cache_read_tokens_total']} read tokens; warm-ups: " +
           ", ".join(f"{w['stage']} {w['model']} write={w['usage'].get('cache_creation_input_tokens')} "
                     f"read={w['usage'].get('cache_read_input_tokens')}" for w in c["prewarm_and_keepalive"]))
+    sc = res["summary_calls"]
+    fin = [e for e in res["summary_events"] if e.get("final") is not None]
+    print(f"summary: {sum(1 for c in sc if c['tier'] == 'R')} rolling + {sum(1 for c in sc if c['tier'] == 'A')} final call(s), "
+          f"${res['summary_spend_usd']:.4f}; cache read per call: " +
+          ", ".join(f"{c['id']}={(c['usage'] or {}).get('cache_read_input_tokens')}" for c in sc) +
+          (f"; final merge {res.get('summarize_s')} s, path {fin[-1].get('path')}" if fin else "; no final summary event"))
     print(f"hedges fired: {res['hedges_fired']} | new connections on calls: {res['new_connections_on_calls']} | "
           f"D skipped: {res['d_skipped_turns']} | early D: {res['d_early']} | F turns: {res['f_turns']} | errors: {len(res['errors'])} | spend: ${res['spend_usd']:.4f}")
 
