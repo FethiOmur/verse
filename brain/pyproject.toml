@@ -11,6 +11,9 @@ dependencies = [
     # Pinned: anthropic 1.x runs on httpx2 (a plain httpx client is rejected).
     "anthropic==1.13.0",
     "httpx2[http2]==2.13.1",
+    # F3 paraphrase matcher (EmbeddingGemma via LiteRT-LM, Apache-2.0; docs/licences.md). Optional at run time: the
+    # brain runs without it and logs once. Same version as bench/embed/.venv.
+    "litert-lm-api==0.18.0",
 ]
 
 [project.optional-dependencies]

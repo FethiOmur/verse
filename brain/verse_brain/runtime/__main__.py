@@ -1,8 +1,10 @@
-"""CLI: python -u -m verse_brain.runtime [--budget-usd N] [--fake]
+"""CLI: python -u -m verse_brain.runtime [--budget-usd N] [--fake] [--no-embed]
 
 Reads Swift -> brain JSON lines on stdin, writes brain -> Swift JSON lines on stdout (flushed per line), logs to
 stderr. Exits on `{"type":"control","action":"stop"}` or stdin EOF. `--fake` uses the canned fake transport
-(no network, no key) for IPC tests.
+(no network, no key) for IPC tests; it also leaves the embedding matcher off. `--no-embed` turns the F3 paraphrase
+matcher (EmbeddingGemma, LiteRT-LM) off; without it the matcher loads at `start` and stays off by itself when
+`litert_lm` or the model is missing.
 """
 
 from __future__ import annotations
@@ -47,7 +49,13 @@ async def amain(args) -> int:
             return 2
         transport = AnthropicTransport(key)
         del key  # the SDK clients hold the only copy
-    brain = Brain(transport, emitter, Config(budget_usd=args.budget_usd))
+    cfg = Config(budget_usd=args.budget_usd)
+    factory = None
+    if not (args.fake or args.no_embed):
+        from .embed import LiteRtEmbedder
+
+        factory = lambda: LiteRtEmbedder(cfg.embed_model, cfg.embed_backend)  # noqa: E731
+    brain = Brain(transport, emitter, cfg, embedder_factory=factory)
     try:
         async for raw in _stdin_lines():
             try:
@@ -68,7 +76,8 @@ async def amain(args) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -u -m verse_brain.runtime", description=__doc__)
     ap.add_argument("--budget-usd", type=float, default=None, help="optional hard spend cap for this process (default: none)")
-    ap.add_argument("--fake", action="store_true", help="canned fake transport (tests)")
+    ap.add_argument("--fake", action="store_true", help="canned fake transport (tests); no embedding matcher")
+    ap.add_argument("--no-embed", action="store_true", help="turn the F3 paraphrase matcher off")
     ap.add_argument("--log-level", default="WARNING")
     args = ap.parse_args(argv)
     logging.basicConfig(stream=sys.stderr, level=args.log_level, format="%(asctime)s %(name)s %(levelname)s %(message)s")

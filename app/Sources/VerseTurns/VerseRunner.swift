@@ -664,7 +664,7 @@ public final class VerseRunner: @unchecked Sendable {
             return "  \(s("tier"))  \(tid)  \(full.trimmingCharacters(in: .whitespaces))"
         case "turn": return "heard \(tid) [\(s("speaker")), for \(s("addressee"))]: \(s("text"))"
         case "partial": return "  ... \(tid): \(s("text"))\((o["cue"] as? Bool) == true ? "  (question cue)" : "")"
-        case "bank_hit": return "  bank \(tid): \(s("bank_id")) score \(n("score"))"
+        case "bank_hit": return "  bank \(tid): \(s("bank_id")) score \(n("score"))\(s("via").isEmpty ? "" : " (\(s("via")))")"
         case "chip": return "  chip \(tid) [\(s("kind"))]: \(s("text")) (\(s("source_ref")))"
         case "select": return "  select \(tid): \(s("id"))"
         case "opener_status": return "  opener \(tid): \((o["ok"] as? Bool) == true ? "ok" : "WRONG")"

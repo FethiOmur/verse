@@ -1,0 +1,155 @@
+{
+ "id": "d05",
+ "lead_in_s": 20.0,
+ "duration_s": 98.27,
+ "timeline": [
+  {
+   "index": 0,
+   "speaker": "Ingrid",
+   "t_start": 20.03,
+   "t_end": 22.96,
+   "silent": false
+  },
+  {
+   "index": 1,
+   "speaker": "Alex",
+   "t_start": 24.09,
+   "t_end": 30.79,
+   "silent": true
+  },
+  {
+   "index": 2,
+   "speaker": "Ingrid",
+   "t_start": 32.02,
+   "t_end": 35.94,
+   "silent": false
+  },
+  {
+   "index": 3,
+   "speaker": "Alex",
+   "t_start": 37.13,
+   "t_end": 45.33,
+   "silent": true
+  },
+  {
+   "index": 4,
+   "speaker": "Ingrid",
+   "t_start": 46.54,
+   "t_end": 49.99,
+   "silent": false
+  },
+  {
+   "index": 5,
+   "speaker": "Alex",
+   "t_start": 51.095,
+   "t_end": 57.995,
+   "silent": true
+  },
+  {
+   "index": 6,
+   "speaker": "Ingrid",
+   "t_start": 59.295,
+   "t_end": 61.495,
+   "silent": false
+  },
+  {
+   "index": 7,
+   "speaker": "Alex",
+   "t_start": 62.845,
+   "t_end": 70.945,
+   "silent": true
+  },
+  {
+   "index": 8,
+   "speaker": "Ingrid",
+   "t_start": 72.185,
+   "t_end": 73.475,
+   "silent": false
+  },
+  {
+   "index": 9,
+   "speaker": "Ingrid",
+   "t_start": 74.715,
+   "t_end": 76.835,
+   "silent": false
+  },
+  {
+   "index": 10,
+   "speaker": "Alex",
+   "t_start": 77.798,
+   "t_end": 84.798,
+   "silent": true
+  },
+  {
+   "index": 11,
+   "speaker": "Ingrid",
+   "t_start": 86.108,
+   "t_end": 88.648,
+   "silent": false
+  },
+  {
+   "index": 12,
+   "speaker": "Alex",
+   "t_start": 89.768,
+   "t_end": 98.268,
+   "silent": true
+  }
+ ],
+ "wall_start": 1791999796.322,
+ "render_s": 3.91,
+ "elapsed_s": 105.9,
+ "loadavg_before": [
+  9.08,
+  12.58,
+  13.44
+ ],
+ "loadavg_after": [
+  5.34,
+  10.24,
+  12.42
+ ],
+ "exit_code": 0,
+ "timed_out": false,
+ "engine": [
+  {
+   "channel": "remote",
+   "engine": "Nemotron-0.6B-560ms (FluidAudio CoreML)",
+   "loadSec": 0.511,
+   "readyAtSec": 0.52,
+   "state": "engine_ready",
+   "type": "status",
+   "wall": 1791999799.402773
+  },
+  {
+   "channel": "remote",
+   "engine": "Nemotron-0.6B-560ms (FluidAudio CoreML)",
+   "from": "SpeechTranscriber+fastResults",
+   "loadSec": 0.511,
+   "readyAtSec": 0.52,
+   "state": "engine_switch",
+   "switchAtSec": 0.6,
+   "type": "status",
+   "waitedSec": 0.08,
+   "wall": 1791999799.48438
+  }
+ ],
+ "lines": 586,
+ "cost_usd": 0.028507,
+ "fake_brain": false,
+ "session_files_added": [],
+ "audio_watch": {
+  "folders": [
+   "/var/folders/th/cqlllcvs5g9d857_y87xzf0w0000gn/T/verse-eval-audio-icj02phq/session",
+   "/Users/user/Library/Application Support/Verse/sessions",
+   "/Users/user/Desktop/ProjectExamples/CursorExamples/Verse-wt-embed/brain/tests/out"
+  ],
+  "polls": 414,
+  "audio_files_found": [],
+  "pass": true
+ },
+ "temp_audio_removed": true,
+ "others_passed": [
+  "Ingrid"
+ ],
+ "budget_usd": 0.25
+}

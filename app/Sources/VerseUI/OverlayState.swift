@@ -198,8 +198,11 @@ public struct OverlayReducer: Sendable {
 
     /// What is known about a turn before (and after) its card exists.
     private struct TurnInfo: Sendable {
+        /// The bank entry to show as the P opener: Swift's n-gram hit (outbound) or the brain's paraphrase hit
+        /// (`bank_hit` with `via:"embed"`), whichever came last.
         var bankHit: String?
-        var bankRejected = false
+        /// Entries Haiku's `BANK:` check disagreed with (`bank_verdict agree:false`): never shown for this turn.
+        var rejectedBankIDs: Set<String> = []
         var chips: [OverlayChip] = []
         var selectedS: String?
         var fID: String?
@@ -379,6 +382,11 @@ public struct OverlayReducer: Sendable {
 
     private mutating func applyBrain(_ o: [String: JSONValue], now: TimeInterval) {
         switch o.type {
+        case "bank_hit":
+            // The brain's paraphrase matcher (F3): shown exactly like Swift's n-gram hit.
+            guard let tid = o[string: "turn_id"], let bid = o[string: "bank_id"] else { return }
+            turns[tid, default: TurnInfo()].bankHit = bid
+            if state.card?.turnID == tid { refreshCard(now: now) }
         case "delta":
             guard let id = o[string: "id"], let tid = o[string: "turn_id"], let tier = o[string: "tier"] else { return }
             var l = lines[id] ?? Lines(tier: tier, turnID: tid)
@@ -405,7 +413,9 @@ public struct OverlayReducer: Sendable {
             if state.card?.turnID == tid { refreshCard(now: now) }
         case "bank_verdict":
             guard let tid = o[string: "turn_id"], o[bool: "agree"] == false else { return }
-            turns[tid, default: TurnInfo()].bankRejected = true
+            var info = turns[tid, default: TurnInfo()]
+            if let bid = o[string: "bank_id"] ?? info.bankHit { info.rejectedBankIDs.insert(bid) }
+            turns[tid] = info
             if state.card?.turnID == tid { refreshCard(now: now) }
         case "status":
             applyStatus(o[string: "state"] ?? "", message: o[string: "message"] ?? "")
@@ -451,7 +461,7 @@ public struct OverlayReducer: Sendable {
             }
         }
         // P: the bank opener until the fast tier has a SAY line of its own (and only while the brain has not rejected it).
-        if say == nil, let bid = info.bankHit, !info.bankRejected, let p = bank[bid] {
+        if say == nil, let bid = info.bankHit, !info.rejectedBankIDs.contains(bid), let p = bank[bid] {
             say = p.opener
             sayTier = "P"
             if bullets.isEmpty { bullets = p.points }

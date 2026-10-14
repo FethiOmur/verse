@@ -1,0 +1,466 @@
+{"wall":1792000200.6934,"line":{"type":"status","state":"warming","message":"pre-warming claude-haiku-5-5 and claude-sonnet-5-5"}}
+{"wall":1792000201.9217,"line":{"type":"metric","turn_id":"","stage":"prewarm","t":1792000201.9215128,"model":"claude-sonnet-5-5","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4585,"input_tokens":7,"output_tokens":0},"stop_reason":"max_tokens","ms":1214.8,"cost_usd":0.000931}}
+{"wall":1792000201.9254,"line":{"type":"metric","turn_id":"","stage":"prewarm","t":1792000201.925248,"model":"claude-haiku-5-5","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4461,"input_tokens":7,"output_tokens":0},"stop_reason":"max_tokens","ms":1231.8,"cost_usd":4.5e-05}}
+{"wall":1792000201.9254,"line":{"type":"status","state":"ready","message":"warm; spend so far $0.0010"}}
+{"wall":1792000202.1078,"line":{"brain_pid":35197,"fake_brain":false,"lang":"en","origin_remote":0,"source":"verse-run","stage":"session_t0","t":1792000202.108,"turn_id":"","type":"metric"}}
+{"wall":1792000202.8747,"line":{"type":"metric","turn_id":"","stage":"embed_ready","t":1792000202.874593,"docs":88,"entries":22,"load_ms":365.5,"index_ms":1815.5}}
+{"wall":1792000222.9095,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":20.6,"text":"Thomas","turn_id":"r1","type":"partial"}}
+{"wall":1792000224.0187,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":21.56,"text":"Thomas, please go","turn_id":"r1","type":"partial"}}
+{"wall":1792000224.5925,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":22.44,"text":"Thomas, please go ahead with your","turn_id":"r1","type":"partial"}}
+{"wall":1792000225.1491,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":22.6,"text":"Thomas, please go ahead with your first","turn_id":"r1","type":"partial"}}
+{"wall":1792000225.6978,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":23.16,"text":"Thomas, please go ahead with your first question.","turn_id":"r1","type":"partial"}}
+{"wall":1792000226.3596,"line":{"addressee":"other","dir":"to_brain","kind":"statement","speaker":"remote","t_audio_end":23.594,"text":"Thomas, please go ahead with your first question.","turn_id":"r1","type":"turn"}}
+{"wall":1792000226.3597,"line":{"since_audio_end_s":0.657,"source":"verse-run","stage":"turn_sent","t":1792000226.36,"t_audio_end":23.594,"t_audio_end_wall":1792000225.702,"turn_id":"r1","type":"metric"}}
+{"wall":1792000226.3599,"line":{"type":"metric","turn_id":"r1","stage":"turn_recv","t":1792000226.359699,"speaker":"remote","t_audio_end":23.594}}
+{"wall":1792000226.3599,"line":{"type":"metric","turn_id":"r1","stage":"for_others","t":1792000226.359804}}
+{"wall":1792000227.9556,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":25.56,"text":"How did you choose","turn_id":"r2","type":"partial"}}
+{"wall":1792000227.9563,"line":{"type":"metric","turn_id":"r2","stage":"fire","t":1792000227.956106,"id":"s0001","tier":"S","words":4,"hedge_after_s":1.5}}
+{"wall":1792000228.5059,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":25.88,"text":"How did you choose between","turn_id":"r2","type":"partial"}}
+{"wall":1792000228.5984,"line":{"type":"metric","turn_id":"r2","stage":"embed","t":1792000228.598322,"ms":91.85,"wait_ms":0.26,"top":"b019","score":0.8965,"second":0.8735,"words":5,"accepted":true}}
+{"wall":1792000229.0638,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":26.76,"text":"How did you choose between small and","turn_id":"r2","type":"partial"}}
+{"wall":1792000229.0639,"line":{"bank_id":"b019","dir":"to_brain","score":0.864,"turn_id":"r2","type":"bank_hit"}}
+{"wall":1792000229.0643,"line":{"type":"metric","turn_id":"r2","stage":"first_byte","t":1792000229.064071,"id":"s0001","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000229.0645,"line":{"type":"metric","turn_id":"r2","stage":"first_delta","t":1792000229.0643892,"id":"s0001","tier":"S"}}
+{"wall":1792000229.2232,"line":{"type":"metric","turn_id":"r2","stage":"say_line","t":1792000229.222956,"id":"s0001","tier":"S"}}
+{"wall":1792000229.2233,"line":{"type":"metric","turn_id":"r2","stage":"first_point","t":1792000229.2231429,"id":"s0001","tier":"S"}}
+{"wall":1792000229.3484,"line":{"type":"metric","turn_id":"r2","stage":"done","t":1792000229.348115,"id":"s0001","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4461,"input_tokens":57,"output_tokens":95},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":9.8e-05}}
+{"wall":1792000229.6291,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":27.16,"text":"How did you choose between small and large mod","turn_id":"r2","type":"partial"}}
+{"wall":1792000229.6292,"line":{"bank_id":"b019","dir":"to_brain","score":0.946,"turn_id":"r2","type":"bank_hit"}}
+{"wall":1792000229.6298,"line":{"type":"metric","turn_id":"r2","stage":"fire","t":1792000229.629455,"id":"s0002","tier":"S","words":9,"hedge_after_s":1.5}}
+{"wall":1792000230.185,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":27.56,"text":"How did you choose between small and large models","turn_id":"r2","type":"partial"}}
+{"wall":1792000230.2652,"line":{"addressee":"me","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":27.729,"text":"How did you choose between small and large models","turn_id":"r2","type":"turn"}}
+{"wall":1792000230.2655,"line":{"since_audio_end_s":0.428,"source":"verse-run","stage":"turn_sent","t":1792000230.265,"t_audio_end":27.729,"t_audio_end_wall":1792000229.837,"turn_id":"r2","type":"metric"}}
+{"wall":1792000230.2658,"line":{"type":"metric","turn_id":"r2","stage":"turn_recv","t":1792000230.2654982,"speaker":"remote","t_audio_end":27.729}}
+{"wall":1792000230.2659,"line":{"type":"select","turn_id":"r2","id":"s0002"}}
+{"wall":1792000230.2659,"line":{"type":"metric","turn_id":"r2","stage":"select","t":1792000230.265745,"id":"s0002","tier":"S","distance":1}}
+{"wall":1792000230.2659,"line":{"type":"metric","turn_id":"r2","stage":"release","t":1792000230.265762,"id":"s0002","tier":"S","buffered_events":0}}
+{"wall":1792000230.4519,"line":{"type":"metric","turn_id":"r2","stage":"first_byte","t":1792000230.451653,"id":"s0002","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000230.452,"line":{"type":"metric","turn_id":"r2","stage":"first_delta","t":1792000230.451879,"id":"s0002","tier":"S"}}
+{"wall":1792000230.4521,"line":{"type":"metric","turn_id":"r2","stage":"visible","t":1792000230.4519308,"id":"s0002","tier":"S"}}
+{"wall":1792000230.4522,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":"SAY: I used","line_done":false}}
+{"wall":1792000230.4522,"line":{"since_audio_end_s":0.615,"since_turn_sent_s":0.187,"source":"verse-run","stage":"first_text","t":1792000230.452,"tier":"S","turn_id":"r2","type":"metric"}}
+{"wall":1792000230.4708,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":" a tiered approach rather","line_done":false}}
+{"wall":1792000230.6439,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":" than one model for everything.","line_done":false}}
+{"wall":1792000230.644,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":"","line_done":true}}
+{"wall":1792000230.644,"line":{"type":"metric","turn_id":"r2","stage":"say_line","t":1792000230.643771,"id":"s0002","tier":"S"}}
+{"wall":1792000230.644,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":"- I chose a small model for","line_done":false}}
+{"wall":1792000230.644,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":" the first pass and a larger","line_done":false}}
+{"wall":1792000230.644,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":" one only on low-confidence","line_done":false}}
+{"wall":1792000230.644,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":" documents.","line_done":false}}
+{"wall":1792000230.644,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":"","line_done":true}}
+{"wall":1792000230.644,"line":{"type":"metric","turn_id":"r2","stage":"first_point","t":1792000230.6439402,"id":"s0002","tier":"S"}}
+{"wall":1792000230.6441,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":"- Mon","line_done":false}}
+{"wall":1792000230.6441,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":"thly model cost was around E","line_done":false}}
+{"wall":1792000230.6441,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":"UR 1,900 against","line_done":false}}
+{"wall":1792000230.6441,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":" EUR 9,500 ","line_done":false}}
+{"wall":1792000230.6557,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":"of manual labour saved.","line_done":false}}
+{"wall":1792000230.6758,"line":{"type":"delta","id":"s0002","turn_id":"r2","tier":"S","text":"","line_done":true}}
+{"wall":1792000230.7024,"line":{"type":"bank_verdict","turn_id":"r2","bank_id":"b019","agree":true}}
+{"wall":1792000230.7025,"line":{"type":"metric","turn_id":"r2","stage":"d_skipped","t":1792000230.7023091,"bank_id":"b019"}}
+{"wall":1792000230.7026,"line":{"type":"metric","turn_id":"r2","stage":"done","t":1792000230.702518,"id":"s0002","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4461,"input_tokens":63,"output_tokens":94},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":9.8e-05}}
+{"wall":1792000238.5908,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":36.28,"text":"What do you","turn_id":"r3","type":"partial"}}
+{"wall":1792000239.1481,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":36.92,"text":"What do you do when the","turn_id":"r3","type":"partial"}}
+{"wall":1792000239.1486,"line":{"type":"metric","turn_id":"r3","stage":"fire","t":1792000239.1484082,"id":"s0003","tier":"S","words":6,"hedge_after_s":1.5}}
+{"wall":1792000239.1979,"line":{"type":"metric","turn_id":"r3","stage":"embed","t":1792000239.197827,"ms":49.1,"wait_ms":0.23,"top":"b020","score":0.8725,"second":0.8604,"words":6,"accepted":true}}
+{"wall":1792000239.7045,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":37.24,"text":"What do you do when the model gives","turn_id":"r3","type":"partial"}}
+{"wall":1792000239.7401,"line":{"type":"metric","turn_id":"r3","stage":"embed","t":1792000239.739996,"ms":35.18,"wait_ms":0.13,"top":"b010","score":0.9019,"second":0.8957,"words":8,"accepted":true}}
+{"wall":1792000240.0431,"line":{"type":"metric","turn_id":"r3","stage":"first_byte","t":1792000240.042847,"id":"s0003","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000240.0432,"line":{"type":"metric","turn_id":"r3","stage":"first_delta","t":1792000240.043056,"id":"s0003","tier":"S"}}
+{"wall":1792000240.2698,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":37.72,"text":"What do you do when the model gives a bad","turn_id":"r3","type":"partial"}}
+{"wall":1792000240.2702,"line":{"type":"metric","turn_id":"r3","stage":"fire","t":1792000240.270066,"id":"s0004","tier":"S","words":10,"hedge_after_s":1.5}}
+{"wall":1792000240.2755,"line":{"type":"metric","turn_id":"r3","stage":"say_line","t":1792000240.2752929,"id":"s0003","tier":"S"}}
+{"wall":1792000240.2755,"line":{"type":"metric","turn_id":"r3","stage":"first_point","t":1792000240.275465,"id":"s0003","tier":"S"}}
+{"wall":1792000240.3069,"line":{"type":"metric","turn_id":"r3","stage":"embed","t":1792000240.306724,"ms":36.29,"wait_ms":0.21,"top":"b010","score":0.9181,"second":0.8797,"words":10,"accepted":true}}
+{"wall":1792000240.307,"line":{"type":"bank_hit","turn_id":"r3","bank_id":"b010","score":0.9181,"via":"embed"}}
+{"wall":1792000240.4287,"line":{"type":"metric","turn_id":"r3","stage":"done","t":1792000240.428378,"id":"s0003","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4461,"input_tokens":77,"output_tokens":107},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000106}}
+{"wall":1792000240.8316,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":38.36,"text":"What do you do when the model gives a bad or uncertain","turn_id":"r3","type":"partial"}}
+{"wall":1792000240.8809,"line":{"type":"metric","turn_id":"r3","stage":"embed","t":1792000240.8807838,"ms":48.74,"wait_ms":0.14,"top":"b010","score":0.9484,"second":0.8846,"words":12,"accepted":true}}
+{"wall":1792000241.0479,"line":{"type":"metric","turn_id":"r3","stage":"first_byte","t":1792000241.047619,"id":"s0004","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000241.048,"line":{"type":"metric","turn_id":"r3","stage":"first_delta","t":1792000241.047814,"id":"s0004","tier":"S"}}
+{"wall":1792000241.2144,"line":{"type":"metric","turn_id":"r3","stage":"say_line","t":1792000241.2140238,"id":"s0004","tier":"S"}}
+{"wall":1792000241.2708,"line":{"type":"metric","turn_id":"r3","stage":"first_point","t":1792000241.270616,"id":"s0004","tier":"S"}}
+{"wall":1792000241.3797,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":39.24,"text":"What do you do when the model gives a bad or uncertain answer?","turn_id":"r3","type":"partial"}}
+{"wall":1792000241.3958,"line":{"type":"metric","turn_id":"r3","stage":"done","t":1792000241.3957171,"id":"s0004","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4461,"input_tokens":83,"output_tokens":104},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000105}}
+{"wall":1792000241.4147,"line":{"type":"metric","turn_id":"r3","stage":"embed","t":1792000241.414496,"ms":34.31,"wait_ms":0.11,"top":"b010","score":0.9429,"second":0.8782,"words":13,"accepted":true}}
+{"wall":1792000241.693,"line":{"addressee":"me","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":39.24,"text":"What do you do when the model gives a bad or uncertain answer?","turn_id":"r3","type":"turn"}}
+{"wall":1792000241.693,"line":{"since_audio_end_s":0.345,"source":"verse-run","stage":"turn_sent","t":1792000241.693,"t_audio_end":39.24,"t_audio_end_wall":1792000241.348,"turn_id":"r3","type":"metric"}}
+{"wall":1792000241.6931,"line":{"type":"metric","turn_id":"r3","stage":"turn_recv","t":1792000241.693026,"speaker":"remote","t_audio_end":39.24}}
+{"wall":1792000241.6933,"line":{"type":"select","turn_id":"r3","id":"s0004"}}
+{"wall":1792000241.6933,"line":{"type":"metric","turn_id":"r3","stage":"select","t":1792000241.693192,"id":"s0004","tier":"S","distance":3}}
+{"wall":1792000241.6933,"line":{"type":"metric","turn_id":"r3","stage":"release","t":1792000241.693213,"id":"s0004","tier":"S","buffered_events":21}}
+{"wall":1792000241.6934,"line":{"type":"metric","turn_id":"r3","stage":"visible","t":1792000241.693228,"id":"s0004","tier":"S"}}
+{"wall":1792000241.6934,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"SAY: Good","line_done":false}}
+{"wall":1792000241.6934,"line":{"since_audio_end_s":0.346,"since_turn_sent_s":0,"source":"verse-run","stage":"first_text","t":1792000241.693,"tier":"S","turn_id":"r3","type":"metric"}}
+{"wall":1792000241.6934,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":" question; I tre","line_done":false}}
+{"wall":1792000241.6934,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"at b","line_done":false}}
+{"wall":1792000241.6934,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"ad out","line_done":false}}
+{"wall":1792000241.6934,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"puts as something","line_done":false}}
+{"wall":1792000241.6934,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":" to cat","line_done":false}}
+{"wall":1792000241.6935,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"ch and contain, not tr","line_done":false}}
+{"wall":1792000241.6935,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"ust.","line_done":false}}
+{"wall":1792000241.6935,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"","line_done":true}}
+{"wall":1792000241.6935,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"- Ext","line_done":false}}
+{"wall":1792000241.6935,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"raction is schema-validated","line_done":false}}
+{"wall":1792000241.6935,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":" with one retry, then escal","line_done":false}}
+{"wall":1792000241.6935,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"ated; I never let the model gu","line_done":false}}
+{"wall":1792000241.6936,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"ess a total.","line_done":false}}
+{"wall":1792000241.6936,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"","line_done":true}}
+{"wall":1792000241.6936,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"- F","line_done":false}}
+{"wall":1792000241.6936,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"ields below 0.8 conf","line_done":false}}
+{"wall":1792000241.6936,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"idence go to a human operator","line_done":false}}
+{"wall":1792000241.6936,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"; that was about 7 perc","line_done":false}}
+{"wall":1792000241.6936,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"ent of invoices.","line_done":false}}
+{"wall":1792000241.6936,"line":{"type":"delta","id":"s0004","turn_id":"r3","tier":"S","text":"","line_done":true}}
+{"wall":1792000241.6936,"line":{"type":"bank_verdict","turn_id":"r3","bank_id":"b010","agree":true}}
+{"wall":1792000241.6937,"line":{"type":"metric","turn_id":"r3","stage":"fire","t":1792000241.69365,"id":"d0005","tier":"D","words":13,"hedge_after_s":2.0}}
+{"wall":1792000243.6842,"line":{"type":"metric","turn_id":"r3","stage":"first_byte","t":1792000243.684078,"id":"d0005","tier":"D","lane":0,"new_connection":false}}
+{"wall":1792000243.6843,"line":{"type":"metric","turn_id":"r3","stage":"first_delta","t":1792000243.684254,"id":"d0005","tier":"D"}}
+{"wall":1792000243.6934,"line":{"type":"metric","turn_id":"r3","stage":"visible","t":1792000243.6933372,"id":"d0005","tier":"D"}}
+{"wall":1792000243.6934,"line":{"type":"opener_status","turn_id":"r3","ok":true}}
+{"wall":1792000243.6935,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"- Every extraction is sch","line_done":false}}
+{"wall":1792000243.7222,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"ema-validated;","line_done":false}}
+{"wall":1792000243.7558,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" if it fails, I","line_done":false}}
+{"wall":1792000243.7855,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" retry once, then esc","line_done":false}}
+{"wall":1792000243.8183,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"alate to a human inst","line_done":false}}
+{"wall":1792000243.8487,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"ead of acc","line_done":false}}
+{"wall":1792000243.8811,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"epting it","line_done":false}}
+{"wall":1792000243.9166,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":". (b010)","line_done":false}}
+{"wall":1792000243.9167,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"","line_done":true}}
+{"wall":1792000243.9167,"line":{"type":"metric","turn_id":"r3","stage":"first_point","t":1792000243.91633,"id":"d0005","tier":"D"}}
+{"wall":1792000243.9168,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"- I","line_done":false}}
+{"wall":1792000243.9509,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" never let the model guess a total","line_done":false}}
+{"wall":1792000244.0384,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":";","line_done":false}}
+{"wall":1792000244.6077,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" a missing or unver","line_done":false}}
+{"wall":1792000244.6078,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"ifiable total","line_done":false}}
+{"wall":1792000244.6078,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" is","line_done":false}}
+{"wall":1792000244.6078,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" escalated,","line_done":false}}
+{"wall":1792000244.6078,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" not fil","line_done":false}}
+{"wall":1792000244.6078,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"led in. (b010)","line_done":false}}
+{"wall":1792000244.6079,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"","line_done":true}}
+{"wall":1792000244.6079,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"- Fields below 0.","line_done":false}}
+{"wall":1792000244.6079,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"8 confidence go to a","line_done":false}}
+{"wall":1792000244.6079,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" human operator. On","line_done":false}}
+{"wall":1792000244.6079,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" Lantern that was about ","line_done":false}}
+{"wall":1792000244.608,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"7 percent of invoices","line_done":false}}
+{"wall":1792000244.608,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":". (f014, f","line_done":false}}
+{"wall":1792000244.6081,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"015)","line_done":false}}
+{"wall":1792000244.6081,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"","line_done":true}}
+{"wall":1792000244.6081,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"- A small model does","line_done":false}}
+{"wall":1792000244.6082,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" the first pass; a larger","line_done":false}}
+{"wall":1792000244.6082,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" one","line_done":false}}
+{"wall":1792000244.6082,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" only hand","line_done":false}}
+{"wall":1792000244.6083,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"les low-confidence documents","line_done":false}}
+{"wall":1792000244.6083,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":". A","line_done":false}}
+{"wall":1792000244.6121,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":" frozen ","line_done":false}}
+{"wall":1792000244.6459,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"400-invoice set is r","line_done":false}}
+{"wall":1792000244.6784,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"erun on every prompt change","line_done":false}}
+{"wall":1792000244.7113,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":". (b019","line_done":false}}
+{"wall":1792000244.7438,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":", b009","line_done":false}}
+{"wall":1792000244.786,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":")","line_done":false}}
+{"wall":1792000244.8009,"line":{"type":"delta","id":"d0005","turn_id":"r3","tier":"D","text":"","line_done":true}}
+{"wall":1792000244.801,"line":{"type":"metric","turn_id":"r3","stage":"done","t":1792000244.800861,"id":"d0005","tier":"D","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4585,"input_tokens":270,"output_tokens":189},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.003347}}
+{"wall":1792000251.4694,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":49.16,"text":"Ingrid","turn_id":"r4","type":"partial"}}
+{"wall":1792000251.4695,"line":{"fact_id":"f002","kind":"name","source_ref":"prep:L4","text":"Ingrid Solberg is the VP Engineering and the hiring manager on the panel.","turn_id":"r4","type":"chip"}}
+{"wall":1792000252.0254,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":49.72,"text":"Ingrid anything you","turn_id":"r4","type":"partial"}}
+{"wall":1792000252.5918,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":50.12,"text":"Ingrid anything you want to add","turn_id":"r4","type":"partial"}}
+{"wall":1792000252.5919,"line":{"fact_id":"b014","kind":"topic","source_ref":"prep:L30","text":"Do you have any questions for us?","turn_id":"r4","type":"chip"}}
+{"wall":1792000253.1468,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":50.52,"text":"Ingrid anything you want to add here","turn_id":"r4","type":"partial"}}
+{"wall":1792000253.4415,"line":{"addressee":"other","dir":"to_brain","kind":"statement","speaker":"remote","t_audio_end":50.681,"text":"Ingrid anything you want to add here","turn_id":"r4","type":"turn"}}
+{"wall":1792000253.4416,"line":{"since_audio_end_s":0.653,"source":"verse-run","stage":"turn_sent","t":1792000253.442,"t_audio_end":50.681,"t_audio_end_wall":1792000252.788,"turn_id":"r4","type":"metric"}}
+{"wall":1792000253.4417,"line":{"type":"metric","turn_id":"r4","stage":"turn_recv","t":1792000253.44163,"speaker":"remote","t_audio_end":50.681}}
+{"wall":1792000253.4418,"line":{"type":"metric","turn_id":"r4","stage":"for_others","t":1792000253.4416919}}
+{"wall":1792000257.0679,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":54.6,"text":"would you","turn_id":"r5","type":"partial"}}
+{"wall":1792000257.6289,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":55.4,"text":"would you change about","turn_id":"r5","type":"partial"}}
+{"wall":1792000257.6294,"line":{"type":"metric","turn_id":"r5","stage":"fire","t":1792000257.6292522,"id":"s0006","tier":"S","words":4,"hedge_after_s":1.5}}
+{"wall":1792000258.1831,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":55.8,"text":"would you change about compass","turn_id":"r5","type":"partial"}}
+{"wall":1792000258.1832,"line":{"fact_id":"f005","kind":"name","source_ref":"prep:L9","text":"Compass is the Halden product that re-plans delivery routes.","turn_id":"r5","type":"chip"}}
+{"wall":1792000258.1832,"line":{"fact_id":"g002","kind":"term","source_ref":"prep:L9","text":"Compass: Halden's product that re-plans delivery routes every 90 seconds using live traffic and driver status.","turn_id":"r5","type":"chip"}}
+{"wall":1792000258.2313,"line":{"type":"metric","turn_id":"r5","stage":"embed","t":1792000258.2310772,"ms":47.42,"wait_ms":0.12,"top":"b008","score":0.914,"second":0.8515,"words":5,"accepted":true}}
+{"wall":1792000258.2954,"line":{"type":"metric","turn_id":"r5","stage":"first_byte","t":1792000258.295297,"id":"s0006","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000258.2955,"line":{"type":"metric","turn_id":"r5","stage":"first_delta","t":1792000258.295454,"id":"s0006","tier":"S"}}
+{"wall":1792000258.471,"line":{"type":"metric","turn_id":"r5","stage":"say_line","t":1792000258.470777,"id":"s0006","tier":"S"}}
+{"wall":1792000258.511,"line":{"type":"metric","turn_id":"r5","stage":"first_point","t":1792000258.510796,"id":"s0006","tier":"S"}}
+{"wall":1792000258.746,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":56.28,"text":"would you change about compass if you","turn_id":"r5","type":"partial"}}
+{"wall":1792000258.7523,"line":{"type":"metric","turn_id":"r5","stage":"done","t":1792000258.752109,"id":"s0006","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":78,"cache_read_input_tokens":4461,"input_tokens":38,"output_tokens":79},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":9.8e-05}}
+{"wall":1792000258.782,"line":{"type":"metric","turn_id":"r5","stage":"embed","t":1792000258.7818198,"ms":35.38,"wait_ms":0.13,"top":"b008","score":0.9007,"second":0.843,"words":7,"accepted":true}}
+{"wall":1792000258.782,"line":{"type":"bank_hit","turn_id":"r5","bank_id":"b008","score":0.9007,"via":"embed"}}
+{"wall":1792000259.3111,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":56.68,"text":"would you change about compass if you joined","turn_id":"r5","type":"partial"}}
+{"wall":1792000259.3117,"line":{"type":"metric","turn_id":"r5","stage":"fire","t":1792000259.311449,"id":"s0007","tier":"S","words":8,"hedge_after_s":1.5}}
+{"wall":1792000259.3487,"line":{"type":"metric","turn_id":"r5","stage":"embed","t":1792000259.34849,"ms":36.6,"wait_ms":0.31,"top":"b008","score":0.8903,"second":0.8618,"words":8,"accepted":true}}
+{"wall":1792000259.3917,"line":{"addressee":"me","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":56.819,"text":"would you change about compass if you joined","turn_id":"r5","type":"turn"}}
+{"wall":1792000259.3918,"line":{"since_audio_end_s":0.465,"source":"verse-run","stage":"turn_sent","t":1792000259.392,"t_audio_end":56.819,"t_audio_end_wall":1792000258.927,"turn_id":"r5","type":"metric"}}
+{"wall":1792000259.3919,"line":{"type":"metric","turn_id":"r5","stage":"turn_recv","t":1792000259.3917608,"speaker":"remote","t_audio_end":56.819}}
+{"wall":1792000259.3919,"line":{"type":"select","turn_id":"r5","id":"s0007"}}
+{"wall":1792000259.3919,"line":{"type":"metric","turn_id":"r5","stage":"select","t":1792000259.391867,"id":"s0007","tier":"S","distance":0}}
+{"wall":1792000259.392,"line":{"type":"metric","turn_id":"r5","stage":"release","t":1792000259.391878,"id":"s0007","tier":"S","buffered_events":0}}
+{"wall":1792000259.3922,"line":{"type":"metric","turn_id":"r5","stage":"fire","t":1792000259.392158,"id":"d0008","tier":"D","words":8,"hedge_after_s":2.0}}
+{"wall":1792000260.2798,"line":{"type":"metric","turn_id":"r5","stage":"first_byte","t":1792000260.279503,"id":"s0007","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000260.2798,"line":{"type":"metric","turn_id":"r5","stage":"first_delta","t":1792000260.279707,"id":"s0007","tier":"S"}}
+{"wall":1792000260.2799,"line":{"type":"metric","turn_id":"r5","stage":"visible","t":1792000260.279739,"id":"s0007","tier":"S"}}
+{"wall":1792000260.2799,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"SAY: That","line_done":false}}
+{"wall":1792000260.2799,"line":{"since_audio_end_s":1.353,"since_turn_sent_s":0.888,"source":"verse-run","stage":"first_text","t":1792000260.28,"tier":"S","turn_id":"r5","type":"metric"}}
+{"wall":1792000260.4013,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"'s a f","line_done":false}}
+{"wall":1792000260.4117,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"air question, and I'd want","line_done":false}}
+{"wall":1792000260.4117,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":" to lear","line_done":false}}
+{"wall":1792000260.4118,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"n","line_done":false}}
+{"wall":1792000260.4118,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":" Compass before pro","line_done":false}}
+{"wall":1792000260.4118,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"posing chang","line_done":false}}
+{"wall":1792000260.4118,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"es.","line_done":false}}
+{"wall":1792000260.4118,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"","line_done":true}}
+{"wall":1792000260.4118,"line":{"type":"metric","turn_id":"r5","stage":"say_line","t":1792000260.41177,"id":"s0007","tier":"S"}}
+{"wall":1792000260.4119,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"- I'd first","line_done":false}}
+{"wall":1792000260.4121,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":" understand where","line_done":false}}
+{"wall":1792000260.4357,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":" ETA drift sh","line_done":false}}
+{"wall":1792000260.4538,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"ows up in practice against","line_done":false}}
+{"wall":1792000260.4761,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":" the 90-second re","line_done":false}}
+{"wall":1792000260.4983,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"-plan","line_done":false}}
+{"wall":1792000260.5621,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"ning lo","line_done":false}}
+{"wall":1792000260.5622,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"op.","line_done":false}}
+{"wall":1792000260.5622,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"","line_done":true}}
+{"wall":1792000260.5623,"line":{"type":"metric","turn_id":"r5","stage":"first_point","t":1792000260.562027,"id":"s0007","tier":"S"}}
+{"wall":1792000260.5623,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"- I'd look","line_done":false}}
+{"wall":1792000260.5623,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":" at","line_done":false}}
+{"wall":1792000260.5779,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":" how the L","line_done":false}}
+{"wall":1792000260.5959,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"LM-assisted disp","line_done":false}}
+{"wall":1792000260.6184,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"atcher could","line_done":false}}
+{"wall":1792000260.6364,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":" be","line_done":false}}
+{"wall":1792000260.6559,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":" tested saf","line_done":false}}
+{"wall":1792000260.6759,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"ely al","line_done":false}}
+{"wall":1792000260.6962,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"ongside it","line_done":false}}
+{"wall":1792000260.6989,"line":{"type":"metric","turn_id":"r5","stage":"first_byte","t":1792000260.698682,"id":"d0008","tier":"D","lane":0,"new_connection":false}}
+{"wall":1792000260.6991,"line":{"type":"metric","turn_id":"r5","stage":"first_delta","t":1792000260.698984,"id":"d0008","tier":"D"}}
+{"wall":1792000260.7162,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":" before any","line_done":false}}
+{"wall":1792000260.736,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":" live","line_done":false}}
+{"wall":1792000260.7363,"line":{"type":"metric","turn_id":"r5","stage":"visible","t":1792000260.736195,"id":"d0008","tier":"D"}}
+{"wall":1792000260.7363,"line":{"type":"opener_status","turn_id":"r5","ok":false}}
+{"wall":1792000260.7363,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"-","line_done":false}}
+{"wall":1792000260.762,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":" r","line_done":false}}
+{"wall":1792000260.7718,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" Start with your dire","line_done":false}}
+{"wall":1792000260.7759,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"ollout.","line_done":false}}
+{"wall":1792000260.776,"line":{"type":"delta","id":"s0007","turn_id":"r5","tier":"S","text":"","line_done":true}}
+{"wall":1792000260.8019,"line":{"type":"bank_verdict","turn_id":"r5","bank_id":"b008","agree":false}}
+{"wall":1792000260.802,"line":{"type":"metric","turn_id":"r5","stage":"done","t":1792000260.801879,"id":"s0007","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4539,"input_tokens":44,"output_tokens":108},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000104}}
+{"wall":1792000260.8165,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"ction: Compass re-pl","line_done":false}}
+{"wall":1792000260.8561,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"ans every 90 seconds","line_done":false}}
+{"wall":1792000260.8879,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":", so I","line_done":false}}
+{"wall":1792000260.9255,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" would","line_done":false}}
+{"wall":1792000260.9511,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" first","line_done":false}}
+{"wall":1792000260.9856,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" ask where","line_done":false}}
+{"wall":1792000261.0916,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" it","line_done":false}}
+{"wall":1792000261.4464,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" is hardest to test and where","line_done":false}}
+{"wall":1792000261.4465,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" ETA drift sh","line_done":false}}
+{"wall":1792000261.4465,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"ows up (f007","line_done":false}}
+{"wall":1792000261.4465,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":", g002","line_done":false}}
+{"wall":1792000261.4465,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":",","line_done":false}}
+{"wall":1792000261.4465,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" g001).","line_done":false}}
+{"wall":1792000261.4465,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"","line_done":true}}
+{"wall":1792000261.4466,"line":{"type":"metric","turn_id":"r5","stage":"first_point","t":1792000261.446448,"id":"d0008","tier":"D"}}
+{"wall":1792000261.4466,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"- I","line_done":false}}
+{"wall":1792000261.4466,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" would","line_done":false}}
+{"wall":1792000261.4466,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" g","line_done":false}}
+{"wall":1792000261.4466,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"ate any","line_done":false}}
+{"wall":1792000261.4466,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" change to","line_done":false}}
+{"wall":1792000261.4467,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" Compass on a frozen","line_done":false}}
+{"wall":1792000261.4467,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" evaluation set, rer","line_done":false}}
+{"wall":1792000261.8272,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"un on every prompt change before","line_done":false}}
+{"wall":1792000261.8273,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" release, as","line_done":false}}
+{"wall":1792000261.8274,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" I did with ","line_done":false}}
+{"wall":1792000261.8274,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"400 invoices (f018","line_done":false}}
+{"wall":1792000261.8274,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":", b013","line_done":false}}
+{"wall":1792000261.8275,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":").","line_done":false}}
+{"wall":1792000261.8275,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"","line_done":true}}
+{"wall":1792000261.8275,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"- For","line_done":false}}
+{"wall":1792000261.8275,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" the","line_done":false}}
+{"wall":1792000261.8276,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" plan","line_done":false}}
+{"wall":1792000261.8276,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"ned LLM-assisted","line_done":false}}
+{"wall":1792000261.8276,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" dispatcher, I would","line_done":false}}
+{"wall":1792000261.8444,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" validate outputs against a sch","line_done":false}}
+{"wall":1792000261.8753,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"ema, retry once, then esc","line_done":false}}
+{"wall":1792000262.3403,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"alate; the","line_done":false}}
+{"wall":1792000262.3404,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" model never guesses (","line_done":false}}
+{"wall":1792000262.3404,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"b006","line_done":false}}
+{"wall":1792000262.3405,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":", b013","line_done":false}}
+{"wall":1792000262.3405,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":").","line_done":false}}
+{"wall":1792000262.3406,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"","line_done":true}}
+{"wall":1792000262.3406,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"- Low-confid","line_done":false}}
+{"wall":1792000262.3407,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"ence cases, below 0.","line_done":false}}
+{"wall":1792000262.3407,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"8 confidence, would go","line_done":false}}
+{"wall":1792000262.3407,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" to a human operator, as in","line_done":false}}
+{"wall":1792000262.3408,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" Lantern,","line_done":false}}
+{"wall":1792000262.3408,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" where that was about 7 perc","line_done":false}}
+{"wall":1792000262.3409,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"ent of","line_done":false}}
+{"wall":1792000262.3409,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":" invoices (f014, f","line_done":false}}
+{"wall":1792000262.3413,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"015).","line_done":false}}
+{"wall":1792000262.3441,"line":{"type":"delta","id":"d0008","turn_id":"r5","tier":"D","text":"","line_done":true}}
+{"wall":1792000262.3443,"line":{"type":"metric","turn_id":"r5","stage":"done","t":1792000262.344177,"id":"d0008","tier":"D","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":78,"cache_read_input_tokens":4585,"input_tokens":238,"output_tokens":230},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.003888}}
+{"wall":1792000268.2585,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":65.72,"text":"to us","turn_id":"r6","type":"partial"}}
+{"wall":1792000268.2586,"line":{"fact_id":"b002","kind":"topic","source_ref":"prep:L10","text":"Why do you want to join Halden Freight Systems?","turn_id":"r6","type":"chip"}}
+{"wall":1792000268.8299,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":66.6,"text":"to us? Can you pull up the","turn_id":"r6","type":"partial"}}
+{"wall":1792000268.8303,"line":{"type":"metric","turn_id":"r6","stage":"fire","t":1792000268.830176,"id":"s0009","tier":"S","words":7,"hedge_after_s":1.5}}
+{"wall":1792000268.8728,"line":{"type":"metric","turn_id":"r6","stage":"embed","t":1792000268.872669,"ms":42.15,"wait_ms":0.23,"top":"b014","score":0.8682,"second":0.8529,"words":7,"accepted":true}}
+{"wall":1792000269.388,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":66.84,"text":"to us? Can you pull up the evaluat","turn_id":"r6","type":"partial"}}
+{"wall":1792000269.4243,"line":{"type":"metric","turn_id":"r6","stage":"embed","t":1792000269.424106,"ms":35.51,"wait_ms":0.23,"top":"b009","score":0.8692,"second":0.8634,"words":8,"accepted":true}}
+{"wall":1792000269.5742,"line":{"type":"metric","turn_id":"r6","stage":"first_byte","t":1792000269.574038,"id":"s0009","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000269.5743,"line":{"type":"metric","turn_id":"r6","stage":"first_delta","t":1792000269.5741901,"id":"s0009","tier":"S"}}
+{"wall":1792000269.7749,"line":{"type":"metric","turn_id":"r6","stage":"say_line","t":1792000269.774315,"id":"s0009","tier":"S"}}
+{"wall":1792000269.9523,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":67.8,"text":"to us? Can you pull up the evaluation notes","turn_id":"r6","type":"partial"}}
+{"wall":1792000269.9651,"line":{"type":"metric","turn_id":"r6","stage":"first_point","t":1792000269.9648829,"id":"s0009","tier":"S"}}
+{"wall":1792000269.9899,"line":{"type":"metric","turn_id":"r6","stage":"embed","t":1792000269.989722,"ms":37.03,"wait_ms":0.12,"top":"b009","score":0.8574,"second":0.8484,"words":9,"accepted":false}}
+{"wall":1792000270.0668,"line":{"type":"metric","turn_id":"r6","stage":"done","t":1792000270.0665338,"id":"s0009","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4538,"input_tokens":60,"output_tokens":103},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000103}}
+{"wall":1792000270.5032,"line":{"addressee":"me","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":67.806,"text":"to us? Can you pull up the evaluation notes","turn_id":"r6","type":"turn"}}
+{"wall":1792000270.5033,"line":{"since_audio_end_s":0.59,"source":"verse-run","stage":"turn_sent","t":1792000270.503,"t_audio_end":67.806,"t_audio_end_wall":1792000269.913,"turn_id":"r6","type":"metric"}}
+{"wall":1792000270.5034,"line":{"type":"metric","turn_id":"r6","stage":"turn_recv","t":1792000270.503326,"speaker":"remote","t_audio_end":67.806}}
+{"wall":1792000270.5035,"line":{"type":"select","turn_id":"r6","id":"s0009"}}
+{"wall":1792000270.5035,"line":{"type":"metric","turn_id":"r6","stage":"select","t":1792000270.50344,"id":"s0009","tier":"S","distance":2}}
+{"wall":1792000270.5035,"line":{"type":"metric","turn_id":"r6","stage":"release","t":1792000270.503455,"id":"s0009","tier":"S","buffered_events":29}}
+{"wall":1792000270.5035,"line":{"type":"metric","turn_id":"r6","stage":"visible","t":1792000270.5034711,"id":"s0009","tier":"S"}}
+{"wall":1792000270.5035,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"SAY: I'd","line_done":false}}
+{"wall":1792000270.5036,"line":{"since_audio_end_s":0.59,"since_turn_sent_s":0,"source":"verse-run","stage":"first_text","t":1792000270.504,"tier":"S","turn_id":"r6","type":"metric"}}
+{"wall":1792000270.5036,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" like to think","line_done":false}}
+{"wall":1792000270.5036,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" about that","line_done":false}}
+{"wall":1792000270.5036,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" car","line_done":false}}
+{"wall":1792000270.5036,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"efully, and I'd also","line_done":false}}
+{"wall":1792000270.5036,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" ","line_done":false}}
+{"wall":1792000270.5037,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"ask what the team already","line_done":false}}
+{"wall":1792000270.5037,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" s","line_done":false}}
+{"wall":1792000270.5037,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"ees as pain points.","line_done":false}}
+{"wall":1792000270.5037,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"","line_done":true}}
+{"wall":1792000270.5037,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"-","line_done":false}}
+{"wall":1792000270.5037,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" I'd first","line_done":false}}
+{"wall":1792000270.5037,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" want to underst","line_done":false}}
+{"wall":1792000270.5037,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"and which","line_done":false}}
+{"wall":1792000270.5037,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" par","line_done":false}}
+{"wall":1792000270.5037,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"ts of Compass dr","line_done":false}}
+{"wall":1792000270.5037,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"ive the most","line_done":false}}
+{"wall":1792000270.5037,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" ETA drift in","line_done":false}}
+{"wall":1792000270.5038,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" pract","line_done":false}}
+{"wall":1792000270.5038,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"ice.","line_done":false}}
+{"wall":1792000270.5038,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"","line_done":true}}
+{"wall":1792000270.5038,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"- I","line_done":false}}
+{"wall":1792000270.5038,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"'d look","line_done":false}}
+{"wall":1792000270.5038,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" at how the d","line_done":false}}
+{"wall":1792000270.5038,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"ispatcher will","line_done":false}}
+{"wall":1792000270.5039,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" be evaluated before an","line_done":false}}
+{"wall":1792000270.5039,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"ything changes on","line_done":false}}
+{"wall":1792000270.5039,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":" live routes.","line_done":false}}
+{"wall":1792000270.5039,"line":{"type":"delta","id":"s0009","turn_id":"r6","tier":"S","text":"","line_done":true}}
+{"wall":1792000270.5039,"line":{"type":"metric","turn_id":"","stage":"summary_deferred","t":1792000270.503695,"reason":"turn_in_flight"}}
+{"wall":1792000270.504,"line":{"type":"metric","turn_id":"r6","stage":"fire","t":1792000270.5039308,"id":"d0010","tier":"D","words":9,"hedge_after_s":2.0}}
+{"wall":1792000271.6257,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":69.08,"text":"one","turn_id":"r7","type":"partial"}}
+{"wall":1792000272.0366,"line":{"type":"metric","turn_id":"r6","stage":"first_byte","t":1792000272.035264,"id":"d0010","tier":"D","lane":0,"new_connection":false}}
+{"wall":1792000272.0368,"line":{"type":"metric","turn_id":"r6","stage":"first_delta","t":1792000272.035678,"id":"d0010","tier":"D"}}
+{"wall":1792000272.0583,"line":{"type":"metric","turn_id":"r6","stage":"visible","t":1792000272.058105,"id":"d0010","tier":"D"}}
+{"wall":1792000272.0584,"line":{"type":"opener_status","turn_id":"r6","ok":false}}
+{"wall":1792000272.0584,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"- The question is a","line_done":false}}
+{"wall":1792000272.0821,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" request to p","line_done":false}}
+{"wall":1792000272.1079,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"ull up ev","line_done":false}}
+{"wall":1792000272.1463,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"aluation notes, and I","line_done":false}}
+{"wall":1792000272.1718,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":69.56,"text":"one second","turn_id":"r7","type":"partial"}}
+{"wall":1792000272.1787,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" have no notes document","line_done":false}}
+{"wall":1792000272.2057,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" in","line_done":false}}
+{"wall":1792000272.2428,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" the pack. Say","line_done":false}}
+{"wall":1792000272.277,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" what I can spe","line_done":false}}
+{"wall":1792000272.3035,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"ak to","line_done":false}}
+{"wall":1792000272.4063,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" from","line_done":false}}
+{"wall":1792000272.7417,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":70.28,"text":"one second? I have","turn_id":"r7","type":"partial"}}
+{"wall":1792000272.8743,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" memory instead.","line_done":false}}
+{"wall":1792000272.8744,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"","line_done":true}}
+{"wall":1792000272.8744,"line":{"type":"metric","turn_id":"r6","stage":"first_point","t":1792000272.874209,"id":"d0010","tier":"D"}}
+{"wall":1792000272.8744,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"-","line_done":false}}
+{"wall":1792000272.8744,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" Ev","line_done":false}}
+{"wall":1792000272.8744,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"aluation u","line_done":false}}
+{"wall":1792000272.8745,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"ses a frozen set of ","line_done":false}}
+{"wall":1792000272.8745,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"400 invoices, rer","line_done":false}}
+{"wall":1792000272.8745,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"un on every prompt change before","line_done":false}}
+{"wall":1792000272.8746,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" release (f","line_done":false}}
+{"wall":1792000272.8746,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"018,","line_done":false}}
+{"wall":1792000272.8747,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" b009","line_done":false}}
+{"wall":1792000272.8747,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":").","line_done":false}}
+{"wall":1792000272.8747,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"","line_done":true}}
+{"wall":1792000272.8747,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"- Held-out acc","line_done":false}}
+{"wall":1792000272.8748,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"uracy was 96.4","line_done":false}}
+{"wall":1792000272.8748,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" percent for totals and ","line_done":false}}
+{"wall":1792000272.8748,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"91 percent for line items (","line_done":false}}
+{"wall":1792000272.8748,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"f012, f","line_done":false}}
+{"wall":1792000272.8751,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"013).","line_done":false}}
+{"wall":1792000272.8751,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"","line_done":true}}
+{"wall":1792000272.8751,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"- Fields below","line_done":false}}
+{"wall":1792000272.8809,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" 0.8 confidence","line_done":false}}
+{"wall":1792000272.914,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" go to a human operator, about","line_done":false}}
+{"wall":1792000272.9475,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":" 7 percent of invo","line_done":false}}
+{"wall":1792000272.9781,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"ices (f014, f015).","line_done":false}}
+{"wall":1792000273.0228,"line":{"type":"delta","id":"d0010","turn_id":"r6","tier":"D","text":"","line_done":true}}
+{"wall":1792000273.023,"line":{"type":"metric","turn_id":"r6","stage":"done","t":1792000273.0228312,"id":"d0010","tier":"D","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4662,"input_tokens":103,"output_tokens":170},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.002838}}
+{"wall":1792000273.3049,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":70.68,"text":"one second? I have them","turn_id":"r7","type":"partial"}}
+{"wall":1792000273.5571,"line":{"addressee":"unknown","dir":"to_brain","kind":"statement","speaker":"remote","t_audio_end":70.789,"text":"one second? I have them","turn_id":"r7","type":"turn"}}
+{"wall":1792000273.5572,"line":{"since_audio_end_s":0.66,"source":"verse-run","stage":"turn_sent","t":1792000273.557,"t_audio_end":70.789,"t_audio_end_wall":1792000272.897,"turn_id":"r7","type":"metric"}}
+{"wall":1792000273.5574,"line":{"type":"metric","turn_id":"r7","stage":"turn_recv","t":1792000273.557201,"speaker":"remote","t_audio_end":70.789}}
+{"wall":1792000273.5576,"line":{"type":"metric","turn_id":"r7","stage":"statement_probe","t":1792000273.557466,"launched":true}}
+{"wall":1792000273.5576,"line":{"type":"metric","turn_id":"r7","stage":"fire","t":1792000273.557558,"id":"f0011","tier":"F","words":5,"hedge_after_s":1.5}}
+{"wall":1792000274.4239,"line":{"type":"metric","turn_id":"r7","stage":"first_byte","t":1792000274.423521,"id":"f0011","tier":"F","lane":0,"new_connection":false}}
+{"wall":1792000274.4242,"line":{"type":"metric","turn_id":"r7","stage":"first_delta","t":1792000274.4239008,"id":"f0011","tier":"F"}}
+{"wall":1792000274.4309,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":72.04,"text":"how much","turn_id":"r8","type":"partial"}}
+{"wall":1792000274.5016,"line":{"type":"metric","turn_id":"r7","stage":"visible","t":1792000274.5013819,"id":"f0011","tier":"F"}}
+{"wall":1792000274.5017,"line":{"type":"delta","id":"f0011","turn_id":"r7","tier":"F","text":"SAY: Of course, take your time.","line_done":true}}
+{"wall":1792000274.5017,"line":{"since_audio_end_s":1.605,"since_turn_sent_s":0.945,"source":"verse-run","stage":"first_text","t":1792000274.502,"tier":"F","turn_id":"r7","type":"metric"}}
+{"wall":1792000274.5017,"line":{"type":"metric","turn_id":"r7","stage":"say_line","t":1792000274.501437,"id":"f0011","tier":"F"}}
+{"wall":1792000274.5017,"line":{"type":"metric","turn_id":"r7","stage":"done","t":1792000274.501597,"id":"f0011","tier":"F","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4538,"input_tokens":360,"output_tokens":21},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":9.2e-05}}
+{"wall":1792000274.9922,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":72.68,"text":"how much did it cost","turn_id":"r8","type":"partial"}}
+{"wall":1792000274.9926,"line":{"type":"metric","turn_id":"r8","stage":"fire","t":1792000274.9924512,"id":"s0012","tier":"S","words":5,"hedge_after_s":1.5}}
+{"wall":1792000275.0396,"line":{"type":"metric","turn_id":"r8","stage":"embed","t":1792000275.039446,"ms":46.59,"wait_ms":0.21,"top":"b012","score":0.9291,"second":0.8695,"words":5,"accepted":true}}
+{"wall":1792000275.5508,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":73.24,"text":"how much did it cost to run","turn_id":"r8","type":"partial"}}
+{"wall":1792000275.5509,"line":{"bank_id":"b012","dir":"to_brain","score":0.767,"turn_id":"r8","type":"bank_hit"}}
+{"wall":1792000275.5992,"line":{"type":"metric","turn_id":"r8","stage":"embed","t":1792000275.5989928,"ms":47.81,"wait_ms":0.14,"top":"b012","score":0.9664,"second":0.8455,"words":7,"accepted":true}}
+{"wall":1792000275.8705,"line":{"type":"metric","turn_id":"r8","stage":"first_byte","t":1792000275.870246,"id":"s0012","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000275.8705,"line":{"type":"metric","turn_id":"r8","stage":"first_delta","t":1792000275.870454,"id":"s0012","tier":"S"}}
+{"wall":1792000276.0263,"line":{"type":"metric","turn_id":"r8","stage":"say_line","t":1792000276.0260742,"id":"s0012","tier":"S"}}
+{"wall":1792000276.0512,"line":{"type":"metric","turn_id":"r8","stage":"first_point","t":1792000276.050904,"id":"s0012","tier":"S"}}
+{"wall":1792000276.1074,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":73.8,"text":"how much did it cost to run and","turn_id":"r8","type":"partial"}}
+{"wall":1792000276.1388,"line":{"type":"metric","turn_id":"r8","stage":"done","t":1792000276.138561,"id":"s0012","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4538,"input_tokens":87,"output_tokens":94},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000101}}
+{"wall":1792000276.6562,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":74.28,"text":"how much did it cost to run and was it worth","turn_id":"r8","type":"partial"}}
+{"wall":1792000276.6563,"line":{"bank_id":"b012","dir":"to_brain","score":0.974,"turn_id":"r8","type":"bank_hit"}}
+{"wall":1792000276.6567,"line":{"type":"metric","turn_id":"r8","stage":"fire","t":1792000276.6565042,"id":"s0013","tier":"S","words":11,"hedge_after_s":1.5}}
+{"wall":1792000277.2273,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":74.6,"text":"how much did it cost to run and was it worth it","turn_id":"r8","type":"partial"}}
+{"wall":1792000277.3095,"line":{"addressee":"unknown","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":74.708,"text":"how much did it cost to run and was it worth it","turn_id":"r8","type":"turn"}}
+{"wall":1792000277.3096,"line":{"since_audio_end_s":0.494,"source":"verse-run","stage":"turn_sent","t":1792000277.309,"t_audio_end":74.708,"t_audio_end_wall":1792000276.816,"turn_id":"r8","type":"metric"}}
+{"wall":1792000277.3098,"line":{"type":"metric","turn_id":"r8","stage":"turn_recv","t":1792000277.3096051,"speaker":"remote","t_audio_end":74.708}}
+{"wall":1792000277.3098,"line":{"type":"select","turn_id":"r8","id":"s0013"}}
+{"wall":1792000277.3099,"line":{"type":"metric","turn_id":"r8","stage":"select","t":1792000277.3097641,"id":"s0013","tier":"S","distance":1}}
+{"wall":1792000277.3099,"line":{"type":"metric","turn_id":"r8","stage":"release","t":1792000277.30978,"id":"s0013","tier":"S","buffered_events":0}}
+{"wall":1792000278.0972,"line":{"type":"metric","turn_id":"r8","stage":"first_byte","t":1792000278.0967848,"id":"s0013","tier":"S","lane":0,"new_connection":false}}
+{"wall":1792000278.0973,"line":{"type":"metric","turn_id":"r8","stage":"first_delta","t":1792000278.097148,"id":"s0013","tier":"S"}}
+{"wall":1792000278.0974,"line":{"type":"metric","turn_id":"r8","stage":"visible","t":1792000278.0972521,"id":"s0013","tier":"S"}}
+{"wall":1792000278.0974,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":"SAY: I","line_done":false}}
+{"wall":1792000278.0975,"line":{"since_audio_end_s":1.282,"since_turn_sent_s":0.788,"source":"verse-run","stage":"first_text","t":1792000278.097,"tier":"S","turn_id":"r8","type":"metric"}}
+{"wall":1792000278.1619,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":" t","line_done":false}}
+{"wall":1792000278.171,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":"racked cost against","line_done":false}}
+{"wall":1792000278.171,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":" the labour it replaced,","line_done":false}}
+{"wall":1792000278.171,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":" so the","line_done":false}}
+{"wall":1792000278.1711,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":" comparison is clear.","line_done":false}}
+{"wall":1792000278.1711,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":"","line_done":true}}
+{"wall":1792000278.1711,"line":{"type":"metric","turn_id":"r8","stage":"say_line","t":1792000278.1709561,"id":"s0013","tier":"S"}}
+{"wall":1792000278.1711,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":"- Monthly model cost","line_done":false}}
+{"wall":1792000278.1711,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":" was around EUR 1,","line_done":false}}
+{"wall":1792000278.1711,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":"900,","line_done":false}}
+{"wall":1792000278.1711,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":" against EUR 9,500","line_done":false}}
+{"wall":1792000278.1885,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":" of manual labour saved","line_done":false}}
+{"wall":1792000278.2116,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":".","line_done":false}}
+{"wall":1792000278.2117,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":"","line_done":true}}
+{"wall":1792000278.2117,"line":{"type":"metric","turn_id":"r8","stage":"first_point","t":1792000278.211408,"id":"s0013","tier":"S"}}
+{"wall":1792000278.2117,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":"- That","line_done":false}}
+{"wall":1792000278.2258,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":" was at a volume of 38","line_done":false}}
+{"wall":1792000278.2493,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":",000 invoices a month","line_done":false}}
+{"wall":1792000278.269,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":".","line_done":false}}
+{"wall":1792000278.2691,"line":{"type":"delta","id":"s0013","turn_id":"r8","tier":"S","text":"","line_done":true}}
+{"wall":1792000278.294,"line":{"type":"bank_verdict","turn_id":"r8","bank_id":"b012","agree":true}}
+{"wall":1792000278.2941,"line":{"type":"metric","turn_id":"r8","stage":"d_skipped","t":1792000278.293877,"bank_id":"b012"}}
+{"wall":1792000278.2943,"line":{"type":"metric","turn_id":"r8","stage":"done","t":1792000278.2941692,"id":"s0013","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4538,"input_tokens":94,"output_tokens":93},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000101}}
+{"wall":1792000278.2943,"line":{"type":"metric","turn_id":"","stage":"fire","t":1792000278.294223,"id":"r0014","tier":"R","words":0,"hedge_after_s":null}}
+{"wall":1792000279.3268,"line":{"type":"metric","turn_id":"","stage":"first_byte","t":1792000279.326556,"id":"r0014","tier":"R","lane":1,"new_connection":false}}
+{"wall":1792000279.327,"line":{"type":"metric","turn_id":"","stage":"first_delta","t":1792000279.326845,"id":"r0014","tier":"R"}}
+{"wall":1792000279.4573,"line":{"type":"actions","items":["Alex — Pull up the evaluation notes once the other side has them."]}}
+{"wall":1792000279.4574,"line":{"type":"summary","decisions":["Thursday 22 October 2026 at 15:00 CEST interview on Google Meet is the scheduled meeting time."],"actions":["Alex — Pull up the evaluation notes once the other side has them."],"open":[]}}
+{"wall":1792000279.4574,"line":{"type":"metric","turn_id":"","stage":"done","t":1792000279.45679,"id":"r0014","tier":"R","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":66,"cache_read_input_tokens":4538,"input_tokens":83,"output_tokens":76},"hedged":false,"winner_lane":1,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.0001}}
+{"wall":1792000286.8949,"line":{"type":"metric","turn_id":"","stage":"fire","t":1792000286.89469,"id":"a0015","tier":"A","words":0,"hedge_after_s":null}}
+{"wall":1792000288.1558,"line":{"type":"metric","turn_id":"","stage":"first_byte","t":1792000288.1546218,"id":"a0015","tier":"A","lane":1,"new_connection":false}}
+{"wall":1792000288.1558,"line":{"type":"metric","turn_id":"","stage":"first_delta","t":1792000288.1549041,"id":"a0015","tier":"A"}}

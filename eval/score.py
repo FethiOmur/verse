@@ -108,6 +108,12 @@ def is_answerable(t: dict) -> bool:
 
 # ---------------------------------------------------------------- per-dialogue scoring
 
+# Bank hits come from Swift's n-gram matcher (`bank_hit` sent to the brain, `dir:"to_brain"`) and, since F3, from the
+# brain's paraphrase matcher (a brain line `bank_hit` with `via:"embed"`). `--ngram-only` scores the n-gram hits alone,
+# which gives the before/after comparison from one run.
+COUNT_EMBED_HITS = True
+
+
 def score_dialogue(label: dict, events: list[tuple[float, dict]], meta: dict | None, session_dir: Path | None = None) -> dict:
     clock = session_clock(events)
     if clock is None:
@@ -142,7 +148,7 @@ def score_dialogue(label: dict, events: list[tuple[float, dict]], meta: dict | N
             deltas_by_turn.setdefault(tid, []).append(o)
             if o.get("text", "").strip():
                 first_delta.setdefault(tid, {}).setdefault(o["tier"], w)
-        elif ty == "bank_hit" and o.get("dir") == "to_brain":
+        elif ty == "bank_hit" and (o.get("dir") == "to_brain" or (COUNT_EMBED_HITS and o.get("via") == "embed")):
             bank_hits.setdefault(tid, []).append((w, o))
         elif ty == "chip":
             chips.setdefault(tid, []).append((w, o))
@@ -184,6 +190,7 @@ def score_dialogue(label: dict, events: list[tuple[float, dict]], meta: dict | N
                 hits = bank_hits.get(tt["turn_id"], [])
                 if hits:
                     row.setdefault("bank_hits", []).extend([{"bank_id": h[1].get("bank_id"), "score": h[1].get("score"),
+                                                              "via": h[1].get("via", "ngram"),
                                                               "visible_s": round(h[0] - win["wall_end"], 3)} for h in hits])
                 for v in verdicts.get(tt["turn_id"], []):
                     row.setdefault("bank_verdicts", []).append({"bank_id": v.get("bank_id"), "agree": v.get("agree")})
@@ -263,14 +270,24 @@ def aggregate(dialogue_scores: list[dict], metas: dict[str, dict], suite: str = 
     def agreed_ids(r):
         return [v["bank_id"] for v in r.get("bank_verdicts", []) if v.get("agree")]
 
+    def retracted_ids(r):
+        # Haiku's BANK check disagreed: the overlay drops that entry's opener for the turn
+        return {v["bank_id"] for v in r.get("bank_verdicts", []) if v.get("agree") is False}
+
+    def final_via(r):
+        hs = r.get("bank_hits", [])
+        return hs[-1].get("via", "ngram") if hs else None
+
     per_cat = {}
     for cat in ("exact", "paraphrase"):
         rs = [r for r in banked if r["category"] == cat]
         per_cat[cat] = {"n": len(rs), "hit": sum(1 for r in rs if final_hit(r) == r["bank_id"]),
+                        "hit_via_embed": sum(1 for r in rs if final_hit(r) == r["bank_id"] and final_via(r) == "embed"),
                         "confirmed": sum(1 for r in rs if r["bank_id"] in agreed_ids(r))}
     wrong_final = [r for r in probed if final_hit(r) is not None and final_hit(r) != r["bank_id"]]
     wrong_transient = [r for r in probed if any(i != r["bank_id"] for i in hit_ids(r))]
     wrong_conf = [r for r in probed if any(i != r["bank_id"] for i in agreed_ids(r))]
+    wrong_shown = [r for r in wrong_final if final_hit(r) not in retracted_ids(r)]
     n_hits = sum(1 for r in banked if final_hit(r) == r["bank_id"])
     bank = {
         "banked_questions": len(banked), "hits": n_hits,
@@ -282,7 +299,11 @@ def aggregate(dialogue_scores: list[dict], metas: dict[str, dict], suite: str = 
         "wrong_hits_transient": len(wrong_transient),
         "wrong_hit_rate_transient": None if not probed else round(len(wrong_transient) / len(probed), 4),
         "wrong_after_haiku": len(wrong_conf), "wrong_after_haiku_rate": None if not probed else round(len(wrong_conf) / len(probed), 4),
-        "wrong_detail": [{"dialogue": r["dialogue"], "category": r["category"], "text": r["text"], "bank_ids": hit_ids(r), "expected": r["bank_id"]}
+        "wrong_hits_not_retracted": len(wrong_shown),
+        "wrong_hit_rate_not_retracted": None if not probed else round(len(wrong_shown) / len(probed), 4),
+        "wrong_final_via_embed": sum(1 for r in wrong_final if final_via(r) == "embed"),
+        "wrong_detail": [{"dialogue": r["dialogue"], "category": r["category"], "text": r["text"], "bank_ids": hit_ids(r), "expected": r["bank_id"],
+                          "via": [h.get("via", "ngram") for h in r.get("bank_hits", [])], "retracted": sorted(retracted_ids(r))}
                          for r in wrong_transient],
     }
     # --- latency (all from the true acoustic end)
@@ -357,13 +378,16 @@ def main() -> int:
     ap.add_argument("--judge", action="store_true", help="grounding: ask the independent Haiku judge about lines with unresolved claims")
     ap.add_argument("--judge-budget-usd", type=float, default=0.25)
     ap.add_argument("--judge-passes", type=int, default=2, help="how many times Haiku reads every line (it is not deterministic)")
+    ap.add_argument("--ngram-only", action="store_true", help="ignore the brain's embedding bank hits (writes scores_ngram.json)")
     a = ap.parse_args()
+    global COUNT_EMBED_HITS
+    COUNT_EMBED_HITS = not a.ngram_only
     from paths import OUT
     run_dir = OUT / a.run
     res = score_run(run_dir)
     from grounding_run import run_grounding  # local import: keeps score.py network-free
     res["grounding"] = run_grounding(res, Path(a.session), judge=a.judge, budget_usd=a.judge_budget_usd, run=a.run, passes=a.judge_passes)
-    (run_dir / "scores.json").write_text(json.dumps(res, indent=1, ensure_ascii=False) + "\n")
+    (run_dir / ("scores_ngram.json" if a.ngram_only else "scores.json")).write_text(json.dumps(res, indent=1, ensure_ascii=False) + "\n")
     ag = res["aggregate"]
     print(json.dumps({k: ag[k] for k in ("questions_to_owner", "detection", "addressee", "latency")}, indent=1)[:3000])
     return 0

@@ -30,8 +30,10 @@ import time
 from dataclasses import dataclass, field
 from itertools import count
 from pathlib import Path
+from typing import Callable
 
 from ..prep.model import Usage, spend_usd
+from .embed import Embedder, EmbedPath, Job, Result
 from .lines import LineAssembler
 from .prompt import (STATEMENT_SAY_WORDS, WARMUP_TAIL, Turn, build_request, deep_tail, fast_tail, final_tail,
                      rolling_tail, statement_tail)
@@ -260,6 +262,7 @@ class Call:
 class BankHit:
     bank_id: str
     score: float
+    via: str = "ngram"      # "ngram": Swift's matcher (exact phrasings); "embed": the brain's paraphrase matcher
 
 
 @dataclass
@@ -282,13 +285,23 @@ class TurnState:
     turns_before: list[Turn] = field(default_factory=list)
     retried_offline: bool = False
     kind: str | None = None        # `turn.kind` as sent by Swift (None = missing or unknown: question behaviour)
+    # F3 paraphrase matcher: the candidate entry of the last evaluated partials, how many in a row, the id sent
+    embed_cand: str | None = None
+    embed_count: int = 0
+    embed_sent: str | None = None
 
 
 class Brain:
-    def __init__(self, transport: Transport, emitter: Emitter, config: Config | None = None) -> None:
+    def __init__(self, transport: Transport, emitter: Emitter, config: Config | None = None,
+                 embedder_factory: Callable[[], Embedder] | None = None) -> None:
         self.transport = transport
         self.emitter = emitter
         self.config = config or Config()
+        # F3 paraphrase matcher; None (tests, `--fake`, `--no-embed`) leaves only Swift's n-gram hits
+        self.embed: EmbedPath | None = None
+        if embedder_factory is not None and self.config.embed_enabled:
+            self.embed = EmbedPath(embedder_factory, self._on_embed_result, self._spawn,
+                                   lambda tid, stage, **kw: self.emitter.metric(tid, stage, **kw))
         self.session: Session | None = None
         self.lang = "en"
         self.turns: list[Turn] = []
@@ -388,6 +401,8 @@ class Brain:
             self._status("error", f"cannot read session folder: {type(e).__name__}")
             return
         self.lang = msg.get("lang", "en")
+        if self.embed is not None and self.lang in self.config.embed_langs:
+            self.embed.start(self.session.bank, self.lang)   # on the embedding thread, while the pre-warm runs
         self._status("warming", f"pre-warming {HAIKU} and {SONNET}")
         try:
             # Open every lane now (pre-warm on one lane, ping on the other) so no connection is opened at t = 0.
@@ -626,6 +641,7 @@ class Brain:
                 st.d_timer.cancel()
             st.d_timer = self._spawn(self._d_stable_check(tid, now))
         self._maybe_fire_s(st, now)
+        self._embed_partial(st)
 
     def _maybe_fire_s(self, st: TurnState, now: float) -> None:
         cfg = self.config
@@ -649,7 +665,10 @@ class Brain:
             st.last_fire_t = now
 
     def _strong_bank(self, st: TurnState) -> bool:
-        return st.bank_hit is not None and st.bank_hit.score >= self.config.bank_skip_score
+        # D-skip is for Swift's n-gram hits only: an embedding score is on another scale and paraphrase hits are less
+        # certain, so D always runs for them.
+        return (st.bank_hit is not None and st.bank_hit.via != "embed"
+                and st.bank_hit.score >= self.config.bank_skip_score)
 
     def _shown_opener_guess(self, st: TurnState) -> str | None:
         for c in sorted(st.s_calls, key=lambda c: c.seq, reverse=True):
@@ -681,13 +700,71 @@ class Brain:
         turns = st.turns_before if st.finished else list(self.turns)
         return self._launch("D", st.turn_id, text, tail, turns, buffered=buffered)
 
+    # ------------------------------------------------------------------ F3: paraphrase matcher (embedding)
+    def _embed_partial(self, st: TurnState) -> None:
+        """Queue the partial for the embedding thread when the cheap gates pass. Never blocks the loop."""
+        e = self.embed
+        if e is None or e.state not in ("ready", "loading"):
+            return
+        if st.bank_hit is not None and st.bank_hit.via != "embed":   # Swift's n-gram already hit this turn
+            return
+        if not st.cue or len(tokens(st.partial)) < self.config.embed_min_words:
+            st.embed_cand, st.embed_count = None, 0
+            e.drop(st.turn_id)
+            return
+        e.submit(st.turn_id, st.partial)
+
+    def _on_embed_result(self, job: Job, res: Result) -> None:
+        cfg = self.config
+        top = res.top
+        s1 = top[0][1] if top else -1.0
+        s2 = top[1][1] if len(top) > 1 else -1.0
+        ok = bool(top) and s1 >= cfg.embed_threshold and s1 - s2 >= cfg.embed_margin
+        self.emitter.metric(job.turn_id, "embed", ms=round(res.ms, 2), wait_ms=round(res.wait_ms, 2),
+                            top=top[0][0] if top else None, score=round(s1, 4), second=round(s2, 4),
+                            words=len(tokens(job.text)), accepted=ok)
+        st = self.ts.get(job.turn_id)
+        if st is None:
+            return
+        if st.bank_hit is not None and st.bank_hit.via != "embed":   # a Swift hit landed while this ran
+            return
+        if job.turn_id not in (self.active_remote, self.latest_remote_turn):   # a newer turn has started
+            return
+        if st.finished and (st.addressee == "other" or st.kind == "fragment"):
+            return
+        if not ok:
+            st.embed_cand, st.embed_count = None, 0
+            return
+        cand = top[0][0]
+        if cand == st.embed_cand:
+            st.embed_count += 1
+        else:
+            st.embed_cand, st.embed_count = cand, 1
+        if st.embed_count >= cfg.embed_consecutive and cand != st.embed_sent:
+            self._embed_hit(st, cand, s1)
+
+    def _embed_hit(self, st: TurnState, bank_id: str, score: float) -> None:
+        prev = st.bank_hit
+        st.bank_hit = BankHit(bank_id, score, via="embed")
+        st.embed_sent = bank_id
+        if prev is not None and prev.bank_id != bank_id:
+            st.verdict_sent = False          # Haiku's BANK line is checked against the new id
+        self.emitter.emit({"type": "bank_hit", "turn_id": st.turn_id, "bank_id": bank_id, "score": round(score, 4),
+                           "via": "embed"})
+        self._maybe_verdict(st)
+
     # ------------------------------------------------------------------ bank hits and verdicts
     def on_bank_hit(self, msg: dict) -> None:
         st = self._ts(msg["turn_id"])
+        prev = st.bank_hit
         try:
             st.bank_hit = BankHit(str(msg["bank_id"]), float(msg.get("score", 0.0)))
         except (KeyError, TypeError, ValueError):
             return
+        if prev is not None and prev.bank_id != st.bank_hit.bank_id:
+            st.verdict_sent = False          # the overlay rejects per id: the new id gets its own verdict
+        if self.embed is not None:
+            self.embed.drop(st.turn_id)      # Swift's hit wins; no embedding for this turn from now on
         self._maybe_verdict(st)
 
     def on_bank_line(self, call: Call) -> None:
@@ -700,8 +777,12 @@ class Brain:
         if st.verdict_sent or c is None or c.bank_id is None or st.bank_hit is None or c.buffered or c.discarded:
             return
         st.verdict_sent = True
+        agree = c.bank_id == st.bank_hit.bank_id
         self.emitter.emit({"type": "bank_verdict", "turn_id": st.turn_id, "bank_id": st.bank_hit.bank_id,
-                           "agree": c.bank_id == st.bank_hit.bank_id})
+                           "agree": agree})
+        if not agree and st.bank_hit.via == "embed":
+            # Haiku retracts a paraphrase hit: the overlay drops its opener, and D is not handed that entry either
+            st.bank_hit = None
 
     # ------------------------------------------------------------------ endpoint: select S or fire F; decide D
     def on_turn(self, msg: dict) -> None:
@@ -1028,6 +1109,8 @@ class Brain:
         if self.stopped.is_set():
             return
         self.stopped.set()
+        if self.embed is not None:
+            self.embed.close()
         for c in self.calls:
             if not c.done.is_set():
                 c.discard()
