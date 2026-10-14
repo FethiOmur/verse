@@ -67,6 +67,8 @@ class Config:
     hedge_after_s: float = 1.5      # S/F (Haiku)
     hedge_after_s_d: float = 2.0    # D (Sonnet): healthy first bytes reach ~1.5 s (P1-2 live run)
     ping_every_s: float = 30.0
+    prewarm_attempts: int = 3
+    prewarm_attempt_s: float = 12.0   # a healthy pre-warm takes ~1-2 s; longer means a stalled connection
     offline_ping_every_s: float = 5.0
     keepalive_idle_s: float = 240.0
     keepalive_check_s: float = 10.0

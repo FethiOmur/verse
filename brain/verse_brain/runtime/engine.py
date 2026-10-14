@@ -298,12 +298,12 @@ class Brain:
         return build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack,
                              list(self.turns if turns is None else turns), tail)
 
-    async def _warm(self, model: str, kind: str) -> None:
+    async def _warm(self, model: str, kind: str, lane: int = 0) -> None:
         route = MODEL_ROUTE[model]
         req = self._prefix_request(route, 0, WARMUP_TAIL)
         self.last_call_mono[model] = time.monotonic()
         t0 = time.time()
-        usage, headers, stop = await self.transport.create(route, req, 0)
+        usage, headers, stop = await self.transport.create(route, req, lane)
         self.limiters[model].update_from_headers(headers)
         cost = spend_usd(model, usage_obj(usage))
         self.spend += cost
@@ -319,9 +319,25 @@ class Brain:
         self.lang = msg.get("lang", "en")
         self._status("warming", f"pre-warming {HAIKU} and {SONNET}")
         try:
-            # Open every lane now (pre-warm on lane 0, ping on lane 1) so no connection is opened at t = 0.
-            await asyncio.gather(self._warm(HAIKU, "prewarm"), self._warm(SONNET, "prewarm"),
-                                 *(self._ping_one(m, 1) for m in (HAIKU, SONNET)))
+            # Open every lane now (pre-warm on one lane, ping on the other) so no connection is opened at t = 0.
+            # 5-8 % of fresh connections on the owner's network stall 10-50 s (bench/RESULTS.md): bound each attempt and
+            # retry on the other lane instead of giving up on the first stall.
+            last: Exception | None = None
+            for attempt in range(self.config.prewarm_attempts):
+                warm_lane, ping_lane = attempt % 2, (attempt + 1) % 2
+                try:
+                    await asyncio.wait_for(asyncio.gather(
+                        self._warm(HAIKU, "prewarm", warm_lane), self._warm(SONNET, "prewarm", warm_lane),
+                        *(self._ping_one(m, ping_lane) for m in (HAIKU, SONNET))),
+                        timeout=self.config.prewarm_attempt_s)
+                    last = None
+                    break
+                except (Offline, asyncio.TimeoutError) as e:
+                    last = e
+                    if attempt + 1 < self.config.prewarm_attempts:
+                        self._status("warming", f"pre-warm attempt {attempt + 1} stalled ({type(e).__name__}); retrying on lane {(attempt + 1) % 2}")
+            if last is not None:
+                raise Offline(f"{type(last).__name__} after {self.config.prewarm_attempts} attempts")
         except Offline as e:
             self.offline = True
             self._status("offline", f"pre-warm failed: {e}")
