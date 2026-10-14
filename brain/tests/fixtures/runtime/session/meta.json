@@ -1,0 +1,1 @@
+{"session_id": "fixture-runtime", "created_at": "2026-10-14T00:00:00+00:00", "prep_note": "fixture", "repos": [], "languages": ["en"], "prep_model": "claude-sonnet-5-5", "prep_usage": {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}, "extra_key_from_p1_1": true}
