@@ -1,31 +1,20 @@
-"""Verse app icon: the "v" of the northwind.example wordmark (direction B "Orbit", the owner's own geometric monoline
-outlines, portfolio2-media/design/wordmark/dir-B/nav/wordmark-w124.json), stacked like the Trailhead R: the front
-letter, graded side layers, and a back copy. Colours are the site's: #eae5ec on #050405.
+"""Verse app icon (option A1, chosen by Alex 2026-10-14): one thin geometric V, flat terminals and a sharp vertex,
+in the spirit of Jaguar's 2024 identity (slim monoline, geometric, symmetric). Constructed here, not taken from
+Jaguar's proprietary typeface. Colours are northwind.example's: #eae5ec on #050405.
 Usage: python3 make_icon.py   (writes verse-mark-{dark,light}-1024.png, verse-icon-{dark,light}-1024.png, AppIcon.icns)"""
-import os, subprocess, tempfile
+import math, os, subprocess, tempfile
 from PIL import Image, ImageDraw
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-V = [(1992, -520), (2125.5, -520), (2227, -264.9), (2328.5, -520), (2462, -520), (2255, 0), (2199, 0)]  # w124 cut
+S = 4096                                   # supersampled canvas
 INK, PAPER = (234, 229, 236), (5, 4, 5)
-S = 4096                                        # supersampled canvas
+TOP, HEIGHT, HALF_W, STROKE = 0.30, 0.40, 0.24, 0.046   # fractions of the canvas; STROKE 0.046 = "A1"
 
-def mark(dark, fit=0.50, depth=0.085, layers=48, ang=(1.0, -0.42)):
+def mark(dark):
     bg, ink = (PAPER, INK) if dark else (INK, PAPER)
-    x0 = min(p[0] for p in V); y0 = min(p[1] for p in V)
-    w = max(p[0] for p in V) - x0; h = max(p[1] for p in V) - y0
-    sc = S * fit / w; dep = S * depth
-    ox = (S - w * sc - dep * ang[0]) / 2; oy = (S - h * sc) / 2 + dep * abs(ang[1]) / 2
     img = Image.new("RGB", (S, S), bg); d = ImageDraw.Draw(img)
-    def poly(off, c):
-        d.polygon([(ox + (x - x0) * sc + off * ang[0], oy + (y - y0) * sc + off * ang[1]) for x, y in V], fill=c)
-    for i in range(layers, 0, -1):
-        k = i / layers
-        if i == layers: c = ink                                   # back copy in the same ink as the front
-        else:                                                     # side faces: mid grey, lighter toward the front
-            t = 0.35 + 0.4 * (1 - k)
-            c = tuple(int(bg[j] + (ink[j] - bg[j]) * t) for j in range(3))
-        poly(dep * k, c)
-    poly(0, ink)
+    cx, top, h, a, w = S / 2, S * TOP, S * HEIGHT, S * HALF_W, S * STROKE
+    th = math.atan(a / h); t = w / math.cos(th); dd = w / math.sin(th); b = top + h
+    d.polygon([(cx - a, top), (cx - a + t, top), (cx, b - dd), (cx + a - t, top), (cx + a, top), (cx, b)], fill=ink)
     return img.resize((1024, 1024), Image.LANCZOS)
 
 for name, dark in (("dark", True), ("light", False)):
