@@ -7,6 +7,7 @@ import Foundation
 let packageDir = URL(fileURLWithPath: #filePath).deletingLastPathComponent().path
 let listenInfoPlist = packageDir + "/Sources/verse-listen/Info.plist"
 let runInfoPlist = packageDir + "/Sources/verse-run/Info.plist"
+let appInfoPlist = packageDir + "/Sources/VerseApp/Info.plist"
 
 let package = Package(
     name: "Verse",
@@ -17,6 +18,9 @@ let package = Package(
         .library(name: "VerseTurns", targets: ["VerseTurns"]),
         .executable(name: "verse-listen", targets: ["verse-listen"]),
         .executable(name: "verse-run", targets: ["verse-run"]),
+        // P1-5: the menu-bar app (bundled into app/build/Verse.app by scripts/bundle-app.sh).
+        .library(name: "VerseUI", targets: ["VerseUI"]),
+        .executable(name: "Verse", targets: ["VerseApp"]),
     ],
     dependencies: [
         // Apache-2.0. Local Nemotron Speech Streaming 0.6B (CoreML) engine; same pin as bench/stt-local.
@@ -63,6 +67,28 @@ let package = Package(
                 .unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT",
                               "-Xlinker", "__info_plist", "-Xlinker", runInfoPlist]),
             ]
+        ),
+        // P1-5: overlay model and views, settings, Keychain store, the app controller.
+        .target(
+            name: "VerseUI",
+            dependencies: ["VerseTurns"],
+            swiftSettings: [.swiftLanguageMode(.v6)],
+            linkerSettings: [.linkedFramework("ScreenCaptureKit")]
+        ),
+        .executableTarget(
+            name: "VerseApp",
+            dependencies: ["VerseUI"],
+            exclude: ["Info.plist"],
+            swiftSettings: [.swiftLanguageMode(.v6)],
+            linkerSettings: [
+                .unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT",
+                              "-Xlinker", "__info_plist", "-Xlinker", appInfoPlist]),
+            ]
+        ),
+        .testTarget(
+            name: "VerseUITests",
+            dependencies: ["VerseUI", "VerseTurns"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
             name: "VerseTurnsTests",
