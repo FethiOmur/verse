@@ -30,6 +30,8 @@ esac
 mkdir -p "$OUT/Contents/MacOS" "$OUT/Contents/Resources"
 cp "$BIN" "$OUT/Contents/MacOS/Verse"
 cp "$APP_DIR/Sources/VerseApp/Info.plist" "$OUT/Contents/Info.plist"
+cp "$APP_DIR/Resources/AppIcon/AppIcon.icns" "$OUT/Contents/Resources/AppIcon.icns"
+/usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$OUT/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Add :VerseBrainDir string $BRAIN_DIR" "$OUT/Contents/Info.plist"
 printf 'APPL????' > "$OUT/Contents/PkgInfo"
 
