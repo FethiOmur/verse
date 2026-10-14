@@ -111,6 +111,12 @@ SCRIPTS = {
         ("para", "b015", 2, I), ("para", "b012", 1, T),
         ("oth", T, "Ingrid, shall we move on to the next topic?"),
         ("exact", "b013", I)]),
+    # Short questions (2-3 words): a speculative call needs 4 new words, so none can fire before the turn ends and the
+    # fresh F call has to carry them. Scored separately (suite "short"); it exists to measure the "no hit, fresh Haiku" path.
+    "d13": dict(suite="short", voices={I: "Samantha"}, entries=[
+        ("short", "b002", "Why this company?"), ("short", "b005", "What's your weakness?"),
+        ("short", "b003", "Describe Lantern."), ("short", "b015", "Notice period?"), ("short", "b002", "Why Halden?"),
+        ("off", "Tell us more.")]),
 }
 
 
@@ -125,6 +131,8 @@ def expand(did: str, spec: dict) -> list[dict]:
         elif kind == "para":
             spk = e[3] if len(e) > 3 else default_speaker
             out.append(dict(speaker=spk, text=BLIND[e[1]][e[2]], category="paraphrase", is_question=True, addressee="me", bank_id=e[1]))
+        elif kind == "short":
+            out.append(dict(speaker=default_speaker, text=e[2], category="paraphrase", is_question=True, addressee="me", bank_id=e[1]))
         elif kind == "off":
             spk = e[2] if len(e) > 2 else default_speaker
             out.append(dict(speaker=spk, text=e[1], category="offbank", is_question=True, addressee="me", bank_id=None))
@@ -156,7 +164,10 @@ def with_answers(utts: list[dict], rnd: random.Random) -> list[dict]:
 
 def main() -> None:
     labels.DIALOGUES_DIR.mkdir(exist_ok=True)
+    only = set(sys.argv[1:])
     for n, (did, spec) in enumerate(SCRIPTS.items(), start=1):
+        if only and did not in only:
+            continue
         rnd = random.Random(1000 + n)
         participants = [I] if len(spec["voices"]) == 1 else [I, T]
         seq = with_answers(expand(did, spec), rnd)
@@ -174,7 +185,7 @@ def main() -> None:
             if "silent_s" in u:
                 row["silent_s"] = u["silent_s"]
             utts.append(row)
-        d = dict(id=did, lang="en", owner=OWNER, participants=participants, voices=spec["voices"],
+        d = dict(id=did, suite=spec.get("suite", "main"), lang="en", owner=OWNER, participants=participants, voices=spec["voices"],
                  name_variants={"Tomas": ["Thomas"]},   # how the recognizer spells the name (passed to --others)
                  session="sample-interview", speakers=1 + len(participants), duration_s=round(rend.duration, 1), utterances=utts)
         errs = labels.validate(d)

@@ -73,10 +73,12 @@ def test_latency_from_true_acoustic_end(result):
 def test_bank_hit_and_wrong_hit(result):
     _, ag = result
     b = ag["bank"]
-    assert b["banked_questions"] == 2 and b["hits"] == 1 and b["hit_rate"] == 0.5
+    assert b["banked_questions"] == 2 and b["hits"] == 1 and b["hit_rate"] == 0.5     # the final hit counts, not the first
+    # utterance 0 had an early wrong hit that the matcher corrected: only a transient wrong hit; utterance 2 ended on a wrong hit
     assert b["utterances_probed"] == 8 and b["wrong_hits"] == 1 and b["wrong_hit_rate"] == 0.125
+    assert b["wrong_hits_transient"] == 2 and b["wrong_hit_rate_transient"] == 0.25
     assert b["confirmed_by_haiku"] == 1 and b["wrong_after_haiku"] == 0
-    assert b["wrong_detail"][0]["bank_ids"] == ["b003"] and b["wrong_detail"][0]["expected"] == "b002"
+    assert {(w["bank_ids"][-1], w["expected"]) for w in b["wrong_detail"]} == {("b001", "b001"), ("b003", "b002")}
 
 
 def test_statements_and_cost(result):
@@ -100,3 +102,12 @@ def test_warmup_utterances_are_excluded():
 def test_no_session_clock_is_reported():
     label = json.loads((FIX / "dmini.json").read_text())
     assert "error" in score.score_dialogue(label, [], None)
+
+
+def test_suites_are_aggregated_apart(result):
+    d, _ = result
+    short = dict(d, suite="short")
+    meta = json.loads((FIX / "meta.json").read_text())
+    assert score.aggregate([d, short], {"dmini": meta})["questions_to_owner"] == 4
+    assert score.aggregate([d, short], {"dmini": meta}, "short")["questions_to_owner"] == 4
+    assert score.aggregate([short], {"dmini": meta})["questions_to_owner"] == 0

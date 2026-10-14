@@ -192,7 +192,11 @@ def score_dialogue(label: dict, events: list[tuple[float, dict]], meta: dict | N
                                                         "visible_s": round(c[0] - win["wall_end"], 3)})
         rows.append(row)
 
-    return {"id": label["id"], "speakers": label.get("speakers"), "rows": rows, "turns": len(turns),
+    states = [e.get("state") for e in (meta or {}).get("engine", [])]
+    engine = "unknown (no metadata)" if meta is None else ("Nemotron (took over at %.1f s)" % max(
+        (float(e.get("switchAtSec", 0.0)) for e in meta.get("engine", []) if e.get("state") == "engine_switch"), default=0.0)
+        if "engine_switch" in states else "Apple SpeechTranscriber (Nemotron not ready)")
+    return {"id": label["id"], "suite": label.get("suite", "main"), "speakers": label.get("speakers"), "engine": engine, "rows": rows, "turns": len(turns),
             "spurious_turns": [{"turn_id": t["turn_id"], "text": t["text"], "kind": t["kind"], "addressee": t["addressee"]} for t in spurious],
             "answerable_turns": sum(1 for t in turns if is_answerable(t)),
             "statuses": [{"state": s.get("state"), "message": s.get("message", "")[:120]} for s in statuses if s.get("state") not in ("ready", "warming")],
@@ -201,7 +205,9 @@ def score_dialogue(label: dict, events: list[tuple[float, dict]], meta: dict | N
 
 # ---------------------------------------------------------------- aggregate
 
-def aggregate(dialogue_scores: list[dict], metas: dict[str, dict]) -> dict:
+def aggregate(dialogue_scores: list[dict], metas: dict[str, dict], suite: str = "main") -> dict:
+    dialogue_scores = [d for d in dialogue_scores if d.get("suite", "main") == suite]
+    metas = {k: v for k, v in metas.items() if k in {d["id"] for d in dialogue_scores}}
     rows = [dict(r, dialogue=d["id"], speakers=d.get("speakers")) for d in dialogue_scores if "rows" in d for r in d["rows"]]
     steady = [r for r in rows if not r["warmup"]]
     excluded = len(rows) - len(steady)
@@ -249,26 +255,35 @@ def aggregate(dialogue_scores: list[dict], metas: dict[str, dict]) -> dict:
     def hit_ids(r):
         return [h["bank_id"] for h in r.get("bank_hits", [])]
 
+    def final_hit(r):
+        # what is still shown when the question ends: the matcher's last hit
+        hs = r.get("bank_hits", [])
+        return hs[-1]["bank_id"] if hs else None
+
     def agreed_ids(r):
         return [v["bank_id"] for v in r.get("bank_verdicts", []) if v.get("agree")]
 
-    def wrong(r, ids):
-        return [i for i in ids if i != r["bank_id"]]
     per_cat = {}
     for cat in ("exact", "paraphrase"):
         rs = [r for r in banked if r["category"] == cat]
-        per_cat[cat] = {"n": len(rs), "hit": sum(1 for r in rs if r["bank_id"] in hit_ids(r)),
+        per_cat[cat] = {"n": len(rs), "hit": sum(1 for r in rs if final_hit(r) == r["bank_id"]),
                         "confirmed": sum(1 for r in rs if r["bank_id"] in agreed_ids(r))}
-    wrong_rows = [r for r in probed if wrong(r, hit_ids(r))]
-    wrong_conf = [r for r in probed if wrong(r, agreed_ids(r))]
+    wrong_final = [r for r in probed if final_hit(r) is not None and final_hit(r) != r["bank_id"]]
+    wrong_transient = [r for r in probed if any(i != r["bank_id"] for i in hit_ids(r))]
+    wrong_conf = [r for r in probed if any(i != r["bank_id"] for i in agreed_ids(r))]
+    n_hits = sum(1 for r in banked if final_hit(r) == r["bank_id"])
     bank = {
-        "banked_questions": len(banked), "hits": sum(1 for r in banked if r["bank_id"] in hit_ids(r)),
+        "banked_questions": len(banked), "hits": n_hits,
         "confirmed_by_haiku": sum(1 for r in banked if r["bank_id"] in agreed_ids(r)),
-        "hit_rate": None if not banked else round(sum(1 for r in banked if r["bank_id"] in hit_ids(r)) / len(banked), 4),
+        "hit_rate": None if not banked else round(n_hits / len(banked), 4),
         "by_category": per_cat,
-        "utterances_probed": len(probed), "wrong_hits": len(wrong_rows), "wrong_hit_rate": None if not probed else round(len(wrong_rows) / len(probed), 4),
+        "utterances_probed": len(probed), "wrong_hits": len(wrong_final),
+        "wrong_hit_rate": None if not probed else round(len(wrong_final) / len(probed), 4),
+        "wrong_hits_transient": len(wrong_transient),
+        "wrong_hit_rate_transient": None if not probed else round(len(wrong_transient) / len(probed), 4),
         "wrong_after_haiku": len(wrong_conf), "wrong_after_haiku_rate": None if not probed else round(len(wrong_conf) / len(probed), 4),
-        "wrong_detail": [{"dialogue": r["dialogue"], "category": r["category"], "text": r["text"], "bank_ids": hit_ids(r), "expected": r["bank_id"]} for r in wrong_rows],
+        "wrong_detail": [{"dialogue": r["dialogue"], "category": r["category"], "text": r["text"], "bank_ids": hit_ids(r), "expected": r["bank_id"]}
+                         for r in wrong_transient],
     }
     # --- latency (all from the true acoustic end)
     def col(key, rs=steady):
@@ -329,8 +344,10 @@ def score_run(run_dir: Path, session_dir: Path | None = None, dialogues_dir: Pat
         if meta:
             metas[did] = meta
         scores.append(score_dialogue(all_labels[did], load_events(jl), meta))
-    return {"run": run_dir.name, "dialogues": scores, "aggregate": aggregate(scores, metas), "metas": {k: {kk: v[kk] for kk in (
+    res = {"run": run_dir.name, "dialogues": scores, "aggregate": aggregate(scores, metas),
+           "aggregate_short": aggregate(scores, metas, "short") if any(d.get("suite") == "short" for d in scores) else None, "metas": {k: {kk: v[kk] for kk in (
         "duration_s", "lead_in_s", "loadavg_before", "loadavg_after", "exit_code", "cost_usd", "elapsed_s") if kk in v} for k, v in metas.items()}}
+    return res
 
 
 def main() -> int:
@@ -338,13 +355,14 @@ def main() -> int:
     ap.add_argument("--run", required=True)
     ap.add_argument("--session", default=str(Path("~/Library/Application Support/Verse/sessions/sample-interview").expanduser()))
     ap.add_argument("--judge", action="store_true", help="grounding: ask the independent Haiku judge about lines with unresolved claims")
-    ap.add_argument("--judge-budget-usd", type=float, default=0.10)
+    ap.add_argument("--judge-budget-usd", type=float, default=0.25)
+    ap.add_argument("--judge-passes", type=int, default=2, help="how many times Haiku reads every line (it is not deterministic)")
     a = ap.parse_args()
     from paths import OUT
     run_dir = OUT / a.run
     res = score_run(run_dir)
     from grounding_run import run_grounding  # local import: keeps score.py network-free
-    res["grounding"] = run_grounding(res, Path(a.session), judge=a.judge, budget_usd=a.judge_budget_usd, run=a.run)
+    res["grounding"] = run_grounding(res, Path(a.session), judge=a.judge, budget_usd=a.judge_budget_usd, run=a.run, passes=a.judge_passes)
     (run_dir / "scores.json").write_text(json.dumps(res, indent=1, ensure_ascii=False) + "\n")
     ag = res["aggregate"]
     print(json.dumps({k: ag[k] for k in ("questions_to_owner", "detection", "addressee", "latency")}, indent=1)[:3000])

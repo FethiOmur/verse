@@ -27,6 +27,8 @@ def validate(d: dict) -> list[str]:
             errs.append(f"missing top-level key {k!r}")
     if errs:
         return errs
+    if d.get("suite", "main") not in ("main", "short"):
+        errs.append(f"suite must be main or short, got {d.get('suite')!r}")
     if d["lang"] != "en":
         errs.append(f"lang must be 'en' (English only for now), got {d['lang']!r}")
     if not isinstance(d["participants"], list) or not d["participants"] or not all(isinstance(x, str) for x in d["participants"]):

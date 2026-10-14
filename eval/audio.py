@@ -7,6 +7,7 @@ folder or the brain folder. Stdlib only (no numpy).
 from __future__ import annotations
 
 import array
+import atexit
 import math
 import shutil
 import subprocess
@@ -105,10 +106,25 @@ def render(utterances: list[dict], voices: dict[str, str], workdir: Path, write_
     return Rendered(path, len(buf) / RATE, timeline)
 
 
+_ACTIVE: set[Path] = set()
+
+
 def make_workdir() -> Path:
-    return Path(tempfile.mkdtemp(prefix="verse-eval-audio-"))
+    p = Path(tempfile.mkdtemp(prefix="verse-eval-audio-"))
+    _ACTIVE.add(p)
+    return p
 
 
 def remove_workdir(p: Path) -> bool:
     shutil.rmtree(p, ignore_errors=True)
+    _ACTIVE.discard(p)
     return not p.exists()
+
+
+def cleanup_all() -> None:
+    """Removes every audio temp folder this process made and has not removed yet (called on exit and on signals)."""
+    for p in list(_ACTIVE):
+        remove_workdir(p)
+
+
+atexit.register(cleanup_all)

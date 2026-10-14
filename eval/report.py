@@ -43,9 +43,11 @@ def lat_status(s, p50_max, p90_max):
 
 def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) -> str:
     ag = scores["aggregate"]
+    short = scores.get("aggregate_short")
     lat, det, adr, bank, cost, oth = ag["latency"], ag["detection"], ag["addressee"], ag["bank"], ag["cost"], ag["other"]
     gr = scores.get("grounding", {})
     metas = scores["metas"]
+    main_ids = [d["id"] for d in scores["dialogues"] if d.get("suite", "main") == "main"]
     loads = [m["loadavg_before"][0] for m in metas.values() if m.get("loadavg_before")]
     loads_after = [m["loadavg_after"][0] for m in metas.values() if m.get("loadavg_after")]
     lines: list[str] = []
@@ -57,15 +59,19 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
     w("## Setup")
     w("")
     n_d = len(metas)
-    w(f"- {n_d} synthetic dialogues made with macOS `say` (6 with two speakers, 6 with three), {ag['questions_to_owner']} questions to Alex, "
-      f"{adr['questions_to_other']} questions to the other interviewer, plus statements, fragments and short replies. Labels: `eval/dialogues/*.json`. "
-      "Audio is generated at run time in a temp folder and deleted after each dialogue.")
+    w(f"- {len(main_ids)} synthetic dialogues made with macOS `say` (6 with two speakers, 6 with three), {ag['questions_to_owner']} questions to Alex, "
+      f"{adr['questions_to_other']} questions to the other interviewer, plus statements, fragments and short replies; exact bank questions, blind paraphrases "
+      "(`bench/embed/blind_set.json`) and off-bank questions. One more dialogue (d13) has six 2-3 word questions, scored apart, to exercise the "
+      "fresh-Haiku path (speculation cannot fire on fewer than four words). Labels: `eval/dialogues/*.json`. "
+      "Audio is generated at run time in a temp folder and deleted after each dialogue; each dialogue starts with silence while the English engine loads.")
     w("- Remote channel only: `verse-run --file` plays the mix of interviewers; the owner's answers are silence. Speech recognition: the app's English "
       "engine (Nemotron 0.6B, 560 ms chunks) after a lead-in long enough for it to load.")
     w("- Brain: the live runtime (Haiku 5.5 for S/F, Sonnet 5.5 for D) against the P1-1 sample session (`sample-interview`, 22 bank entries).")
     w(f"- All times are measured from the true acoustic end of each question (known exactly from the generated audio). "
       f"Machine load average at the start of each dialogue: min {f(min(loads) if loads else None, 1)}, max {f(max(loads) if loads else None, 1)} "
       f"(end of dialogue: max {f(max(loads_after) if loads_after else None, 1)}). The Mac was shared with other sessions, so latencies are pessimistic and noisy.")
+    w("- Time zero: the generated audio is played at real-time pace, so the wall-clock time of every utterance's acoustic end is known to within about "
+      "50 ms (the file starts within tens of milliseconds of the session clock; `session_t0` reports the origin as 0).")
     if ag["excluded_warmup_utterances"]:
         w(f"- {ag['excluded_warmup_utterances']} utterances were excluded because they started before the English engine had taken over from the fallback engine.")
     w("")
@@ -73,23 +79,29 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
     w("")
     w("| # | Criterion | Target | Measured | Status |")
     w("|---|---|---|---|---|")
+    fresh = lat["fresh_haiku_first_word"]
+    fresh_name = "No hit, fresh Haiku, first word"
+    if not fresh["n"] and short:
+        fresh = short["latency"]["fresh_haiku_first_word"]
+        fresh_name += " (d13 only)"
     lat_rows = [
         ("Bank hit visible", lat["bank_hit_visible"], 0.3, 0.4),
         ("Fact chip visible", lat["fact_chip_visible"], 0.3, 0.4),
         ("Correct speculation, opener visible", lat["speculation_hit_opener_visible"], 0.3, 0.5),
-        ("No hit, fresh Haiku, first word", lat["fresh_haiku_first_word"], 2.0, 2.8),
+        (fresh_name, fresh, 2.0, 2.8),
         ("Sonnet deep points, first words", lat["sonnet_deep_first_words"], 2.0, 3.0),
     ]
     statuses = [lat_status(s, a, b) for _, s, a, b in lat_rows]
     overall = "met" if all(s == "met" for s in statuses) else ("missed" if "missed" in statuses else "not measured")
-    w(f"| 1 | Section 6 latency targets in replay (en) | all five paths within target | see the latency table: {', '.join(statuses)} | {overall} |")
+    w(f"| 1 | Section 6 latency targets in replay (en) | all five paths within target | see the latency table: {'; '.join(f'{n.split(',')[0].lower()} {st}' for (n, *_), st in zip(lat_rows, statuses))} | {overall} |")
     w("| 1b | ... in one live Meet call per language | all paths | no live call run | not measured |")
     wr = bank["wrong_hit_rate"]
-    w(f"| 2 | Blind paraphrase bank hit rate, English | wrong-hit rate <= 5 % | hit rate {pc(bank['hit_rate'])} "
+    w(f"| 2 | Blind paraphrase bank hit rate, English | wrong-hit rate <= 5 % | hit rate on the right entry {pc(bank['hit_rate'])} "
       f"({bank['hits']}/{bank['banked_questions']}; exact {bank['by_category']['exact']['hit']}/{bank['by_category']['exact']['n']}, "
-      f"paraphrase {bank['by_category']['paraphrase']['hit']}/{bank['by_category']['paraphrase']['n']}); wrong hits {bank['wrong_hits']}/{bank['utterances_probed']} "
-      f"= {pc(wr)}, after Haiku's check {bank['wrong_after_haiku']}/{bank['utterances_probed']} | "
-      f"{'met' if wr is not None and wr <= 0.05 else 'missed'} |")
+      f"paraphrase {bank['by_category']['paraphrase']['hit']}/{bank['by_category']['paraphrase']['n']}); wrong hit left on screen {bank['wrong_hits']}/{bank['utterances_probed']} "
+      f"= {pc(wr)} (wrong at any moment: {bank['wrong_hits_transient']}/{bank['utterances_probed']} = {pc(bank['wrong_hit_rate_transient'])}); "
+      f"wrong and confirmed by Haiku {bank['wrong_after_haiku']}/{bank['utterances_probed']} | "
+      f"{'met on the wrong-hit rate; paraphrase hit rate ' + pc(bank['by_category']['paraphrase']['hit'] / bank['by_category']['paraphrase']['n'] if bank['by_category']['paraphrase']['n'] else None) if wr is not None and wr <= 0.05 else 'missed'} |")
     w("| 2b | ... Italian, Turkish (Turkish separately) | wrong-hit rate <= 5 % | English only in this package | not measured |")
     r3 = adr["three_speaker_no_say"] / adr["three_speaker_n"] if adr["three_speaker_n"] else None
     w(f"| 3 | Questions to others get no SAY line (3-speaker replays) | >= 90 % | {adr['three_speaker_no_say']}/{adr['three_speaker_n']} = {pc(r3)} "
@@ -102,20 +114,23 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
         vio = len(gr.get("violations", []))
         unj = len(gr.get("unjudged", []))
         gstat = "met" if vio == 0 and unj == 0 else ("missed" if vio else "not fully measured")
-        w(f"| 6 | No suggestion states a number, date or fact absent from the pack | zero | {gr['lines_checked']} lines: {gr['auto_supported']} passed the string check "
-          f"({gr['unresolved_by_string_check']} did not); Haiku judged {gr['judged']} ({gr['judge_supported']} supported, {gr.get('unresolved_but_judged_supported', 0)} of "
-          f"the string-check misses among them), {vio} unsupported, {unj} not judged | {gstat} |")
+        w(f"| 6 | No suggestion states a number, date or fact absent from the pack | zero | {gr['lines_checked']} lines shown: {gr['auto_supported']} passed the string check "
+          f"({gr['unresolved_by_string_check']} did not); Haiku read all {gr['judged']} in {gr.get('judge_passes', 1)} passes and flagged {gr.get('haiku_flagged', 0)}; "
+          f"Sonnet cleared {gr.get('cleared_by_second_opinion', 0)}, so {vio} unsupported ({unj} not judged) | {gstat} |")
     else:
         w("| 6 | No suggestion states a number, date or fact absent from the pack | zero | no suggestion lines were produced | not measured |")
     wd = [m for m in fs.values()]
     audio_ok = all(x["audio_watch"]["pass"] and not x["session_audio_added"] for x in wd) if wd else False
-    w(f"| 7 | No audio file written anywhere | none | filesystem watch (250 ms polls) over the session folder, the app's Verse folder and the brain's output folder during {len(wd)} dialogues: "
+    w(f"| 7 | No audio file written anywhere | none | filesystem watch (250 ms polls) over the session folder, the app's Verse folder and the brain's output folder during all {len(wd)} dialogues: "
       f"{'no audio file appeared' if audio_ok else 'AUDIO FILE FOUND, see below'}; temp audio removed after every dialogue | {'met' if audio_ok else 'missed'} |")
-    w(f"| 8 | API key never in logs or files | none | {scan['files_scanned']} files scanned (run folder, session copies' outputs, this report): exact Keychain key and key-shaped strings "
+    w(f"| 8 | API key never in logs or files | none | {scan['files_scanned']} files scanned (everything under eval/out (every recorded stdout line, stderr log, metadata and score file, the spend ledger) and this report): exact Keychain key and key-shaped strings "
       f"{'not found' if scan['pass'] else 'FOUND'} | {'met' if scan['pass'] else 'missed'} |")
     w(f"| 9 | Cost per 30-minute meeting measured | measured | ${f(cost['usd_per_30_min'], 3)} per 30 min of replayed dialogue (${f(cost['total_usd'], 3)} over {f(cost['replay_minutes'], 1)} min, "
       "pre-warm and summaries included); shown in Settings: needs P1-5 | measured; Settings display not measured |")
     w("")
+    if notes.strip():
+        w(notes.strip())
+        w("")
     w("## Section 6 latency, from the acoustic end of the question")
     w("")
     w("| Path | Target p50 / p90 | Measured p50 / p90 | Status |")
@@ -153,8 +168,9 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
     w("")
     w("## Bank matching")
     w("")
-    w(f"- Matcher hits on the right entry: {bank['hits']}/{bank['banked_questions']}; confirmed by Haiku's `BANK:` check: {bank['confirmed_by_haiku']}.")
-    w(f"- Wrong hits: {bank['wrong_hits']} of {bank['utterances_probed']} spoken utterances (including off-bank questions, statements and questions to the other interviewer).")
+    w(f"- Matcher's last hit is the right entry: {bank['hits']}/{bank['banked_questions']}; confirmed by Haiku's `BANK:` check: {bank['confirmed_by_haiku']}.")
+    w(f"- Wrong hits: {bank['wrong_hits']} of {bank['utterances_probed']} spoken utterances ended on a wrong hit (including off-bank questions, statements and questions to the other interviewer); "
+      f"{bank['wrong_hits_transient']} showed a wrong hit at some moment, even if corrected later.")
     for m in bank["wrong_detail"][:10]:
         w(f"  - ({m['category']}) \"{m['text']}\" -> {m['bank_ids']} (expected {m['expected']})")
     w("")
@@ -175,11 +191,12 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
         w("")
     w("## Runs")
     w("")
-    w("| Dialogue | Speakers | Duration | Lead-in | Exit | Cost | Load avg start / end |")
-    w("|---|---|---|---|---|---|---|")
+    w("| Dialogue | Speakers | Audio length (with lead-in) | Lead-in | Speech engine | Exit | Cost | Load avg start / end |")
+    w("|---|---|---|---|---|---|---|---|")
     spk = {d["id"]: d.get("speakers") for d in scores["dialogues"]}
+    eng = {d["id"]: d.get("engine", "") for d in scores["dialogues"]}
     for did, m in sorted(metas.items()):
-        w(f"| {did} | {spk.get(did)} | {m['duration_s']:.0f} s | {m['lead_in_s']:.0f} s | {m['exit_code']} | ${m['cost_usd']:.4f} | {m['loadavg_before'][0]} / {m['loadavg_after'][0]} |")
+        w(f"| {did} | {spk.get(did)} | {m['duration_s']:.0f} s | {m['lead_in_s']:.0f} s | {eng.get(did, '')} | {m['exit_code']} | ${m['cost_usd']:.4f} | {m['loadavg_before'][0]} / {m['loadavg_after'][0]} |")
     w("")
     w("## Not run in this package")
     w("")
@@ -187,9 +204,6 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
     w("- The me channel and the speaker-bleed test (replay through the speakers into the microphone): needs the P1-5 overlay app merged.")
     w("- A live Google Meet call per language.")
     w("- Cost shown in Settings (P1-5).")
-    if notes.strip():
-        w("")
-        w(notes.strip())
     w("")
     return "\n".join(lines)
 
@@ -210,14 +224,13 @@ def main() -> int:
     import subprocess
     git = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip() or "no commit"
     key = checks.keychain_key()
-    scan = checks.scan_for_secrets([run_dir], key)
+    scan = checks.scan_for_secrets([OUT, REPORT] if REPORT.exists() else [OUT], key)
     text = build(a.run, scores, scan, fs, notes, f"worktree at {git}")
     REPORT.write_text(text, encoding="utf-8")
-    scan2 = checks.scan_for_secrets([run_dir, REPORT], key)
-    scan2["files_scanned"] = scan2["files_scanned"]
-    if scan2["pass"] != scan["pass"] or not scan2["pass"]:
-        text = build(a.run, scores, scan2, fs, notes, f"worktree at {git}")
-        REPORT.write_text(text, encoding="utf-8")
+    scan2 = checks.scan_for_secrets([OUT, REPORT], key)    # now the report exists, so it is counted too
+    text = build(a.run, scores, scan2, fs, notes, f"worktree at {git}")
+    REPORT.write_text(text, encoding="utf-8")
+    scan2 = checks.scan_for_secrets([OUT, REPORT], key)
     print(f"report written: {REPORT}; secret scan {'pass' if scan2['pass'] else 'FAIL'} ({scan2['files_scanned']} files)")
     return 0 if scan2["pass"] else 1
 

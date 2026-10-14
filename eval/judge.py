@@ -49,7 +49,7 @@ def judge_lines(pack: str, items: list[dict], model: str = MODEL) -> tuple[list[
     user = f"MEETING NOTES:\n{pack}\n\nSUGGESTED LINES:\n{body}\n\nJSON:"
     try:
         extra = {"thinking": {"type": "disabled"}} if model == MODEL else {}
-        msg = client.messages.create(model=model, max_tokens=2000, system=SYSTEM, output_config={"effort": "low" if model == MODEL else "medium"},
+        msg = client.messages.create(model=model, max_tokens=4000, system=SYSTEM, output_config={"effort": "low" if model == MODEL else "medium"},
                                      messages=[{"role": "user", "content": user}], **extra)
     except Exception as e:  # noqa: BLE001  (no request data in the message)
         raise JudgeError(f"judge call failed: {type(e).__name__}") from None

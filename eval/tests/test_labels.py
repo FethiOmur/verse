@@ -11,8 +11,10 @@ import labels
 FILES = sorted(labels.DIALOGUES_DIR.glob("*.json"))
 
 
-def test_twelve_dialogues_present():
-    assert len(FILES) == 12
+def test_twelve_main_dialogues_and_one_short_suite():
+    ds = labels.load_all()
+    assert sum(1 for d in ds if d.get("suite", "main") == "main") == 12
+    assert [d["id"] for d in ds if d.get("suite") == "short"] == ["d13"]
 
 
 @pytest.mark.parametrize("path", FILES, ids=[p.stem for p in FILES])
@@ -21,7 +23,7 @@ def test_label_file_valid(path):
 
 
 def test_mix_of_material():
-    ds = labels.load_all()
+    ds = [d for d in labels.load_all() if d.get("suite", "main") == "main"]
     cats = {c for d in ds for u in d["utterances"] for c in [u["category"]]}
     assert {"exact", "paraphrase", "offbank", "other", "statement", "fragment"} <= cats
     assert sum(1 for d in ds if d["speakers"] == 2) == 6 and sum(1 for d in ds if d["speakers"] == 3) == 6
@@ -71,3 +73,9 @@ def test_rejects_non_english_and_spoken_owner(good):
     fe = next(u for u in d["utterances"] if u["speaker"] == "Alex")
     del fe["silent_s"]
     assert any("owner's utterances are silent" in e for e in labels.validate(d))
+
+
+def test_short_suite_questions_have_at_most_three_words():
+    d = next(x for x in labels.load_all() if x.get("suite") == "short")
+    qs = [u for u in d["utterances"] if u["is_question"] or u["category"] == "paraphrase"]
+    assert qs and all(len(u["text"].split()) <= 3 for u in qs)

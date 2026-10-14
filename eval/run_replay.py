@@ -63,7 +63,7 @@ def _kill_children() -> None:
 
 atexit.register(_kill_children)
 for _sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
-    signal.signal(_sig, lambda s, f: (_kill_children(), os._exit(130)))
+    signal.signal(_sig, lambda s, f: (_kill_children(), audio.cleanup_all(), os._exit(130)))
 
 
 def ledger_total() -> float:
@@ -206,6 +206,24 @@ def run_dialogue(a, d: dict, verse_run: Path, brain: str, session_src: Path, out
     return meta
 
 
+def retry_plan(meta: dict, auto: bool, attempt: int, lead_in: float) -> dict:
+    """What to do after a dialogue. The English engine (Nemotron) loads in the background while the Apple engine listens;
+    a dialogue is only comparable when the engine took over before the first word was spoken. Retry (twice at most) when
+    it took over late, or never became ready; the next dialogue's lead-in follows the engine's last load time."""
+    switch = [e["switchAtSec"] for e in meta["engine"] if e.get("state") == "engine_switch" and e.get("switchAtSec") is not None]
+    ready = [e["readyAtSec"] for e in meta["engine"] if e.get("state") == "engine_ready" and e.get("readyAtSec") is not None]
+    first_spoken = min((t["t_start"] for t in meta["timeline"] if not t["silent"]), default=0.0)
+    warm = bool(switch) and max(switch) > first_spoken - 0.5
+    nxt = min(max(max(ready) + 4.0, 20.0), 90.0) if (auto and ready) else lead_in
+    plan = {"ready": max(ready) if ready else None, "next_lead_in": nxt, "retry": False, "retry_lead_in": lead_in, "why": ""}
+    if auto and attempt < 3 and meta["exit_code"] == 0:
+        if warm:
+            plan.update(retry=True, retry_lead_in=max(nxt, max(switch) + 5.0), why=f"the English engine took over at {max(switch):.1f} s, after speech had started")
+        elif not ready:
+            plan.update(retry=True, retry_lead_in=min(max(lead_in * 3, 60.0), 150.0), why="the English engine did not finish loading during the run")
+    return plan
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--run", default=time.strftime("run-%Y%m%d-%H%M%S"))
@@ -251,23 +269,17 @@ def main() -> int:
             run_spend += meta["cost_usd"]
             if not a.fake_brain:
                 ledger_add(a.run, f"{did} attempt {attempt}", meta["cost_usd"])
-            switch = [e.get("switchAtSec") for e in meta["engine"] if e.get("state") == "engine_switch" and e.get("switchAtSec") is not None]
-            ready = [e.get("readyAtSec") for e in meta["engine"] if e.get("state") == "engine_ready" and e.get("readyAtSec") is not None]
-            first_spoken = min((t["t_start"] for t in meta["timeline"] if not t["silent"]), default=0.0)
-            warm = bool(switch) and max(switch) > first_spoken - 0.5
+            plan = retry_plan(meta, auto, attempt, lead_in)
             print(f"{did}: exit {meta['exit_code']}, {meta['lines']} lines, ${meta['cost_usd']:.4f}, load {meta['loadavg_before'][0]}->{meta['loadavg_after'][0]}, "
-                  f"engine ready {max(ready) if ready else 'never'} s (lead-in {lead_in:.0f} s), audio watch "
+                  f"engine ready {plan['ready'] if plan['ready'] is not None else 'never'} s (lead-in {lead_in:.0f} s), audio watch "
                   f"{'clean' if meta['audio_watch']['pass'] else 'FOUND ' + str(meta['audio_watch']['audio_files_found'])}, temp removed {meta['temp_audio_removed']}", flush=True)
-            if auto and ready:
-                nxt = min(max(max(ready) + 4.0, 10.0), 90.0)
-            else:
-                nxt = lead_in
-            if warm and auto and attempt == 1 and meta["exit_code"] == 0:
-                print(f"  the English engine took over at {max(switch):.1f} s, after speech had started; running {did} again with a longer lead-in", flush=True)
+            nxt = plan["next_lead_in"]
+            if plan["retry"]:
+                print(f"  {plan['why']}; running {did} again with a lead-in of {plan['retry_lead_in']:.0f} s", flush=True)
+                lead_in = plan["retry_lead_in"]
                 for f in list(out_dir.glob(f"{did}.*")):
                     if ".try" not in f.name:
-                        f.rename(out_dir / f.name.replace(f"{did}.", f"{did}.try1.", 1))
-                lead_in = max(nxt, max(switch) + 5.0)
+                        f.rename(out_dir / f.name.replace(f"{did}.", f"{did}.try{attempt}.", 1))
                 attempt += 1
                 continue
             lead_in = nxt

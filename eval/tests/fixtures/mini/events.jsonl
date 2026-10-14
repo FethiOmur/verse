@@ -1,4 +1,5 @@
 {"wall":1000.2,"line":{"type":"metric","turn_id":"","stage":"session_t0","t":1000.0,"origin_remote":0.5,"source":"verse-run","lang":"en","fake_brain":false}}
+{"wall":1002.7,"line":{"type":"bank_hit","turn_id":"r1","bank_id":"b002","score":0.6,"dir":"to_brain"}}
 {"wall":1003.3,"line":{"type":"bank_hit","turn_id":"r1","bank_id":"b001","score":0.9,"dir":"to_brain"}}
 {"wall":1003.4,"line":{"type":"chip","turn_id":"r1","kind":"name","text":"Halden","source_ref":"prep:L7","fact_id":"f004"}}
 {"wall":1003.9,"line":{"type":"turn","turn_id":"r1","speaker":"remote","text":"Can you tell me about yourself and your background","addressee":"unknown","kind":"question","t_audio_end":3.6,"dir":"to_brain"}}

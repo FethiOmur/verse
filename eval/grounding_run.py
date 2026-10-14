@@ -23,7 +23,7 @@ def collect(res: dict) -> list[dict]:
     return items
 
 
-def run_grounding(res: dict, session_dir: Path, judge: bool, budget_usd: float, run: str) -> dict:
+def run_grounding(res: dict, session_dir: Path, judge: bool, budget_usd: float, run: str, passes: int = 2) -> dict:
     corpus = grounding.corpus_text(session_dir)
     items = collect(res)
     auto_clean, pending = [], []
@@ -45,59 +45,74 @@ def run_grounding(res: dict, session_dir: Path, judge: bool, budget_usd: float, 
     # resolve: a claim without a number, date or name ("we rewrote it in Rust") would pass the string check unseen.
     for it in auto_clean:
         it["unresolved"] = {}
-    pending = items
     import judge as J
     import run_replay as RR
     spent = 0.0
     batch = 20
-    pack_low = " ".join(corpus_pack(session_dir).lower().split())
-    for start in range(0, len(pending), batch):
-        chunk = pending[start:start + batch]
-        if RR.ledger_total() + 0.01 > RR.TOTAL_CAP_USD or spent + 0.01 > budget_usd:
-            out["unjudged"] += [{k: p[k] for k in ("dialogue", "line", "unresolved")} for p in chunk]
-            continue
-        verdicts, cost = J.judge_lines(corpus_pack(session_dir), [{"i": i, "question": c["question"], "line": c["line"]} for i, c in enumerate(chunk)])
-        spent += cost
-        RR.ledger_add(run, "grounding-judge", cost)
-        by_i = {v.get("i"): v for v in verdicts if isinstance(v, dict)}
-        for i, c in enumerate(chunk):
-            v = by_i.get(i)
-            if v is None:
-                out["unjudged"].append({k: c[k] for k in ("dialogue", "line", "unresolved")})
+    pack = corpus_pack(session_dir)
+    pack_low = " ".join(pack.lower().split())
+    flagged: dict[int, dict] = {}     # item index -> the first Haiku verdict that flagged it
+    judged_ok: set[int] = set()
+    evidence_missing = 0
+    # Haiku reads every line `passes` times: one pass misses lines that another flags (it is not deterministic).
+    for p in range(passes):
+        for start in range(0, len(items), batch):
+            chunk_idx = list(range(start, min(start + batch, len(items))))
+            if RR.ledger_total() + 0.01 > RR.TOTAL_CAP_USD or spent + 0.01 > budget_usd:
                 continue
-            out["judged"] += 1
-            if v.get("supported"):
-                ev = (v.get("evidence") or "").strip().lower()
-                if ev and " ".join(ev.split()) not in pack_low:
-                    out.setdefault("evidence_not_in_pack", 0)
-                    out["evidence_not_in_pack"] += 1
-                out["judge_supported"] += 1
-                if c["unresolved"]:
-                    out["unresolved_but_judged_supported"] += 1
-            else:
-                out["violations"].append({"dialogue": c["dialogue"], "category": c["category"], "question": c["question"], "line": c["line"],
-                                          "unresolved": c["unresolved"], "judge_claim": v.get("unsupported_claim")})
-    # Second opinion (Sonnet) on what Haiku flagged: a line is a violation only when both judges say it is unsupported.
-    flagged = out["violations"]
+            verdicts = []
+            for attempt in (1, 2):    # one retry: the judge now and then returns text that is not JSON
+                try:
+                    verdicts, cost = J.judge_lines(pack, [{"i": k, "question": items[k]["question"], "line": items[k]["line"]} for k in chunk_idx])
+                except J.JudgeError as e:
+                    out.setdefault("judge_errors", []).append(f"pass {p + 1} batch {start}: {e}")
+                    continue
+                spent += cost
+                RR.ledger_add(run, f"grounding-judge pass {p + 1}", cost)
+                break
+            by_i = {v.get("i"): v for v in verdicts if isinstance(v, dict)}
+            for k in chunk_idx:
+                v = by_i.get(k)
+                if v is None:
+                    continue
+                judged_ok.add(k)
+                if v.get("supported"):
+                    ev = " ".join((v.get("evidence") or "").strip().lower().split())
+                    if ev and ev not in pack_low:
+                        evidence_missing += 1
+                elif k not in flagged:
+                    flagged[k] = v
+    out["judged"] = len(judged_ok)
+    out["judge_passes"] = passes
+    out["unjudged"] = [{k2: items[k][k2] for k2 in ("dialogue", "line", "unresolved")} for k in range(len(items)) if k not in judged_ok]
+    out["judge_supported_in_every_pass"] = len(judged_ok) - len(flagged)
+    out["unresolved_but_judged_supported"] = sum(1 for k in judged_ok if k not in flagged and items[k]["unresolved"])
+    out["evidence_not_in_pack"] = evidence_missing
     out["haiku_flagged"] = len(flagged)
-    confirmed = []
-    if flagged and RR.ledger_total() + 0.03 < RR.TOTAL_CAP_USD:
+    # Second opinion (Sonnet) on everything Haiku flagged in any pass: a line is a violation only when both judges say it
+    # is unsupported.
+    confirmed, cleared = [], []
+    order = sorted(flagged)
+    if order and RR.ledger_total() + 0.03 < RR.TOTAL_CAP_USD:
         try:
-            verdicts, cost = J.judge_lines(corpus_pack(session_dir), [{"i": i, "question": v["question"], "line": v["line"]} for i, v in enumerate(flagged)],
+            verdicts, cost = J.judge_lines(pack, [{"i": n, "question": items[k]["question"], "line": items[k]["line"]} for n, k in enumerate(order)],
                                            model=J.SECOND_MODEL)
             spent += cost
             RR.ledger_add(run, "grounding-second-opinion", cost)
             by_i = {v.get("i"): v for v in verdicts if isinstance(v, dict)}
-            for i, v in enumerate(flagged):
-                sv = by_i.get(i)
-                v["second_opinion"] = None if sv is None else {"supported": bool(sv.get("supported")), "claim": sv.get("unsupported_claim")}
-                if sv is None or not sv.get("supported"):
-                    confirmed.append(v)
-            out["cleared_by_second_opinion"] = len(flagged) - len(confirmed)
-            out["cleared_lines"] = [v for v in flagged if v not in confirmed]
-            out["violations"] = confirmed
+            for n, k in enumerate(order):
+                sv = by_i.get(n)
+                rec = {"dialogue": items[k]["dialogue"], "category": items[k]["category"], "question": items[k]["question"], "line": items[k]["line"],
+                       "unresolved": items[k]["unresolved"], "judge_claim": flagged[k].get("unsupported_claim"),
+                       "second_opinion": None if sv is None else {"supported": bool(sv.get("supported")), "claim": sv.get("unsupported_claim")}}
+                (cleared if sv is not None and sv.get("supported") else confirmed).append(rec)
         except J.JudgeError as e:
             out["second_opinion_error"] = str(e)
+            confirmed = [{"dialogue": items[k]["dialogue"], "category": items[k]["category"], "question": items[k]["question"], "line": items[k]["line"],
+                          "unresolved": items[k]["unresolved"], "judge_claim": flagged[k].get("unsupported_claim"), "second_opinion": None} for k in order]
+    out["violations"] = confirmed
+    out["cleared_lines"] = cleared
+    out["cleared_by_second_opinion"] = len(cleared)
     out["judge_cost_usd"] = round(spent, 5)
     return out
 
