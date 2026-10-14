@@ -261,7 +261,7 @@ fixed:
     SDK 1.x runs on `httpx2`.
   - A `count_tokens` ping every ~30 s.
   - No new connection at t = 0.
-  - A hedged duplicate request if there is no first byte after 1.5 s: 5–8 % of fresh connections stall 10–50 s
+  - A hedged duplicate request if there is no first byte after 1.5 s (S/F) or 2.0 s (D): 5–8 % of fresh connections stall 10–50 s
     on this network.
 - **Cache keep-alive** (`max_tokens: 0`) every ~4 minutes of silence; entries expired after a 390 s idle.
 - **Act on volatile text only.** Italian finals take 3.5–8.7 s. `?` is not a cue (it arrives 0.9–1.6 s late).

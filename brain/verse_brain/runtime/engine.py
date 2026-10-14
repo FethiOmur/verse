@@ -397,6 +397,9 @@ class Brain:
         call.task = self._spawn(call.run())
         return call
 
+    def _hedge_after(self, call: Call) -> float:
+        return self.config.hedge_after_s_d if call.route == "D" else self.config.hedge_after_s
+
     async def hedged_stream(self, call: Call) -> None:
         """Run the call on lane 0; if no first byte after `hedge_after_s`, start a duplicate on lane 1.
         The first lane to deliver an event wins; the other is cancelled and its stream closed."""
@@ -429,13 +432,13 @@ class Brain:
         try:
             waiter = loop.create_task(first.wait())
             try:
-                await asyncio.wait({waiter, tasks[0]}, timeout=self.config.hedge_after_s,
+                await asyncio.wait({waiter, tasks[0]}, timeout=self._hedge_after(call),
                                    return_when=asyncio.FIRST_COMPLETED)
             finally:
                 waiter.cancel()
             if not first.is_set() and not tasks[0].done():
                 call.hedged = True
-                call._stage("hedge", after_s=self.config.hedge_after_s)
+                call._stage("hedge", after_s=self._hedge_after(call))
                 tasks[1] = loop.create_task(attempt(1))
             results = await asyncio.gather(*tasks.values(), return_exceptions=True)
         finally:

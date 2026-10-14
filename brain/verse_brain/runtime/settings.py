@@ -64,7 +64,8 @@ class Config:
     bank_verdict_wait_s: float = 3.0  # how long D waits for Haiku's BANK line before firing anyway
     d_retry_max_wait_s: float = 8.0   # a 429 retry-after longer than this makes the answer stale
     # transport
-    hedge_after_s: float = 1.5
+    hedge_after_s: float = 1.5      # S/F (Haiku)
+    hedge_after_s_d: float = 2.0    # D (Sonnet): healthy first bytes reach ~1.5 s (P1-2 live run)
     ping_every_s: float = 30.0
     offline_ping_every_s: float = 5.0
     keepalive_idle_s: float = 240.0
