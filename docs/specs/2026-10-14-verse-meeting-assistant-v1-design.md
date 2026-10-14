@@ -79,7 +79,7 @@ per-stage logs.
 | **P: Prepared** | ≤ 0.4 s (p90) | Local match against the answer bank built before the meeting | Pre-written opener + points + deep answer (written by Sonnet, with sources) [I2] |
 | **C: Fact chips** | ≤ 0.4 s (p90) | Local lookup in the fact sheet for names and terms in the question | Grounded numbers, dates and names with their source, at no cost [I4] |
 | **S: Speculative** | ≤ 0.5 s (p90) | Haiku 5.5 calls fired while the question forms | Opener + 2 points |
-| **F: Fast** | p50 ≤ 1.1 s, p90 ≤ 1.8 s | Haiku 5.5 on the endpoint text, when no S call fits | Opener + 2 points |
+| **F: Fast** | p50 ≤ 2.0 s, p90 ≤ 2.8 s | Haiku 5.5 on the endpoint text, when no S call fits | Opener + 2 points |
 | **D: Deep** | p50 ≤ 2.0 s, p90 ≤ 3.0 s | Sonnet 5.5, effort medium | Self-contained detail points with sources [B3] |
 
 The overlay never waits for D. On a strong bank hit, D is skipped or reduced to a short "anything to add?" call
@@ -228,7 +228,7 @@ teleprompter's voice-activated scroll follows the owner's voice through this tex
 |---|---|---|
 | Bank hit or fact chips visible | ≤ 0.3 s | ≤ 0.4 s |
 | Correct speculation → opener visible | ≤ 0.3 s | ≤ 0.5 s |
-| No hit, fresh Haiku → first word | ≤ 1.1 s | ≤ 1.8 s |
+| No hit, fresh Haiku → first word | ≤ 2.0 s | ≤ 2.8 s |
 | Sonnet deep points, first words (thinking off) | ≤ 2.0 s | ≤ 3.0 s |
 
 Stage estimates from the critique, partly measured on this Mac:
@@ -247,6 +247,28 @@ Stage estimates from the critique, partly measured on this Mac:
 If any target is out of reach, the spec is revised with the measured numbers before building on.
 
 Estimated cost (critique, unmeasured): about $2–4 per meeting including prep, against the $200 monthly credit.
+
+
+### 6.1 Phase 0 outcome (2026-10-14, accepted by Alex)
+
+Measured in `bench/RESULTS.md`. The F target was revised from 1.1 / 1.8 s to **2.0 / 2.8 s**: the measured sum is
+ASR lag 0.3–0.8 s + endpoint 0.3 s + Haiku first line 1.1 s. P and S remain the paths that beat it. Decisions now
+fixed:
+- D uses `thinking: {type: "between_tools"}`; adaptive thinking is rejected (p90 2.4 s, one 6.4 s stall).
+- S/F send `thinking: {type: "disabled"}` explicitly; without it Haiku thinks on every call (+1.1 s).
+- **Transport:**
+  - A warm HTTP/2 client per model via `anthropic.DefaultAsyncHttpxClient(http2=True, limits=…keepalive_expiry=300)`;
+    SDK 1.x runs on `httpx2`.
+  - A `count_tokens` ping every ~30 s.
+  - No new connection at t = 0.
+  - A hedged duplicate request if there is no first byte after 1.5 s: 5–8 % of fresh connections stall 10–50 s
+    on this network.
+- **Cache keep-alive** (`max_tokens: 0`) every ~4 minutes of silence; entries expired after a 390 s idle.
+- **Act on volatile text only.** Italian finals take 3.5–8.7 s. `?` is not a cue (it arrives 0.9–1.6 s late).
+- **Turkish** uses DictationTranscriber with `.frequentFinalization` (SpeechTranscriber has no tr_TR on this Mac),
+  unless the WhisperKit bench wins.
+- **Remote audio:** a Core Audio process tap matched by bundle ID; Brave's audio comes from a helper process.
+- **Billing:** org `00000000-0000-0000-0000-000000000000`, confirmed by Alex as "Personal API Org".
 
 ## 7. Error handling
 
