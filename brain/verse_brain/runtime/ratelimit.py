@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import time
+from typing import Callable
 
 DEFAULT_LIMITS = {"requests": 1000, "input-tokens": 2_000_000, "output-tokens": 400_000}
 
@@ -33,6 +34,10 @@ class Bucket:
 
 
 class ModelLimiter:
+    # G1: while the API is bypassed (local Gemma answering), the buckets that model the API's budget must not drop
+    # requests that never reach it. Set by `FallbackTransport` (the engine builds its limiters itself).
+    bypass: Callable[[], bool] | None = None
+
     def __init__(self, fraction: float = 0.8) -> None:
         self.fraction = fraction
         now = time.monotonic()
@@ -60,6 +65,8 @@ class ModelLimiter:
 
     def try_acquire(self, input_tokens: int, output_tokens: int) -> bool:
         """All-or-nothing: one request plus the estimated uncached input and the output cap."""
+        if ModelLimiter.bypass is not None and ModelLimiter.bypass():
+            return True
         now = time.monotonic()
         want = {"requests": 1, "input-tokens": input_tokens, "output-tokens": output_tokens}
         for b in self.buckets.values():

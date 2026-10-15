@@ -9,6 +9,11 @@ stderr. Exits on `{"type":"control","action":"stop"}` or stdin EOF. `--fake` use
 (no network, no key) for IPC tests; it also leaves the embedding matcher off. `--no-embed` turns the F3 paraphrase
 matcher (EmbeddingGemma, LiteRT-LM) off; without it the matcher loads at `start` and stays off by itself when
 `litert_lm` or the model is missing.
+
+G1 degraded mode (meetings, not `--fake`): the transport is wrapped so that local Gemma 4 E4B answers while the API is
+offline, rate-limited or out of credit (runtime/fallback.py). `--no-fallback` turns it off, `--local-prewarm` (or
+VERSE_LOCAL_PREWARM=1) loads it at session start. `VERSE_SIMULATE_API=offline|rate_limited|overloaded|credit` makes every
+API call fail (no key read, no network) to exercise the fallback.
 """
 
 from __future__ import annotations
@@ -17,6 +22,7 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import sys
 
 from .engine import Brain
@@ -39,10 +45,19 @@ async def _stdin_lines():
 async def amain(args) -> int:
     emitter = Emitter(sys.stdout)
     key = None
+    sim_fault = None
+    if not args.fake:
+        from .fallback import simulated_fault
+
+        sim_fault = simulated_fault(os.environ.get("VERSE_SIMULATE_API", ""))
     if args.fake:
         from .fake import FakeTransport
 
         transport = FakeTransport()
+    elif sim_fault is not None:   # live check of the local fallback: every API call fails, no key, no network
+        from .fallback import FaultTransport
+
+        transport = FaultTransport(None, sim_fault)
     else:
         from ..prep.keychain import KeychainError, read_api_key
         from .transport import AnthropicTransport
@@ -54,7 +69,8 @@ async def amain(args) -> int:
             return 2
         transport = AnthropicTransport(key)
         del key  # the SDK clients hold the only copy
-    cfg = Config(budget_usd=args.budget_usd)
+    cfg = Config(budget_usd=args.budget_usd, fallback_enabled=not args.no_fallback,
+                 local_prewarm=args.local_prewarm or os.environ.get("VERSE_LOCAL_PREWARM") == "1")
     factory = None
     if not (args.fake or args.no_embed):
         from .embed import LiteRtEmbedder
@@ -76,7 +92,12 @@ async def amain(args) -> int:
                         transport.responder = sim_fake_responder
                     runtime = SimRuntime(transport, emitter)
                 else:
-                    runtime = Brain(transport, emitter, cfg, embedder_factory=factory)
+                    brain_transport, brain_emitter = transport, emitter
+                    if not args.fake and cfg.fallback_enabled:   # G1: Gemma as the degraded-mode brain (meetings only)
+                        from .fallback import wrap
+
+                        brain_transport, brain_emitter = wrap(transport, emitter, cfg)
+                    runtime = Brain(brain_transport, brain_emitter, cfg, embedder_factory=factory)
             await runtime.handle(msg)
             if runtime.stopped.is_set():
                 break
@@ -93,6 +114,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--budget-usd", type=float, default=None, help="optional hard spend cap for this process (default: none)")
     ap.add_argument("--fake", action="store_true", help="canned fake transport (tests); no embedding matcher")
     ap.add_argument("--no-embed", action="store_true", help="turn the F3 paraphrase matcher off")
+    ap.add_argument("--no-fallback", action="store_true", help="never switch to local Gemma (G1 degraded mode)")
+    ap.add_argument("--local-prewarm", action="store_true",
+                    help="load Gemma and prime the pack at session start even when the API is healthy (also VERSE_LOCAL_PREWARM=1)")
     ap.add_argument("--log-level", default="WARNING")
     args = ap.parse_args(argv)
     logging.basicConfig(stream=sys.stderr, level=args.log_level, format="%(asctime)s %(name)s %(levelname)s %(message)s")

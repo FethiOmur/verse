@@ -112,3 +112,32 @@ SOFTWARE.
 
 The glass uses private Core Animation classes (`CABackdropLayer`, `CASDFLayer`, `CAFilter` type `glassBackground`),
 resolved at run time with a public fallback. Fine for a directly distributed app; Mac App Store review would reject it.
+
+## Local degraded-mode brain (G1, brain)
+
+Checked 2026-10-15 (`brain/verse_brain/runtime/local_llm.py`, `fallback.py`). Gemma answers only while the API is offline,
+rate-limited or out of credit; it runs in the brain process through `litert-lm-api` (already listed above, Apache-2.0).
+No new Python dependency.
+
+| Component | Licence | Where read | Commercial distribution |
+|---|---|---|---|
+| Gemma 4 E4B-it, LiteRT-LM conversion `litert-community/gemma-4-E4B-it-litert-lm` (revision `2eee7ac3`, file `gemma-4-E4B-it.litertlm`, 3,659,530,240 bytes, in `~/Library/Application Support/Verse/models/gemma-4-E4B-it-litert-lm/`) | Apache-2.0 per the Hugging Face metadata of the conversion (`license: apache-2.0`) and of the base model `google/gemma-4-E4B-it` (card: "License: Apache 2.0", linking to Google's Gemma 4 licence page). The local `SOURCE.txt` says "Apache-2.0 + Gemma Prohibited Use Policy". | **There is no README or licence file next to the model**: the folder holds only `SOURCE.txt` (read in full) and the `.litertlm` file. Read on the web instead: the HF pages of the conversion and of `google/gemma-4-E4B-it` (YAML licence field and card prose; neither card is gated and neither has a licence or acceptable-use section of its own) and the Gemma Prohibited Use Policy at `ai.google.dev/gemma/prohibited_use_policy`. **Not read:** the Gemma 4 licence text on Google's licence page (the card links to it); the Gemma Terms of Use. The web pages were read through a summarising fetch tool, not as raw text. | Allowed on the Apache-2.0 reading (keep the licence text and notices with a redistribution). The model is not shipped with the app and the code never downloads it; if a release ever downloads it for users, that is distribution: ship the Apache-2.0 text and the pointer to the Prohibited Use Policy. |
+
+### Gemma Prohibited Use Policy: what matters for Verse
+
+The policy page lists prohibited uses (rights infringement; dangerous, illegal or malicious activity, including tracking
+people without consent and processing sensitive personal data without the needed consents; misinforming or misleading,
+including impersonating a person or presenting generated content as human-made "in order to deceive", and fully
+automated employment decisions; sexually explicit content). It does not restrict commercial use and does not mention
+meeting or interview assistance. Two points to keep in view:
+
+1. **Applicability is unclear.** The conversion card and the base card show Apache-2.0 and no standalone policy; the
+   policy page I read is Google's Gemma policy page and may be the older Gemma-family text. Verse treats it as applying
+   (the stricter reading, as for the NVIDIA licence above).
+2. **Deception clause.** The "mislead ... in order to deceive" wording is about intent. Verse writes words for Alex to
+   say in his own interviews and meetings; the deception reading would only apply if the output is presented to the
+   other side as something it is not, which is a question of the interview's own rules, not of this software. Flagged
+   for the owner's judgement; no technical term found forbids this use.
+
+Nothing found forbids the degraded-mode use. Memory and disk: about 1.7 GB peak RSS (2.2 GB peak memory footprint) while
+loaded and primed; 3.4 GB on disk plus a compiled-model cache (`cache/` next to the model, 2.1 GB measured) created on first load.
