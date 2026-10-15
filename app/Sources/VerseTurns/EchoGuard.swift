@@ -56,6 +56,26 @@ public struct EchoGuard: Sendable {
         return Double(Self.lcs(mine, theirs)) / Double(mine.count)
     }
 
+    /// How much of a me result could be the remote voice: the share of its words found, in order, in what the remote channel
+    /// said around the same time (0 when the remote said nothing near it). Unlike `similarity` it has no minimum word count,
+    /// and a word counts as the remote's when the remote's (still volatile) word is its first 3+ letters ("sal" for
+    /// "salary"): it is for deciding whether to wait, not for dropping. The microphone recognizer is sometimes a few words
+    /// ahead of the remote one, so a bleed result can have its first words in the remote text and its tail not yet (4 of 7
+    /// words), which `similarity` still rates under the drop threshold.
+    func suspicion(text: String, start: Double, end: Double, windowSeconds: Double, lang: String) -> Double {
+        let mine = Text.tokens(text, lang: lang)
+        guard !mine.isEmpty else { return 0 }
+        let theirs = spans.filter { $0.end >= start - windowSeconds && $0.start <= end + windowSeconds }.sorted { $0.start < $1.start }.flatMap(\.tokens)
+        guard !theirs.isEmpty else { return 0 }
+        return Double(Self.lcs(mine, theirs, same: Self.sameOrPrefix)) / Double(mine.count)
+    }
+
+    static func sameOrPrefix(_ a: String, _ b: String) -> Bool {
+        if sameWord(a, b) { return true }
+        let (short, long) = a.count <= b.count ? (a, b) : (b, a)
+        return short.count >= 3 && long.hasPrefix(short)
+    }
+
     /// Words match when equal, or one letter apart on words of 5+ letters ("country" / "countries" are two apart and do
     /// not match, "labelled" / "labeled" do).
     public static func sameWord(_ a: String, _ b: String) -> Bool {
@@ -64,12 +84,12 @@ public struct EchoGuard: Sendable {
         return Text.editDistance(a.map(String.init), b.map(String.init)) <= 1
     }
 
-    public static func lcs(_ a: [String], _ b: [String]) -> Int {
+    public static func lcs(_ a: [String], _ b: [String], same: (String, String) -> Bool = sameWord) -> Int {
         var prev = [Int](repeating: 0, count: b.count + 1)
         for x in a {
             var cur = [0]
             for (j, y) in b.enumerated() {
-                cur.append(sameWord(x, y) ? prev[j] + 1 : max(prev[j + 1], cur[j]))
+                cur.append(same(x, y) ? prev[j] + 1 : max(prev[j + 1], cur[j]))
             }
             prev = cur
         }

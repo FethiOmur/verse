@@ -21,6 +21,8 @@ func usage() -> Never {
       --no-bleed-gate     switch the envelope echo gate of the "me" channel off (bleed measurements)
       --gate-corr-only    envelope gate by correlation alone, as before the level rule (the "before" arm of the gate-fix measurements)
       --no-echo-guard     switch the text echo guard of the turn engine off (bleed measurements)
+      --me-hold-ms N      longest a me result that may be speaker bleed keeps the open remote turn open (default 1200; 0 = close it at
+                          once, the "before" arm of the me-turn-split measurements)
       --no-mic            live: remote audio only
       --bundle-ids a,b    apps whose audio is the remote channel (default Brave, Comet, Zoom, Teams)
       --owner NAME        your name for the addressee check (default Alex); --alias a,b adds spellings the
@@ -61,6 +63,7 @@ func parse(_ args: [String]) -> RunOptions {
         case "--no-bleed-gate": noBleedGate = true
         case "--gate-corr-only": gateCorrOnly = true
         case "--no-echo-guard": noEchoGuard = true
+        case "--me-hold-ms": turn.meCloseHoldMs = Int(value(k)) ?? turn.meCloseHoldMs
         case "--no-mic": mic = false
         case "--bundle-ids": bundles = list(value(k))
         case "--owner": turn.ownerName = value(k)

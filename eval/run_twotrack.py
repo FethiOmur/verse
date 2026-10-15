@@ -45,6 +45,8 @@ def build_command(a, fixture: dict, remote: Path, me: Path, session: Path, other
         cmd.append("--no-echo-guard")
     if a.gate_corr_only:
         cmd.append("--gate-corr-only")
+    if a.me_hold_ms is not None:
+        cmd += ["--me-hold-ms", str(a.me_hold_ms)]
     return cmd
 
 
@@ -67,6 +69,7 @@ def main() -> int:
     ap.add_argument("--no-bleed-gate", action="store_true")
     ap.add_argument("--no-echo-guard", action="store_true")
     ap.add_argument("--gate-corr-only", action="store_true", help="the envelope gate as before the level rule (correlation alone drops): the 'before' arm")
+    ap.add_argument("--me-hold-ms", type=int, help="verse-run --me-hold-ms (0 = the turn engine before the me-turn hold: the 'before' arm)")
     ap.add_argument("--timeout", type=float, default=300)
     ap.add_argument("--ack-text", default=ST.ACK_DEFAULT)
     a = ap.parse_args()

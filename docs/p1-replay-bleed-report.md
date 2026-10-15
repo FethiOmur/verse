@@ -72,7 +72,7 @@ When a remote turn closes with no bank hit (n-gram or embedding) and it is not f
 - Italian and Turkish; the live brain on these fixtures (all runs used the fake brain; "answered" means the fake brain's canned answer, not a good answer).
 - The final-text pass against the real embedding model (fake embedder only).
 - the owner's speech and bleed at the same time over more than one run; one run per cell.
-- A me result that arrives before the remote words and is a single garbled word still opens a me turn (and closes the remote turn for that moment).
+- A me result that arrives before the remote words and is a single garbled word still opens a me turn (and closes the remote turn for that moment). Narrowed in section 5.
 
 ## 4. Gate fix (branch `echo-gate`)
 
@@ -110,3 +110,43 @@ The level ratio separates them by 16 dB (-8.1 versus -24.5). Mic-only share (mic
 The three bleed cells are unchanged by the fix (same counts, same false me turns: "els", "so" / "What", "models", "eighteen" / "Thanks,", "Thanks."). The -25 dB cell shows 2 false me turns in all four runs of this session, before and after, where the table in section 2 has 0 for its single run: the rule did not cause them (the before arm has them too), but I did not find why this session differs. The clean run's drop is intermittent (1 of 3 before runs, depending on how the recognizer cuts the first word), so the clean before/after rows alone do not prove the fix; the own-speech cell, where the same "Sorry" window (correlation 0.734, -2.9 dB) is dropped before and deferred after in every run, and the tests above do.
 
 **Not verified here:** a real room and microphone (the ratio depends on mic gain against the tap level: a very quiet mic would push the owner's ratio down toward the -15 dB line); echo louder than -6 dB with correlation under 0.9; the owner's real speech louder than the remote with a tight correlation; `verse-run` with voice processing on; Italian and Turkish.
+
+## 5. A bleed word that splits a remote question (branch `me-turn-split`)
+
+**Failure.** `MeChannelTests.testBleedIsDroppedByTheTextGuardAlone` (envelope gate off, real recognizers) failed 3 of 3 on main: the question came out as r1 "Can you tell me" and r2 "about yourself and your background?". Traced with a stderr line per engine event (since removed):
+
+- Run A: the remote recognizer's "Can you tell me" is in, then the mic result "Can" (one word). `EchoGuard` ignores results under `echoMinWords` (2), so "Can" opened a me turn and closed r1. The next mic result, "Can you", was dropped as echo and the me turn discarded, but r1 was already closed; the rest of the question became r2.
+- Run B (the other failure of the same test, after run A was fixed): no single word. The mic recognizer is a few words ahead of the remote one: "Can you tell me about yourself and" (7 words) arrived 6 ms before the remote's own result for those words. Only 4 of its 7 words were in what the remote had said so far, 0.57, under the 0.6 drop line, so it opened a me turn and closed r1.
+
+Both are one cause: the engine closes the open remote turn on the first me result, before the text guard can tell whether that result is Alex or the remote voice, and a closed turn cannot be reopened (its `turn` event is already out).
+
+**Choice.** (a), hold the close; not (b), re-merge. (b) would have to take back a `turn` event the brain already acted on. Lowering `echoMinWords` to 1 is what section 2 already rejected (it dropped the owner's real "You"). Holding it unconditionally fails `TurnOverlapTests.testInterruptionMidQuestionClosesItAsAFragment` ("Sorry" must close the question in the same call), so the hold is conditional.
+
+**Rule (`TurnEngine.ingestMe`, `EchoGuard.suspicion`).** The first result of a me turn still opens the me turn at once. If the remote turn is open, the close is held when the result's suspicion is at least `echoHoldSimilarity` (0.4): the share of its words found, in order, in what the remote said within 1.5 s, where a word also counts when the remote's volatile word is its first 3+ letters ("sal" for "salary"), with no minimum word count. A result below that closes the remote turn at once, exactly as before. While held:
+- the me turn is discarded as echo (a later remote result or the guard): the remote turn was never closed;
+- the me turn reaches 2+ words with suspicion under 0.4: the remote turn closes then, at the time of that result;
+- `meCloseHoldMs` (1200) passes since the first result and the me turn is still there: the remote turn closes, stamped at the end of the window;
+- the me turn ends by its own quiet or the remote turn ends by its own quiet: the hold is dropped.
+`--no-echo-guard` also switches the hold off; `verse-run --me-hold-ms N` sets the window (0 = before, the "before" arm below).
+
+**Latency cost.** Zero for a first word the remote did not say nearby ("Sorry", "Between"; pinned by `TurnOverlapTests` and `testWordTheRemoteNeverSaidClosesImmediately`). A real interruption that starts with a word the remote also said (say "and", "you") and whose first recognizer result is that one word: the remote turn closes when the next me result has 2+ words not echo-like, otherwise at most 1200 ms after the first word. That window is the recognizers' burst cadence (volatile results about 1 s apart; section 1), not a guess of mine: 500 and 800 ms were tried and were too short, because the remote words that settle the question arrive with the next burst (text-guard-only, -30 dB/80 ms: 14, 9, 10 remote turns for 500, 800, 1200 ms; 15 with the hold off; one run each). A held remote turn is a fragment or a question Alex cut off, so a late close delays nothing the brain would have answered.
+
+**Replays** (`eval/run_twotrack.py`, t01, fake brain, synthetic speech, one run per cell, built from this branch; "hold 0" = `--me-hold-ms 0`, the engine as on main):
+
+| cell | arm | questions once | remote turns | me turns (false) | Alex landed | dropped gate / guard |
+|---|---|---|---|---|---|---|
+| clean | hold 1200 | 4/4 | 10 | 6 (0) | 6/6 | 0 / 0 |
+| -30 dB, 80 ms, noise -50, text guard only | hold 0 | 4/4 | 15 | 3 (3) | - | 0 / 31 |
+| | hold 1200, run a | 4/4 | 10 | 3 (3) | - | 0 / 31 |
+| | hold 1200, run b | 4/4 | 10 | 3 (3) | - | 0 / 31 |
+| -30 dB, 80 ms, noise -50, gate + guard (the app) | hold 1200 | 4/4 | 8 | 3 (3) | - | 44 / 2 |
+| -25 dB, 40 ms + Alex talking, gate + guard | hold 0 | 4/4 | 12 | 7 (0) | 6/6 | 13 / 1 |
+| | hold 1200 | 4/4 | 11 | 7 (0) | 6/6 | 13 / 1 |
+
+Section 2 gave 12 remote turns for the -30 dB text-guard-only cell (3/4 questions); this session's hold-0 arm gave 15 (4/4), so single numbers move by a few turns between sessions; the paired hold 0 / hold 1200 rows are the comparison. Clean and the Alex-talking cell show no change in what lands (6/6, same me turns), the app configuration is unchanged (8, as in section 2). In the text-guard-only cell all three arms have 3 false me turns (garbled results such as "models"); the hold does not touch them, it only stops the bleed from cutting the question.
+
+**What the hold does not fix.** A me result that is not made of words the remote said so far, because the mic recognizer is ahead and the remote's words are not out yet ("We are" against a remote turn that ends in "us"; "to like ten" against "ship around ten thousand"). Nothing in the text can tell it from Alex starting to talk, so it still closes the remote turn at once; only the hold-0-versus-1200 gap (15 versus 10 in the text-guard-only cell, versus 8 with the gate) remains as split turns there. The envelope gate removes most of them in the app. Closing that rest needs either a hold on every first me result (fails the "Sorry" test and costs every real interruption the window) or taking back an emitted `turn` event.
+
+**Tests.** `MeTurnHoldTests` (6, fake events, no recognizer): a one-word bleed mid-question leaves one remote turn; the mic recognizer ahead (4 of 7 words) leaves one; a bleed word discarded later never closes it; a real interruption with an ambiguous first word closes on the second word at once; a lone ambiguous word closes within 1200 ms (at +1200 exactly, not before); a word the remote never said closes at once. With the hold switched off in the engine, 5 of the 6 fail (the sixth is the immediate-close control). `TurnOverlapTests` and `EchoGuardTests` unchanged and green; `MeChannelTests.testBleedIsDroppedByTheTextGuardAlone` passes (it failed 3 of 3 before).
+
+**Not verified.** Real speakers and a real room; Italian and Turkish (the 3-letter prefix rule and the word lists are English-tested); the live brain; more than one run per replay cell; how often a real interruption starts with a word the remote also said, so the share of interruptions that pay the wait is unmeasured.
