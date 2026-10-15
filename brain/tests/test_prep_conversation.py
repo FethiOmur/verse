@@ -11,8 +11,8 @@ import pytest
 
 from verse_brain.prep import keychain
 from verse_brain.prep.__main__ import main
-from verse_brain.prep.conversation import (ConversationError, Fact, FakeConversationPrepModel, norm_url, parse_extract,
-                                           parse_facts, render_prep_note, run_async, verify_facts)
+from verse_brain.prep.conversation import (ConversationError, Fact, FakeConversationPrepModel, Inference, norm_url,
+                                           parse_extract, parse_facts, render_prep_note, run_async, verify_facts)
 from verse_brain.prep.conversation_model import (FakeConversationModel, Page, ResearchOutput, collect_sources)
 from verse_brain.prep.model import ModelOutput, Usage
 from verse_brain.prep.pipeline import _collect, seed_queries
@@ -51,36 +51,54 @@ class Scripted:
 
     model = "claude-sonnet-5-5"
 
-    def __init__(self, extract=None, research_text="", pages=None, searches=3, usage=None):
+    def __init__(self, extract=None, research_text="", pages=None, searches=3, usage=None, fetches=None):
         self.extract_json = json.dumps(extract if extract is not None else EXTRACT)
         self.research_text = research_text
         self.pages = pages or {}
         self.searches = searches
         self.usage = usage or Usage(input=4000, output=1500)
+        self.fetches = fetches or []
         self.calls: list[tuple] = []
 
     async def extract(self, system, user, max_tokens):
         self.calls.append(("extract", system, user))
         return ModelOutput("Here you go:\n```json\n" + self.extract_json + "\n```", Usage(input=2000, output=800), "end_turn")
 
-    async def research(self, system, user, max_uses, max_tokens):
-        self.calls.append(("research", system, user, max_uses))
+    async def research(self, system, user, max_uses, max_fetches, max_tokens):
+        self.calls.append(("research", system, user, max_uses, max_fetches))
         return ResearchOutput(self.research_text, self.pages, ["brightwater analytics", "brightwater analytics funding"],
-                              self.searches, [], self.usage, "end_turn")
+                              self.searches, [], self.fetches, len(self.fetches), self.usage, "end_turn")
 
 
 ABOUT = "https://www.brightwater-analytics.example/about"
+TERMS = "https://www.brightwater-analytics.example/terms"
 NEWS = "https://news.example.org/brightwater-raises-seed"
+FB = "https://www.facebook.com/brightwater"
+ENTITY_LINE = "Brightwater Analytics AB, registered in Sweden, company number 556000-0000"
 RESEARCH_TEXT = f"""I will search now.
 @FACT
 topic: company
 text: Brightwater Analytics sells route-reporting software to haulage firms across Europe.
 url: {ABOUT}
+evidence: route-reporting software to haulage firms
+@END
+@FACT
+topic: entity
+text: The legal entity is Brightwater Analytics AB, registered in Sweden.
+url: {TERMS}
+evidence: {ENTITY_LINE}
+@END
+@FACT
+topic: entity
+text: The head office is in Lund.
+url: {FB}
+evidence: Lund, Sweden
 @END
 @FACT
 topic: funding
 text: Brightwater Analytics raised a 4 million euro seed round.
 url: {NEWS}
+evidence: raised a 4 million euro seed round
 @END
 @FACT
 topic: size
@@ -91,6 +109,17 @@ url: none
 topic: stack
 text: Its backend runs on Rust.
 url: https://guessed.example.com/stack
+evidence: built in Rust
+@END
+@FACT
+topic: product
+text: The product has a free tier.
+url: {TERMS}
+evidence: every customer gets a free tier forever
+@END
+@INFER
+text: It is probably a small founder-led team.
+basis: no team page found
 @END
 @FACT
 topic: news
@@ -100,7 +129,13 @@ url: {ABOUT}
 text: Their customer list was not found.
 @END
 """
-PAGES = {ABOUT: Page(ABOUT, "About us", "March 2026", ["route-reporting software for haulage"]), NEWS: Page(NEWS, "Seed round")}
+PAGES = {
+    ABOUT: Page(ABOUT, "About us", "March 2026", ["route-reporting software for haulage"],
+                text="Welcome. We sell route-reporting software to haulage firms across Europe.", fetched=True),
+    TERMS: Page(TERMS, "Terms", text=f"Terms of use. Provider: {ENTITY_LINE}. Governing law: Sweden.", fetched=True),
+    NEWS: Page(NEWS, "Seed round"),  # a search result only: its quote cannot be checked
+    FB: Page(FB, "Brightwater on Facebook"),
+}
 
 
 # ---------------------------------------------------------------------------------------------- extract
@@ -134,23 +169,42 @@ def test_extract_tolerates_missing_fields():
 
 
 def test_parse_facts_drops_unclosed_block_and_keeps_gaps():
-    raw, gaps = parse_facts(RESEARCH_TEXT)
-    assert [f["topic"] for f in raw] == ["company", "funding", "size", "stack"]
+    raw, infers, gaps = parse_facts(RESEARCH_TEXT)
+    assert [f["topic"] for f in raw] == ["company", "entity", "entity", "funding", "size", "stack", "product"]
+    assert raw[1]["evidence"] == ENTITY_LINE
+    assert infers == [Inference("It is probably a small founder-led team.", "no team page found")]
     assert gaps == ["Their customer list was not found."]
 
 
 def test_every_fact_has_a_url_or_is_unverified():
-    raw, _ = parse_facts(RESEARCH_TEXT)
+    raw, _, _ = parse_facts(RESEARCH_TEXT)
     facts = verify_facts(raw, ResearchOutput("", PAGES))
-    by = {f.topic: f for f in facts}
-    assert by["company"].status == "sourced" and by["company"].url == ABOUT and by["company"].title == "About us"
-    assert by["funding"].status == "sourced" and by["funding"].url == NEWS
-    assert by["size"].status == "unverified" and by["size"].url == "" and "no source page" in by["size"].reason
+    by = {(f.topic, f.text[:12]): f for f in facts}
+    company = next(f for f in facts if f.topic == "company")
+    assert company.status == "sourced" and company.url == ABOUT and company.title == "About us"
+    assert company.check == "quote found on the fetched page"
+    funding = next(f for f in facts if f.topic == "funding")
+    assert funding.status == "sourced" and funding.check == "search result, quote not checkable"
+    size = next(f for f in facts if f.topic == "size")
+    assert size.status == "unverified" and size.url == "" and "no source page" in size.reason
     # a URL the search never returned is a guess: unverified, and the guess is kept visible
-    assert by["stack"].status == "unverified" and by["stack"].url == "https://guessed.example.com/stack"
-    assert "not among the pages" in by["stack"].reason
-    assert all(f.status == "sourced" or f.status == "unverified" for f in facts)
+    stack = next(f for f in facts if f.topic == "stack")
+    assert stack.status == "unverified" and stack.url == "https://guessed.example.com/stack"
+    assert "not among the pages" in stack.reason
     assert all(f.url for f in facts if f.status == "sourced")
+    assert len(by) == len(facts)
+
+
+def test_entity_facts_need_an_official_page_and_a_real_quote():
+    raw, _, _ = parse_facts(RESEARCH_TEXT)
+    facts = verify_facts(raw, ResearchOutput("", PAGES))
+    entity = [f for f in facts if f.topic == "entity"]
+    assert [f.status for f in entity] == ["sourced", "unverified"]
+    assert entity[0].url == TERMS and entity[0].check == "quote found on the fetched page"
+    assert "company's own page or an official registry" in entity[1].reason, "a Facebook page cannot carry the head office"
+    # a quote that is not on the fetched page demotes the fact, even with a valid URL
+    product = next(f for f in facts if f.topic == "product")
+    assert product.status == "unverified" and "not on the fetched page" in product.reason
 
 
 def test_url_matching_ignores_www_slash_fragment_and_tracking():
@@ -169,21 +223,33 @@ def test_collect_sources_reads_the_documented_response_shape():
         {"type": "server_tool_use", "id": "srvtoolu_2", "name": "web_search", "input": {"query": "second"}},
         {"type": "web_search_tool_result", "tool_use_id": "srvtoolu_2",
          "content": {"type": "web_search_tool_result_error", "error_code": "max_uses_exceeded"}},
+        {"type": "server_tool_use", "id": "srvtoolu_3", "name": "web_fetch", "input": {"url": TERMS}},
+        {"type": "web_fetch_tool_result", "tool_use_id": "srvtoolu_3", "content": {
+            "type": "web_fetch_result", "url": TERMS, "retrieved_at": "2026-10-15T16:49:20",
+            "content": {"type": "document", "title": "Terms", "source": {"type": "text", "media_type": "text/plain", "data": "Terms text"}}}},
+        {"type": "server_tool_use", "id": "srvtoolu_4", "name": "web_fetch", "input": {"url": FB}},
+        {"type": "web_fetch_tool_result", "tool_use_id": "srvtoolu_4",
+         "content": {"type": "web_fetch_tool_result_error", "error_code": "url_not_accessible"}},
         {"type": "text", "text": "@FACT", "citations": [
             {"type": "web_search_result_location", "url": ABOUT, "title": "About us", "encrypted_index": "e", "cited_text": "route-reporting"},
             {"type": "web_search_result_location", "url": NEWS, "title": "Seed", "encrypted_index": "e", "cited_text": "raised"}]},
     ]
-    text, pages, queries, errors = collect_sources(content)
-    assert text == "I'll search. @FACT" and queries == ["brightwater analytics", "second"] and errors == ["max_uses_exceeded"]
-    assert list(pages) == [ABOUT, NEWS] and pages[ABOUT].page_age == "March 2026" and pages[ABOUT].cited == ["route-reporting"]
+    got = collect_sources(content)
+    assert got.text == "I'll search. @FACT" and got.queries == ["brightwater analytics", "second"]
+    assert got.errors == ["web_search: max_uses_exceeded", "web_fetch: url_not_accessible"]
+    assert got.fetches == [TERMS, FB]
+    assert list(got.pages) == [ABOUT, TERMS, NEWS]
+    assert got.pages[ABOUT].page_age == "March 2026" and got.pages[ABOUT].cited == ["route-reporting"] and not got.pages[ABOUT].fetched
+    assert got.pages[TERMS].fetched and got.pages[TERMS].text == "Terms text" and got.pages[TERMS].title == "Terms"
 
 
 def test_run_passes_the_search_cap_and_hides_private_terms_from_the_search_model(tmp_path):
     m = Scripted(research_text=RESEARCH_TEXT, pages=PAGES)
     asyncio.run(run_async(THREAD, out=tmp_path, model=m, prep_model=FakeConversationPrepModel(), posting=POSTING,
                           company_url="https://www.brightwater-analytics.example", now=NOW, max_searches=8))
-    kind, system, user, max_uses = next(c for c in m.calls if c[0] == "research")
-    assert max_uses == 8 and "at most 8 times" in system
+    kind, system, user, max_uses, max_fetches = next(c for c in m.calls if c[0] == "research")
+    assert (max_uses, max_fetches) == (8, 5) and "at most 8 searches" in system and "at most 5 page fetches" in system
+    assert "https://www.brightwater-analytics.example" in user
     assert "Brightwater Analytics" in user and "Marta Lindqvist" in user
     for private in ("450", "EUR", "1 December", "inventing facts", "example"):
         assert private not in user, private
@@ -193,17 +259,24 @@ def test_run_passes_the_search_cap_and_hides_private_terms_from_the_search_model
 
 
 def _note(facts=None):
-    raw, gaps = parse_facts(RESEARCH_TEXT)
+    raw, infers, gaps = parse_facts(RESEARCH_TEXT)
     facts = facts or verify_facts(raw, ResearchOutput("", PAGES))
     ex = parse_extract(json.dumps(EXTRACT), THREAD + POSTING, [])
-    return render_prep_note(ex, facts, gaps, owner="Alex", now=NOW, posting=POSTING, posting_url="https://jobs.example/1",
+    return render_prep_note(ex, facts, gaps, infers, owner="Alex", now=NOW, posting=POSTING, posting_url="https://jobs.example/1",
                             company_url=None, note="Keep it short.\nAsk about the API docs."), facts
 
 
 def test_prep_note_marks_unverified_and_cites_sources():
     note, _ = _note()
-    assert f"(source: {ABOUT})" in note
-    assert "unverified: no source page" in note and "unverified: the URL was not among" in note
+    assert f"(source: {ABOUT})" in note and f"(source: {TERMS})" in note
+    # sourced facts sit under topic headings, entity first; what failed its check is listed apart, never under a topic
+    head, _, unver = note.partition("## Unverified research claims")
+    assert "### entity" in head and head.index("### entity") < head.index("### company")
+    assert "unverified" not in head.split("## Research")[1].split("## Likely")[0]
+    assert "unverified: no source page" in unver and "unverified: the URL was not among" in unver
+    assert "The head office is in Lund." in unver and "The head office is in Lund." not in head
+    assert "## Likely / inferred (no direct source; say it only with hedging)" in note
+    assert "- It is probably a small founder-led team. (basis: no team page found)" in note
     assert "## Not found" in note and "Their customer list was not found." in note
     assert "## Terms discussed (keep private)" in note
     assert "- Marta Lindqvist promised: send the invite tonight" in note
@@ -226,7 +299,7 @@ def test_prep_note_parses_with_the_existing_reader(tmp_path):
 
 
 def test_fake_prep_end_to_end_grounds_against_the_note(tmp_path):
-    m = Scripted(research_text=RESEARCH_TEXT, pages=PAGES, searches=3)
+    m = Scripted(research_text=RESEARCH_TEXT, pages=PAGES, searches=3, fetches=[ABOUT, TERMS])
     session, summary = asyncio.run(run_async(THREAD, out=tmp_path, model=m, prep_model=FakeConversationPrepModel(),
                                               posting=POSTING, posting_url="https://jobs.example/1", note="Ask about docs.",
                                               now=NOW))
@@ -235,7 +308,11 @@ def test_fake_prep_end_to_end_grounds_against_the_note(tmp_path):
     assert bank and all(b["sources"] and all(s["ref"].startswith("prep:L") for s in b["sources"]) for b in bank)
     meta = json.loads((session / "meta.json").read_text(encoding="utf-8"))
     conv = meta["conversation"]
-    assert conv["searches"] == 3 and conv["facts_sourced"] == 2 and conv["facts_unverified"] == 2
+    assert conv["searches"] == 3 and conv["fetch_count"] == 2 and conv["fetches"] == [ABOUT, TERMS]
+    assert conv["facts_sourced"] == 3 and conv["facts_unverified"] == 4 and conv["inferred"] == 1
+    research_md = (session / "research.md").read_text(encoding="utf-8")
+    assert "## Likely / inferred" in research_md and "quote found on the fetched page" in research_md
+    assert "## Fetched pages" in research_md and TERMS in research_md
     c = conv["cost_usd"]
     assert c["searches"] == pytest.approx(0.03) and c["extract"] == pytest.approx(2000 * 2 / 1e6 + 800 * 10 / 1e6)
     assert c["research_tokens"] == pytest.approx(4000 * 2 / 1e6 + 1500 * 10 / 1e6)
@@ -292,7 +369,7 @@ def test_cli_fake_makes_a_session_offline(tmp_path, monkeypatch, capsys):
     assert {p.name for p in session.iterdir()} >= {"meta.json", "bank.jsonl", "pack.md", "review.md", "thread.md", "research.md", "prep_note.md"}
     assert "Marta Lindqvist" in (session / "thread.md").read_text(encoding="utf-8")
     assert "STYLE GUIDE" in (session / "pack.md").read_text(encoding="utf-8"), "the voice profile is in the pack"
-    assert "cost: $0.0000" in cap.err and "research: 2 searches" in cap.err and "warning:" in cap.err
+    assert "cost: $0.0000" in cap.err and "research: 1 searches | 1 fetches" in cap.err and "warning:" in cap.err
     assert oct((session / "thread.md").stat().st_mode & 0o777) == "0o600"
 
 
@@ -305,3 +382,130 @@ def test_cli_errors_go_to_stderr_with_exit_1(tmp_path, capsys):
     empty.write_text("  \n", encoding="utf-8")
     assert main(["conversation", "--thread", str(empty), "--fake", "--out", str(tmp_path / "s")]) == 1
     assert main(["conversation", "--thread", str(empty), "--fake", "--no-voice", "--voice-profile", str(tmp_path / "x"), "--out", str(tmp_path / "s")]) == 1
+
+
+# ---------------------------------------------------------------------------------------------- transient failures
+# Live run 2 died in the meeting-prep stage with an empty error text and no retry. The same prep note succeeded when it was
+# replayed, so the failure was a dropped or stalled stream: the SDK retries only the request that opens a stream, and the raw
+# transport error it leaves (often with an empty message) was wrapped without its type.
+
+
+def _no_sleep(monkeypatch):
+    slept: list[float] = []
+
+    async def fake_sleep(s):
+        slept.append(s)
+
+    monkeypatch.setattr("verse_brain.prep.conversation_model.asyncio.sleep", fake_sleep)
+    return slept
+
+
+def test_retry_transient_retries_a_dropped_stream_and_names_the_error(monkeypatch):
+    import httpx2
+    from verse_brain.prep.conversation_model import retry_transient
+
+    slept = _no_sleep(monkeypatch)
+    calls, logs = [], []
+
+    async def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise httpx2.ReadTimeout("")  # the shape of the failure: a transport error with an empty message
+        return "ok"
+
+    assert asyncio.run(retry_transient(flaky, log=logs.append)) == "ok"
+    assert len(calls) == 3 and slept == [5.0, 10.0]
+    assert logs[0].startswith("warning: ReadTimeout: ") and "ReadTimeout('')" in logs[0] and "(2/3)" in logs[0]
+
+
+def test_retry_transient_gives_up_after_the_last_attempt_and_skips_other_errors(monkeypatch):
+    import httpx2
+    from verse_brain.prep.conversation_model import retry_transient
+
+    _no_sleep(monkeypatch)
+    n = []
+
+    async def always():
+        n.append(1)
+        raise httpx2.RemoteProtocolError("peer closed connection")
+
+    with pytest.raises(httpx2.RemoteProtocolError):
+        asyncio.run(retry_transient(always, log=lambda m: None))
+    assert len(n) == 3
+
+    m = []
+
+    async def bug():
+        m.append(1)
+        raise ValueError("a real bug is not retried")
+
+    with pytest.raises(ValueError):
+        asyncio.run(retry_transient(bug, log=lambda m_: None))
+    assert len(m) == 1
+
+
+def test_meeting_prep_call_survives_a_dropped_stream(monkeypatch):
+    import httpx2
+    from verse_brain.prep.conversation_model import AnthropicConversationModel
+    from verse_brain.prep.model import AnthropicPrepModel
+
+    _no_sleep(monkeypatch)
+    tries = []
+
+    async def flaky_generate(self, system, user, max_tokens):
+        tries.append(1)
+        if len(tries) == 1:
+            raise httpx2.ReadError("")
+        return ModelOutput("@FACT\n", Usage(input=1, output=1), "end_turn")
+
+    monkeypatch.setattr(AnthropicPrepModel, "generate", flaky_generate)
+    model = AnthropicConversationModel("sk-ant-test-not-a-real-key")
+    out = asyncio.run(model.generate("sys", "user", 100))
+    assert out.text == "@FACT\n" and len(tries) == 2
+
+
+def test_research_turn_survives_a_dropped_stream(monkeypatch):
+    import httpx2
+    from types import SimpleNamespace
+    from verse_brain.prep.conversation_model import AnthropicConversationModel
+
+    _no_sleep(monkeypatch)
+    turns = []
+
+    async def flaky_turn(self, system, messages, tools, max_tokens):
+        turns.append([t["name"] for t in tools])
+        if len(turns) == 1:
+            raise httpx2.RemoteProtocolError("")
+        usage = SimpleNamespace(input_tokens=10, output_tokens=5, cache_read_input_tokens=0, cache_creation_input_tokens=0,
+                                server_tool_use=SimpleNamespace(web_search_requests=1, web_fetch_requests=1))
+        content = [{"type": "server_tool_use", "name": "web_fetch", "input": {"url": ABOUT}},
+                   {"type": "web_fetch_tool_result", "content": {"type": "web_fetch_result", "url": ABOUT, "content": {
+                       "type": "document", "title": "About", "source": {"type": "text", "data": "page text"}}}},
+                   {"type": "text", "text": RESEARCH_TEXT}]
+        return SimpleNamespace(usage=usage, stop_reason="end_turn", content=content)
+
+    monkeypatch.setattr(AnthropicConversationModel, "_stream_turn", flaky_turn)
+    out = asyncio.run(AnthropicConversationModel("sk-ant-test-not-a-real-key").research("sys", "user", 8, 5, 1000))
+    assert turns == [["web_search", "web_fetch"], ["web_search", "web_fetch"]]
+    assert out.searches == 1 and out.fetch_count == 1 and out.pages[ABOUT].fetched and out.pages[ABOUT].text == "page text"
+    assert out.usage.input == 10 and "@FACT" in out.text
+
+
+def test_a_failure_with_an_empty_message_still_names_its_type(tmp_path):
+    class Boom(FakeConversationPrepModel):
+        async def generate(self, system, user, max_tokens):
+            raise RuntimeError()  # str(e) == ""
+
+    with pytest.raises(ConversationError, match=r"RuntimeError: RuntimeError\(\) \(the research is kept in"):
+        asyncio.run(run_async(THREAD, out=tmp_path, model=Scripted(research_text=RESEARCH_TEXT, pages=PAGES),
+                              prep_model=Boom(), now=NOW))
+
+
+def test_cli_fetch_cap_is_bounded(tmp_path, capsys):
+    for bad in ("6", "-1"):
+        with pytest.raises(SystemExit):
+            main(["conversation", "--thread", str(FIX / "thread_fictional.md"), "--fake", "--max-fetches", bad,
+                  "--out", str(tmp_path / "s")])
+    capsys.readouterr()
+    assert main(["conversation", "--thread", str(FIX / "thread_fictional.md"), "--fake", "--no-voice", "--max-fetches", "0",
+                 "--out", str(tmp_path / "s")]) == 0

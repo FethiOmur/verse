@@ -1,4 +1,6 @@
+import AppKit
 import Foundation
+import SwiftUI
 import VersePosting
 @testable import VerseUI
 import XCTest
@@ -280,11 +282,82 @@ final class ConversationPrepProcessTests: XCTestCase {
         XCTAssertTrue(dir.lastPathComponent.hasPrefix("conv-"))
         XCTAssertTrue(FileManager.default.fileExists(atPath: dir.appendingPathComponent("research.md").path))
         let sum = try XCTUnwrap(ConversationSummary.load(sessionDir: dir))
-        XCTAssertEqual(sum.sourced, 2)
+        XCTAssertEqual(sum.sourced, 3)
         XCTAssertEqual(sum.unverified, 2)
         XCTAssertTrue(SessionCatalog.list(root: root).contains(dir.lastPathComponent), "the session list sees it")
         let leftovers = try FileManager.default.contentsOfDirectory(atPath: FileManager.default.temporaryDirectory.path)
             .filter { $0.hasPrefix("verse-conversation-") }
         XCTAssertEqual(leftovers, [])
+    }
+}
+
+/// A runner that never finishes on its own (the "Preparing" state), until cancelled.
+final class HangingRunner: ConversationRunning, @unchecked Sendable {
+    func run(_ setup: ConversationSetup, brainDir: URL, root: URL, onLine: @escaping @Sendable (String) -> Void) async -> ConversationOutcome {
+        onLine("extract: Acme Ltd | 1 people | 0 promises | 2 open questions")
+        onLine("research: web search (at most 8) and page fetch (at most 5)")
+        onLine("  search: Acme Ltd about")
+        for _ in 0..<600 { try? await Task.sleep(for: .milliseconds(100)) }
+        return .cancelled
+    }
+    func cancel() {}
+}
+
+/// Renders the window offscreen to PNG for review. Nothing is shown: the window is never ordered front.
+/// Set VERSE_RENDER_DIR to a folder to run; without it the test is skipped.
+@MainActor
+final class ConversationWindowRenderTests: XCTestCase {
+    private func snapshot(_ model: ConversationController, to url: URL) throws {
+        let view = NSHostingView(rootView: ConversationSetupView(model: model))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 720), styleMask: [.titled], backing: .buffered, defer: true)
+        window.contentView = view
+        view.frame = NSRect(x: 0, y: 0, width: 600, height: 720)
+        view.layoutSubtreeIfNeeded()
+        let rep = try XCTUnwrap(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+        view.cacheDisplay(in: view.bounds, to: rep)
+        try XCTUnwrap(rep.representation(using: .png, properties: [:])).write(to: url)
+        window.contentView = nil
+    }
+
+    func testRenderStates() async throws {
+        guard let dir = ProcessInfo.processInfo.environment["VERSE_RENDER_DIR"], !dir.isEmpty else {
+            throw XCTSkip("set VERSE_RENDER_DIR to render the window")
+        }
+        let out = URL(fileURLWithPath: dir, isDirectory: true)
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let root = try scratchRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let sessionDir = try makeSession(root, name: "conv-20261015-1405-acme", cost: 0.74,
+                                         warnings: ["2 research claim(s) are unverified", "no research fact has a verified source for the stack"])
+
+        func make(_ runner: any ConversationRunning) -> ConversationController {
+            ConversationController(owner: { "Alex" }, fake: { false }, brainDir: { URL(fileURLWithPath: "/brain") }, root: root,
+                                   makeRunner: { runner }, fetcher: { _ in throw PostingError.network }, selectSession: { _ in true },
+                                   recordSpend: { _, _, _ in })
+        }
+        let empty = make(FakeRunner(.cancelled))
+        try snapshot(empty, to: out.appendingPathComponent("1-empty.png"))
+
+        let filled = make(FakeRunner(.cancelled))
+        filled.thread = "Mon 5 Oct 10:02 - Ann Lee (Head of Product, Acme Ltd)\nHi, thanks for applying. Can we talk Thursday at 16:00 on Google Meet?\n\nMon 5 Oct 11:30 - Alex\nYes, Thursday works for me."
+        filled.postingLink = "https://jobs.example/applied-ai-engineer"
+        filled.companyURL = "acme.example"
+        filled.note = "Ask about the API docs."
+        try snapshot(filled, to: out.appendingPathComponent("2-filled.png"))
+
+        let running = make(HangingRunner())
+        running.thread = filled.thread
+        running.prepare()
+        try await Task.sleep(for: .milliseconds(400))
+        XCTAssertEqual(running.phase, .preparing)
+        try snapshot(running, to: out.appendingPathComponent("3-preparing.png"))
+        running.cancelPrep()
+
+        let done = make(FakeRunner(.done(sessionDir), lines: ["warning: 2 research claim(s) are unverified"]))
+        done.thread = filled.thread
+        done.prepare()
+        for _ in 0..<200 where done.phase != .done { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertEqual(done.phase, .done)
+        try snapshot(done, to: out.appendingPathComponent("4-done.png"))
     }
 }

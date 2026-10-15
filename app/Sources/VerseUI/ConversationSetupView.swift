@@ -11,15 +11,22 @@ public struct ConversationSetupView: View {
     private var locked: Bool { model.phase == .preparing }
 
     public var body: some View {
-        Form {
-            threadSection
-            postingSection
-            moreSection
-            runSection
+        // The form scrolls; the run bar stays at the bottom so Prepare, progress and the result are always in view.
+        VStack(spacing: 0) {
+            Form {
+                threadSection
+                postingSection
+                moreSection
+            }
+            .formStyle(.grouped)
+            Divider()
+            runBar
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.bar)
         }
-        .formStyle(.grouped)
         .frame(width: 600)
-        .frame(minHeight: 620)
+        .frame(minHeight: 600, idealHeight: 720)
     }
 
     private func editor(_ text: Binding<String>, height: CGFloat) -> some View {
@@ -32,7 +39,7 @@ public struct ConversationSetupView: View {
 
     private var threadSection: some View {
         Section {
-            editor($model.thread, height: 210)
+            editor($model.thread, height: 150)
             HStack {
                 Text("\(model.thread.count) characters").font(.caption).foregroundStyle(.secondary)
                 Spacer()
@@ -63,7 +70,7 @@ public struct ConversationSetupView: View {
             if model.posting == nil {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Or paste the posting text").font(.callout).foregroundStyle(.secondary)
-                    editor($model.postingPaste, height: 70)
+                    editor($model.postingPaste, height: 48)
                 }
             }
         } header: {
@@ -77,14 +84,14 @@ public struct ConversationSetupView: View {
             TextField("Company website", text: $model.companyURL, prompt: Text("example.com (optional)"))
             VStack(alignment: .leading, spacing: 6) {
                 Text("Note (optional)").font(.callout).foregroundStyle(.secondary)
-                editor($model.note, height: 56)
+                editor($model.note, height: 44)
             }
         }
         .disabled(locked)
     }
 
-    private var runSection: some View {
-        Section {
+    private var runBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
             switch model.phase {
             case .setup:
                 HStack {
@@ -106,18 +113,20 @@ public struct ConversationSetupView: View {
                     Button("Cancel", action: model.cancelPrep)
                 }
                 if let l = model.lines.last(where: { !$0.hasPrefix("  ...") }) {
-                    Text(l).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                    Text(l.trimmingCharacters(in: .whitespaces)).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
             case .done:
                 if let s = model.summary {
-                    LabeledContent("Session", value: model.sessionDir?.lastPathComponent ?? "")
-                    LabeledContent("Company", value: s.company.isEmpty ? "-" : s.company)
-                    LabeledContent("Research", value: "\(s.searches) searches · \(s.sourced) sourced · \(s.unverified) unverified")
-                    LabeledContent("Answer bank", value: "\(s.bankEntries) questions")
-                    LabeledContent("Cost", value: String(format: "$%.2f", s.costUSD))
+                    Label("\(model.sessionDir?.lastPathComponent ?? "") is ready and selected", systemImage: "checkmark.circle.fill")
+                    Text("\(s.company.isEmpty ? "Conversation" : s.company) · \(s.bankEntries) questions · \(s.searches) searches · "
+                         + "\(s.sourced) sourced, \(s.unverified) unverified · \(String(format: "$%.2f", s.costUSD))")
+                        .font(.callout).foregroundStyle(.secondary)
                 }
-                ForEach(Array(model.warnings.enumerated()), id: \.offset) { _, w in
-                    Label(w, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.secondary)
+                ForEach(Array(model.warnings.prefix(3).enumerated()), id: \.offset) { _, w in
+                    Label(w, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.secondary).lineLimit(3)
+                }
+                if model.warnings.count > 3 {
+                    Text("and \(model.warnings.count - 3) more in the session's meta.json").font(.caption).foregroundStyle(.secondary)
                 }
                 HStack {
                     Button("Show in Finder", action: model.revealSession)
@@ -125,8 +134,6 @@ public struct ConversationSetupView: View {
                     Spacer()
                 }
             }
-        } header: {
-            Text("Run")
         }
     }
 }
