@@ -35,7 +35,7 @@ from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from .conversation_model import (DEFAULT_MAX_FETCHES, DEFAULT_MAX_SEARCHES, SEARCH_USD, AnthropicConversationModel, ConversationModel,
-                                 FakeConversationModel, ResearchOutput, describe_error)
+                                 FakeConversationModel, Page, ResearchOutput, describe_error)
 from .conversation_prompt import EXTRACT_SYSTEM, RESEARCH_SYSTEM, extract_user, research_user
 from .keychain import KeychainError, read_api_key, redact
 from .model import PREP_MODEL, PRICES, ModelOutput, PrepError, Usage, spend_usd
@@ -219,7 +219,11 @@ def verify_facts(raw: list[dict], research: ResearchOutput) -> list[Fact]:
     a URL the tools never returned (a guessed address) makes it "unverified"; the text is kept so Alex can still read it.
     Two more checks: an `entity` fact (legal entity, headquarters, founding) cannot rest on a social, review or directory
     page, and when the page was fetched the fact's evidence quote must really be in the page text."""
-    retrieved = {norm_url(u): p for u, p in research.pages.items()}
+    retrieved: dict[str, Page] = {}
+    for u, p in research.pages.items():  # `https://x.io` (fetched) and `https://x.io/` (search result) are one page
+        cur = retrieved.get(norm_url(u))
+        if cur is None or (p.fetched and not cur.fetched):
+            retrieved[norm_url(u)] = p
     out: list[Fact] = []
     for r in raw:
         topic = _s(r.get("topic")).lower()

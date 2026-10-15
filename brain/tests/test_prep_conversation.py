@@ -509,3 +509,16 @@ def test_cli_fetch_cap_is_bounded(tmp_path, capsys):
     capsys.readouterr()
     assert main(["conversation", "--thread", str(FIX / "thread_fictional.md"), "--fake", "--no-voice", "--max-fetches", "0",
                  "--out", str(tmp_path / "s")]) == 0
+
+
+def test_a_fetched_page_wins_over_the_same_url_from_a_search_result():
+    """Live run 3: the model fetched `https://site.io` and a search returned `https://site.io/`; the evidence check must use
+    the fetched text, not skip because the search copy came last."""
+    fetched = Page("https://site.io", "Home", text="We run grid scans every month.", fetched=True)
+    searched = Page("https://site.io/", "Home")
+    raw = [{"topic": "product", "text": "Grid scans run monthly.", "url": "https://site.io/", "evidence": "grid scans every month"},
+           {"topic": "product", "text": "It sells drones.", "url": "https://site.io/", "evidence": "we sell drones"}]
+    for pages in ({fetched.url: fetched, searched.url: searched}, {searched.url: searched, fetched.url: fetched}):
+        a, b = verify_facts(raw, ResearchOutput("", dict(pages)))
+        assert (a.status, a.check) == ("sourced", "quote found on the fetched page")
+        assert b.status == "unverified" and "not on the fetched page" in b.reason
