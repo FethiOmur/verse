@@ -116,3 +116,17 @@ def test_bleed_is_attenuated_delayed_and_noisy():
     assert twotrack.rms_dbfs(noisy) == pytest.approx(-50.0, abs=0.5)
     assert noisy == twotrack.bleed(array.array("h", [0] * 16000), None, 20.0, 0.0, noise_dbfs=-50.0, seed=3)    # deterministic
     assert math.isclose(twotrack.db_to_gain(-20.0), 0.1)
+
+
+def test_gate_drop_over_owners_own_speech_is_counted_and_deferrals_too():
+    # Alex speaks 13.0-16.0 on the me clock (origin 0). The gate dropped one event inside his speech and one in a silent stretch.
+    events = [t0(),
+              ev(type="metric", stage="echo_gate_dropped", text="sorry", audio_start=13.1, audio_end=13.3),
+              ev(type="metric", stage="echo_gate_dropped", text="thanks", audio_start=10.2, audio_end=11.0),
+              ev(type="metric", stage="echo_gate_decision", verdict="defer", audio_start=13.1, audio_end=15.0),
+              ev(type="metric", stage="echo_gate_decision", verdict="keep", audio_start=13.1, audio_end=15.0)]
+    r = ST.score(LABEL, events, META)
+    assert r["echo_gate_dropped"] == 2 and r["gate_dropped_over_own_speech"] == 1 and r["gate_dropped_over_own_speech_texts"] == ["sorry"]
+    assert r["echo_gate_deferred"] == 1
+    # bleed-only run: he says nothing, so nothing of his can be dropped
+    assert ST.score(LABEL, events, dict(META, owner_silent=True))["gate_dropped_over_own_speech"] == 0

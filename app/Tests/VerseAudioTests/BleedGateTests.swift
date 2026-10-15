@@ -72,6 +72,42 @@ final class BleedGateTests: XCTestCase {
         XCTAssertFalse(gate.isEcho(mic: mic, remote: silent, start: 0.5, end: 2.5))
     }
 
+    /// Envelope of `shape` (same syllable rhythm and phase) on a different noise carrier: another voice that talks in time
+    /// with the remote one, so the two 10 ms envelopes correlate.
+    func sameRhythmVoice(seconds: Double, seed: UInt64) -> [Float] {
+        modulatedNoise(seconds: seconds, seed: seed, rate: 4)   // seed % 7 fixes the phase: seeds 1 and 8 share it
+    }
+
+    /// Alex talking while the remote speaker talks, in the same rhythm, as loud at the mic as the remote is in the tap.
+    /// The correlation alone says "echo" (the old rule dropped it); the level says it is not.
+    func testCorrelatedDoubleTalkAsLoudAsTheRemoteIsNotEcho() {
+        let remote = modulatedNoise(seconds: 3, seed: 1, rate: 4)
+        let own = sameRhythmVoice(seconds: 3, seed: 8)
+        let speakers = remote.map { $0 * 0.056 }                      // -25 dB of the remote under his voice
+        let mic = track(zip(own, [Float](repeating: 0, count: 2400) + speakers).map { $0 + $1 })
+        let gate = BleedGate()
+        let rTrack = track(remote)
+        let f = try! XCTUnwrap(gate.features(mic: mic, remote: rTrack, start: 0.5, end: 2.5))
+        print(String(format: "[bleed unit] double talk: score %.3f, ratio %.1f dB, verdict %@", f.score, f.window.ratioDb ?? .nan, gate.verdict(f).rawValue))
+        XCTAssertGreaterThanOrEqual(f.score, gate.threshold, "the fixture must correlate, or it proves nothing")
+        XCTAssertGreaterThan(f.window.ratioDb ?? -99, -6, "his voice is about as loud as the remote")
+        XCTAssertFalse(gate.isEcho(mic: mic, remote: rTrack, start: 0.5, end: 2.5), "the owner's real double-talk was classed as echo")
+    }
+
+    /// The echo levels of the P1 report (-25 dB / 40 ms, -30 dB / 80 ms) and louder ones are still echo.
+    func testEchoAtTheReportLevelsStaysEcho() {
+        let remote = modulatedNoise(seconds: 3, seed: 1, rate: 4)
+        let rTrack = track(remote)
+        let gate = BleedGate()
+        for (db, delay) in [(25.0, 0.04), (30.0, 0.08), (20.0, 0.04), (15.0, 0.04), (10.0, 0.04)] {
+            let echo = track(remote, delay: delay, gain: Float(pow(10, -db / 20)))
+            let f = try! XCTUnwrap(gate.features(mic: echo, remote: rTrack, start: 0.5, end: 2.5))
+            print(String(format: "[bleed unit] echo -%.0f dB @%.0f ms: score %.3f, ratio %.1f dB, verdict %@", db, delay * 1000, f.score, f.window.ratioDb ?? .nan, gate.verdict(f).rawValue))
+            XCTAssertTrue(gate.isEcho(mic: echo, remote: rTrack, start: 0.5, end: 2.5), "-\(db) dB echo no longer dropped")
+            XCTAssertEqual(f.window.ratioDb ?? 0, -db, accuracy: 1.5)
+        }
+    }
+
     // MARK: end to end through ListenSession (real recognizers, synthetic speech)
 
     static func pad(_ c: PCMClip, lead: Double) -> PCMClip {

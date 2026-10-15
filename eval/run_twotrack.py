@@ -5,6 +5,7 @@
     python run_twotrack.py --fixture t01 --name bleed25 --bleed-db 25 --bleed-delay-ms 40 --noise-dbfs -55      # silent Alex
     python run_twotrack.py --fixture t01 --name bleed25own --bleed-db 25 --bleed-delay-ms 40 --with-own           # Alex talks too
     python run_twotrack.py --fixture t01 --name x --bleed-db 25 --no-bleed-gate --no-echo-guard                  # defenses off
+    python run_twotrack.py --fixture t01 --name x --gate-corr-only                                               # gate before the level rule
 
 Without --bleed-db the me track is the owner's speech alone (item 1: me-channel replay). With it, the me track is the remote track
 attenuated by that many dB, delayed, plus room noise (item 2), and the owner's speech only with --with-own.
@@ -42,6 +43,8 @@ def build_command(a, fixture: dict, remote: Path, me: Path, session: Path, other
         cmd.append("--no-bleed-gate")
     if a.no_echo_guard:
         cmd.append("--no-echo-guard")
+    if a.gate_corr_only:
+        cmd.append("--gate-corr-only")
     return cmd
 
 
@@ -63,6 +66,7 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--no-bleed-gate", action="store_true")
     ap.add_argument("--no-echo-guard", action="store_true")
+    ap.add_argument("--gate-corr-only", action="store_true", help="the envelope gate as before the level rule (correlation alone drops): the 'before' arm")
     ap.add_argument("--timeout", type=float, default=300)
     ap.add_argument("--ack-text", default=ST.ACK_DEFAULT)
     a = ap.parse_args()
@@ -106,7 +110,7 @@ def main() -> int:
                 "timeline": rend.timeline, "wall_start": round(t0, 3), "render_s": round(t0 - t_render, 2),
                 "elapsed_s": round(time.time() - t0, 2), "loadavg_before": load0, "loadavg_after": checks.loadavg(),
                 "exit_code": res["exit_code"], "timed_out": res["timed_out"], "engine": res["engine"], "lines": res["lines"],
-                "fake_brain": not a.live_brain, "bleed": bleed_info, "owner_silent": bleed_info is not None and not a.with_own, "bleed_gate": not a.no_bleed_gate,
+                "fake_brain": not a.live_brain, "bleed": bleed_info, "owner_silent": bleed_info is not None and not a.with_own, "bleed_gate": not a.no_bleed_gate, "gate_corr_only": a.gate_corr_only,
                 "echo_guard": not a.no_echo_guard, "audio_watch": fswatch}
     finally:
         removed = audio.remove_workdir(wd)

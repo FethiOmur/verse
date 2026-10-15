@@ -19,6 +19,7 @@ func usage() -> Never {
       --me-file PATH      play an audio file as the "me" channel (the microphone) next to --file, both at real-time
                           pace from the same start; the owner's speech must land as "me" turns
       --no-bleed-gate     switch the envelope echo gate of the "me" channel off (bleed measurements)
+      --gate-corr-only    envelope gate by correlation alone, as before the level rule (the "before" arm of the gate-fix measurements)
       --no-echo-guard     switch the text echo guard of the turn engine off (bleed measurements)
       --no-mic            live: remote audio only
       --bundle-ids a,b    apps whose audio is the remote channel (default Brave, Comet, Zoom, Teams)
@@ -40,7 +41,7 @@ func usage() -> Never {
 func parse(_ args: [String]) -> RunOptions {
     var session: String?
     var o: RunOptions?
-    var lang = "en", seconds: Double?, file: String?, meFile: String?, noBleedGate = false, noEchoGuard = false, mic = true
+    var lang = "en", seconds: Double?, file: String?, meFile: String?, noBleedGate = false, gateCorrOnly = false, noEchoGuard = false, mic = true
     var bundles: [String]?, brainDir: String?, fake = false, budget: Double?
     var turn = TurnConfig()
     var drain: Double?, format = OutputFormat.json, echo = false, trace = false
@@ -58,6 +59,7 @@ func parse(_ args: [String]) -> RunOptions {
         case "--file": file = value(k)
         case "--me-file": meFile = value(k)
         case "--no-bleed-gate": noBleedGate = true
+        case "--gate-corr-only": gateCorrOnly = true
         case "--no-echo-guard": noEchoGuard = true
         case "--no-mic": mic = false
         case "--bundle-ids": bundles = list(value(k))
@@ -87,6 +89,7 @@ func parse(_ args: [String]) -> RunOptions {
     opts.file = file.map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath) }
     opts.micEnabled = mic
     if noBleedGate { opts.bleedGate.threshold = 2.0 }   // a Pearson correlation never reaches it
+    if gateCorrOnly { opts.bleedGate.maxEchoRatioDb = .infinity }   // the gate as it was before the level rule: correlation alone drops
     if let meFile {
         func clip(_ path: String) -> PCMClip {
             do { return try PCMClip.read(URL(fileURLWithPath: (path as NSString).expandingTildeInPath)) } catch {
