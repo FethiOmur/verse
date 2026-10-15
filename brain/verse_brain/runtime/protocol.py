@@ -14,6 +14,15 @@ from pathlib import Path
 from typing import IO, Callable
 
 IN_TYPES = {"start", "partial", "turn", "bank_hit", "control"}
+# Interview simulation (plan S2, Shared contracts), additive: Swift -> brain `sim_start{session_dir,mode,voice}`,
+# `answer{q_id,text,t_start,t_end,words,fillers}`, `control{action: skip|repeat|end}`, `spoken{id}`. The first
+# message of a process decides its mode (runtime/__main__.py); the meeting Brain ignores the sim types.
+SIM_IN_TYPES = {"sim_start", "answer", "spoken"}
+SIM_CONTROL_ACTIONS = {"skip", "repeat", "end"}
+# Brain -> Swift in a sim: `say{id,text,final}`, `listen{q_id}`, `coach{q_id,lines}`, `sim_progress{q_index,q_total}`
+# (q_index is 1-based), `sim_report{path}`, plus `status` and `metric` as in meetings.
+SIM_OUT_TYPES = {"say", "listen", "coach", "sim_progress", "sim_report"}
+IN_TYPES |= SIM_IN_TYPES
 # `turn.kind` (Swift VerseTurns): optional, absent from older senders. Anything else is treated as absent.
 TURN_KINDS = {"question", "statement", "fragment"}
 STATUS_STATES = {"warming", "ready", "offline", "rate_limited", "credit_exhausted", "refusal", "error"}
