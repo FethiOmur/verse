@@ -61,7 +61,8 @@ let package = Package(
         // P1-4: turn logic (cues, endpoint, addressee, bank matcher, fact chips) and the brain child process.
         .target(
             name: "VerseTurns",
-            dependencies: ["VerseSpeech"],
+            // S4: the sim runner plays the interviewer through VerseVoice.
+            dependencies: ["VerseSpeech", "VerseVoice"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .executableTarget(
@@ -77,9 +78,10 @@ let package = Package(
         // P1-5: overlay model and views, settings, Keychain store, the app controller.
         .target(
             name: "VerseUI",
-            dependencies: ["VerseTurns"],
+            // S4: the practice-interview setup (posting fetch, voice keys) and report window.
+            dependencies: ["VerseTurns", "VerseVoice", "VersePosting"],
             swiftSettings: [.swiftLanguageMode(.v6)],
-            linkerSettings: [.linkedFramework("ScreenCaptureKit")]
+            linkerSettings: [.linkedFramework("ScreenCaptureKit"), .linkedFramework("WebKit"), .linkedFramework("Carbon")]
         ),
         .executableTarget(
             name: "VerseApp",
@@ -93,7 +95,7 @@ let package = Package(
         ),
         .testTarget(
             name: "VerseUITests",
-            dependencies: ["VerseUI", "VerseTurns"],
+            dependencies: ["VerseUI", "VerseTurns", "VerseVoice"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // F5: calendar prep (EventKit) and meeting detection (Core Audio process input flags).
@@ -133,7 +135,7 @@ let package = Package(
         ),
         .testTarget(
             name: "VerseTurnsTests",
-            dependencies: ["VerseTurns", "VerseSpeech", "verse-run"],
+            dependencies: ["VerseTurns", "VerseSpeech", "VerseVoice", "verse-run"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(

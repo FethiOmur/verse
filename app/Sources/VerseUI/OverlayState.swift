@@ -136,12 +136,18 @@ public struct OverlayState: Equatable, Sendable {
     /// The start-up panel under the capsule (Starting… → Ready → Listening). nil once the first card opened or the
     /// user collapsed it.
     public var startup: StartupPanel?
+    /// A practice interview is running (S4): the capsule shows its progress and the panel under it its line,
+    /// controls and coach notes. nil in meetings.
+    public var sim: SimOverlay?
+    /// The last run was a practice interview: its error message offers no Retry (that would start a meeting).
+    public var practiceEnded = false
 
     public init() {}
 
-    /// `en · for you`
+    /// `en · for you`, or `practice · Q3/8` during a practice interview.
     public var capsuleTag: String {
-        [lang, addresseeTag].compactMap { $0 }.joined(separator: " · ")
+        if let sim { return sim.capsuleTag }
+        return [lang, addresseeTag].compactMap { $0 }.joined(separator: " · ")
     }
 }
 
@@ -565,5 +571,125 @@ public struct OverlayReducer: Sendable {
             if card.say != nil || !card.bullets.isEmpty, state.activity == .thinking { state.activity = .listening }
         }
         state.card = card
+    }
+}
+
+// MARK: practice interview (S4)
+
+/// What the overlay shows during a practice interview. Pure value; `OverlayReducer.simApply` changes it.
+public struct SimOverlay: Equatable, Sendable {
+    /// `sim_progress` (1-based); 0 before the first question.
+    public var qIndex = 0
+    public var qTotal = 0
+    /// When the interview started, for the elapsed timer.
+    public var startedAt: Date
+    /// The interviewer voice (`VoiceKind` raw value): `text` shows every line as a card.
+    public var voice: String
+    /// The interviewer's current line (sentences joined as they arrive) and its id from the brain.
+    public var lineID: String?
+    public var line = ""
+    /// The one-line caption in voice modes (toggle).
+    public var showCaption: Bool
+    /// A line is playing.
+    public var speaking = false
+    /// The mic is open for an answer.
+    public var listening = false
+    /// The answer as heard so far.
+    public var answer = ""
+    /// The latest coach note (coach mode), citations stripped; cleared at the next question.
+    public var coach: [String] = []
+    /// A cloud voice failed at least once and the Apple voice spoke instead (shown as a chip).
+    public var voiceFellBack = false
+    /// The interview is over and the report is being written.
+    public var closing = false
+
+    public init(startedAt: Date, voice: String, showCaption: Bool) {
+        self.startedAt = startedAt
+        self.voice = voice
+        self.showCaption = showCaption
+    }
+
+    public var capsuleTag: String { qTotal > 0 ? "practice · Q\(qIndex)/\(qTotal)" : "practice" }
+
+    public var textMode: Bool { voice == "text" }
+
+    /// The interviewer's line is on screen: always in text mode, as a caption when the toggle is on.
+    public var showsLine: Bool { !line.isEmpty && (textMode || showCaption) }
+
+    /// The "AI-generated voice" note: whenever a cloud voice (ElevenLabs, OpenAI) is speaking.
+    public var showsAIDisclosure: Bool { speaking && (voice == "elevenlabs" || voice == "openai") }
+
+    /// `12:05` since the start.
+    public static func elapsed(from start: Date, now: Date = Date()) -> String {
+        let s = max(0, Int(now.timeIntervalSince(start)))
+        return String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
+extension OverlayReducer {
+    /// A practice interview starts: the capsule shows `practice`, the panel the sim controls.
+    public mutating func simStarting(voice: String, showCaption: Bool, now: Date = Date()) {
+        reset(lang: "en")
+        state.running = true
+        state.activity = .warming
+        state.sim = SimOverlay(startedAt: now, voice: voice, showCaption: showCaption)
+    }
+
+    public mutating func simToggleCaption() {
+        state.sim?.showCaption.toggle()
+    }
+
+    public mutating func simApply(_ e: SimEvent) {
+        if case .ended(let code) = e {
+            state.sim = nil
+            state.practiceEnded = true
+            state.running = false
+            state.activity = .idle
+            state.card = nil
+            state.addresseeTag = nil
+            if code != 0, state.status == nil { state.status = .error("The practice interview ended with an error.") }
+            return
+        }
+        guard var sim = state.sim else { return }
+        switch e {
+        case .status(let st, let m):
+            if st == "voice_error" { sim.voiceFellBack = true } else { applyStatus(st, message: m) }
+        case .progress(let i, let n):
+            sim.qIndex = i
+            sim.qTotal = n
+            sim.coach = []
+            if state.activity == .warming { state.activity = .thinking }
+        case .say(let id, let text, _):
+            if sim.lineID != id {
+                sim.lineID = id
+                sim.line = text
+            } else {
+                sim.line = [sim.line, text].filter { !$0.isEmpty }.joined(separator: " ")
+            }
+            sim.listening = false
+            if state.activity == .warming { state.activity = .thinking }
+        case .speaking(let id):
+            sim.speaking = id != nil
+        case .spoken:
+            break
+        case .listening:
+            sim.listening = true
+            sim.answer = ""
+            state.activity = .listening
+        case .answerText(let t):
+            sim.answer = t
+        case .answerSent:
+            sim.listening = false
+            state.activity = .thinking
+        case .coach(_, let lines):
+            sim.coach = lines
+        case .voiceFallback:
+            sim.voiceFellBack = true
+        case .report:
+            sim.closing = true
+        case .ended:
+            break
+        }
+        state.sim = sim
     }
 }

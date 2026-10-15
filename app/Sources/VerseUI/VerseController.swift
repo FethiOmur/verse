@@ -269,6 +269,14 @@ public final class VerseController: ObservableObject {
         panel?.show()
     }
 
+    /// The practice interview (S4) shares this overlay and its panel; meetings and practice never run together.
+    public func showOverlayPanel() { showPanel() }
+
+    /// Hides the panel unless a meeting runs or a message needs reading.
+    public func hideOverlayPanel() {
+        if !running, overlay.state.status?.needsPanel != true { panel?.hide() }
+    }
+
     /// The overlay message's Dismiss: hide the panel when nothing is running.
     public func overlayDismissed() {
         if !running { panel?.hide() }
