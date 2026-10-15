@@ -357,6 +357,33 @@ def test_coach_only_in_coach_mode(tmp_path):
     assert all(q["coach"] == [] for q in real_rig.results()["questions"])
 
 
+def test_coach_prompt_carries_the_voice_block(tmp_path):
+    """V1: a sim pack with a VOICE section reaches the COACH request (cached prefix) and the tail points at it;
+    without one the tail is what it was."""
+    from verse_brain.prep.voice import SIM_HEADER, with_voice
+    voice = (Path(__file__).parent / "fixtures" / "voice" / "profile_fictional.md").read_text(encoding="utf-8")
+    plain_session = session_copy(tmp_path / "plain")
+    voiced_session = session_copy(tmp_path / "voiced")
+    pack = (voiced_session / "sim_pack.md").read_text(encoding="utf-8")
+    (voiced_session / "sim_pack.md").write_text(with_voice(pack, voice, "sim"), encoding="utf-8")
+    rigs = {name: Rig(tmp_path / name, session=sess) for name, sess in (("plain", plain_session), ("voiced", voiced_session))}
+    for name, rig in rigs.items():
+        run(full_run(rig, mode="coach"))
+        run(rig.close())
+
+    plain, voiced = rigs["plain"].calls("COACH"), rigs["voiced"].calls("COACH")
+    assert plain and len(plain) == len(voiced) == 3
+    for info in voiced:
+        prefix = info.request["messages"][0]["content"][0]["text"]  # the cached pack block
+        assert SIM_HEADER in prefix and voice.strip() in prefix
+        assert "VOICE section of the SIM PACK" in info.tail
+        assert info.request["messages"][0]["content"][0]["cache_control"] == {"type": "ephemeral"}
+    for info in plain:
+        assert "VOICE" not in info.tail and "VOICE" not in info.request["messages"][0]["content"][0]["text"]
+    # other tasks keep their tails: the voice note is a coach-only instruction
+    assert all("VOICE" not in c.tail for c in rigs["voiced"].calls("ASK") + rigs["voiced"].calls("JUDGE"))
+
+
 def test_coach_uses_only_pack_evidence(tmp_path):
     coach = ("- You opened with a clear one-line summary [e1].\n"
              "- You could cite the 40% speed-up [e99].\n"

@@ -1,10 +1,12 @@
 """sim_pack.md: the deterministic markdown render of sim.json (the sim runtime's cache prefix).
 
-Same sim content gives byte-identical output. Nothing per-run appears here: no session id, no timestamps, no token
+Same sim content (and the same voice profile text, V1) gives byte-identical output. Nothing per-run appears here: no session id, no timestamps, no token
 usage, no posting hash. The runtime puts this file at cache breakpoint 1, so any drift would break the cache.
 """
 
 from __future__ import annotations
+
+from .voice import with_voice
 
 QUESTION_KINDS = ("opener", "behavioural", "role", "technical", "motivation")
 MIN_LENGTH_MIN, MAX_LENGTH_MIN = 5, 120
@@ -23,7 +25,8 @@ def _src(s: dict) -> str:
     return f'{s["ref"]} "{_one_line(s["quote"])}"'
 
 
-def render_sim_pack(sim: dict) -> str:
+def render_sim_pack(sim: dict, voice: str | None = None) -> str:
+    """`voice`: the candidate's voice profile text (prep/voice.py); appended as the last section. None: unchanged."""
     out: list[str] = ["## INTERVIEW"]
     out.append(f"Company: {_one_line(sim['company'])}")
     out.append(f"Role: {_one_line(sim['role'])}")
@@ -58,4 +61,4 @@ def render_sim_pack(sim: dict) -> str:
         for level in ("1", "3", "5"):
             if r.get(level):
                 out.append(f"    {level}: {_one_line(r[level])}")
-    return "\n".join(out) + "\n"
+    return with_voice("\n".join(out) + "\n", voice, "sim")

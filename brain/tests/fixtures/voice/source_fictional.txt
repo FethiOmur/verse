@@ -1,0 +1,7 @@
+Ada Marlowe | Notes on how I work (a fictional example document for tests)
+
+I like small tools that do one thing well. I once built a seed-swap website for my neighbourhood garden club. It had a
+list, a map and a button. Forty families used it in the first month.
+
+I explain things the way I would to a friend. I say the result first, then how I got there. When I do not know
+something I say so. I do not like big words or slides full of buzzwords.
