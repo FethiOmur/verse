@@ -6,7 +6,8 @@ import XCTest
 ///   VERSE_LIVE_POSTING_URLS="https://jobs.ashbyhq.com/brightwave/<id>" swift test --filter LivePostingTests
 final class LivePostingTests: XCTestCase {
     func testLiveFetch() async throws {
-        let raw = try XCTUnwrap(ProcessInfo.processInfo.environment["VERSE_LIVE_POSTING_URLS"], "set VERSE_LIVE_POSTING_URLS to run")
+        let raw = ProcessInfo.processInfo.environment["VERSE_LIVE_POSTING_URLS"] ?? ""
+        try XCTSkipIf(raw.isEmpty, "set VERSE_LIVE_POSTING_URLS to run")
         for s in raw.split(separator: " ") {
             let p = try await PostingFetcher.fetch(URL(string: String(s))!)
             print("LIVE \(p.source.rawValue) | title: \(p.title) | company: \(p.company ?? "nil") | chars: \(p.text.count)")

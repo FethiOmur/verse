@@ -60,6 +60,14 @@ Checked 2026-10-14 (F3 embedding matcher in `brain/verse_brain/runtime/embed.py`
 | `litert-lm-api` 0.18.0 (PyPI wheel `py3-none-macosx_12_0_arm64`, imported as `litert_lm`; pinned in `brain/pyproject.toml`, same version as `bench/embed/.venv`). Ships the prebuilt `liblitert-lm.dylib`. | Apache-2.0 | Wheel `METADATA` (`License: Apache-2.0`, classifier "Apache Software License"); the wheel carries no licence file. Full Apache-2.0 text read in `LICENSE` of `github.com/google-ai-edge/LiteRT-LM` (GitHub licence API: `Apache-2.0`); the repo root has no NOTICE file. | Allowed. Keep the Apache-2.0 text with a redistribution. Not audited: the third-party code statically linked into `liblitert-lm.dylib` (the repo's `third_party/` folder was not read). |
 | EmbeddingGemma 2 text 270M, LiteRT-LM conversion `litert-community/embeddinggemma-2-text-270m-litert-lm` (revision `9be6e8b9`, file `embeddinggemma-2-text-270m.litertlm`, in `~/Library/Application Support/Verse/models/embeddinggemma-2-text-270m-litert/`) | Apache-2.0 (the conversion and its base model `google/embeddinggemma-2`) | Local `README.md` (YAML header `license: apache-2.0`) and `SOURCE.txt` next to the model; Hugging Face API metadata of both repos (`license:apache-2.0`, base model not gated). The base model card's prose and any usage policy it links were **not read**. | Allowed (Apache-2.0: keep the licence text with a redistribution). The model is not shipped with the app and the code never downloads it. |
 
+## Interview simulation prep (S1, brain)
+
+Checked 2026-10-15 (CV PDF reading in `brain/verse_brain/prep/sim.py`).
+
+| Component | Licence | Where read | Commercial distribution |
+|---|---|---|---|
+| `pypdf` 6.20.1 (PyPI, pinned in `brain/pyproject.toml`) | BSD-3-Clause | Wheel `METADATA` (`License-Expression: BSD-3-Clause`) and the `LICENSE` file in its `dist-info` (BSD-3 text, copyright Mathieu Fenniak and contributors) | Allowed. Keep the copyright notice and licence text with a redistribution; do not use the authors' names to endorse Verse. |
+
 ## Apple frameworks
 
 `Speech` (`SpeechTranscriber`, `DictationTranscriber`, `SpeechAnalyzer`), `AVFoundation`, `CoreAudio`, `CoreML` are
