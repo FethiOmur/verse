@@ -12,6 +12,10 @@ public struct TurnConfig: Sendable {
     public var cueEndpointMs: Int
     /// Quiet time for everything else.
     public var plainEndpointMs: Int
+    /// Quiet time (no result of the microphone recognizer at all) before a me turn is closed. Longer than the remote
+    /// endpoint on purpose: the recognizer delivers volatile text in bursts up to ~1.1 s apart while the speaker goes on,
+    /// and a me turn that closed between two bursts made the next burst look like Alex starting to talk again.
+    public var meEndpointMs: Int
     public var matchThreshold: Double
     public var matchMargin: Double
     /// "en" | "it" | "tr".
@@ -61,9 +65,16 @@ public struct TurnConfig: Sendable {
     /// A bank question is shortened to this many characters for the chip label.
     public var topicLabelMax: Int
     public var topicEnabled: Bool
+    /// Text guard against speaker bleed (`EchoGuard`): a me result whose words are mostly, in order, what the remote channel
+    /// said within `echoWindowSeconds` of it is dropped. Off: `verse-run --no-echo-guard`.
+    public var echoGuardEnabled: Bool
+    public var echoWindowSeconds: Double
+    public var echoSimilarity: Double
+    /// A me result with fewer words is never judged an echo (one common word of the question proves nothing).
+    public var echoMinWords: Int
 
     public init(ownerName: String = "Alex", ownerAliases: [String] = [], otherNames: [String] = [],
-                cueEndpointMs: Int = 300, plainEndpointMs: Int = 600,
+                cueEndpointMs: Int = 300, plainEndpointMs: Int = 600, meEndpointMs: Int = 1200,
                 matchThreshold: Double = 0.55, matchMargin: Double = 0.08,
                 lang: String = "en", newTurnSilenceMs: Int = 600, meFollowSeconds: Double = 3.0, matchConsecutive: Int = 2,
                 speechFloorDbfs: Double = -55, speechAboveFloorDb: Double = 10, speechCeilingDbfs: Double = -42,
@@ -71,12 +82,14 @@ public struct TurnConfig: Sendable {
                 recognizerSettleMs: Int = 100, recognizerCatchUpMs: Int = 800, minTurnWords: Int = 3, fragmentHoldMs: Int = 1200,
                 topicThreshold: Double = 0.30, topicMargin: Double = 0.05, topicWindowSeconds: Double = 12,
                 topicCooldownSeconds: Double = 12, topicSameIDSeconds: Double = 300, topicLabelMax: Int = 60,
-                topicEnabled: Bool = true) {
+                topicEnabled: Bool = true,
+                echoGuardEnabled: Bool = true, echoWindowSeconds: Double = 1.5, echoSimilarity: Double = 0.6, echoMinWords: Int = 2) {
         self.ownerName = ownerName
         self.ownerAliases = ownerAliases
         self.otherNames = otherNames
         self.cueEndpointMs = cueEndpointMs
         self.plainEndpointMs = plainEndpointMs
+        self.meEndpointMs = meEndpointMs
         self.matchThreshold = matchThreshold
         self.matchMargin = matchMargin
         self.lang = lang
@@ -99,6 +112,10 @@ public struct TurnConfig: Sendable {
         self.topicSameIDSeconds = topicSameIDSeconds
         self.topicLabelMax = topicLabelMax
         self.topicEnabled = topicEnabled
+        self.echoGuardEnabled = echoGuardEnabled
+        self.echoWindowSeconds = echoWindowSeconds
+        self.echoSimilarity = echoSimilarity
+        self.echoMinWords = echoMinWords
     }
 }
 
@@ -157,6 +174,8 @@ public actor TurnEngine {
     /// What the session knows by name, for short noun-phrase questions ("Notice period").
     private let terms: SessionTerms
     private var topic: TopicTrigger
+    private var echo = EchoGuard()
+    private var echoDrops: [EchoDrop] = []
 
     private var now: TimeInterval = 0
     private var remote: Turn?
@@ -193,6 +212,12 @@ public actor TurnEngine {
         }
     }
 
+    /// What the text guard discarded since the last call (for the runner's metric lines).
+    public func takeEchoDrops() -> [EchoDrop] {
+        defer { echoDrops = [] }
+        return echoDrops
+    }
+
     /// Plan signature: the events caused by `e`, in order.
     public func ingest(_ e: TranscriptEvent) -> [OutboundEvent] {
         ingestTimed(e).map(\.event)
@@ -203,7 +228,10 @@ public actor TurnEngine {
         let text = e.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return out }
         switch e.channel {
-        case .remote: out += ingestRemote(e, text: text)
+        case .remote:
+            echo.noteRemote(text: text, start: e.audioStart, end: e.audioEnd, now: now, lang: config.lang)
+            out += ingestRemote(e, text: text)
+            discardEchoedMeTurn()
         case .me: out += ingestMe(e, text: text)
         }
         // An event can be the one the endpoint was waiting for (the recognizer caught up with the audio).
@@ -279,10 +307,10 @@ public actor TurnEngine {
     /// per chunk (a final too), so a result that arrived `recognizerSettleMs` after the quiet began has seen the end of
     /// the speech. When none arrives, `recognizerCatchUpMs` after the quiet is long enough for one chunk.
     private func deadline(_ t: Turn, remote isRemote: Bool) -> TimeInterval {
-        var T = Double(isRemote ? endpointMs(t) : config.plainEndpointMs) / 1000
+        var T = Double(isRemote ? endpointMs(t) : config.meEndpointMs) / 1000
         let fragment = isRemote && isFragment(t)
         if fragment { T = max(T, Double(config.fragmentHoldMs) / 1000) }
-        let textDue = t.lastChange + T
+        let textDue = (isRemote ? t.lastChange : max(t.lastChange, t.lastResult)) + T
         guard isRemote, levelsSeen, lastActive.isFinite, lastActive >= t.startedAt - 3 else { return textDue }
         let cap = t.lastChange + (fragment ? T : 0) + max(T, Double(config.audioWaitCapMs) / 1000)
         let caughtUp = t.audioEnd >= lastActive - 0.05 || t.lastResult >= lastActive + Double(config.recognizerSettleMs) / 1000
@@ -295,8 +323,9 @@ public actor TurnEngine {
 
     private func ingestRemote(_ e: TranscriptEvent, text: String) -> [Timed] {
         var out: [Timed] = []
-        // The owner stopped talking: a remote event after a me turn closes it.
-        if me != nil { out += closeMe(at: now) }
+        // A remote event does not close an open me turn. Whoever holds the floor keeps it until their own quiet endpoint:
+        // when both talk at once, every event of one side used to close the other side's turn, which chopped a question
+        // into pieces and the owner's answer into duplicate me turns (two-track replay, eval/twotrack/t01.json).
 
         var (start, end, body) = (e.audioStart, e.audioEnd, text)
 
@@ -322,7 +351,8 @@ public actor TurnEngine {
         if remote == nil {
             remoteCount += 1
             var t = Turn(id: "r\(remoteCount)", startedAt: now, lastChange: now, lastResult: now)
-            t.followsMe = remoteSinceMe == 0 && lastMeEnd.map { now - $0 <= config.meFollowSeconds } == true
+            // Alex is still talking, or stopped a moment ago: this question follows his speech.
+            t.followsMe = remoteSinceMe == 0 && (me != nil || lastMeEnd.map { now - $0 <= config.meFollowSeconds } == true)
             if let p = stripped { t.stripPrefix = p.tokens; t.stripBelow = p.below }
             remote = t
         }
@@ -429,16 +459,38 @@ public actor TurnEngine {
 
     private func ingestMe(_ e: TranscriptEvent, text: String) -> [Timed] {
         var out: [Timed] = []
-        // The owner starts talking: the remote question is over, right now.
-        if remote != nil { out += closeRemote(at: now) }
+        // Speaker bleed: the remote voice in the microphone is not Alex. Dropped before it can open a me turn or close the
+        // remote one; an open me turn that started inside the same echo goes with it.
+        if config.echoGuardEnabled,
+           let sim = echo.similarity(text: text, start: e.audioStart, end: e.audioEnd, windowSeconds: config.echoWindowSeconds, minWords: config.echoMinWords, lang: config.lang),
+           sim >= config.echoSimilarity {
+            echoDrops.append(EchoDrop(text: text, isFinal: e.isFinal, audioStart: e.audioStart, audioEnd: e.audioEnd, at: now, similarity: sim))
+            if let m = me, let first = m.segments.first, abs(first.start - e.audioStart) < 0.4 { me = nil }
+            return out
+        }
+        // The owner starts talking: the remote question is over, right now. Only the first event of a me turn does this;
+        // the later events of the same utterance (Alex talking over the interviewer) leave the remote turn alone.
+        if me == nil, remote != nil { out += closeRemote(at: now) }
         if me == nil {
             meCount += 1
             me = Turn(id: "m\(meCount)", startedAt: now, lastChange: now, lastResult: now)
         }
         guard var turn = me else { return out }
         _ = Self.apply(&turn, start: e.audioStart, end: e.audioEnd, text: text, isFinal: e.isFinal, now: now)
+        turn.lastResult = max(turn.lastResult, e.emittedAt)
         me = turn
         return out
+    }
+
+    /// The microphone recognizer can be a result ahead of the remote one, so an echo is sometimes not recognizable as such
+    /// until the remote words arrive. Each remote result therefore re-checks the open me turn; one that turns out to be an
+    /// echo is discarded unsent.
+    private func discardEchoedMeTurn() {
+        guard config.echoGuardEnabled, let m = me, let first = m.segments.first else { return }
+        guard let sim = echo.similarity(text: m.text, start: first.start, end: m.audioEnd, windowSeconds: config.echoWindowSeconds, minWords: config.echoMinWords, lang: config.lang),
+              sim >= config.echoSimilarity else { return }
+        echoDrops.append(EchoDrop(text: m.text, isFinal: false, audioStart: first.start, audioEnd: m.audioEnd, at: now, similarity: sim))
+        me = nil
     }
 
     private func closeMe(at t: TimeInterval) -> [Timed] {

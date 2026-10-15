@@ -60,6 +60,9 @@ public actor ListenSession {
     /// `.me` results discarded by the bleed gate so far.
     public nonisolated var droppedEchoEvents: Int { counters.dropped }
 
+    /// What the bleed gate discarded (text and times only), oldest first.
+    public nonisolated var droppedEchoLog: [DroppedEcho] { counters.log }
+
     /// The session clock's "now" (seconds since `start()`).
     public func now() -> TimeInterval { clock.now() }
 
@@ -115,8 +118,10 @@ public actor ListenSession {
                                                 audioStart: origin + r.start, audioEnd: origin + r.end,
                                                 emittedAt: clock.now(), lang: lang)
                     if channel == .me, let remoteEnvelope,
-                       gate.isEcho(mic: micEnvelope, remote: remoteEnvelope, start: event.audioStart, end: event.audioEnd) {
-                        counters.addDropped()
+                       let score = gate.echoScore(mic: micEnvelope, remote: remoteEnvelope, start: event.audioStart, end: event.audioEnd),
+                       score >= gate.threshold {
+                        counters.addDropped(DroppedEcho(text: event.text, isFinal: event.isFinal, audioStart: event.audioStart,
+                                                        audioEnd: event.audioEnd, emittedAt: event.emittedAt, score: score))
                         return
                     }
                     cont.yield(event)
@@ -168,9 +173,21 @@ public actor ListenSession {
     }
 }
 
+/// One `.me` result the bleed gate discarded as an echo of the remote channel.
+public struct DroppedEcho: Sendable, Equatable {
+    public var text: String
+    public var isFinal: Bool
+    public var audioStart: TimeInterval
+    public var audioEnd: TimeInterval
+    public var emittedAt: TimeInterval
+    /// Envelope correlation with the remote channel that made the gate drop it.
+    public var score: Double
+}
+
 final class Counters: @unchecked Sendable {
     private let lock = OSAllocatedUnfairLock()
-    private var dropped_ = 0
-    var dropped: Int { lock.withLockUnchecked { dropped_ } }
-    func addDropped() { lock.withLockUnchecked { dropped_ += 1 } }
+    private var dropped_: [DroppedEcho] = []
+    var dropped: Int { lock.withLockUnchecked { dropped_.count } }
+    var log: [DroppedEcho] { lock.withLockUnchecked { dropped_ } }
+    func addDropped(_ d: DroppedEcho) { lock.withLockUnchecked { dropped_.append(d) } }
 }

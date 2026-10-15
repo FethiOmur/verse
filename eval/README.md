@@ -23,3 +23,19 @@ $PY report.py --run live1                                # writes ../docs/eval-r
 - `score.py`, `grounding.py`, `judge.py`, `grounding_run.py`: scoring. `report.py`: the table against spec section 9.
 - Dev runs: set `VERSE_EVAL_OUT` to keep them out of the repo (the spend ledger always stays in `out/spend.json`).
 - Times are measured from the true acoustic end of each utterance (known from the generated audio), not from the recognizer's estimate.
+
+## Two-track replay (me channel and speaker bleed)
+
+```
+export VERSE_EVAL_OUT=/some/scratch VERSE_BRAIN_DIR=$PWD/../brain
+cd eval
+python3 run_twotrack.py --fixture t01 --name clean                                   # Ingrid on the remote track, Alex on the me track (fake brain)
+python3 run_twotrack.py --name b25 --bleed-db 25 --bleed-delay-ms 40 --noise-dbfs -55   # me track = the remote track 25 dB down, 40 ms late, room noise
+python3 run_twotrack.py --name b25own --bleed-db 25 --with-own                          # ... plus Alex talking
+python3 run_twotrack.py --name b25off --bleed-db 25 --no-bleed-gate --no-echo-guard     # both echo defenses off
+python3 matrix_table.py $VERSE_EVAL_OUT/twotrack                                        # table of runs named m_<A|C|D|O>_<none|gate|guard|both>
+python3 -m pytest tests -q
+```
+
+`twotrack.py` renders `twotrack/<id>.json` with two `say` voices (offsets may be negative: overlaps and interruptions), `score_twotrack.py`
+counts answered questions, me turns and wrong triggers. Report: `docs/p1-replay-bleed-report.md`.
