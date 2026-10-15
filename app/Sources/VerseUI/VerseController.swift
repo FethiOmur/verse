@@ -47,6 +47,8 @@ public final class VerseController: ObservableObject {
 
     public let settings: AppSettings
     public let overlay: OverlayModel
+    /// T-UI: the teleprompter (view model, settings, script editor).
+    public let prompter = PrompterModel()
     public let launch: LaunchOptions
     private var panel: NotchPanelController?
     private var runner: VerseRunner?
@@ -60,6 +62,7 @@ public final class VerseController: ObservableObject {
         self.settings = settings
         self.launch = launch
         overlay = OverlayModel(config: settings.overlayConfig)
+        prompter.language = { [weak self] in self?.settings.language ?? "en" }
         if let s = launch.session { settings.sessionName = s }
         refreshSessions()
         monthSpend = SpendLedger.thisMonth()
@@ -160,6 +163,8 @@ public final class VerseController: ObservableObject {
             // One FIFO hop to the main thread keeps the runner's order.
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.handle(e) } }
         }
+        let micTap = prompter.meetingStarted()
+        o.transcriptTap = { micTap.ingest($0) }
         let r = VerseRunner(options: o, log: { [weak self] line in
             // Brain and runner logs go to ~/Library/Logs/Verse/verse.log; they never contain the key or audio.
             FileLog.shared.write(line)
@@ -219,6 +224,7 @@ public final class VerseController: ObservableObject {
         runner = nil
         runTask = nil
         overlay.stopClock()
+        prompter.meetingEnded()
         persistSpend()
         monthSpend = SpendLedger.thisMonth()
         log("run ended code=\(code)")
@@ -241,6 +247,7 @@ public final class VerseController: ObservableObject {
             log(String(format: "ready after %.1f s", Date().timeIntervalSince(runStartedAt)))
         }
         overlay.apply(e)
+        prompter.meetingCard(overlay.state.card)
         if case .brain(let o) = e, o.type == "metric", let c = o[double: "cost_usd"], c > 0 {
             sessionSpend += c
             persistSpend()
@@ -262,7 +269,7 @@ public final class VerseController: ObservableObject {
 
     private func showPanel() {
         if panel == nil {
-            panel = NotchPanelController(model: overlay, settings: settings, onOpenSettings: { kind in
+            panel = NotchPanelController(model: overlay, settings: settings, prompter: prompter, onOpenSettings: { kind in
                 SystemSettingsLink.open(permission: kind)
             }, onRetry: { [weak self] in self?.retry() })
         }

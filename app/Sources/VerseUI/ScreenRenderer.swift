@@ -17,10 +17,13 @@ public enum ScreenRenderer {
         public var name: String
         public var state: OverlayState
         public var width: Double = 560
-        public init(name: String, state: OverlayState, width: Double = 560) {
+        /// T-UI: a teleprompter shown in the panel (see `PrompterModel.presentForPreview`).
+        public var prompter: PrompterModel?
+        public init(name: String, state: OverlayState, width: Double = 560, prompter: PrompterModel? = nil) {
             self.name = name
             self.state = state
             self.width = width
+            self.prompter = prompter
         }
     }
 
@@ -84,7 +87,11 @@ public enum ScreenRenderer {
         var failed = OverlayState()
         failed.status = .error("The session ended: brain did not become ready (timeout); stopping")
 
+        let reading = Self.prompterSample(idle)
         return [
+            Shot(name: "prompter-reading", state: idle, prompter: reading.reading),
+            Shot(name: "prompter-lost", state: idle, prompter: reading.lost),
+            Shot(name: "prompter-fallback", state: idle, prompter: reading.fallback),
             Shot(name: "starting", state: starting),
             Shot(name: "ready", state: ready),
             Shot(name: "listening", state: listening),
@@ -142,7 +149,7 @@ public enum ScreenRenderer {
                     settings.textScale = sc
                     let suffix = scales.count > 1 ? "-\(sc.rawValue)" : ""
                     let url = dir.appendingPathComponent("\(shot.name)-\(b.rawValue)\(suffix).png")
-                    try await render(shot.state, settings: settings, backdrop: b, to: url)
+                    try await render(shot.state, settings: settings, backdrop: b, prompter: shot.prompter, to: url)
                     out.append(url)
                 }
             }
@@ -150,7 +157,8 @@ public enum ScreenRenderer {
         return out
     }
 
-    public static func render(_ state: OverlayState, settings: AppSettings, backdrop: Backdrop, to url: URL) async throws {
+    public static func render(_ state: OverlayState, settings: AppSettings, backdrop: Backdrop, prompter: PrompterModel? = nil,
+                              to url: URL) async throws {
         let model = OverlayModel()
         model.show(state)
         let metrics = NotchMetrics.macBookPro
@@ -159,7 +167,7 @@ public enum ScreenRenderer {
             // The hardware notch stand-in.
             UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous).fill(Color.black)
                 .frame(width: metrics.notchWidth, height: metrics.notchHeight)
-            OverlayView(model: model, settings: settings, metrics: metrics)
+            OverlayView(model: model, settings: settings, prompter: prompter ?? PrompterModel(), metrics: metrics)
         }
         .frame(width: canvas.width, height: canvas.height, alignment: .top)
         .clipped()

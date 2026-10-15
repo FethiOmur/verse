@@ -26,6 +26,9 @@ public struct PrompterState: Sendable, Equatable {
     public var requestedMode = PrompterMode.classic
     public var wordsPerMinute = 150.0
     public var notice: PrompterNotice?
+
+    /// The state before a session has published anything (T-UI: the views start from this).
+    public init() {}
 }
 
 /// Owns the script, the active `ScrollDriver` and the input pumps; publishes `PrompterState` on `states`
