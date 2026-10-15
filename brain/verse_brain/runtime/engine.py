@@ -311,6 +311,7 @@ class TurnState:
     embed_cand: str | None = None
     embed_count: int = 0
     embed_sent: str | None = None
+    embed_final_queued: bool = False    # the final-text pass was queued for this turn (at most once)
 
 
 class Brain:
@@ -737,6 +738,23 @@ class Brain:
             return
         e.submit(st.turn_id, st.partial)
 
+    def _embed_final(self, st: TurnState) -> None:
+        """One embedding match on the final text of a remote turn that closed with no bank hit (Swift's n-gram or the
+        brain's own). Rescues a paraphrase whose partials never matched (no cue yet, too few words, a recognizer that
+        delivered the question in one burst) and a hit the consecutive-partials gate was one evaluation short of. The result
+        comes back through `_on_embed_result`, and a statement/fragment turn is then answered through `_late_hit`
+        (once; an acknowledgement already on screen or an escalated probe stand, a newer turn or the window ends it)."""
+        e = self.embed
+        if e is None or not self.config.embed_final_pass or e.state not in ("ready", "loading"):
+            return
+        if st.embed_final_queued or st.bank_hit is not None or st.addressee == "other":
+            return
+        if self.halted or self.session is None or len(tokens(st.final_text)) < self.config.embed_min_words:
+            return
+        st.embed_final_queued = True
+        self.emitter.metric(st.turn_id, "embed_final_queued", kind=st.kind, words=len(tokens(st.final_text)))
+        e.submit(st.turn_id, st.final_text, final=True)
+
     def _on_embed_result(self, job: Job, res: Result) -> None:
         cfg = self.config
         top = res.top
@@ -745,7 +763,7 @@ class Brain:
         ok = bool(top) and s1 >= cfg.embed_threshold and s1 - s2 >= cfg.embed_margin
         self.emitter.metric(job.turn_id, "embed", ms=round(res.ms, 2), wait_ms=round(res.wait_ms, 2),
                             top=top[0][0] if top else None, score=round(s1, 4), second=round(s2, 4),
-                            words=len(tokens(job.text)), accepted=ok)
+                            words=len(tokens(job.text)), accepted=ok, final=job.final)
         st = self.ts.get(job.turn_id)
         if st is None:
             return
@@ -767,7 +785,9 @@ class Brain:
             st.embed_count += 1
         else:
             st.embed_cand, st.embed_count = cand, 1
-        if st.embed_count >= cfg.embed_consecutive and cand != st.embed_sent:
+        # A closed turn's final text needs one evaluation: the consecutive-partials gate guards against locking on a short
+        # prefix, and a final text is no prefix.
+        if (job.final or st.embed_count >= cfg.embed_consecutive) and cand != st.embed_sent:
             self._embed_hit(st, cand, s1)
 
     def _embed_hit(self, st: TurnState, bank_id: str, score: float) -> None:
@@ -898,6 +918,7 @@ class Brain:
                 st.d_call.discard()
             self.emitter.metric(tid, "for_others")
             return
+        self._embed_final(st)
         if st.kind == "fragment":
             # a cut-off clause: nothing is fired or shown; speculation that started on its partials is closed
             for c in st.s_calls:

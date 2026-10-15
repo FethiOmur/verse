@@ -132,6 +132,9 @@ public struct RunOptions: Sendable {
     /// With `file`: keep the real microphone open as "me" while the file plays as the remote channel (the app's
     /// "Play test file as remote"). Off (the default, and `--file` of `verse-run`): the file run is remote-only.
     public var micWithFile = false
+    /// The echo gate of the microphone channel (envelope correlation with the remote channel). Bleed measurements switch
+    /// it off by setting a threshold above 1 (`verse-run --no-bleed-gate`).
+    public var bleedGate = BleedGate()
     public var bundleIDs = defaultRemoteBundleIDs
     public var brainDir: URL?
     /// Brain with canned replies (`--fake`): no network, no key. For tests of the plumbing.
@@ -337,6 +340,7 @@ public final class VerseRunner: @unchecked Sendable {
         var cfg = ListenConfig(lang: o.lang, remoteBundleIDs: o.bundleIDs, micEnabled: mic, source: source)
         cfg.voiceProcessing = false
         cfg.micWithFile = o.micWithFile
+        cfg.bleedGate = o.bleedGate
         let session = ListenSession(config: cfg)
         let stream: AsyncStream<TranscriptEvent>
         do {
@@ -359,10 +363,13 @@ public final class VerseRunner: @unchecked Sendable {
         let stopEarly = state.withLock { s -> Bool in s.session = session; return s.stopRequested || s.brainFailed }
         let now0 = await session.now()
         let origin = await session.channelOrigin(.remote) ?? 0
+        let originMe = await session.channelOrigin(.me)
         let wall0 = Date().timeIntervalSince1970 - now0
         state.withLock { $0.wall0 = wall0 }
-        emitJSON(["type": "metric", "turn_id": "", "stage": "session_t0", "t": Text.ms(wall0), "origin_remote": Text.ms(origin),
-                  "source": "verse-run", "lang": o.lang, "fake_brain": o.fakeBrain, "brain_pid": Int(firstPID)])
+        var t0: [String: Any] = ["type": "metric", "turn_id": "", "stage": "session_t0", "t": Text.ms(wall0), "origin_remote": Text.ms(origin),
+                                 "source": "verse-run", "lang": o.lang, "fake_brain": o.fakeBrain, "brain_pid": Int(firstPID)]
+        if let originMe { t0["origin_me"] = Text.ms(originMe) }
+        emitJSON(t0)
         if stopEarly { await session.stop() }
 
         let (inputs, cont) = AsyncStream.makeStream(of: Input.self, bufferingPolicy: .unbounded)
@@ -419,6 +426,16 @@ public final class VerseRunner: @unchecked Sendable {
         timer.cancel()
         pump.cancel()
         dispatch(await engine.flush(at: await session.now()))
+        // What the two echo defenses discarded (text and times only), one line each plus a total.
+        for d in session.droppedEchoLog {
+            emitJSON(["type": "metric", "turn_id": "", "stage": "echo_gate_dropped", "text": d.text, "is_final": d.isFinal,
+                      "audio_start": Text.ms(d.audioStart), "audio_end": Text.ms(d.audioEnd), "score": Text.ms(d.score), "source": "verse-run"])
+        }
+        var summary: [String: Any] = ["type": "metric", "turn_id": "", "stage": "listen_summary",
+                                      "echo_gate_dropped": session.droppedEchoEvents, "source": "verse-run"]
+        if let r = await session.channelOrigin(.remote) { summary["origin_remote"] = Text.ms(r) }
+        if let m = await session.channelOrigin(.me) { summary["origin_me"] = Text.ms(m) }
+        emitJSON(summary)
 
         // Let the brain finish what it has started.
         await drain()

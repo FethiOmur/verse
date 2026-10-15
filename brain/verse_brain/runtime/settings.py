@@ -95,6 +95,10 @@ class Config:
     embed_min_words: int = 5           # words in the partial
     embed_consecutive: int = 2         # the same entry on this many consecutive evaluated partials
     embed_langs: tuple[str, ...] = ("en",)   # thresholds were tuned on English only
+    # One more match on the final text when a remote turn closes with no bank hit yet (partials that never matched, or a
+    # statement/fragment whose cue never showed). A single evaluation is enough there (the consecutive-partials gate
+    # exists against premature locks on short prefixes; a closed turn has no prefix). The hit goes through `_late_hit`.
+    embed_final_pass: bool = True
     # G1 local degraded-mode fallback (Gemma 4 E4B, LiteRT-LM, in process). The API stays primary; Gemma answers only
     # while the API is offline, rate-limited or out of credit. Values and their reasons: docs/licences.md (model terms)
     # and the G1 notes in runtime/local_llm.py.

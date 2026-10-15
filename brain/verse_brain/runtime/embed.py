@@ -122,6 +122,7 @@ class Job:
     turn_id: str
     text: str
     queued: float          # time.perf_counter() when queued
+    final: bool = False    # the closed turn's final text (one pass at the endpoint), not a growing partial
 
 
 @dataclass
@@ -196,11 +197,12 @@ class EmbedPath:
             self._metric("", "embed_unavailable", reason=reason[:200])
 
     # ---- partials
-    def submit(self, turn_id: str, text: str) -> None:
-        """Queue a partial; a queued, not yet started partial is replaced (only the newest runs)."""
+    def submit(self, turn_id: str, text: str, final: bool = False) -> None:
+        """Queue a partial (or, with `final`, the text of a closed turn); a queued, not yet started job is replaced
+        (only the newest runs)."""
         if self.state not in ("ready", "loading"):
             return
-        self._pending = Job(turn_id, text, time.perf_counter())
+        self._pending = Job(turn_id, text, time.perf_counter(), final)
         self._kick()
 
     def drop(self, turn_id: str) -> None:
