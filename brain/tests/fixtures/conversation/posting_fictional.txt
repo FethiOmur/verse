@@ -1,0 +1,5 @@
+Applied AI Engineer - Brightwater Analytics (remote, EU)
+Brightwater Analytics builds route-reporting software for small haulage firms.
+You will build an assistant that explains late deliveries from route data.
+Requirements: shipped an LLM feature to production; solid Python; clear written English.
+Contract: 6 months, day rate, remote within the European Union.
