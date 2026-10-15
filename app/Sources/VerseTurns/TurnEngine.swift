@@ -72,6 +72,15 @@ public struct TurnConfig: Sendable {
     public var echoSimilarity: Double
     /// A me result with fewer words is never judged an echo (one common word of the question proves nothing).
     public var echoMinWords: Int
+    /// A me result that the text guard cannot (yet) call an echo but whose words are mostly what the remote channel said
+    /// nearby (`EchoGuard.suspicion` >= `echoHoldSimilarity`: one word, or the microphone recognizer a few words ahead of the
+    /// remote one) could be speaker bleed. It opens the me turn at once but may keep the open remote turn open for at most
+    /// `meCloseHoldMs` (1200 ms: the recognizers deliver in bursts about a second apart, and the remote words that settle the
+    /// question arrive with the next burst; 500 and 800 ms were measured too short): the remote turn closes when the me turn has `echoMinWords` words that are not echo-like, or when the
+    /// window is over; a me turn discarded as echo never closes it. 0: close the remote turn at once. A result with fewer
+    /// matching words (the owner's own words) closes the remote turn at once as before.
+    public var meCloseHoldMs: Int
+    public var echoHoldSimilarity: Double
 
     public init(ownerName: String = "Alex", ownerAliases: [String] = [], otherNames: [String] = [],
                 cueEndpointMs: Int = 300, plainEndpointMs: Int = 600, meEndpointMs: Int = 1200,
@@ -83,7 +92,7 @@ public struct TurnConfig: Sendable {
                 topicThreshold: Double = 0.30, topicMargin: Double = 0.05, topicWindowSeconds: Double = 12,
                 topicCooldownSeconds: Double = 12, topicSameIDSeconds: Double = 300, topicLabelMax: Int = 60,
                 topicEnabled: Bool = true,
-                echoGuardEnabled: Bool = true, echoWindowSeconds: Double = 1.5, echoSimilarity: Double = 0.6, echoMinWords: Int = 2) {
+                echoGuardEnabled: Bool = true, echoWindowSeconds: Double = 1.5, echoSimilarity: Double = 0.6, echoMinWords: Int = 2, meCloseHoldMs: Int = 1200, echoHoldSimilarity: Double = 0.4) {
         self.ownerName = ownerName
         self.ownerAliases = ownerAliases
         self.otherNames = otherNames
@@ -116,6 +125,8 @@ public struct TurnConfig: Sendable {
         self.echoWindowSeconds = echoWindowSeconds
         self.echoSimilarity = echoSimilarity
         self.echoMinWords = echoMinWords
+        self.meCloseHoldMs = meCloseHoldMs
+        self.echoHoldSimilarity = echoHoldSimilarity
     }
 }
 
@@ -185,6 +196,9 @@ public actor TurnEngine {
     private var meCount = 0
     private var lastMeEnd: TimeInterval?
     private var remoteSinceMe = 0
+    /// Session time a me result that may be bleed started while a remote turn was open; the remote turn stays open until the
+    /// me turn is credible, discarded, or `meCloseHoldMs` passed.
+    private var remoteCloseHeldSince: TimeInterval?
     // Remote audio activity (optional input, see noteRemoteLevel).
     private var levelsSeen = false
     private var lastActive: TimeInterval = -.infinity
@@ -259,6 +273,10 @@ public actor TurnEngine {
     public func advance(to t: TimeInterval) -> [Timed] {
         now = max(now, t)
         var out: [Timed] = []
+        if let held = remoteCloseHeldSince, remote != nil, held + Double(config.meCloseHoldMs) / 1000 <= now {
+            // The me result never became credible speech within the window, yet it is still there: Alex is talking.
+            out += closeRemote(at: held + Double(config.meCloseHoldMs) / 1000)
+        }
         if let r = remote, deadline(r, remote: true) <= now {
             out += closeRemote(at: max(deadline(r, remote: true), r.lastChange), byQuiet: true)
         }
@@ -270,7 +288,8 @@ public actor TurnEngine {
 
     /// The session time of the next endpoint, nil when no turn is open.
     public var nextDeadline: TimeInterval? {
-        [remote.map { deadline($0, remote: true) }, me.map { deadline($0, remote: false) }].compactMap { $0 }.min()
+        let held = remoteCloseHeldSince.flatMap { h in remote == nil ? nil : h + Double(config.meCloseHoldMs) / 1000 }
+        return [remote.map { deadline($0, remote: true) }, me.map { deadline($0, remote: false) }, held].compactMap { $0 }.min()
     }
 
     /// End of stream: closes whatever is open now.
@@ -438,6 +457,7 @@ public actor TurnEngine {
     private func closeRemote(at t: TimeInterval, byQuiet: Bool = false) -> [Timed] {
         guard let turn = remote else { return [] }
         remote = nil
+        remoteCloseHeldSince = nil
         if !turn.cue, turn.sentHitID == nil, !turn.brainHit { topic.noteClosed(Self.pieces(of: turn), now: now) }
         let tokens = Text.tokens(turn.text, lang: config.lang)
         // A turn that was opened by stripping an earlier turn's words keeps them in front, so the chain of turns of one
@@ -465,12 +485,23 @@ public actor TurnEngine {
            let sim = echo.similarity(text: text, start: e.audioStart, end: e.audioEnd, windowSeconds: config.echoWindowSeconds, minWords: config.echoMinWords, lang: config.lang),
            sim >= config.echoSimilarity {
             echoDrops.append(EchoDrop(text: text, isFinal: e.isFinal, audioStart: e.audioStart, audioEnd: e.audioEnd, at: now, similarity: sim))
-            if let m = me, let first = m.segments.first, abs(first.start - e.audioStart) < 0.4 { me = nil }
+            if let m = me, let first = m.segments.first, abs(first.start - e.audioStart) < 0.4 { discardMe() }
             return out
         }
         // The owner starts talking: the remote question is over, right now. Only the first event of a me turn does this;
         // the later events of the same utterance (Alex talking over the interviewer) leave the remote turn alone.
-        if me == nil, remote != nil { out += closeRemote(at: now) }
+        // Exception: a result that is mostly words the remote channel said nearby may be the remote voice coming out of the
+        // speakers that the guard cannot call yet (one word proves nothing; or the microphone recognizer is ahead of the
+        // remote one and the rest of the words has not arrived). The remote turn then stays open for `meCloseHoldMs` at most;
+        // a me turn that turns out to be real speech closes it, one discarded as echo never does.
+        if me == nil, remote != nil {
+            if config.echoGuardEnabled, config.meCloseHoldMs > 0,
+               echo.suspicion(text: text, start: e.audioStart, end: e.audioEnd, windowSeconds: config.echoWindowSeconds, lang: config.lang) >= config.echoHoldSimilarity {
+                remoteCloseHeldSince = now
+            } else {
+                out += closeRemote(at: now)
+            }
+        }
         if me == nil {
             meCount += 1
             me = Turn(id: "m\(meCount)", startedAt: now, lastChange: now, lastResult: now)
@@ -479,7 +510,19 @@ public actor TurnEngine {
         _ = Self.apply(&turn, start: e.audioStart, end: e.audioEnd, text: text, isFinal: e.isFinal, now: now)
         turn.lastResult = max(turn.lastResult, e.emittedAt)
         me = turn
+        // The held result grew into speech that is not echo-like: the question was interrupted when it started.
+        if remoteCloseHeldSince != nil, remote != nil, let first = turn.segments.first,
+           Text.tokens(turn.text, lang: config.lang).count >= config.echoMinWords,
+           echo.suspicion(text: turn.text, start: first.start, end: turn.audioEnd, windowSeconds: config.echoWindowSeconds, lang: config.lang) < config.echoHoldSimilarity {
+            out += closeRemote(at: now)
+        }
         return out
+    }
+
+    /// Drops the open me turn unsent (it was bleed); a remote turn kept open for it stays whole.
+    private func discardMe() {
+        me = nil
+        remoteCloseHeldSince = nil
     }
 
     /// The microphone recognizer can be a result ahead of the remote one, so an echo is sometimes not recognizable as such
@@ -490,12 +533,13 @@ public actor TurnEngine {
         guard let sim = echo.similarity(text: m.text, start: first.start, end: m.audioEnd, windowSeconds: config.echoWindowSeconds, minWords: config.echoMinWords, lang: config.lang),
               sim >= config.echoSimilarity else { return }
         echoDrops.append(EchoDrop(text: m.text, isFinal: false, audioStart: first.start, audioEnd: m.audioEnd, at: now, similarity: sim))
-        me = nil
+        discardMe()
     }
 
     private func closeMe(at t: TimeInterval) -> [Timed] {
         guard let turn = me else { return [] }
         me = nil
+        remoteCloseHeldSince = nil
         lastMeEnd = turn.lastChange
         remoteSinceMe = 0
         guard !Text.tokens(turn.text, lang: config.lang).isEmpty else { return [] }
