@@ -22,6 +22,12 @@ struct VerseApp: App {
         .windowResizability(.contentSize)
         .defaultLaunchBehavior(.suppressed)
 
+        // T-UI: the teleprompter's script editor.
+        Window("Teleprompter Scripts", id: "script-editor") {
+            ScriptEditorView(controller: delegate.controller)
+        }
+        .defaultLaunchBehavior(.suppressed)
+
         // S4: the practice-interview setup window.
         Window("Practice Interview", id: "sim-setup") {
             SimSetupView(sim: delegate.sim, meeting: delegate.controller)
@@ -80,6 +86,7 @@ struct VerseMenu: View {
         if sim.lastReport != nil {
             Button("Last practice report") { sim.openLastReport() }
         }
+        PrompterMenuBlock(controller: controller)
         Divider()
         Button("Settings…") {
             NSApp.activate()

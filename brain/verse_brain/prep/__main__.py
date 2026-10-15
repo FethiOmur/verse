@@ -11,6 +11,9 @@ file exists; --voice-profile PATH points at another file, --no-voice builds the 
 that already exist (old pack kept as <pack>.bak-before-voice-v1):
   python -m verse_brain.prep voice --apply SESSION_DIR [--apply SESSION_DIR...] [--voice-profile PATH]
 
+Teleprompter script (T3): python -m verse_brain.prep script --topic T --seconds 60 --use recording|talk [--json] [--fake]
+writes a script (pages split by a line `---`, optional [cues]) in the voice of the profile; see prep/script.py.
+
 Interview simulation (S1):
   python -m verse_brain.prep --sim --posting-file P [--posting-url U] [--cv FILE] [--note FILE] [--vault PATH|--no-vault]
       [--repo PATH]... --type mixed --difficulty standard --length 30 --lang en [--company C] [--role R] [--fake]
@@ -61,6 +64,9 @@ def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if args and args[0] == "voice":
         return _voice_main(args[1:])
+    if args and args[0] == "script":
+        from .script import script_main
+        return script_main(args[1:])
     return _main(args)
 
 

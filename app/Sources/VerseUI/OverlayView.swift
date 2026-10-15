@@ -362,6 +362,8 @@ struct ResizeGrip: View {
 public struct OverlayView: View {
     @ObservedObject var model: OverlayModel
     @ObservedObject var settings: AppSettings
+    /// T-UI: the teleprompter shown under the capsule while it is open.
+    @ObservedObject var prompter: PrompterModel
     var metrics: NotchMetrics
     var onOpenSettings: (String) -> Void
     var onRetry: () -> Void
@@ -373,11 +375,12 @@ public struct OverlayView: View {
     /// The content's own size plus the shoulders.
     @State private var target: CGSize = .zero
 
-    public init(model: OverlayModel, settings: AppSettings, metrics: NotchMetrics,
+    public init(model: OverlayModel, settings: AppSettings, prompter: PrompterModel = PrompterModel(), metrics: NotchMetrics,
                 onOpenSettings: @escaping (String) -> Void = { _ in }, onRetry: @escaping () -> Void = {},
                 onSizeChange: @escaping (CGSize) -> Void = { _ in }) {
         self.model = model
         self.settings = settings
+        self.prompter = prompter
         self.metrics = metrics
         self.onOpenSettings = onOpenSettings
         self.onRetry = onRetry
@@ -444,6 +447,9 @@ public struct OverlayView: View {
                     }
                 }
                 .frame(width: max(CGFloat(settings.cardWidth), metrics.capsuleWidth(wide: true)))
+            } else if prompter.isOpen {
+                // The teleprompter takes the card's place (a status message or a practice interview still comes first).
+                PrompterPanelView(model: prompter, settings: prompter.settings, width: max(CGFloat(settings.cardWidth), capsuleWidth))
             } else if showStartup, let p = state.startup {
                 StartupPanelView(panel: p, scale: scale)
                     .frame(width: max(capsuleWidth, CGFloat(min(settings.cardWidth, 460))))

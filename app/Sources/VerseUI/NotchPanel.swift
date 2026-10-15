@@ -37,21 +37,24 @@ public final class NotchPanelController {
     private let panel: OverlayPanel
     private let model: OverlayModel
     private let settings: AppSettings
+    private let prompter: PrompterModel
     private var metrics: NotchMetrics
     private var screen: NSScreen
     private var contentSize = CGSize(width: 300, height: 32)
     private var screenObserver: NSObjectProtocol?
     private var stateSub: AnyCancellable?
+    private var prompterSub: AnyCancellable?
     private var hostingView: OverlayHostingView?
     private var layoutPending = false
 
     private let onRetry: () -> Void
 
-    public init(model: OverlayModel, settings: AppSettings, onOpenSettings: @escaping (String) -> Void,
-                onRetry: @escaping () -> Void = {}) {
+    public init(model: OverlayModel, settings: AppSettings, prompter: PrompterModel = PrompterModel(),
+                onOpenSettings: @escaping (String) -> Void, onRetry: @escaping () -> Void = {}) {
         self.onRetry = onRetry
         self.model = model
         self.settings = settings
+        self.prompter = prompter
         let s = Self.notchScreen()
         screen = s
         metrics = Self.metrics(for: s)
@@ -70,7 +73,7 @@ public final class NotchPanelController {
         panel.becomesKeyOnlyIfNeeded = true
         panel.title = "Verse overlay"
 
-        let root = OverlayView(model: model, settings: settings, metrics: metrics, onOpenSettings: onOpenSettings,
+        let root = OverlayView(model: model, settings: settings, prompter: prompter, metrics: metrics, onOpenSettings: onOpenSettings,
                                onRetry: onRetry, onSizeChange: { [weak self] size in self?.contentSizeChanged(size) })
         let host = OverlayHostingView(rootView: AnyView(root.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)))
         host.sizingOptions = []
@@ -92,7 +95,29 @@ public final class NotchPanelController {
                 if !s.running, s.status == nil { self?.hide() }
             }
         }
+        // The teleprompter: the panel shows while it is open, and is kept out of screen shares while it is (if the
+        // setting says so). The meeting cards and statuses are not hidden: they never set a sharing type.
+        prompterSub = Publishers.CombineLatest(prompter.$isOpen, prompter.settings.$hideFromShare)
+            .receive(on: RunLoop.main)
+            .sink { [weak self] open, hide in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.panel.sharingType = Self.sharingType(prompterOpen: open, hideFromShare: hide)
+                    if open {
+                        self.show()
+                    } else if !self.model.state.running, self.model.state.status == nil {
+                        self.panel.orderOut(nil)
+                    }
+                }
+            }
     }
+
+    /// The panel is out of screen shares only while the prompter is open and Settings says so.
+    nonisolated static func sharingType(prompterOpen: Bool, hideFromShare: Bool) -> NSWindow.SharingType {
+        prompterOpen && hideFromShare ? .none : .readOnly
+    }
+
+    var sharingType: NSWindow.SharingType { panel.sharingType }
 
     public var windowNumber: Int { panel.windowNumber }
     public var isVisible: Bool { panel.isVisible }
@@ -103,6 +128,7 @@ public final class NotchPanelController {
     }
 
     public func hide() {
+        guard !prompter.isOpen else { return }   // the teleprompter keeps the panel up
         panel.orderOut(nil)
     }
 
@@ -120,7 +146,7 @@ public final class NotchPanelController {
         screen = s
         if m != metrics {
             metrics = m
-            let root = OverlayView(model: model, settings: settings, metrics: metrics, onOpenSettings: { _ in },
+            let root = OverlayView(model: model, settings: settings, prompter: prompter, metrics: metrics, onOpenSettings: { _ in },
                                    onRetry: onRetry, onSizeChange: { [weak self] size in self?.contentSizeChanged(size) })
             hostingView?.rootView = AnyView(root.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top))
         }

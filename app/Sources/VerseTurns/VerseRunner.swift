@@ -145,6 +145,9 @@ public struct RunOptions: Sendable {
     /// When set, every event goes here instead of stdout (already decoded), plus the sink-only extras. nil: stdout,
     /// byte for byte as before.
     public var sink: (@Sendable (RunnerEvent) -> Void)?
+    /// T4: every transcript event of both channels, as it leaves the recognizer, before the turn engine sees it. The
+    /// app's teleprompter takes the `Channel.me` events from here instead of opening a second microphone session.
+    public var transcriptTap: (@Sendable (TranscriptEvent) -> Void)?
     /// Tests: with a sink, also write every line verse-run would print here, so one run can be checked for sink/stdout
     /// parity (two separate runs differ in timing-dependent lines such as hedges).
     public var mirrorOutput: FileHandle?
@@ -382,6 +385,7 @@ public final class VerseRunner: @unchecked Sendable {
         loop: for await input in inputs {
             switch input {
             case .event(let e):
+                o.transcriptTap?(e)
                 if o.trace { log(String(format: "trace event %@ t=%.2f audio=%.2f-%.2f final=%@ %@", e.channel.rawValue, e.emittedAt, e.audioStart, e.audioEnd, e.isFinal ? "y" : "n", e.text)) }
                 dispatch(await engine.ingestTimed(e))
             case .tick(let t, let db):

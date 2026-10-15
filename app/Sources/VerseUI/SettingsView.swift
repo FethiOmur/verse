@@ -124,6 +124,8 @@ public struct SettingsView: View {
 
             SimVoiceSettingsSection(sim: simSettings)
 
+            PrompterSettingsSection(settings: controller.prompter.settings)
+
             Section {
                 LabeledContent("This session", value: controller.sessionSpend, format: Self.usd)
                 LabeledContent("This month", value: controller.monthSpend, format: Self.usd)
