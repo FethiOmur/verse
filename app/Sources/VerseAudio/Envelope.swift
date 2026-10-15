@@ -93,7 +93,9 @@ public struct GateLevels: Sendable, Equatable {
 }
 
 /// Echo gate for the mic channel (spec §5.7): mic speech is discarded when its 10 ms envelope correlates
-/// >= `threshold` with the remote envelope delayed by 0...`maxLag` (the remote sound reaching the mic later).
+/// >= `threshold` with the remote envelope delayed by 0...`maxLag` (the remote sound reaching the mic later) and the mic
+/// is as far under the remote as a speaker echo is (see `verdict`). A correlated range that is about as loud as the remote
+/// is a person talking over it and goes on to the text guard.
 public struct BleedGate: Sendable {
     public var threshold: Double = 0.6
     public var maxLag: TimeInterval = 0.08
@@ -148,11 +150,15 @@ public struct BleedGate: Sendable {
     ///   (Alex talking over the remote speaker). Passed on; the text guard (`EchoGuard`, in `TurnEngine`) decides on words.
     public enum Verdict: String, Sendable, Equatable { case keep, drop, `defer` }
 
-    /// Rule (P1 gate fix). Envelope correlation alone cannot tell an echo from a person talking at the same time (two speech
-    /// envelopes correlate at 0.7 by chance, and the gate dropped the owner's "Sorry, one second..." at 0.72), so the level of
-    /// the mic next to the remote is part of the rule. Measured on the two-track replay (docs/p1-replay-bleed-report.md,
-    /// "Gate fix"): correlation >= 0.6 events of the owner's real speech sit at -8.1 ... -2.9 dB (n = 2) with correlation <= 0.73;
-    /// echo events at -30/-25/-15/-10 dB sit at -28 ... -10 dB with correlation >= 0.69, 0.99 for -15 and -10 dB.
+    /// Rule (P1 gate fix). Envelope correlation alone cannot tell an echo from a person talking at the same time: two speech
+    /// envelopes correlate at 0.7 by chance, and the gate dropped the owner's "Sorry, one second..." at 0.72. So the level of the
+    /// mic next to the remote is part of the rule. Measured on the two-track replay (docs/p1-replay-bleed-report.md, "Gate fix"):
+    /// - the owner's real events with correlation >= 0.6: two distinct windows ("Sorry" onset), correlation 0.73, ratio -2.9 and
+    ///   -8.1 dB. The other 35 distinct real events have correlation <= 0.45.
+    /// - Echo events at -25/-30 dB: correlation >= 0.69, ratio -28 ... -24.5 dB. Echo at -15 and -10 dB: correlation >= 0.99,
+    ///   ratio -15.0 and -10.0 dB.
+    /// -15 dB sits 7 dB under his lowest ratio and 9.5 dB over the nearest echo cell of the report (-25 dB); the tight-correlation
+    /// branch keeps the louder echoes (-10, -15 dB) dropped, because 0.9 is far above anything two different voices produced.
     public func verdict(_ f: GateFeatures) -> Verdict {
         guard f.score >= threshold else { return .keep }
         guard let ratio = f.window.ratioDb else { return .drop }   // no level information: as before
