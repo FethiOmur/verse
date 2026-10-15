@@ -71,15 +71,13 @@ public actor ListenSession {
         let perms = environment.permissions
         var remoteSource = try environment.makeRemoteSource(config)
         var micSource = try environment.makeMicSource(config)
-        if config.isLive {
-            if remoteSource != nil, perms.status(.audioCapture) == .denied {
-                throw ListenError.permissionDenied(.audioCapture)
-            }
-            if micSource != nil {
-                var s = perms.status(.microphone)
-                if s == .notDetermined { s = await perms.request(.microphone) }
-                if s == .denied { throw ListenError.permissionDenied(.microphone) }
-            }
+        if config.isLive, remoteSource != nil, perms.status(.audioCapture) == .denied {
+            throw ListenError.permissionDenied(.audioCapture)
+        }
+        if config.usesRealMic, micSource != nil {
+            var s = perms.status(.microphone)
+            if s == .notDetermined { s = await perms.request(.microphone) }
+            if s == .denied { throw ListenError.permissionDenied(.microphone) }
         }
 
         var built: [Channel: ChannelPipeline] = [:]
