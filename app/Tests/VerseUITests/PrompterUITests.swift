@@ -169,10 +169,9 @@ struct PrompterLayoutTests {
     }
 
     @Test
-    func sharingTypeIsNoneOnlyWhileOpenAndHidingIsOn() {
-        #expect(NotchPanelController.sharingType(prompterOpen: true, hideFromShare: true) == .none)
-        #expect(NotchPanelController.sharingType(prompterOpen: true, hideFromShare: false) == .readOnly)
-        #expect(NotchPanelController.sharingType(prompterOpen: false, hideFromShare: true) == .readOnly)
+    func sharingTypeFollowsTheHideSetting() {
+        #expect(NotchPanelController.sharingType(hideFromShare: true) == .none)
+        #expect(NotchPanelController.sharingType(hideFromShare: false) == .readOnly)
     }
 }
 

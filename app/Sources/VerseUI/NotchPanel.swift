@@ -95,14 +95,14 @@ public final class NotchPanelController {
                 if !s.running, s.status == nil, s.meetingPrompt == nil { self?.hide() }
             }
         }
-        // The teleprompter: the panel shows while it is open, and is kept out of screen shares while it is (if the
-        // setting says so). The meeting cards and statuses are not hidden: they never set a sharing type.
+        // Screen shares: the whole panel (cards, statuses, prompts and the teleprompter) stays out of them while the
+        // setting is on (default). The teleprompter also shows the panel while it is open.
         prompterSub = Publishers.CombineLatest(prompter.$isOpen, prompter.settings.$hideFromShare)
             .receive(on: RunLoop.main)
             .sink { [weak self] open, hide in
                 MainActor.assumeIsolated {
                     guard let self else { return }
-                    self.panel.sharingType = Self.sharingType(prompterOpen: open, hideFromShare: hide)
+                    self.panel.sharingType = Self.sharingType(hideFromShare: hide)
                     if open {
                         self.show()
                     } else if !self.model.state.running, self.model.state.status == nil {
@@ -112,9 +112,9 @@ public final class NotchPanelController {
             }
     }
 
-    /// The panel is out of screen shares only while the prompter is open and Settings says so.
-    nonisolated static func sharingType(prompterOpen: Bool, hideFromShare: Bool) -> NSWindow.SharingType {
-        prompterOpen && hideFromShare ? .none : .readOnly
+    /// The panel is out of screen shares whenever Settings says so, whatever it is showing.
+    nonisolated static func sharingType(hideFromShare: Bool) -> NSWindow.SharingType {
+        hideFromShare ? .none : .readOnly
     }
 
     var sharingType: NSWindow.SharingType { panel.sharingType }

@@ -20,7 +20,7 @@ public struct PrompterSettingsSection: View {
                 LabeledContent("Font size", value: "\(Int(settings.fontSize)) pt")
             }
             Toggle("Mirror the text", isOn: $settings.mirror)
-            Toggle("Hide the prompter from screen sharing", isOn: $settings.hideFromShare)
+            Toggle("Hide Verse from screen sharing (cards and prompter)", isOn: $settings.hideFromShare)
             Toggle("Read meeting cards on the prompter", isOn: $settings.followMeetingCards)
         } header: {
             Text("Teleprompter")
