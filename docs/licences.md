@@ -141,3 +141,12 @@ meeting or interview assistance. Two points to keep in view:
 
 Nothing found forbids the degraded-mode use. Memory and disk: about 1.7 GB peak RSS (2.2 GB peak memory footprint) while
 loaded and primed; 3.4 GB on disk plus a compiled-model cache (`cache/` next to the model, 2.1 GB measured) created on first load.
+
+## Teleprompter (VersePrompter, 2026-10-15)
+
+| Component | Licence | Where read | Commercial distribution |
+|---|---|---|---|
+| Textream (`github.com/f/textream`, upstream commit `2c02f3e`, v1.7.1), code ported into `app/Sources/VersePrompter/` (`SpeechTextAlignment`, `PromptMatcher`, `VoiceActivityDetector`, `splitPromptTextIntoWords`, `PresentationNotesExtractor`) and a subset of its iOS test suite | MIT, Copyright (c) 2026 Fatih Kadir Akin | `LICENSE` in the local checkout (`~/Desktop/ProjectExamples/textream`), compared with the text in `THIRD_PARTY_NOTICES`: identical | Allowed. The notice stays in `THIRD_PARTY_NOTICES` and in each ported file's header; ship it with any distribution of Verse. |
+
+Not taken from Textream: the name, icon, site, App Store listing (MIT grants no trademark rights) and the OpenDyslexic
+font (OFL, separate licence). `.pptx` import calls the system `/usr/bin/unzip`; nothing else is linked or bundled.
