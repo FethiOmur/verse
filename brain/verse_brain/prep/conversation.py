@@ -378,7 +378,7 @@ def _usd(model: str, u: Usage) -> float:
 async def run_async(
     thread: str, *, out: Path, model: ConversationModel, prep_model, posting: str | None = None,
     posting_url: str | None = None, company_url: str | None = None, note: str | None = None, owner: str = "Alex",
-    company: str | None = None, repos: list[Path] | None = None, langs: list[str] | None = None, max_questions: int = 80,
+    company: str | None = None, repos: list[Path] | None = None, langs: list[str] | None = None, max_questions: int = 40,
     vault: Vault | None = None, voice_path: Path | None = None, budget_usd: float = 1.0,
     max_searches: int = DEFAULT_MAX_SEARCHES, now: datetime | None = None, log=None,
 ) -> tuple[Path, dict]:
@@ -437,7 +437,7 @@ async def run_async(
         session = await build_async(work / "prep_note.md", repos or [], langs or ["en"], out, max_questions, model=prep_model,
                                     vault=vault, budget_usd=budget_usd, now=now, session_id=sid, voice_path=voice_path)
     except Exception as e:
-        raise ConversationError(f"{e} (the research is kept in {work})") from e
+        raise ConversationError(f"{type(e).__name__}: {e} (the research is kept in {work})") from e
     meta = json.loads((session / "meta.json").read_text(encoding="utf-8"))
 
     cost = {
@@ -495,7 +495,7 @@ def conversation_main(argv: list[str], default_out: Path) -> int:
     ap.add_argument("--vault", type=Path, default=DEFAULT_VAULT)
     ap.add_argument("--no-vault", action="store_true")
     ap.add_argument("--vault-audience", choices=["internal", "public"], default="internal")
-    ap.add_argument("--max-questions", type=int, default=80)
+    ap.add_argument("--max-questions", type=int, default=40, help="answer-bank size; 80 hit the 64k output limit and cost twice as much")
     ap.add_argument("--max-searches", type=int, default=DEFAULT_MAX_SEARCHES)
     ap.add_argument("--budget-usd", type=float, default=1.0, help="sizes max_tokens of the meeting-prep call; no spend cap")
     ap.add_argument("--voice-profile", type=Path, default=DEFAULT_VOICE_PATH)
