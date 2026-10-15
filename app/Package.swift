@@ -21,6 +21,8 @@ let package = Package(
         // S3: interview-simulation voices (Apple / ElevenLabs / OpenAI / text) behind one protocol.
         .library(name: "VerseVoice", targets: ["VerseVoice"]),
         .library(name: "VersePosting", targets: ["VersePosting"]),
+        // T-core: teleprompter logic (script parsing, Textream-derived matcher, scroll drivers, session). No UI.
+        .library(name: "VersePrompter", targets: ["VersePrompter"]),
         .executable(name: "verse-listen", targets: ["verse-listen"]),
         .executable(name: "verse-run", targets: ["verse-run"]),
         // P1-5: the menu-bar app (bundled into app/build/Verse.app by scripts/bundle-app.sh).
@@ -124,6 +126,17 @@ let package = Package(
             name: "VersePostingTests",
             dependencies: ["VersePosting"],
             resources: [.copy("Fixtures")],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        // T-core: depends on VerseSpeech (TranscriptEvent, ListenSession) and VerseAudio only.
+        .target(
+            name: "VersePrompter",
+            dependencies: ["VerseSpeech", "VerseAudio"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .testTarget(
+            name: "VersePrompterTests",
+            dependencies: ["VersePrompter", "VerseSpeech"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
