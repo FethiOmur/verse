@@ -60,10 +60,17 @@ struct CapsuleView: View {
     var state: OverlayState
     var metrics: NotchMetrics
 
+    /// A practice interview widens the wings for `practice · Q3/8` and the timer.
+    private var wide: Bool { state.sim != nil }
+    private var wing: CGFloat { OverlayStyle.wing + (wide ? 64 : 0) }
+
     var body: some View {
         HStack(spacing: 0) {
-            StatusDot(activity: state.status == .offline ? .offline : state.activity)
-                .frame(width: OverlayStyle.wing, alignment: .leading)
+            HStack(spacing: 8) {
+                StatusDot(activity: state.status == .offline ? .offline : state.activity)
+                if let sim = state.sim { SimTimer(start: sim.startedAt) }
+            }
+                .frame(width: wing, alignment: .leading)
                 .padding(.leading, 18)
             Spacer(minLength: 0)
             Group {
@@ -76,10 +83,10 @@ struct CapsuleView: View {
             .font(.system(size: 11.5, weight: .medium))
             .lineLimit(1)
             .minimumScaleFactor(0.8)
-            .frame(width: OverlayStyle.wing, alignment: .trailing)
+            .frame(width: wing, alignment: .trailing)
             .padding(.trailing, 18)
         }
-        .frame(width: metrics.capsuleWidth(wide: false), height: metrics.capsuleHeight)
+        .frame(width: metrics.capsuleWidth(wide: wide), height: metrics.capsuleHeight)
         .transaction { $0.animation = nil }
     }
 }
@@ -418,10 +425,25 @@ public struct OverlayView: View {
                 // can't reach it; the click is the dismiss.
                 .onTapGesture { model.collapse() }
             if showPanel, let s = state.status {
-                let canRetry: Bool = { if case .error = s { return !state.running }; return false }()
+                let canRetry: Bool = { if case .error = s { return !state.running && !state.practiceEnded }; return false }()
                 StatusPanelView(status: s, scale: scale, onOpenSettings: onOpenSettings, onDismiss: { model.dismissStatus() },
                                 onRetry: canRetry ? onRetry : nil)
                     .frame(width: max(capsuleWidth, CGFloat(min(settings.cardWidth, 520))))
+            } else if let sim = state.sim {
+                // Practice interview: the sim panel, and under it the hint card when hints are on.
+                VStack(spacing: 0) {
+                    SimPanelView(sim: sim, scale: scale, onAction: { model.simAction($0) })
+                    if let card = state.card {
+                        Rectangle().fill(.white.opacity(0.12)).frame(height: 0.5).padding(.horizontal, 18)
+                        ScrollView(.vertical, showsIndicators: false) {
+                            CardView(card: card, scale: scale)
+                        }
+                        .scrollBounceBehavior(.basedOnSize)
+                        .frame(maxHeight: CGFloat(settings.cardMaxHeight) * 0.6)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .frame(width: max(CGFloat(settings.cardWidth), metrics.capsuleWidth(wide: true)))
             } else if showStartup, let p = state.startup {
                 StartupPanelView(panel: p, scale: scale)
                     .frame(width: max(capsuleWidth, CGFloat(min(settings.cardWidth, 460))))

@@ -82,6 +82,30 @@ public final class OverlayModel: ObservableObject {
         timer = nil
     }
 
+    // MARK: practice interview (S4)
+
+    /// What the sim panel's buttons do; the sim controller sets it while an interview runs.
+    public var simActions: ((SimUIAction) -> Void)?
+
+    public func simStarting(voice: String, showCaption: Bool) {
+        reducer.simStarting(voice: voice, showCaption: showCaption)
+        publish()
+    }
+
+    public func simApply(_ e: SimEvent) {
+        reducer.simApply(e)
+        publish()
+    }
+
+    /// A button in the sim panel. The caption toggle is local; the rest goes to the sim controller.
+    public func simAction(_ a: SimUIAction) {
+        if a == .toggleCaption {
+            reducer.simToggleCaption()
+            publish()
+        }
+        simActions?(a)
+    }
+
     private func publish() {
         if state != reducer.state { state = reducer.state }
     }
@@ -89,4 +113,9 @@ public final class OverlayModel: ObservableObject {
 
 extension OverlayReducer {
     mutating func clearStatus() { setStatus(nil) }
+}
+
+/// The sim panel's controls.
+public enum SimUIAction: Equatable, Sendable {
+    case skip, `repeat`, end, doneAnswering, toggleCaption
 }

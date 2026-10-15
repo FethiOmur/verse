@@ -10,14 +10,21 @@ struct VerseApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            VerseMenu(controller: delegate.controller, settings: delegate.settings)
+            VerseMenu(controller: delegate.controller, settings: delegate.settings, sim: delegate.sim)
         } label: {
             MenuBarLabel(controller: delegate.controller)
         }
         .menuBarExtraStyle(.menu)
 
         Window("Verse Settings", id: "settings") {
-            SettingsView(settings: delegate.settings, controller: delegate.controller)
+            SettingsView(settings: delegate.settings, controller: delegate.controller, simSettings: delegate.simSettings)
+        }
+        .windowResizability(.contentSize)
+        .defaultLaunchBehavior(.suppressed)
+
+        // S4: the practice-interview setup window.
+        Window("Practice Interview", id: "sim-setup") {
+            SimSetupView(sim: delegate.sim, meeting: delegate.controller)
         }
         .windowResizability(.contentSize)
         .defaultLaunchBehavior(.suppressed)
@@ -35,6 +42,7 @@ struct MenuBarLabel: View {
 struct VerseMenu: View {
     @ObservedObject var controller: VerseController
     @ObservedObject var settings: AppSettings
+    @ObservedObject var sim: SimController
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -47,7 +55,7 @@ struct VerseMenu: View {
         } else {
             Button("Start") { controller.start() }
                 .keyboardShortcut("s")
-                .disabled(controller.sessions.isEmpty)
+                .disabled(controller.sessions.isEmpty || sim.running)
         }
         Picker("Session", selection: $settings.sessionName) {
             ForEach(controller.sessions, id: \.self) { Text($0).tag($0) }
@@ -59,6 +67,19 @@ struct VerseMenu: View {
             Text("Turkish").tag("tr")
         }
         .disabled(controller.running)
+        Divider()
+        if sim.running {
+            Button("End practice interview") { sim.endInterview() }
+        } else {
+            Button("Practice interview…") {
+                NSApp.activate()
+                openWindow(id: "sim-setup")
+            }
+            .disabled(controller.running)
+        }
+        if sim.lastReport != nil {
+            Button("Last practice report") { sim.openLastReport() }
+        }
         Divider()
         Button("Settings…") {
             NSApp.activate()
@@ -73,7 +94,9 @@ struct VerseMenu: View {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let settings = AppSettings()
+    let simSettings = SimSettings()
     lazy var controller = VerseController(settings: settings)
+    lazy var sim = SimController(settings: settings, simSettings: simSettings, meeting: controller)
     private var quitting = false
     private var signalSources: [DispatchSourceSignal] = []
 
@@ -131,11 +154,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if quitting { return .terminateNow }
         quitting = true
-        if !controller.running {
+        SimReportWindow.closeAll()
+        if !controller.running, !sim.running {
             BrainProcess.killAll()
             return .terminateNow
         }
         Task { @MainActor in
+            await sim.shutdown()
             await controller.shutdown()
             NSApp.reply(toApplicationShouldTerminate: true)
         }

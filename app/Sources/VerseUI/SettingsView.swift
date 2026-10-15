@@ -70,10 +70,12 @@ struct APIKeySection: View {
 public struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var controller: VerseController
+    @ObservedObject var simSettings: SimSettings
 
-    public init(settings: AppSettings, controller: VerseController) {
+    public init(settings: AppSettings, controller: VerseController, simSettings: SimSettings) {
         self.settings = settings
         self.controller = controller
+        self.simSettings = simSettings
     }
 
     private static let usd: FloatingPointFormatStyle<Double>.Currency = .currency(code: "USD").precision(.fractionLength(2...4))
@@ -119,6 +121,8 @@ public struct SettingsView: View {
                 }
                 LabeledContent("Card width", value: "\(Int(settings.cardWidth)) pt (drag the card's bottom edge)")
             }
+
+            SimVoiceSettingsSection(sim: simSettings)
 
             Section {
                 LabeledContent("This session", value: controller.sessionSpend, format: Self.usd)
