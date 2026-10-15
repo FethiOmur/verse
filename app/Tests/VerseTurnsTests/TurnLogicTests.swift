@@ -106,8 +106,8 @@ final class TurnLogicTests: XCTestCase {
         XCTAssertEqual(turns.first?.speaker, .remote)
         XCTAssertEqual(turns.first?.id, "r1")
         XCTAssertEqual(turns.first?.at ?? 0, 10.1, accuracy: 0.001, "emitted immediately")
-        // The me turn is its own turn, ended by quiet or by the next remote event.
-        let later = await engine.advance(to: 10.9)
+        // The me turn is its own turn, ended by its own quiet (`meEndpointMs`), not by remote events.
+        let later = await engine.advance(to: 11.5)
         let meTurn = later.turns.first
         XCTAssertEqual(meTurn?.id, "m1")
         XCTAssertEqual(meTurn?.speaker, .me)
@@ -115,15 +115,16 @@ final class TurnLogicTests: XCTestCase {
         XCTAssertEqual(meTurn?.addressee, .unknown)
     }
 
-    func testRemoteAfterMeEndsMeTurn() async {
+    func testRemoteAfterMeLeavesMeTurnOpenAndFollowsIt() async {
         let engine = TurnEngine(config: TurnConfig(), bank: .empty, facts: .empty)
         _ = await engine.ingestTimed(ev("Well I built the pipeline", at: 1.0, channel: .me))
         let out = await engine.ingestTimed(ev("Okay and what about the cost", at: 1.3, start: 1.0))
-        XCTAssertEqual(out.turns.map(\.id), ["m1"])
+        XCTAssertTrue(out.turns.isEmpty, "a remote event leaves the me turn open (it ends by its own quiet)")
         XCTAssertEqual(out.partials.first?.id, "r1")
-        // The question started right after Alex stopped talking: it is for Alex.
+        // The question started right after Alex stopped talking: it is for Alex. Both turns close, the me turn by its quiet.
         let end = await engine.advance(to: 3.0)
-        XCTAssertEqual(end.turns.first?.addressee, .me)
+        XCTAssertEqual(end.turns.map(\.id).sorted(), ["m1", "r1"])
+        XCTAssertEqual(end.turns.first { $0.id == "r1" }?.addressee, .me)
     }
 
     func testHesitationOnlyTurnIsDropped() async {

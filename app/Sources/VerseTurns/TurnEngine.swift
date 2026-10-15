@@ -12,6 +12,10 @@ public struct TurnConfig: Sendable {
     public var cueEndpointMs: Int
     /// Quiet time for everything else.
     public var plainEndpointMs: Int
+    /// Quiet time (no result of the microphone recognizer at all) before a me turn is closed. Longer than the remote
+    /// endpoint on purpose: the recognizer delivers volatile text in bursts up to ~1.1 s apart while the speaker goes on,
+    /// and a me turn that closed between two bursts made the next burst look like Alex starting to talk again.
+    public var meEndpointMs: Int
     public var matchThreshold: Double
     public var matchMargin: Double
     /// "en" | "it" | "tr".
@@ -63,7 +67,7 @@ public struct TurnConfig: Sendable {
     public var topicEnabled: Bool
 
     public init(ownerName: String = "Alex", ownerAliases: [String] = [], otherNames: [String] = [],
-                cueEndpointMs: Int = 300, plainEndpointMs: Int = 600,
+                cueEndpointMs: Int = 300, plainEndpointMs: Int = 600, meEndpointMs: Int = 1200,
                 matchThreshold: Double = 0.55, matchMargin: Double = 0.08,
                 lang: String = "en", newTurnSilenceMs: Int = 600, meFollowSeconds: Double = 3.0, matchConsecutive: Int = 2,
                 speechFloorDbfs: Double = -55, speechAboveFloorDb: Double = 10, speechCeilingDbfs: Double = -42,
@@ -77,6 +81,7 @@ public struct TurnConfig: Sendable {
         self.otherNames = otherNames
         self.cueEndpointMs = cueEndpointMs
         self.plainEndpointMs = plainEndpointMs
+        self.meEndpointMs = meEndpointMs
         self.matchThreshold = matchThreshold
         self.matchMargin = matchMargin
         self.lang = lang
@@ -279,10 +284,10 @@ public actor TurnEngine {
     /// per chunk (a final too), so a result that arrived `recognizerSettleMs` after the quiet began has seen the end of
     /// the speech. When none arrives, `recognizerCatchUpMs` after the quiet is long enough for one chunk.
     private func deadline(_ t: Turn, remote isRemote: Bool) -> TimeInterval {
-        var T = Double(isRemote ? endpointMs(t) : config.plainEndpointMs) / 1000
+        var T = Double(isRemote ? endpointMs(t) : config.meEndpointMs) / 1000
         let fragment = isRemote && isFragment(t)
         if fragment { T = max(T, Double(config.fragmentHoldMs) / 1000) }
-        let textDue = t.lastChange + T
+        let textDue = (isRemote ? t.lastChange : max(t.lastChange, t.lastResult)) + T
         guard isRemote, levelsSeen, lastActive.isFinite, lastActive >= t.startedAt - 3 else { return textDue }
         let cap = t.lastChange + (fragment ? T : 0) + max(T, Double(config.audioWaitCapMs) / 1000)
         let caughtUp = t.audioEnd >= lastActive - 0.05 || t.lastResult >= lastActive + Double(config.recognizerSettleMs) / 1000
@@ -295,8 +300,9 @@ public actor TurnEngine {
 
     private func ingestRemote(_ e: TranscriptEvent, text: String) -> [Timed] {
         var out: [Timed] = []
-        // The owner stopped talking: a remote event after a me turn closes it.
-        if me != nil { out += closeMe(at: now) }
+        // A remote event does not close an open me turn. Whoever holds the floor keeps it until their own quiet endpoint:
+        // when both talk at once, every event of one side used to close the other side's turn, which chopped a question
+        // into pieces and the owner's answer into duplicate me turns (two-track replay, eval/twotrack/t01.json).
 
         var (start, end, body) = (e.audioStart, e.audioEnd, text)
 
@@ -322,7 +328,8 @@ public actor TurnEngine {
         if remote == nil {
             remoteCount += 1
             var t = Turn(id: "r\(remoteCount)", startedAt: now, lastChange: now, lastResult: now)
-            t.followsMe = remoteSinceMe == 0 && lastMeEnd.map { now - $0 <= config.meFollowSeconds } == true
+            // Alex is still talking, or stopped a moment ago: this question follows his speech.
+            t.followsMe = remoteSinceMe == 0 && (me != nil || lastMeEnd.map { now - $0 <= config.meFollowSeconds } == true)
             if let p = stripped { t.stripPrefix = p.tokens; t.stripBelow = p.below }
             remote = t
         }
@@ -429,14 +436,16 @@ public actor TurnEngine {
 
     private func ingestMe(_ e: TranscriptEvent, text: String) -> [Timed] {
         var out: [Timed] = []
-        // The owner starts talking: the remote question is over, right now.
-        if remote != nil { out += closeRemote(at: now) }
+        // The owner starts talking: the remote question is over, right now. Only the first event of a me turn does this;
+        // the later events of the same utterance (Alex talking over the interviewer) leave the remote turn alone.
+        if me == nil, remote != nil { out += closeRemote(at: now) }
         if me == nil {
             meCount += 1
             me = Turn(id: "m\(meCount)", startedAt: now, lastChange: now, lastResult: now)
         }
         guard var turn = me else { return out }
         _ = Self.apply(&turn, start: e.audioStart, end: e.audioEnd, text: text, isFinal: e.isFinal, now: now)
+        turn.lastResult = max(turn.lastResult, e.emittedAt)
         me = turn
         return out
     }
