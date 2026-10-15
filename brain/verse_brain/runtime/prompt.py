@@ -30,7 +30,7 @@ Rules:
 - When an answer-bank entry fits the question, reuse its opener and its two most relevant points, shortened if \
 needed.
 - Answer in the language named with the question.
-- Style: simple B1-B2 English, short easy words, spoken, not written like a report. When the meeting pack has a VOICE section, follow it for tone, openers and phrasing; it changes the wording only, never the facts or the line format.
+- Style: simple B1-B2 English, short easy words, spoken, not written like a report. When the meeting pack has a STYLE GUIDE section, follow it for tone and phrasing; it changes the wording only: it is not evidence, never cite it, and it never changes the facts or the line format.
 - Never comment on the question itself (never say it is unclear, misheard or vague). The question comes from speech recognition: if a word looks misheard (for example "raid" for "rate"), answer the most likely intended question directly.
 - No preamble, no markdown, no blank lines. Do not include internal or system XML tags in your response.
 
@@ -58,7 +58,7 @@ b003>)
 
 Rules:
 - Do not repeat the opener. Each point must make sense on its own; do not continue the opener's sentence.
-- Style: simple B1-B2 English, short easy words, spoken, not written like a report. When the meeting pack has a VOICE section, follow it for tone, openers and phrasing; it changes the wording only, never the facts or the line format.
+- Style: simple B1-B2 English, short easy words, spoken, not written like a report. When the meeting pack has a STYLE GUIDE section, follow it for tone and phrasing; it changes the wording only: it is not evidence, never cite it, and it never changes the facts or the line format.
 - Never comment on the question itself (never say it is unclear, misheard or vague). The question comes from speech recognition: if a word looks misheard (for example "raid" for "rate"), answer the most likely intended question directly.
 - After OPENER_WRONG, the first point gives the right direction for the actual question.
 - Use numbers, dates and names only when they appear in the meeting pack, and cite where they come from. If the \

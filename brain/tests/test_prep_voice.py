@@ -55,35 +55,70 @@ def test_parse_tolerates_fence_preamble_and_wrapped_bullets():
 
 @pytest.mark.parametrize("mutate,msg", [
     (lambda t: t.replace("### Words to avoid", "### Other"), "unknown section"),
-    (lambda t: t.split("### Words to avoid")[0] + "### Sample answers" + t.split("### Sample answers")[1], "missing"),
+    (lambda t: t.split("### Words to avoid")[0] + "### Positions he holds" + t.split("### Positions he holds")[1], "missing"),
     (lambda t: t + "\n### Tone\n- again\n", "twice"),
     (lambda t: t.replace("- \"Leverage\", \"synergy\", \"passionate\", \"great question\", and any big-sounding claim.\n", ""), "empty"),
-    (lambda t: "\n".join(ln for ln in t.splitlines() if not ln.startswith("- [What")), "sample answer"),
+    (lambda t: "\n".join(ln for ln in t.splitlines() if not ln.startswith(("- Sometimes", "- Small tools are", "- I say it plainly", "- I built"))), "style example"),
+    (lambda t: t.replace("- If a list and a button solve it, stop there.\n", "").replace("- Ship first, then ask people what they really need.\n", ""), "position"),
 ])
 def test_parse_rejects(mutate, msg):
     with pytest.raises(PrepError, match=msg):
         V.parse_profile(mutate(PROFILE))
 
 
-def test_cap_drops_samples_from_the_tail_but_keeps_three():
+def test_cap_drops_examples_from_the_tail_but_keeps_two():
     p = V.parse_profile(PROFILE)
     total = p.words()
     text, kept = V.fit_profile(p, cap=total)
     assert kept == 5 and text == PROFILE
-    text, kept = V.fit_profile(p, cap=total - 1)  # one word too many: the last sample goes
-    assert kept == 4 and "What is hard for you" not in text and "What kind of tools" in text
-    text, kept = V.fit_profile(p, cap=p.words(3))
-    assert kept == 3 and len(text.split()) <= p.words(3)
+    text, kept = V.fit_profile(p, cap=total - 1)  # one word too many: the last example goes
+    assert kept == 4 and "Small tools are my thing" not in text and "Sometimes I keep polishing" in text
+    text, kept = V.fit_profile(p, cap=p.words(2))
+    assert kept == 2 and len(text.split()) <= p.words(2)
     with pytest.raises(PrepError, match="cap is"):
-        V.fit_profile(p, cap=p.words(3) - 1)
+        V.fit_profile(p, cap=p.words(2) - 1)
+
+
+def test_question_tags_are_stripped_from_examples():
+    tagged = PROFILE.replace("- I built a seed-swap", "- [Tell me about a project] I built a seed-swap")
+    p = V.parse_profile(tagged)
+    assert p.sections[V.SAMPLES][0].startswith("I built a seed-swap")
+    assert "[" not in p.render() and p.render() == PROFILE
+
+
+def test_positions_are_required_and_between_three_and_five():
+    p = V.parse_profile(PROFILE)
+    assert len(p.sections[V.POSITIONS]) == 3 and V.POSITIONS in p.render()
+    six = PROFILE.replace("### Style examples", "- a\n- b\n- c\n\n### Style examples")
+    with pytest.raises(PrepError, match="position"):
+        V.parse_profile(six)
+
+
+def test_label_openers_are_dropped_but_phrases_stay():
+    labelled = PROFILE.replace('- "The plain version is ..."', '- "Short version:"\n- "Bottom line: ..."\n- "The plain version is ..."')
+    p = V.parse_profile(labelled)
+    ops = p.sections["Openers and phrasings"]
+    assert not any("Short version" in o or "Bottom line" in o for o in ops)
+    assert any("plain version" in o for o in ops) and p.render() == PROFILE
+    only_labels = PROFILE.replace('- "Sure, a good example is ..."', '- "Short version:"').replace('- "The plain version is ..."\n', '').replace(
+        '- "I haven\'t done that exactly, but here\'s how I\'d start."', '- "Bottom line:"')
+    with pytest.raises(PrepError, match="usable openers"):
+        V.parse_profile(only_labels)
+
+
+def test_openers_are_options_not_defaults():
+    p = V.parse_profile(PROFILE)
+    assert p.sections["Openers and phrasings"][0].startswith("Options only: use at most one per answer")
+    assert "at most one per answer, vary them, and often use none" in V.SYSTEM and "label-style opener" in V.SYSTEM
+    assert V.parse_profile(V.FAKE_PROFILE).sections["Openers and phrasings"][0].startswith("Options only")
 
 
 def test_cap_counts_the_whole_rendered_block():
-    long_tone = " ".join(["word"] * 700)
+    long_tone = " ".join(["word"] * 800)
     p = V.parse_profile(PROFILE.replace("- Warm, calm and plain-spoken. Friendly without gushing.", f"- {long_tone}"))
     with pytest.raises(PrepError):
         V.fit_profile(p)
-    assert V.WORD_CAP == 600
+    assert V.WORD_CAP == 650
 
 
 class ScriptedVoice:
@@ -154,6 +189,8 @@ def test_strip_voice_removes_only_a_trailing_voice_section():
     assert V.strip_voice(V.with_voice(pack, PROFILE)) == pack
     legacy = pack + "\n## THE OWNER'S VOICE (source: prep:voice)\n- Tone: relaxed.\n  - nested\n"
     assert V.strip_voice(legacy) == pack
+    old = pack + "\n## VOICE (earlier header)\n- a\n"
+    assert V.strip_voice(old) == pack
     mid = "## FACTS\n[f001] x\n\n## VOICE old\n- a\n\n## SNIPPETS\n[s001] y\n"
     assert V.strip_voice(mid) == mid  # not at the end: left alone
 
@@ -167,7 +204,9 @@ def test_render_pack_without_voice_is_unchanged():
     assert render_pack(facts, [], [], [], None) == base
     with_v = render_pack(facts, [], [], [], PROFILE)
     assert with_v.startswith(base) and with_v.endswith(PROFILE)
-    assert with_v.count("\n## VOICE") == 1 and with_v.index("## VOICE") > with_v.index("## FACTS")
+    assert with_v.count("\n## STYLE GUIDE") == 1 and with_v.index("## STYLE GUIDE") > with_v.index("## FACTS")
+    assert "not evidence, never cite" in V.MEETING_HEADER and "not evidence, never cite" in V.SIM_HEADER
+    assert "## VOICE" not in with_v
 
 
 def test_fit_pack_never_trims_the_voice_and_counts_it():
@@ -233,7 +272,7 @@ def test_sim_pack_voice_section(tmp_path, voice_file):
 
 def test_sim_pack_voice_with_a_scripted_plan(tmp_path, voice_file):
     s = build_with(tmp_path, Scripted(payload()), voice_path=voice_file)
-    assert (s / "sim_pack.md").read_text(encoding="utf-8").count("## VOICE") == 1
+    assert (s / "sim_pack.md").read_text(encoding="utf-8").count("## STYLE GUIDE") == 1
 
 
 # ------------------------------------------------------------------------------------------ CLI

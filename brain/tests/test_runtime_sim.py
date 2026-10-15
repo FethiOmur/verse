@@ -376,12 +376,12 @@ def test_coach_prompt_carries_the_voice_block(tmp_path):
     for info in voiced:
         prefix = info.request["messages"][0]["content"][0]["text"]  # the cached pack block
         assert SIM_HEADER in prefix and voice.strip() in prefix
-        assert "VOICE section of the SIM PACK" in info.tail
+        assert "STYLE GUIDE section of the SIM PACK" in info.tail
         assert info.request["messages"][0]["content"][0]["cache_control"] == {"type": "ephemeral"}
     for info in plain:
-        assert "VOICE" not in info.tail and "VOICE" not in info.request["messages"][0]["content"][0]["text"]
+        assert "STYLE GUIDE" not in info.tail and "STYLE GUIDE" not in info.request["messages"][0]["content"][0]["text"]
     # other tasks keep their tails: the voice note is a coach-only instruction
-    assert all("VOICE" not in c.tail for c in rigs["voiced"].calls("ASK") + rigs["voiced"].calls("JUDGE"))
+    assert all("STYLE GUIDE" not in c.tail for c in rigs["voiced"].calls("ASK") + rigs["voiced"].calls("JUDGE"))
 
 
 def test_coach_uses_only_pack_evidence(tmp_path):

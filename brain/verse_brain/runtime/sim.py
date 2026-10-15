@@ -745,13 +745,13 @@ class SimRuntime:
             "Nothing else: no heading, no preamble." + self._voice_note()])
 
     def _voice_note(self) -> str:
-        """The pack's VOICE section (prep/voice.py) describes how the candidate talks. The coach's "better sentence"
+        """The pack's STYLE GUIDE section (prep/voice.py) describes how the candidate talks. The coach's "better sentence"
         follows it; the generic style rules stay here. Empty for a pack without one."""
         if not any(ln.startswith(VOICE_HEADING) for ln in self.pack.splitlines()):
             return ""
-        return (" Write the better sentence the way the candidate talks, in the style of the VOICE section of the SIM "
-                "PACK (tone, level, openers and phrasing); it changes the wording only, not the evidence, the numbers "
-                "or the length limit.")
+        return (" Write the better sentence the way the candidate talks, in the style of the STYLE GUIDE section of the "
+                "SIM PACK (tone, level, phrasing); it changes the wording only, not the evidence, the numbers or the length "
+                "limit, and is never cited.")
 
     def answer_tail(self, question: str) -> str:
         posting = self.posting or "(not available)"

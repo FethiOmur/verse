@@ -6,7 +6,7 @@
 Voice profile (V1): answers should sound like the user. The profile lives outside the repo (personal data):
   python -m verse_brain.prep voice --source FILE [--voice-profile PATH] [--fake]
 distils FILE (an engineering profile, CV, notes: the user's own words) with Sonnet into ~/Library/Application
-Support/Verse/profile/voice.md (at most 600 words). Every later prep run (meeting or --sim) appends it to the pack when the
+Support/Verse/profile/voice.md (at most 650 words). Every later prep run (meeting or --sim) appends it to the pack when the
 file exists; --voice-profile PATH points at another file, --no-voice builds the pack without one. To put it into packs
 that already exist (old pack kept as <pack>.bak-before-voice-v1):
   python -m verse_brain.prep voice --apply SESSION_DIR [--apply SESSION_DIR...] [--voice-profile PATH]

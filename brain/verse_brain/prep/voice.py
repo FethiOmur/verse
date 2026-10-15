@@ -6,12 +6,13 @@ asks the prep model (Sonnet) for a compact block of at most `WORD_CAP` words, so
 
   ### Tone
   ### Sentence length and level
-  ### Openers and phrasings
+  ### Openers and phrasings   (options only: at most one per answer, varied, often none)
   ### Words to avoid
   ### How projects and numbers are framed
-  ### Sample answers          (3 to 5 short answers, style only)
+  ### Positions he holds       (3 to 5 one-line beliefs from the source, close to verbatim)
+  ### Style examples           (2 to 5 short answers, no question tags: style only)
 
-The pipeline (`pack.py`, `sim_pack.py`) appends the block as the last section of the frozen pack when a profile is
+The pipeline (`pack.py`, `sim_pack.py`) appends the block, headed STYLE GUIDE, as the last section of the frozen pack when a profile is
 given. Rules about facts stay in the runtime prompts; the voice block carries only the personal style. Same profile
 text gives a byte-identical section: nothing per-run (path, time, hash) is ever rendered into it.
 """
@@ -27,9 +28,10 @@ from pathlib import Path
 from .model import MAX_OUTPUT_TOKENS, PRICES, PrepError, PrepModel, Usage, spend_usd
 
 DEFAULT_VOICE_PATH = Path("~/Library/Application Support/Verse/profile/voice.md")
-WORD_CAP = 600
+WORD_CAP = 650
 MAX_SOURCE_CHARS = 120_000
-MIN_SAMPLES, MAX_SAMPLES = 3, 5
+MIN_SAMPLES, MAX_SAMPLES = 2, 5
+MIN_POSITIONS, MAX_POSITIONS = 3, 5
 
 SECTIONS = (
     "Tone",
@@ -37,20 +39,25 @@ SECTIONS = (
     "Openers and phrasings",
     "Words to avoid",
     "How projects and numbers are framed",
-    "Sample answers",
+    "Positions he holds",
+    "Style examples",
 )
+POSITIONS = "Positions he holds"
 SAMPLES = SECTIONS[-1]
 
-# Headings the pipeline writes into packs. The runtime looks for VOICE_HEADING to know a pack carries a voice.
-VOICE_HEADING = "## VOICE"
+# Headings the pipeline writes into packs. The runtime looks for VOICE_HEADING to know a pack carries a style guide.
+# It is called STYLE GUIDE (not "voice") on purpose: the model cited a section named VOICE as if it were evidence.
+VOICE_HEADING = "## STYLE GUIDE"
+LEGACY_HEADINGS = ("## VOICE", "## THE OWNER'S VOICE")  # earlier packs: stripped by strip_voice
 MEETING_HEADER = (
-    f"{VOICE_HEADING} (how the user talks. Wording only: every SAY line and point is phrased like this. It is not a "
-    "source: never cite it, never take facts, numbers or names from it, and it never changes the line format or the "
-    "length limits; sample answers show style only)")
+    f"{VOICE_HEADING} (how to speak; not evidence, never cite. Wording only: every SAY line and point is phrased like "
+    "this. Take no facts, numbers or names from it, and it never changes the line format or the length limits. "
+    "\"Positions he holds\" are his own views: say one when the question calls for it, in his words, without a source "
+    "tag. The examples show style only)")
 SIM_HEADER = (
-    f"{VOICE_HEADING} (how the candidate talks. Only the COACH task uses it, to phrase the \"better sentence\"; the "
-    "interviewer never imitates it. It is not a source: never cite it and never take facts, numbers or names from it, "
-    "only the evidence above counts; sample answers show style only)")
+    f"{VOICE_HEADING} (how the candidate speaks; not evidence, never cite. Only the COACH task uses it, to phrase the "
+    "\"better sentence\"; the interviewer never imitates it. Take no facts, numbers or names from it: only the "
+    "evidence above counts. The examples show style only)")
 
 SYSTEM = """You are the voice-profile stage of Verse, a live meeting and interview assistant. Verse writes short lines \
 that the user then says out loud. Those lines must sound like the user, not like an AI and not like a report. From a \
@@ -62,7 +69,7 @@ and the communication style they ask for. Infer the spoken style from that. Wher
 point, use plain spoken English at B1-B2 level, never fancier. Do not invent biography, employers, numbers or \
 quotes: every claim in the sample answers must come from the source.
 
-Reply with markdown only, exactly these six sections in this order, each starting with its "### " heading, and \
+Reply with markdown only, exactly these seven sections in this order, each starting with its "### " heading, and \
 nothing before the first heading or after the last item:
 
 ### Tone
@@ -74,8 +81,10 @@ uncertainty.
 sentence, contractions, whether to use fillers.
 
 ### Openers and phrasings
-4 to 8 bullets: short phrases the person would really say to open an answer, to change direction, to admit a gap, to \
-close. Quote each in "double quotes".
+First bullet, exactly: "Options only: use at most one per answer, vary them, and often use none." Then 4 to 8 \
+bullets: short phrases the person might say to open an answer, to change direction, to admit a gap, to close. Quote \
+each in "double quotes". Write them as natural spoken clauses of different shapes. Never write a label-style opener \
+that ends in a colon (like "Short version:" or "Bottom line:"): such labels get repeated in every answer.
 
 ### Words to avoid
 1 to 3 bullets: words, phrases and habits the person dislikes or that would sound fake in their mouth (corporate \
@@ -86,12 +95,16 @@ supports or what follows from the stated tone.
 2 to 4 bullets: how the person talks about a project (outcome first? problem, then choice, then result?), how they \
 state numbers (exact, with what was measured, with what is uncertain), how they credit tools and teammates.
 
-### Sample answers
-3 to 5 bullets. Each is a complete spoken answer of 25 to 45 words to a different typical interview or meeting \
-question, in the person's style, first person, built only from facts in the source. Start each with the question in \
-square brackets, for example "- [Tell me about a project you are proud of] I built ...". No invented numbers.
+### Positions he holds
+3 to 5 bullets, one line each: beliefs the person states in the source, copied as close to verbatim as spoken English \
+allows (for example that retrieval is not ground truth, or that hard rules live in code). Only positions the source \
+states; no invented ones, no project facts, no numbers.
 
-Hard limits: at most 600 words in total (headings included), spoken English at B1-B2, no emojis, no markdown other \
+### Style examples
+2 to 5 bullets. Each is a complete spoken answer of 25 to 45 words in the person's style, first person, built only \
+from facts in the source. Do not write the question or any tag in front of it: just the answer. No invented numbers.
+
+Hard limits: at most 650 words in total (headings included), spoken English at B1-B2, no emojis, no markdown other \
 than the headings and "- " bullets."""
 
 FAKE_PROFILE = """### Tone
@@ -103,10 +116,10 @@ FAKE_PROFILE = """### Tone
 - One idea per sentence.
 
 ### Openers and phrasings
+- Options only: use at most one per answer, vary them, and often use none.
 - "Sure, the clearest example is ..."
 - "Honestly, I haven't done that exact thing, but here's how I'd do it."
 - "What I like is ..."
-- "In short: ..."
 
 ### Words to avoid
 - "Great question", "leverage", "synergy", hype words, and claims like "100% reliable".
@@ -115,15 +128,25 @@ FAKE_PROFILE = """### Tone
 - Outcome first, then what he chose and why, then the number and how it was measured.
 - Says what is still uncertain.
 
-### Sample answers
-- [Tell me about a project you are proud of] I built a small weather app for my family. It was simple, and it worked on day one. People used it every morning, and that made me happy.
-- [How do you work with a team?] I keep things short and clear. I say what I plan to do, then I do it, then I tell people how it went.
-- [What is your biggest weakness?] I sometimes rebuild things that already work. I'm getting better at asking first: does the user really feel the problem?
+### Positions he holds
+- Small tools that do one thing well beat big systems.
+- Ask the user before polishing anything.
+- Say what you tested and what you did not.
+
+### Style examples
+- I built a small weather app for my family. It was simple, and it worked on day one. People used it every morning, and that made me happy.
+- I keep things short and clear. I say what I plan to do, then I do it, then I tell people how it went.
+- I sometimes rebuild things that already work. I'm getting better at asking first: does the user really feel the problem?
 """
 
 
 # ---------------------------------------------------------------- parsing
 _HEADING = re.compile(r"^###\s+(.+?)\s*$")
+_TAG = re.compile(r"^\[[^\]]*\]\s*")
+# a bare label opener ("Short version:") is repeated by the model in every answer: dropped, whatever the model wrote
+_LABEL_OPENER = re.compile(r"^[\"'“]?[A-Za-z' -]{1,24}:\s*(\.\.\.|…)?[\"'”]?$")
+OPENERS = "Openers and phrasings"
+MIN_OPENERS = 3
 
 
 @dataclass
@@ -182,14 +205,23 @@ def parse_profile(raw: str) -> VoiceProfile:
     empty = [s for s in SECTIONS if not sections[s]]
     if empty:
         raise PrepError(f"voice profile: empty section(s): {', '.join(empty)}")
+    kept = [b for b in sections[OPENERS] if not _LABEL_OPENER.match(b)]
+    if len(kept) - (1 if kept and kept[0].startswith("Options only") else 0) < MIN_OPENERS:
+        raise PrepError(f"voice profile: fewer than {MIN_OPENERS} usable openers (label openers like 'Short version:' are dropped)")
+    sections[OPENERS] = kept
+    # a question tag in front of an example would make it read like a fact about that question: drop it
+    sections[SAMPLES] = [_TAG.sub("", b).strip() for b in sections[SAMPLES]]
     n = len(sections[SAMPLES])
     if n < MIN_SAMPLES:
-        raise PrepError(f"voice profile: {n} sample answer(s); at least {MIN_SAMPLES} are required")
+        raise PrepError(f"voice profile: {n} style example(s); at least {MIN_SAMPLES} are required")
+    k = len(sections[POSITIONS])
+    if not MIN_POSITIONS <= k <= MAX_POSITIONS:
+        raise PrepError(f"voice profile: {k} position(s); {MIN_POSITIONS} to {MAX_POSITIONS} are required")
     return VoiceProfile(sections)
 
 
 def fit_profile(p: VoiceProfile, cap: int = WORD_CAP) -> tuple[str, int]:
-    """Render at most `cap` words: drop sample answers from the tail down to MIN_SAMPLES (and to MAX_SAMPLES first).
+    """Render at most `cap` words: drop style examples from the tail down to MIN_SAMPLES (and to MAX_SAMPLES first).
     Returns (text, samples_kept). Raises PrepError when even the minimum does not fit: a trimmed middle section would
     cut a rule in half, so the caller asks the model again instead."""
     n = min(len(p.sections[SAMPLES]), MAX_SAMPLES)
@@ -238,9 +270,9 @@ _SECTION_START = re.compile(r"^## ", re.M)
 
 
 def strip_voice(pack: str) -> str:
-    """Remove a trailing voice section from a rendered pack: this module's `## VOICE` one and the hand-appended
+    """Remove a trailing voice section from a rendered pack: this module's `## STYLE GUIDE` one, the earlier `## VOICE` one and the hand-appended
     `## THE OWNER'S VOICE` one of the first Mara session. Only a section that runs to the end of the pack is removed."""
-    for marker in (f"\n{VOICE_HEADING}", "\n## THE OWNER'S VOICE"):
+    for marker in ("\n" + h for h in (VOICE_HEADING, *LEGACY_HEADINGS)):
         i = pack.find(marker)
         if i == -1:
             continue
@@ -278,7 +310,7 @@ async def distill_async(source: str, model: PrepModel, *, budget_usd: float = 1.
             text, kept = fit_profile(parse_profile(res.text))
             return text, total, kept
         except PrepError as e:
-            problem = f"{e}. Keep to the six sections and {WORD_CAP} words."
+            problem = f"{e}. Keep to the seven sections and {WORD_CAP} words."
     raise PrepError(f"voice distillation failed after {attempts} attempts: {problem}")
 
 
