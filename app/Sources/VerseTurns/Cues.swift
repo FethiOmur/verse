@@ -140,15 +140,37 @@ public enum Cues {
     /// The kind of a finished turn: fragment (see `isFragment`), question (a question cue or a closing "?"), or statement.
     /// A turn shorter than `minWords` is still a question when it is a complete short question (`isShortQuestion`).
     /// Only the kind changes: `isFragment` (and with it the endpoint hold) is the same for short turns as before.
-    public static func kind(of text: String, lang: String = "en", minWords: Int = 3) -> TurnKind {
+    public static func kind(of text: String, lang: String = "en", minWords: Int = 3, terms: SessionTerms? = nil) -> TurnKind {
         if isFragment(text, lang: lang, minWords: minWords) {
-            return isShortQuestion(text, lang: lang, minWords: minWords) ? .question : .fragment
+            return isShortQuestion(text, lang: lang, minWords: minWords, terms: terms) ? .question : .fragment
         }
         if hasCue(text, lang: lang) || text.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("?") { return .question }
+        // A noun phrase of up to `minWords` words that names something the session knows ("And notice period").
+        if let terms, isNounPhraseQuestion(text, lang: lang, minWords: minWords, terms: terms) { return .question }
         return .statement
     }
 
+    /// Two or `minWords` words, ending where a clause can end, and naming a session term (`SessionTerms.names`).
+    /// Only called for turns without a cue and without a "?".
+    static func isNounPhraseQuestion(_ text: String, lang: String, minWords: Int, terms: SessionTerms) -> Bool {
+        let t = Text.tokens(text, lang: lang)
+        guard t.count >= 2, t.count <= minWords, let last = t.last, !isHesitation(last, lang: lang),
+              !(fragmentEnders[lang] ?? fragmentEnders["en"]!).contains(last) else { return false }
+        if lang == "en", t.allSatisfy({ enLeaders.contains($0) }) { return false }
+        return endsComplete(text, lang: lang) && terms.names(text, lang: lang)
+    }
+
     // MARK: short questions
+
+    /// Words that carry no topic of their own (leaders, conjunctions, articles, prepositions, bare auxiliaries,
+    /// question words, subject pronouns): what is left of a short turn after these is its content.
+    static func functionWords(lang: String) -> Set<String> {
+        var out = enLeaders.union(enWh).union(enAux)
+        out.formUnion(fragmentEnders[lang] ?? fragmentEnders["en"]!)
+        if lang != "en" { out.formUnion(fragmentEnders["en"]!) }
+        out.formUnion(["you", "your", "me", "it", "that", "this", "is", "be", "just", "very", "really", "yes", "no"])
+        return out
+    }
 
     /// Second words that make a wh-question a cut-off prefix ("Why this", "How big", "How many"): the rest follows.
     private static let openSecondWords: Set<String> = ["this", "that", "these", "those", "big", "long", "many", "much", "often", "far", "old",
@@ -159,7 +181,11 @@ public enum Cues {
     /// the recognizer's "Y" for "why") or a closing "?", and it does not end where a clause cannot end (a preposition,
     /// conjunction, article, bare auxiliary, "Where do you", a filler) or look like a prefix ("Why this").
     /// One word is never a question here ("Okay.", "Sure?"), and a "?" after nothing but leader words ("Okay, right?") is not either.
-    public static func isShortQuestion(_ text: String, lang: String = "en", minWords: Int = 3) -> Bool {
+    ///
+    /// A short noun phrase without a cue or a "?" ("Notice period", "And salary") is a question only when it names
+    /// something the session knows (`terms`: a glossary term, a fact, or a phrase of a prepared bank question).
+    /// Without `terms` it stays a fragment, as before.
+    public static func isShortQuestion(_ text: String, lang: String = "en", minWords: Int = 3, terms: SessionTerms? = nil) -> Bool {
         let w = Text.words(text, lang: lang)
         let t = w.map(\.text)
         guard t.count >= 2, t.count < minWords, let last = t.last, !isHesitation(last, lang: lang) else { return false }
@@ -175,6 +201,7 @@ public enum Cues {
         guard endsComplete(text, lang: lang) else { return false }
         if hasCue(text, lang: lang) { return true }
         // Nemotron wrote "Why Halden?" as "Y Halden".
-        return lang == "en" && t[0] == "y"
+        if lang == "en" && t[0] == "y" { return true }
+        return terms.map { isNounPhraseQuestion(text, lang: lang, minWords: minWords, terms: $0) } ?? false
     }
 }

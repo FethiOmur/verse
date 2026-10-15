@@ -154,6 +154,8 @@ public actor TurnEngine {
     private let config: TurnConfig
     private let matcher: MatchCache
     private let facts: FactIndex
+    /// What the session knows by name, for short noun-phrase questions ("Notice period").
+    private let terms: SessionTerms
     private var topic: TopicTrigger
 
     private var now: TimeInterval = 0
@@ -173,6 +175,7 @@ public actor TurnEngine {
         self.config = config
         self.matcher = MatchCache(BankMatcher(bank: bank, lang: config.lang))
         self.facts = facts
+        self.terms = SessionTerms(bank: bank, facts: facts)
         self.topic = TopicTrigger(config: config, bank: bank, bankMatches: matcher, facts: facts)
     }
 
@@ -419,7 +422,7 @@ public actor TurnEngine {
         var audioEnd = turn.audioEnd
         if byQuiet, levelsSeen, lastActive.isFinite, lastActive >= turn.startedAt - 3 { audioEnd = max(audioEnd, lastActive - 0.05) }
         return [Timed(at: t, event: .turn(turnID: turn.id, speaker: .remote, text: turn.text, addressee: who, tAudioEnd: audioEnd,
-                                          kind: Cues.kind(of: turn.text, lang: config.lang, minWords: config.minTurnWords)))]
+                                          kind: Cues.kind(of: turn.text, lang: config.lang, minWords: config.minTurnWords, terms: terms)))]
     }
 
     // MARK: me channel
@@ -445,7 +448,7 @@ public actor TurnEngine {
         remoteSinceMe = 0
         guard !Text.tokens(turn.text, lang: config.lang).isEmpty else { return [] }
         return [Timed(at: t, event: .turn(turnID: turn.id, speaker: .me, text: turn.text, addressee: .unknown, tAudioEnd: turn.audioEnd,
-                                          kind: Cues.kind(of: turn.text, lang: config.lang, minWords: config.minTurnWords)))]
+                                          kind: Cues.kind(of: turn.text, lang: config.lang, minWords: config.minTurnWords, terms: terms)))]
     }
 
     // MARK: addressee
