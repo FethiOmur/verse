@@ -39,6 +39,8 @@ struct TopicTrigger {
     struct Piece: Equatable {
         var at: Double
         var text: String
+        /// The remote turn the piece came from ("" when unknown), so a turn can be taken out again.
+        var turn = ""
     }
 
     struct Hit: Equatable {
@@ -94,6 +96,12 @@ struct TopicTrigger {
     mutating func noteClosed(_ pieces: [Piece], now: Double) {
         history.append(contentsOf: pieces)
         prune(now)
+    }
+
+    /// Takes a closed turn's pieces out of the window: the brain's paraphrase matcher found a prepared question in it, so
+    /// it already has its own card and must not come back as a topic later.
+    mutating func forget(turn: String) {
+        history.removeAll { $0.turn == turn }
     }
 
     private mutating func prune(_ now: Double) {

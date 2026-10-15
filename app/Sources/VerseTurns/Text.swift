@@ -83,3 +83,28 @@ enum Text {
     /// Rounds to milliseconds so JSON lines stay short and stable.
     static func ms(_ x: Double) -> Double { (x * 1000).rounded() / 1000 }
 }
+
+/// Lines a model writes to say "nothing to say": `NONE`, `SAY: NONE`, `- none`, `N/A`, `SKIP`. They must never reach a
+/// card. The brain strips them (`brain/verse_brain/runtime/lines.py`); this is the same rule on the Swift side, so a
+/// sentinel that slips past (an older brain, a new model habit) still renders as nothing.
+public enum ModelLine {
+    static let sentinels: Set<String> = ["none", "null", "n/a", "skip"]
+    private static let open = CharacterSet(charactersIn: "([{<\"'`*_")
+    private static let close = CharacterSet(charactersIn: ".!:;,)]}>\"'`*_ ")
+
+    /// True when the whole line is a sentinel: behind an optional `SAY:` / `- ` marker, in brackets or quotes and with a
+    /// closing full stop, in any case. "None of the pilots failed." is a sentence, not a sentinel.
+    public static func isSentinel(_ line: String) -> Bool {
+        var s = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.lowercased().hasPrefix("say") {
+            let rest = s.dropFirst(3).drop { $0 == " " || $0 == "\t" }
+            if rest.first == ":" { s = String(rest.dropFirst()) }
+        } else if let f = s.first, "-\u{2022}*".contains(f) {
+            s = String(s.dropFirst())
+        }
+        s = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        while let f = s.unicodeScalars.first, open.contains(f) { s.unicodeScalars.removeFirst() }
+        while let l = s.unicodeScalars.last, close.contains(l) { s.unicodeScalars.removeLast() }
+        return sentinels.contains(s.lowercased())
+    }
+}

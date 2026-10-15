@@ -205,6 +205,8 @@ public final class VerseRunner: @unchecked Sendable {
         var lastQuestion: (event: OutboundEvent, sent: Date)?
         var pendingQuestion: OutboundEvent?
         var brainFailed = false
+        /// The turn engine of the running session, for the brain's paraphrase hits (`noteBrainBankHit`).
+        var engine: TurnEngine?
     }
 
     private let transcript = OSAllocatedUnfairLock<FileHandle?>(initialState: nil)
@@ -279,6 +281,7 @@ public final class VerseRunner: @unchecked Sendable {
             return 2
         }
         let engine = TurnEngine(config: turnCfg, bank: bank, facts: facts)
+        state.withLock { $0.engine = engine }
         openTranscript()
 
         // The brain first: its pre-warm must be done before the first question is heard.
@@ -625,6 +628,11 @@ public final class VerseRunner: @unchecked Sendable {
         let obj = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any]
         if let obj, obj["type"] as? String == "status", let st = obj["state"] as? String {
             if ["ready", "offline", "error", "credit_exhausted", "rate_limited"].contains(st) { state.withLock { if $0.ready == nil { $0.ready = st } } }
+        }
+        // The brain's paraphrase hit: the engine has to know, so the turn gets no topic chips.
+        if let obj, obj["type"] as? String == "bank_hit", let tid = obj["turn_id"] as? String,
+           let engine = state.withLock({ $0.engine }) {
+            Task { await engine.noteBrainBankHit(turnID: tid) }
         }
         if options.format == .json || options.sink != nil {
             emit(line, fromBrain: true)

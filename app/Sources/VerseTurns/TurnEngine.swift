@@ -138,6 +138,8 @@ public actor TurnEngine {
         var hitCount = 0
         var sentHitID: String?
         var sentHitScore = 0.0
+        /// The brain's paraphrase matcher (F3) hit a bank entry in this turn (`noteBrainBankHit`).
+        var brainHit = false
         /// The words of the previous turn that a cumulative recognizer result still repeats at its start.
         var stripPrefix: [String]?
         var stripBelow = 0.0
@@ -175,6 +177,18 @@ public actor TurnEngine {
     }
 
     // MARK: public API
+
+    /// The brain found a prepared question in this turn with its paraphrase matcher (`bank_hit` with `via:"embed"`; the
+    /// engine only knows its own n-gram hits). The turn already has a card, so it gets no more topic chips and its text
+    /// does not stay in the topic window.
+    public func noteBrainBankHit(turnID: String) {
+        if var t = remote, t.id == turnID {
+            t.brainHit = true
+            remote = t
+        } else {
+            topic.forget(turn: turnID)
+        }
+    }
 
     /// Plan signature: the events caused by `e`, in order.
     public func ingest(_ e: TranscriptEvent) -> [OutboundEvent] {
@@ -357,7 +371,7 @@ public actor TurnEngine {
         }
         // Topic chip: a statement near a prepared topic. Never in a turn that has a question cue or a bank hit (or a
         // hit candidate that may become one): those already produce a card.
-        if !turn.cue, turn.hitCandidate == nil, turn.sentHitID == nil,
+        if !turn.cue, turn.hitCandidate == nil, turn.sentHitID == nil, !turn.brainHit,
            let hit = topic.evaluate(now: now, current: Self.pieces(of: turn), skip: turn.chipIDs) {
             out.append(Timed(at: now, event: .chip(turnID: turn.id, kind: "topic", text: hit.text, sourceRef: hit.sourceRef, factID: hit.id)))
         }
@@ -366,7 +380,7 @@ public actor TurnEngine {
     }
 
     private static func pieces(of turn: Turn) -> [TopicTrigger.Piece] {
-        turn.segments.map { TopicTrigger.Piece(at: $0.at, text: $0.text) }
+        turn.segments.map { TopicTrigger.Piece(at: $0.at, text: $0.text, turn: turn.id) }
     }
 
     /// The best bank entry for the turn text (whole text or its last sentence, whichever matches better), or nil
@@ -391,7 +405,7 @@ public actor TurnEngine {
     private func closeRemote(at t: TimeInterval, byQuiet: Bool = false) -> [Timed] {
         guard let turn = remote else { return [] }
         remote = nil
-        if !turn.cue, turn.sentHitID == nil { topic.noteClosed(Self.pieces(of: turn), now: now) }
+        if !turn.cue, turn.sentHitID == nil, !turn.brainHit { topic.noteClosed(Self.pieces(of: turn), now: now) }
         let tokens = Text.tokens(turn.text, lang: config.lang)
         // A turn that was opened by stripping an earlier turn's words keeps them in front, so the chain of turns of one
         // cumulative recognizer result can be stripped again.
