@@ -1,0 +1,33 @@
+{
+  "session_id": "sim-20261014-1530-brightwave",
+  "mode": "coach",
+  "voice": "apple",
+  "started_at": "2026-10-14T15:31:00+02:00",
+  "ended_at": "2026-10-14T15:38:40+02:00",
+  "questions": [
+    {"q_id": "q1",
+     "asked": [{"id": "s1", "text": "Thanks for making the time. To start, tell me a bit about yourself and what brought you to this role.", "kind": "question"}],
+     "answers": [{"text": "Sure. So um I'm an AI engineer. I built Verse, a meeting assistant for the Mac, and before that Trailhead, which is on the App Store. I like, you know, building things end to end.", "t_start": 5.0, "t_end": 47.0, "words": 105, "fillers": 3}],
+     "coach": ["Clear start. Name the one project you want them to ask about."],
+     "skipped": false},
+    {"q_id": "q2",
+     "asked": [{"id": "s2", "text": "Describe a time you took an LLM feature from prototype to production.", "kind": "question"},
+               {"id": "s3", "text": "What did you measure?", "kind": "follow_up"}],
+     "answers": [{"text": "At Lantern we had invoices that people typed in by hand. I added an extraction step with a review screen. Basically the entry time dropped a lot and the team was happy, kind of a big win.", "t_start": 60.0, "t_end": 150.0, "words": 150, "fillers": 2},
+                 {"text": "We looked at the time per document and at how often reviewers changed the output. Actually it was around 40 percent fewer corrections after the second prompt.", "t_start": 162.5, "t_end": 190.5, "words": 70, "fillers": 1}],
+     "coach": ["Give the number: how long did entry take before and after?"],
+     "skipped": false},
+    {"q_id": "q3",
+     "asked": [{"id": "s4", "text": "Why Brightwave?", "kind": "question"}],
+     "answers": [],
+     "coach": [],
+     "skipped": true},
+    {"q_id": "q4",
+     "asked": [{"id": "s5", "text": "How would you keep latency and cost under control in a streaming LLM feature?", "kind": "question"}],
+     "answers": [{"text": "In Verse I stream the first sentence as soon as it is complete and I cache the long prefix so repeat calls are cheap. Um, I also pick a small model for the fast path and a larger one for the deep answer.", "t_start": 230.0, "t_end": 330.0, "words": 220, "fillers": 1}],
+     "coach": ["Good concrete mechanism. Add a measured latency figure."],
+     "skipped": false}
+  ],
+  "candidate_question": {"text": "What does the first quarter look like?", "reply": "You would start on the evaluation harness for the messaging assistant."},
+  "usage_usd": 0.31
+}

@@ -1,0 +1,38 @@
+{
+  "session_id": "sim-20261014-1530-brightwave",
+  "created_at": "2026-10-14T15:30:00+02:00",
+  "lang": "en",
+  "company": "Brightwave",
+  "role": "AI Engineer",
+  "interview_type": "screening",
+  "difficulty": "standard",
+  "length_min": 30,
+  "posting": {"source_url": "https://example.com/jobs/ai-engineer", "text_path": "posting.txt", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+  "competencies": [
+    {"id": "c1", "name": "Shipping LLM products", "posting_quote": "You will ship LLM-powered features from prototype to production."},
+    {"id": "c2", "name": "Ownership and communication", "posting_quote": "You own problems end to end and explain trade-offs clearly."},
+    {"id": "c3", "name": "Evaluation and reliability", "posting_quote": "You measure quality with evals and keep latency and cost under control."}
+  ],
+  "evidence": [
+    {"id": "e1", "kind": "project", "text": "Built Verse, a macOS meeting assistant: a Swift app plus a Python brain that streams Claude answers to a notch card while the call is running.",
+     "sources": [{"kind": "commit", "ref": "Verse@main", "quote": "brain: hedged streaming lanes for S/F/D routes"}, {"kind": "note", "ref": "about-me.md", "quote": "Verse is my meeting assistant"}]},
+    {"id": "e2", "kind": "metric", "text": "At Lantern, cut invoice entry time from 11 minutes to 2 minutes per document by adding an LLM extraction step with a human review screen.",
+     "sources": [{"kind": "cv", "ref": "cv.pdf p1", "quote": "Reduced invoice entry from 11 to 2 minutes"}]},
+    {"id": "e3", "kind": "project", "text": "Published Trailhead, an iOS running and cycling app, on the App Store; wrote the backend and ran 4 ad experiments.",
+     "sources": [{"kind": "cv", "ref": "cv.pdf p1", "quote": "Trailhead, App Store"}]}
+  ],
+  "questions": [
+    {"id": "q1", "kind": "opener", "text": "Tell me a bit about yourself and what brought you to this role.", "competency_ids": ["c2"], "evidence_ids": ["e1"], "follow_ups": [], "target_s": [60, 120]},
+    {"id": "q2", "kind": "behavioural", "text": "Describe a time you took an LLM feature from prototype to production.", "competency_ids": ["c1", "c3"], "evidence_ids": ["e1", "e2"], "follow_ups": ["What did you measure?"], "target_s": [60, 120]},
+    {"id": "q3", "kind": "motivation", "text": "Why Brightwave?", "competency_ids": ["c2"], "evidence_ids": [], "follow_ups": [], "target_s": [30, 60]},
+    {"id": "q4", "kind": "technical", "text": "How would you keep latency and cost under control in a streaming LLM feature?", "competency_ids": ["c3"], "evidence_ids": ["e1"], "follow_ups": [], "target_s": [90, 150]}
+  ],
+  "rubric": {
+    "c1": {"1": "No concrete product shipped.", "3": "Shipped something, vague on production concerns.", "5": "Prototype to production with named trade-offs and results."},
+    "c2": {"1": "Rambling, no ownership.", "3": "Clear but generic.", "5": "Owns outcomes and explains trade-offs crisply."},
+    "c3": {"1": "No measurement.", "3": "Mentions metrics without numbers.", "5": "Evals, latency and cost with numbers."}
+  },
+  "warnings": [],
+  "prep_model": "claude-sonnet-5-5",
+  "prep_usage": {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}
+}
