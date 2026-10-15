@@ -265,6 +265,8 @@ public struct OverlayReducer: Sendable {
     private var lastContent: TimeInterval = 0
     /// When each topic chip (by text) was last seen.
     private var topicSeen: [String: TimeInterval] = [:]
+    /// The turn each topic chip (by text) came from, so a bank hit in that turn can take it down again.
+    private var topicTurn: [String: String] = [:]
 
     public init(config: OverlayConfig = OverlayConfig(), bank: [String: BankOpener] = [:]) {
         self.config = config
@@ -279,6 +281,7 @@ public struct OverlayReducer: Sendable {
         statements = [:]
         lastRemoteTurnID = nil
         topicSeen = [:]
+        topicTurn = [:]
     }
 
     // MARK: events
@@ -379,7 +382,7 @@ public struct OverlayReducer: Sendable {
         case "bank_hit":
             guard let bid = o[string: "bank_id"] else { return }
             turns[tid, default: TurnInfo()].bankHit = bid
-            if state.card?.turnID == tid { refreshCard(now: now) }
+            bankHitLanded(turnID: tid, now: now)
         case "turn":
             guard o[string: "speaker"] == "remote" else { return }
             let who = o[string: "addressee"] ?? "unknown"
@@ -392,8 +395,10 @@ public struct OverlayReducer: Sendable {
                 return
             }
             guard kind == "question" else {
-                // Fragments never open a card. A statement waits: the brain may answer it as a question.
-                if kind == "statement" { statements[tid] = (text, who) }
+                // A statement or a fragment waits: the brain answers it when a prepared question matched it (its bank
+                // hit), or when it takes a statement as a question. Nothing else opens a card for it.
+                statements[tid] = (text, who)
+                if turns[tid]?.bankHit != nil { openCard(turnID: tid, question: text, addressee: who, now: now) }
                 return
             }
             openCard(turnID: tid, question: text, addressee: who, now: now)
@@ -420,7 +425,7 @@ public struct OverlayReducer: Sendable {
     private mutating func openReclassifiedStatement(turnID tid: String, tier: String, lines l: Lines, now: TimeInterval) {
         guard state.card?.turnID != tid, tid == lastRemoteTurnID, let st = statements[tid],
               tier == "S" || tier == "F",
-              l.all.contains(where: { $0.trimmingCharacters(in: .whitespaces).hasPrefix("SAY:") }) else { return }
+              l.all.contains(where: { let t = $0.trimmingCharacters(in: .whitespaces); return t.hasPrefix("SAY:") && !ModelLine.isSentinel(t) }) else { return }
         openCard(turnID: tid, question: st.text, addressee: st.addressee, now: now)
     }
 
@@ -432,13 +437,32 @@ public struct OverlayReducer: Sendable {
         }
     }
 
+    /// A bank entry matched the turn (the engine's n-gram hit or the brain's paraphrase hit). The brain answers a turn
+    /// with a hit whatever Swift called it, so a statement or fragment that is still waiting (the hit came after the turn
+    /// closed) opens its card now, the newest turn only. The turn's topic chips go: it has an answer of its own.
+    private mutating func bankHitLanded(turnID tid: String, now: TimeInterval) {
+        let gone = state.topics.filter { topicTurn[$0.text] == tid }.map(\.text)
+        if !gone.isEmpty {
+            state.topics.removeAll { gone.contains($0.text) }
+            for t in gone { topicSeen[t] = nil; topicTurn[t] = nil }
+        }
+        if state.card?.turnID != tid, tid == lastRemoteTurnID, let st = statements[tid] {
+            openCard(turnID: tid, question: st.text, addressee: st.addressee, now: now)
+        } else if state.card?.turnID == tid {
+            refreshCard(now: now)
+        }
+    }
+
     private mutating func applyChip(_ o: [String: JSONValue], now: TimeInterval) {
         guard let tid = o[string: "turn_id"], let text = o[string: "text"], !text.isEmpty else { return }
         let kind = o[string: "kind"] ?? ""
+        // A turn with a bank hit has its answer: a topic chip that was already on its way is dropped.
+        if kind == "topic", turns[tid]?.bankHit != nil { return }
         let chip = OverlayChip(text: text, source: OverlayChip.sourceLabel(kind: kind, ref: o[string: "source_ref"] ?? ""), kind: kind)
         if kind == "topic", state.card == nil || state.card?.turnID != tid {
             // A topic can come up with no question card open: it goes to the slim row under the capsule.
             topicSeen[text] = now
+            topicTurn[text] = tid
             if !state.topics.contains(where: { $0.text == text }) { state.topics.append(chip) }
             return
         }
@@ -454,7 +478,7 @@ public struct OverlayReducer: Sendable {
             // The brain's paraphrase matcher (F3): shown exactly like Swift's n-gram hit.
             guard let tid = o[string: "turn_id"], let bid = o[string: "bank_id"] else { return }
             turns[tid, default: TurnInfo()].bankHit = bid
-            if state.card?.turnID == tid { refreshCard(now: now) }
+            bankHitLanded(turnID: tid, now: now)
         case "delta":
             guard let id = o[string: "id"], let tid = o[string: "turn_id"], let tier = o[string: "tier"] else { return }
             var l = lines[id] ?? Lines(tier: tier, turnID: tid)
@@ -499,6 +523,7 @@ public struct OverlayReducer: Sendable {
 
     private static func parse(_ raw: String) -> Line? {
         let s = raw.trimmingCharacters(in: .whitespaces)
+        if ModelLine.isSentinel(s) { return nil }      // "NONE", "SAY: NONE", "- none": never on a card
         if s.hasPrefix("SAY:") {
             let body = s.dropFirst(4).trimmingCharacters(in: .whitespaces)
             return body.isEmpty ? nil : .say(body)

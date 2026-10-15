@@ -46,6 +46,13 @@ from .transport import (AuthFailed, BadRequest, CreditExhausted, Offline, Overlo
 
 log = logging.getLogger("verse.runtime")
 
+# A bank hit that lands after its turn was closed as statement/fragment still answers the turn when it comes within this
+# many seconds of the turn's arrival and no newer turn has started. The paraphrase matcher is the only source of such hits
+# (Swift's n-gram hits precede their turn on the pipe): a job takes ~20 ms on the GPU, up to ~0.6 s on a busy CPU
+# (bench/embed/results/latency_runs.txt), and the first job of a session waits for the bank index (1.6-2.3 s,
+# `index_s` in the same runs). 3 s covers that; an answer later than that comes after Alex has started to talk.
+LATE_HIT_WINDOW_S = 3.0
+
 _WORD = re.compile(r"[\w']+", re.UNICODE)
 
 
@@ -116,7 +123,8 @@ class Call:
         self.done = asyncio.Event()
         self.bank_known = asyncio.Event()
         self.first_text_seen = False
-        self.lines = LineAssembler(self._on_text, self._on_control, hold_first_line=(tier == "D" or probe))
+        self.lines = LineAssembler(self._on_text, self._on_control, hold_first_line=(tier == "D" or probe),
+                                   on_sentinel=self._on_sentinel)
         self.task: asyncio.Task | None = None
 
     # ---- output
@@ -152,6 +160,14 @@ class Call:
         self.buffer.clear()
         if self.task is not None and not self.task.done():
             self.task.cancel()
+            # A task cancelled before its first step never enters `run()`, so its `finally` never sets these: whoever
+            # waits on the call (the statement decider, D's bank wait, `settle`) would wait forever.
+            self.task.add_done_callback(self._release_waiters)
+
+    def _release_waiters(self, _task=None) -> None:
+        self.bank_known.set()
+        self.kind_known.set()
+        self.done.set()
 
     # ---- line handling
     def _on_text(self, chunk: str, line_done: bool, line: str) -> None:
@@ -194,6 +210,10 @@ class Call:
         self.say_line = body
         self._out(self.brain.emitter.delta(self.id, self.turn_id, self.tier, s, True))
         self._stage("say_line")
+
+    def _on_sentinel(self, line: str) -> None:
+        """A "nothing to say" line (NONE, SAY: NONE, N/A, SKIP ...): never shown, whatever tier wrote it."""
+        self._stage("sentinel_dropped", line=line[:40])
 
     def _on_control(self, line: str) -> None:
         if line.startswith("KIND:"):
@@ -285,6 +305,8 @@ class TurnState:
     turns_before: list[Turn] = field(default_factory=list)
     retried_offline: bool = False
     kind: str | None = None        # `turn.kind` as sent by Swift (None = missing or unknown: question behaviour)
+    finished_at: float = 0.0       # time.monotonic() when the turn arrived
+    rescued: bool = False          # a late bank hit turned a statement/fragment into an answered question
     # F3 paraphrase matcher: the candidate entry of the last evaluated partials, how many in a row, the id sent
     embed_cand: str | None = None
     embed_count: int = 0
@@ -319,6 +341,7 @@ class Brain:
         self.tasks: set[asyncio.Task] = set()
         self.stopped = asyncio.Event()
         self.start_background = True
+        self.late_hit_window_s = LATE_HIT_WINDOW_S
         # F2 incremental summary
         self.running = Running()
         self.summary_spend = 0.0
@@ -728,9 +751,13 @@ class Brain:
             return
         if st.bank_hit is not None and st.bank_hit.via != "embed":   # a Swift hit landed while this ran
             return
-        if job.turn_id not in (self.active_remote, self.latest_remote_turn):   # a newer turn has started
+        why = self._late_reason(st) if st.finished else "open"
+        late = why is None                  # a statement/fragment just closed, nothing newer yet
+        if why in ("window", "newer_turn") and not st.rescued:
+            self.emitter.metric(st.turn_id, "late_hit_ignored", reason=why, kind=st.kind, via="embed")
+        if job.turn_id not in (self.active_remote, self.latest_remote_turn) and not late:   # a newer turn has started
             return
-        if st.finished and (st.addressee == "other" or st.kind == "fragment"):
+        if st.finished and (st.addressee == "other" or (st.kind == "fragment" and not late)):
             return
         if not ok:
             st.embed_cand, st.embed_count = None, 0
@@ -752,6 +779,7 @@ class Brain:
         self.emitter.emit({"type": "bank_hit", "turn_id": st.turn_id, "bank_id": bank_id, "score": round(score, 4),
                            "via": "embed"})
         self._maybe_verdict(st)
+        self._late_hit(st)
 
     # ------------------------------------------------------------------ bank hits and verdicts
     def on_bank_hit(self, msg: dict) -> None:
@@ -766,6 +794,49 @@ class Brain:
         if self.embed is not None:
             self.embed.drop(st.turn_id)      # Swift's hit wins; no embedding for this turn from now on
         self._maybe_verdict(st)
+        self._late_hit(st)
+
+    def _late_reason(self, st: TurnState) -> str | None:
+        """None when a bank hit may still answer this finished statement/fragment turn, else why not."""
+        if not st.finished or st.rescued or st.kind not in ("statement", "fragment") or st.addressee == "other":
+            return "not_applicable"
+        if time.monotonic() - st.finished_at > self.late_hit_window_s:
+            return "window"
+        if not self.turns or self.turns[-1].turn_id != st.turn_id or self.active_remote not in (None, st.turn_id):
+            return "newer_turn"        # another turn (also the owner's own) has been heard or has started since
+        return None
+
+    def _late_hit(self, st: TurnState) -> None:
+        """A bank hit for a turn that was already closed as statement or fragment ("So, have you built ..." has no
+        question cue; the paraphrase matcher still found the prepared question). Answer it as a question, once, when
+        the hit comes within `late_hit_window_s` and nothing newer has been heard. A statement probe that is still
+        undecided is dropped (nothing of it was shown); one that escalated is already answering; one whose
+        acknowledgement is on screen stays (a second card would be a double answer)."""
+        if not st.finished or st.rescued or st.kind not in ("statement", "fragment") or st.addressee == "other":
+            return
+        why = self._late_reason(st)
+        probe = st.fast if st.fast is not None and st.fast.probe and not st.fast.discarded and st.fast.error is None else None
+        if why is None and probe is not None:
+            if probe.kind == "question":
+                why = "already_answering"
+            elif probe.say_line is not None:
+                why = "ack_shown"
+        if why is None and (self.halted or self.session is None):
+            why = "halted"
+        if why is not None:
+            self.emitter.metric(st.turn_id, "late_hit_ignored", reason=why, kind=st.kind)
+            return
+        if probe is not None:
+            probe.discard()
+        was = st.kind
+        st.rescued = True
+        st.kind = "question"
+        st.fast = None
+        st.verdict_sent = False
+        self.latest_remote_turn = st.turn_id
+        self.emitter.metric(st.turn_id, "late_hit_rescue", was=was, bank_id=st.bank_hit.bank_id if st.bank_hit else None,
+                            since_turn_s=round(time.monotonic() - st.finished_at, 3))
+        self._endpoint(st)
 
     def on_bank_line(self, call: Call) -> None:
         st = self.ts.get(call.turn_id)
@@ -806,6 +877,7 @@ class Brain:
         if st.finished:
             return
         st.finished = True
+        st.finished_at = time.monotonic()
         st.final_text = text
         st.addressee = msg.get("addressee", "unknown")
         st.kind = turn_kind(msg)
