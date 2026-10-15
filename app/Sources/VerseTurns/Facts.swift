@@ -75,6 +75,14 @@ public struct FactIndex: Sendable {
 
     public var isEmpty: Bool { facts.isEmpty && terms.isEmpty }
 
+    /// Folded token sequences of the glossary terms and of the name facts, for `SessionTerms`.
+    var glossaryTokenLists: [[String]] { terms.map(\.tokens).filter { !$0.isEmpty } }
+    var nameTokenLists: [[String]] { facts.filter { $0.kind == "name" }.map(\.tokens).filter { !$0.isEmpty } }
+    /// True when `text` carries a number or a date the fact sheet knows ("42K budget").
+    func hasNumberOrDate(in text: String) -> Bool {
+        chips(in: text).contains { $0.kind == "number" || $0.kind == "date" }
+    }
+
     // MARK: matching
 
     /// Chips for everything in `text` that the fact sheet or glossary knows: names and terms as whole words

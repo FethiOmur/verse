@@ -82,7 +82,8 @@ let package = Package(
             name: "VerseUI",
             // S4: the practice-interview setup (posting fetch, voice keys) and report window.
             // T-UI: the teleprompter view, settings and editor use the VersePrompter core.
-            dependencies: ["VerseTurns", "VerseVoice", "VersePosting", "VersePrompter", "VerseSpeech"],
+            // W2: VerseMeet for the "Meeting detected, start?" prompt and calendar-matched sessions.
+            dependencies: ["VerseTurns", "VerseVoice", "VersePosting", "VersePrompter", "VerseSpeech", "VerseMeet"],
             swiftSettings: [.swiftLanguageMode(.v6)],
             linkerSettings: [.linkedFramework("ScreenCaptureKit"), .linkedFramework("WebKit"), .linkedFramework("Carbon")]
         ),
@@ -98,7 +99,7 @@ let package = Package(
         ),
         .testTarget(
             name: "VerseUITests",
-            dependencies: ["VerseUI", "VerseTurns", "VerseVoice", "VersePrompter", "VerseSpeech"],
+            dependencies: ["VerseUI", "VerseTurns", "VerseVoice", "VersePrompter", "VerseSpeech", "VerseMeet"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // F5: calendar prep (EventKit) and meeting detection (Core Audio process input flags).

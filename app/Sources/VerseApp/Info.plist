@@ -28,6 +28,10 @@
     <string>NSApplication</string>
     <key>NSAudioCaptureUsageDescription</key>
     <string>Verse transcribes the meeting app's audio on this Mac so it can suggest answers. Nothing is recorded or saved.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Verse reads your upcoming calendar events on this Mac to tell which meeting a call belongs to and to prepare for it. Event details stay on this Mac.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Verse reads your upcoming calendar events on this Mac to tell which meeting a call belongs to and to prepare for it. Event details stay on this Mac.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Verse transcribes your own voice on this Mac to follow the conversation. Nothing is recorded or saved.</string>
 </dict>

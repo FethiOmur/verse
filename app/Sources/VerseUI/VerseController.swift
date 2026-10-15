@@ -57,6 +57,10 @@ public final class VerseController: ObservableObject {
     private var runSessionDir: URL?
     private var runWasFake = false
     private var cancellables: Set<AnyCancellable> = []
+    /// "Play test file as remote…": the file is the remote channel and the microphone stays "me". Cleared when the run ends.
+    private var remoteFileOverride: URL?
+    /// Meeting detection ("Meeting detected · Start Verse?") and the summary-to-vault question.
+    public lazy var meeting = MeetingCoordinator(host: self)
 
     public init(settings: AppSettings, launch: LaunchOptions = LaunchOptions()) {
         self.settings = settings
@@ -73,6 +77,7 @@ public final class VerseController: ObservableObject {
 
     public var fakeBrain: Bool { launch.fakeBrain || settings.fakeBrain }
     public var testFile: String? {
+        if let r = remoteFileOverride { return r.path }
         if let f = launch.file, !f.isEmpty { return f }
         let p = settings.testAudioPath.trimmingCharacters(in: .whitespaces)
         return p.isEmpty ? nil : p
@@ -110,8 +115,10 @@ public final class VerseController: ObservableObject {
     public static let liveSessionSeconds = 12.0 * 3600
 
     /// The runner options for one Start. A test file plays to its end; live listens until Stop.
-    public static func runOptions(sessionDir dir: URL, settings: AppSettings, fakeBrain: Bool, testFile: String?) -> RunOptions {
+    public static func runOptions(sessionDir dir: URL, settings: AppSettings, fakeBrain: Bool, testFile: String?,
+                                  micWithFile: Bool = false) -> RunOptions {
         var o = RunOptions(sessionDir: dir)
+        o.micWithFile = micWithFile
         o.lang = settings.language
         o.turn = settings.turnConfig
         o.fakeBrain = fakeBrain
@@ -156,7 +163,8 @@ public final class VerseController: ObservableObject {
             return
         }
         let dir = SessionCatalog.url(settings.sessionName)
-        var o = Self.runOptions(sessionDir: dir, settings: settings, fakeBrain: fakeBrain, testFile: testFile)
+        var o = Self.runOptions(sessionDir: dir, settings: settings, fakeBrain: fakeBrain, testFile: testFile,
+                                micWithFile: remoteFileOverride != nil)
         log("start session=\(settings.sessionName) lang=\(settings.language) fake=\(fakeBrain) file=\(testFile ?? "-") live_seconds=\(o.seconds.map { String(Int($0)) } ?? "file")")
         lastLogLine = nil
         o.sink = { [weak self] e in
@@ -186,6 +194,15 @@ public final class VerseController: ObservableObject {
             let code = await r.run()
             await self?.runEnded(code)
         }
+    }
+
+    /// The menu's "Play test file as remote…": runs the selected session with `url` as the remote channel (the same file
+    /// path as `--file`) while the real microphone stays "me", so the app can be tested without a meeting app.
+    public func start(remoteFile url: URL) {
+        guard !running, !stopping else { return }
+        remoteFileOverride = url
+        start()
+        if !running { remoteFileOverride = nil }
     }
 
     /// Stops listening; the runner shuts the brain down. Returns when the run is over.
@@ -228,6 +245,11 @@ public final class VerseController: ObservableObject {
         persistSpend()
         monthSpend = SpendLedger.thisMonth()
         log("run ended code=\(code)")
+        if let dir = runSessionDir {
+            meeting.runFinished(FinishedRun(code: code, sessionName: dir.lastPathComponent, sessionDir: dir, startedAt: runStartedAt,
+                                            isTest: runWasFake || remoteFileOverride != nil || testFile != nil))
+        }
+        remoteFileOverride = nil
         // Never fail silently: a failed run without a status of its own says what the log said last.
         if code != 0 {
             let detail = lastLogLine.map { "The session ended: \($0)" } ?? "The session ended with an error (code \(code))."
@@ -236,8 +258,8 @@ public final class VerseController: ObservableObject {
             }
             showPanel()
         }
-        // Keep the overlay up only for a message that needs reading (permission, credit, error).
-        if overlay.state.status?.needsPanel != true { panel?.hide() }
+        // Keep the overlay up only for a message that needs reading (permission, credit, error) or a question to answer.
+        if overlay.state.status?.needsPanel != true, overlay.state.meetingPrompt == nil { panel?.hide() }
     }
 
     private func handle(_ e: RunnerEvent) {
@@ -252,7 +274,7 @@ public final class VerseController: ObservableObject {
             sessionSpend += c
             persistSpend()
         }
-        if case .ended = e, overlay.state.status?.needsPanel != true { panel?.hide() }
+        if case .ended = e, overlay.state.status?.needsPanel != true, overlay.state.meetingPrompt == nil { panel?.hide() }
     }
 
     private func persistSpend() {
@@ -281,7 +303,7 @@ public final class VerseController: ObservableObject {
 
     /// Hides the panel unless a meeting runs or a message needs reading.
     public func hideOverlayPanel() {
-        if !running, overlay.state.status?.needsPanel != true { panel?.hide() }
+        if !running, overlay.state.status?.needsPanel != true, overlay.state.meetingPrompt == nil { panel?.hide() }
     }
 
     /// The overlay message's Dismiss: hide the panel when nothing is running.

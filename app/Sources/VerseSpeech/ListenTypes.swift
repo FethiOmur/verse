@@ -41,6 +41,10 @@ public struct ListenConfig: Sendable {
     public var remoteBundleIDs: [String]
     public var micEnabled: Bool
     public var source: Source
+    /// With a `.file` source: also open the real microphone, so the file is the remote channel and the owner's voice
+    /// stays "me" (the app's "Play test file as remote"). Without it a file run is remote-only, as before. The file is
+    /// fed straight to the recognizer and not played aloud, so the microphone never hears it.
+    public var micWithFile: Bool = false
     /// Bundle-ID tap first, PID-list tap as the fallback.
     public var tapRoute: TapRoutePreference = .auto
     /// Off: voice processing ducks the meeting audio (>= 8 dB even at the minimum level, measured).
@@ -66,6 +70,10 @@ public struct ListenConfig: Sendable {
     }
 
     var isLive: Bool { if case .live = source { return true } else { return false } }
+
+    /// The real microphone is in use (a live session, or a file played as the remote channel with the mic kept open):
+    /// its permission is checked at start.
+    var usesRealMic: Bool { isLive || micWithFile }
 }
 
 /// What a session is built from. `system` is the real thing; tests swap parts (permissions, sources).
@@ -102,7 +110,7 @@ public struct ListenEnvironment: Sendable {
             case .live:
                 return cfg.micEnabled ? MicSource(voiceProcessing: cfg.voiceProcessing) : nil
             case .file:
-                return nil
+                return cfg.micEnabled && cfg.micWithFile ? MicSource(voiceProcessing: cfg.voiceProcessing) : nil
             case .memory(_, let me):
                 return me.map { MemorySource(clip: $0, tailSeconds: cfg.clipTailSeconds, name: "memory mic") }
             }

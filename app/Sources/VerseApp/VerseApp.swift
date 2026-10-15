@@ -74,6 +74,12 @@ struct VerseMenu: View {
         }
         .disabled(controller.running)
         Divider()
+        // W2: self-test without a meeting app: the file is the remote side, the microphone stays "me".
+        Button("Play test file as remote…") {
+            if let url = RemoteFilePicker.choose() { controller.start(remoteFile: url) }
+        }
+        .disabled(controller.running || controller.stopping || controller.sessions.isEmpty || sim.running)
+        Divider()
         if sim.running {
             Button("End practice interview") { sim.endInterview() }
         } else {
@@ -150,6 +156,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         if launch.autostart { controller.start() }
+        controller.meeting.begin()
     }
 
     /// `terminate` runs a nested event loop while the reply is pending. Called from inside a main-queue job (a Task,
@@ -167,6 +174,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return .terminateNow
         }
         Task { @MainActor in
+            controller.meeting.end()
             await sim.shutdown()
             await controller.shutdown()
             NSApp.reply(toApplicationShouldTerminate: true)

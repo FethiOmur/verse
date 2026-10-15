@@ -62,10 +62,11 @@ final class RunnerSinkTests: XCTestCase {
         XCTAssertEqual(events.last, .ended(exitCode: 0))
         let printed = try String(contentsOf: mirrorURL, encoding: .utf8).split(separator: "\n").map { JSONValue.decodeObject(String($0)) }
         XCTAssertFalse(printed.contains { $0 == nil }, "every printed line is one JSON object")
-        // Sink-only extras: the lines sent to the brain (printed only with --echo) and the end marker.
+        // Sink-only extras: the lines sent to the brain (printed only with --echo), the audio level and the end marker.
         let sunk = events.filter {
             if case .outbound = $0 { return false }
             if case .ended = $0 { return false }
+            if case .level = $0 { return false }
             return true
         }
         XCTAssertGreaterThan(sunk.count, 20)

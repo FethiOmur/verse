@@ -87,6 +87,9 @@ public enum RunnerEvent: Sendable, Equatable {
     case status(state: String, message: String)
     /// A problem the listen session reported while running (`{type:"issue", code, message}`).
     case issue(code: String, message: String)
+    /// Raw loudness of the last 200 ms per channel in dBFS (nil: exact silence or no such channel), about ten times a
+    /// second (sink only; nothing is printed). It moves the "Listening" label with the sound, before any text exists.
+    case level(remoteDbfs: Double?, meDbfs: Double?)
     /// A line sent to the brain (`partial`, `turn`, `bank_hit`), with `dir:"to_brain"`.
     case outbound([String: JSONValue])
     /// The run is over (sink only). Exit code as `run()` returns it.
@@ -98,7 +101,7 @@ public enum RunnerEvent: Sendable, Equatable {
         case .brain(let o), .chip(let o), .metric(let o), .outbound(let o): return o
         case .status(let st, let m): return ["type": .string("status"), "state": .string(st), "message": .string(m)]
         case .issue(let c, let m): return ["type": .string("issue"), "code": .string(c), "message": .string(m)]
-        case .ended: return nil
+        case .ended, .level: return nil
         }
     }
 
@@ -126,6 +129,9 @@ public struct RunOptions: Sendable {
     /// Overrides `file`; nil: `file` when set, otherwise live.
     public var source: ListenConfig.Source?
     public var micEnabled = true
+    /// With `file`: keep the real microphone open as "me" while the file plays as the remote channel (the app's
+    /// "Play test file as remote"). Off (the default, and `--file` of `verse-run`): the file run is remote-only.
+    public var micWithFile = false
     public var bundleIDs = defaultRemoteBundleIDs
     public var brainDir: URL?
     /// Brain with canned replies (`--fake`): no network, no key. For tests of the plumbing.
@@ -213,6 +219,9 @@ public final class VerseRunner: @unchecked Sendable {
     }
 
     private let transcript = OSAllocatedUnfairLock<FileHandle?>(initialState: nil)
+
+    /// How often a `.level` event is sent to the sink.
+    public static let levelPeriodMs = 100
 
     public init(options: RunOptions, log: @escaping @Sendable (String) -> Void = { _ in }) {
         self.options = options
@@ -322,11 +331,12 @@ public final class VerseRunner: @unchecked Sendable {
         let mic: Bool
         switch source {
         case .live: mic = o.micEnabled
-        case .file: mic = false
+        case .file: mic = o.micEnabled && o.micWithFile
         case .memory(_, let me): mic = me != nil
         }
         var cfg = ListenConfig(lang: o.lang, remoteBundleIDs: o.bundleIDs, micEnabled: mic, source: source)
         cfg.voiceProcessing = false
+        cfg.micWithFile = o.micWithFile
         let session = ListenSession(config: cfg)
         let stream: AsyncStream<TranscriptEvent>
         do {
@@ -368,6 +378,15 @@ public final class VerseRunner: @unchecked Sendable {
                 cont.yield(.tick(t, level?.rmsDbfs))
             }
         }
+        // Raw level for the overlay's "Listening" label (a front end only: nothing without a sink).
+        let levelTask: Task<Void, Never>? = options.sink == nil ? nil : Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(Self.levelPeriodMs))
+                if Task.isCancelled { break }
+                let lv = await session.levels(window: 0.2)
+                self?.emitSinkOnly(.level(remoteDbfs: lv[.remote]?.rmsDbfs, meDbfs: lv[.me]?.rmsDbfs))
+            }
+        }
         let issues = Task { [weak self] in
             for await issue in session.issues {
                 self?.emitJSON(["type": "issue", "code": issue.code, "message": issue.description])
@@ -396,6 +415,7 @@ public final class VerseRunner: @unchecked Sendable {
             }
         }
         ticker.cancel()
+        levelTask?.cancel()
         timer.cancel()
         pump.cancel()
         dispatch(await engine.flush(at: await session.now()))

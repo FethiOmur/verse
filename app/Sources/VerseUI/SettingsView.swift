@@ -122,6 +122,8 @@ public struct SettingsView: View {
                 LabeledContent("Card width", value: "\(Int(settings.cardWidth)) pt (drag the card's bottom edge)")
             }
 
+            SettingsMeetingSection(meeting: controller.meeting)
+
             SimVoiceSettingsSection(sim: simSettings)
 
             PrompterSettingsSection(settings: controller.prompter.settings)
