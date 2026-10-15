@@ -1,0 +1,29 @@
+Marta Lindqvist
+Backend and AI engineer, Gothenburg, Sweden (remote within Europe)
+
+Summary
+Software engineer with 4 years of professional experience, the last two on LLM features used by real customers. Python first, comfortable with Postgres, queues and cloud deployments.
+
+Experience
+Nordlys Commerce, AI Engineer, 2024 to present
+- Built the product-question assistant for a fashion webshop: retrieval over 38,000 catalogue items with pgvector, answers in Swedish and English.
+- Cut the share of "out of stock" hallucinations from 9% to 2% by adding an exact SKU and size lookup before semantic search and a grounding check on the final answer.
+- Reduced median answer latency from 4.1 s to 2.3 s by caching embeddings, trimming the prompt and streaming the first sentence.
+- Set up Langfuse tracing for every conversation and a golden set of 220 questions that runs in CI before each prompt change.
+- Wrote a reranking step with a cross-encoder; recall at 5 went from 0.71 to 0.84 on the golden set.
+
+Fjord Logistics, Backend Engineer, 2022 to 2024
+- Owned the shipment-tracking API in Python and FastAPI, serving 1.2 million requests per day.
+- Moved a nightly batch job to a queue-based pipeline, which brought the data delay from 6 hours to 15 minutes.
+- Mentored two junior developers and ran the weekly code review.
+
+Projects
+- Open-source eval harness for retrieval systems: 140 GitHub stars, used by two other teams at Nordlys Commerce.
+- Side project: Italian-language recipe chatbot, built to learn how multilingual prompts fail.
+
+Education
+BSc Computer Science, Chalmers University of Technology, 2022
+
+Skills
+Python, FastAPI, Postgres and pgvector, Qdrant, Langfuse, prompt and eval design, Docker, AWS
+Languages: Swedish (native), English (fluent), Italian (conversational)

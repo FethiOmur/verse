@@ -14,6 +14,8 @@ dependencies = [
     # F3 paraphrase matcher (EmbeddingGemma via LiteRT-LM, Apache-2.0; docs/licences.md). Optional at run time: the
     # brain runs without it and logs once. Same version as bench/embed/.venv.
     "litert-lm-api==0.18.0",
+    # S1 sim prep: CV text from a PDF (BSD-3-Clause). Pure Python, no further dependencies.
+    "pypdf==6.20.1",
 ]
 
 [project.optional-dependencies]
