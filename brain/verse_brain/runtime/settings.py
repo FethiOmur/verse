@@ -95,3 +95,26 @@ class Config:
     embed_min_words: int = 5           # words in the partial
     embed_consecutive: int = 2         # the same entry on this many consecutive evaluated partials
     embed_langs: tuple[str, ...] = ("en",)   # thresholds were tuned on English only
+    # G1 local degraded-mode fallback (Gemma 4 E4B, LiteRT-LM, in process). The API stays primary; Gemma answers only
+    # while the API is offline, rate-limited or out of credit. Values and their reasons: docs/licences.md (model terms)
+    # and the G1 notes in runtime/local_llm.py.
+    fallback_enabled: bool = True
+    fallback_cooldown_s: float = 30.0         # first re-probe after a failure; ~2 tiny probes a minute, a blip costs <= 30 s of Gemma
+    fallback_cooldown_max_s: float = 60.0     # later probes (and the cap for a long retry-after)
+    fallback_credit_cooldown_s: float = 60.0  # a top-up is a human-timescale event: probe once a minute
+    fallback_first_text_s: float = 8.0        # F with no first text from the API after this long counts as a timeout
+    fallback_rewarm_after_s: float = 240.0    # re-write the prompt cache on recovery when the outage outlived it
+    local_prewarm: bool = False               # True: load Gemma and prime the pack at session start even when the API is healthy
+    local_model: str = ("~/Library/Application Support/Verse/models/gemma-4-E4B-it-litert-lm/"
+                        "gemma-4-E4B-it.litertlm")
+    local_backend: str = "gpu"
+    local_activation: str = "FLOAT32"         # F6 bench: the default GPU activations corrupt numbers ("11" became "111")
+    local_ctx: int = 8192                     # F6 bench: 4096 rejects a 4.9k prompt, 8192 holds p5k with room to grow
+    local_max_new: int = 120                  # same cap as the Haiku S/F route
+    local_pack_chars: int = 9500              # ~ the p3k bench pack (9.7 KB): the size whose answers were scored
+    local_max_turns: int = 12
+    local_turn_chars: int = 3200              # transcript budget at (re)build time, newest turns first
+    local_bank_extra: int = 2                 # bank entries cut from the prefix that are retrieved into the tail per question
+    local_recycle_tokens: int = 6400          # rebuild the conversation (cold prefill, between questions) past this KV size
+    local_first_token_s: float = 30.0         # no first token this long after the message is sent = Gemma failed (cold p5k ~20 s)
+    local_total_s: float = 60.0
