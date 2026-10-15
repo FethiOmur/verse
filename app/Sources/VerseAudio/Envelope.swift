@@ -70,8 +70,32 @@ public final class EnvelopeTrack: @unchecked Sendable {
     public static func bin(_ t: TimeInterval) -> Int { Int((t / binSeconds).rounded(.down)) }
 }
 
+/// What the echo gate measures for one mic range (loudness numbers only).
+public struct GateFeatures: Sendable, Equatable {
+    /// Highest Pearson correlation of the 10 ms envelopes over lag 0...maxLag.
+    public var score: Double
+    public var lagMs: Double
+    public var window: GateLevels
+}
+
+/// Level comparison of mic and remote over one (lag-aligned) window.
+public struct GateLevels: Sendable, Equatable {
+    /// Mic RMS (dBFS) over the bins where the remote channel is active; nil when no bin qualifies.
+    public var meDb: Double?
+    /// Remote RMS (dBFS) over the same bins.
+    public var remoteDb: Double?
+    /// `meDb - remoteDb`: about -25 for a -25 dB echo, around 0 or above for a voice at the mic that is as loud as the remote.
+    public var ratioDb: Double?
+    /// Share of the mic's active bins (>= 10 % of its peak) with no remote activity under them. An echo has none.
+    public var micOnlyShare: Double
+    /// Share of the window's bins in which the remote channel is active.
+    public var remoteActiveShare: Double
+}
+
 /// Echo gate for the mic channel (spec §5.7): mic speech is discarded when its 10 ms envelope correlates
-/// >= `threshold` with the remote envelope delayed by 0...`maxLag` (the remote sound reaching the mic later).
+/// >= `threshold` with the remote envelope delayed by 0...`maxLag` (the remote sound reaching the mic later) and the mic
+/// is as far under the remote as a speaker echo is (see `verdict`). A correlated range that is about as loud as the remote
+/// is a person talking over it and goes on to the text guard.
 public struct BleedGate: Sendable {
     public var threshold: Double = 0.6
     public var maxLag: TimeInterval = 0.08
@@ -79,12 +103,25 @@ public struct BleedGate: Sendable {
     public var minWindow: TimeInterval = 0.3
     /// Remote RMS below this everywhere in the window means there is nothing to echo.
     public var remoteFloor: Double = 1e-4
+    /// A correlated mic range is an echo when its level next to the remote is at most this (dB). A speaker echo in a room is
+    /// 20 dB or more below the remote (measured cells: -30, -25, -15); the owner's own voice at the mic was within 8 dB of it.
+    public var maxEchoRatioDb: Double = -15
+    /// Correlation this tight is not a different speaker (the real double-talk events topped out at 0.73)...
+    public var strongScore: Double = 0.9
+    /// ...so with it a louder echo is still dropped, up to this level (dB).
+    public var maxStrongEchoRatioDb: Double = -6
 
     public init() {}
 
     /// Highest Pearson correlation between mic[t] and remote[t - lag] over the window, for lag in 0...maxLag.
     /// `nil` when either side has no usable signal (then it cannot be echo).
     public func echoScore(mic: EnvelopeTrack, remote: EnvelopeTrack, start: TimeInterval, end: TimeInterval) -> Double? {
+        features(mic: mic, remote: remote, start: start, end: end)?.score
+    }
+
+    /// Everything the gate can see about a mic range: the best envelope correlation and, at that lag, how loud the mic is
+    /// compared with the remote channel and how much of the mic's activity has no remote activity under it.
+    public func features(mic: EnvelopeTrack, remote: EnvelopeTrack, start: TimeInterval, end: TimeInterval) -> GateFeatures? {
         var s = start, e = end
         if e - s < minWindow { let mid = (s + e) / 2; s = mid - minWindow / 2; e = mid + minWindow / 2 }
         let b0 = EnvelopeTrack.bin(s), b1 = EnvelopeTrack.bin(e) + 1
@@ -93,17 +130,64 @@ public struct BleedGate: Sendable {
         let r = remote.rms(fromBin: b0 - maxLagBins, toBin: b1)   // r[i + maxLagBins] is remote at bin b0 + i
         guard r.contains(where: { $0 > remoteFloor }) else { return nil }
         var best: Double? = nil
+        var bestLag = 0
         for lag in 0...maxLagBins {
             // remote at (bin - lag) -> index (i + maxLagBins - lag)
             let shifted = (0..<m.count).map { r[$0 + maxLagBins - lag] }
-            if let c = BleedGate.pearson(m, shifted) { best = max(best ?? -1, c) }
+            if let c = BleedGate.pearson(m, shifted), best == nil || c > best! { best = c; bestLag = lag }
         }
-        return best
+        guard let score = best else { return nil }
+        let shifted = (0..<m.count).map { r[$0 + maxLagBins - bestLag] }
+        return GateFeatures(score: score, lagMs: Double(bestLag) * EnvelopeTrack.binSeconds * 1000,
+                            window: BleedGate.levels(mic: m, remote: shifted, remoteFloor: remoteFloor))
+    }
+
+    /// What the gate does with a mic result.
+    /// - keep: the envelopes do not match.
+    /// - drop: the envelopes match and the mic is as quiet next to the remote as a speaker echo is (or matches too tightly
+    ///   to be anyone else).
+    /// - defer: the envelopes match, but the mic is about as loud as the remote or louder, which is a person at the mic
+    ///   (Alex talking over the remote speaker). Passed on; the text guard (`EchoGuard`, in `TurnEngine`) decides on words.
+    public enum Verdict: String, Sendable, Equatable { case keep, drop, `defer` }
+
+    /// Rule (P1 gate fix). Envelope correlation alone cannot tell an echo from a person talking at the same time: two speech
+    /// envelopes correlate at 0.7 by chance, and the gate dropped the owner's "Sorry, one second..." at 0.72. So the level of the
+    /// mic next to the remote is part of the rule. Measured on the two-track replay (docs/p1-replay-bleed-report.md, "Gate fix"):
+    /// - the owner's real events with correlation >= 0.6: two distinct windows ("Sorry" onset), correlation 0.73, ratio -2.9 and
+    ///   -8.1 dB. The other 35 distinct real events have correlation <= 0.45.
+    /// - Echo events at -25/-30 dB: correlation >= 0.69, ratio -28 ... -24.5 dB. Echo at -15 and -10 dB: correlation >= 0.99,
+    ///   ratio -15.0 and -10.0 dB.
+    /// -15 dB sits 7 dB under his lowest ratio and 9.5 dB over the nearest echo cell of the report (-25 dB); the tight-correlation
+    /// branch keeps the louder echoes (-10, -15 dB) dropped, because 0.9 is far above anything two different voices produced.
+    public func verdict(_ f: GateFeatures) -> Verdict {
+        guard f.score >= threshold else { return .keep }
+        guard let ratio = f.window.ratioDb else { return .drop }   // no level information: as before
+        if ratio <= maxEchoRatioDb { return .drop }
+        if f.score >= strongScore, ratio <= maxStrongEchoRatioDb { return .drop }
+        return .defer
     }
 
     public func isEcho(mic: EnvelopeTrack, remote: EnvelopeTrack, start: TimeInterval, end: TimeInterval) -> Bool {
-        guard let s = echoScore(mic: mic, remote: remote, start: start, end: end) else { return false }
-        return s >= threshold
+        guard let f = features(mic: mic, remote: remote, start: start, end: end) else { return false }
+        return verdict(f) == .drop
+    }
+
+    /// `m` and `r` are bin-aligned. A bin is "active" when it is above `remoteFloor` and within 20 dB of the window's peak.
+    static func levels(mic m: [Double], remote r: [Double], remoteFloor: Double) -> GateLevels {
+        let n = min(m.count, r.count)
+        guard n > 0 else { return GateLevels(meDb: nil, remoteDb: nil, ratioDb: nil, micOnlyShare: 0, remoteActiveShare: 0) }
+        let rPeak = r.prefix(n).max() ?? 0, mPeak = m.prefix(n).max() ?? 0
+        let rThr = max(remoteFloor, 0.1 * rPeak), mThr = max(remoteFloor, 0.1 * mPeak)
+        var sm = 0.0, sr = 0.0, k = 0, mActive = 0, mOnly = 0
+        for i in 0..<n {
+            let ra = r[i] > rThr
+            if ra { sm += m[i] * m[i]; sr += r[i] * r[i]; k += 1 }
+            if m[i] > mThr { mActive += 1; if !ra { mOnly += 1 } }
+        }
+        func db(_ ms: Double) -> Double? { ms > 0 ? 10 * log10(ms) : nil }
+        let meDb = k > 0 ? db(sm / Double(k)) : nil, remoteDb = k > 0 ? db(sr / Double(k)) : nil
+        return GateLevels(meDb: meDb, remoteDb: remoteDb, ratioDb: (meDb != nil && remoteDb != nil) ? meDb! - remoteDb! : nil,
+                          micOnlyShare: mActive > 0 ? Double(mOnly) / Double(mActive) : 0, remoteActiveShare: Double(k) / Double(n))
     }
 
     public static func pearson(_ a: [Double], _ b: [Double]) -> Double? {

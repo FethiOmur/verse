@@ -161,6 +161,17 @@ def score(label: dict, events: list[tuple[float, dict]], meta: dict, ack_text: s
     gate = [o for _, o in events if o.get("type") == "metric" and o.get("stage") == "echo_gate_dropped"]
     guard = [o for _, o in events if o.get("type") == "metric" and o.get("stage") == "echo_guard_dropped"]
     me_ev = trace_me_events(stderr_log)
+    # What the envelope gate dropped while Alex was really speaking (the gate-fix acceptance number). Only meaningful when
+    # his speech is on the me track: with bleed only (owner_silent) nothing he says exists. The dropped event's audio range
+    # is on the me channel's clock; overlap with one of his utterance windows counts.
+    gate_events = [o for _, o in events if o.get("type") == "metric" and o.get("stage") == "echo_gate_dropped"]
+    real_dropped = []
+    if not meta.get("owner_silent"):
+        for g in gate_events:
+            gs, ge = float(g.get("audio_start", 0.0)), float(g.get("audio_end", 0.0))
+            if any(min(ge, w["s_end"]) - max(gs, w["s_start"]) > 0 for w in me_wins):
+                real_dropped.append(g.get("text", ""))
+    deferred = [o for _, o in events if o.get("type") == "metric" and o.get("stage") == "echo_gate_decision" and o.get("verdict") == "defer"]
     return {
         "id": label["id"],
         "questions": {"n": len(a_rows), "answered_once": sum(r["verdict"] == "ok" for r in a_rows),
@@ -173,6 +184,8 @@ def score(label: dict, events: list[tuple[float, dict]], meta: dict, ack_text: s
         "me_turns": len(me_turns), "false_me_turns": len(false_me), "spurious_remote_turns": len(spurious_remote),
         "answers_on_me_turns": sum(has_output(t["turn_id"]) for t in me_turns),
         "echo_gate_dropped": len(gate), "echo_guard_dropped": len(guard),
+        "gate_dropped_over_own_speech": len(real_dropped), "gate_dropped_over_own_speech_texts": real_dropped,
+        "echo_gate_deferred": len(deferred),
         "me_events_reaching_engine": len(me_ev) if stderr_log else None,
         "wrong_triggers": wrong, "wrong_trigger_count": sum(1 for x in wrong if x["kind"] != "false_me_turn"),
         "rows": rows, "me_rows": me_rows,
@@ -189,7 +202,8 @@ def table(res: dict) -> str:
         f"  remote turns {res['remote_turns']} (answered {res['answered_remote_turns']}, spurious {res['spurious_remote_turns']}); "
         f"me turns {res['me_turns']} (false {res['false_me_turns']}); answers on me turns {res['answers_on_me_turns']}; "
         f"the owner's utterances landing as me turns {m['landed_as_me_turn']}/{m['n']}",
-        f"  echo dropped: gate {res['echo_gate_dropped']}, text guard {res['echo_guard_dropped']}; me events that reached the engine "
+        f"  echo dropped: gate {res['echo_gate_dropped']} (over the owner's own speech {res['gate_dropped_over_own_speech']}, deferred to the text guard "
+        f"{res['echo_gate_deferred']}), text guard {res['echo_guard_dropped']}; me events that reached the engine "
         f"{res['me_events_reaching_engine']}; wrong triggers {res['wrong_trigger_count']}",
     ]
     for w in res["wrong_triggers"]:

@@ -63,6 +63,9 @@ public actor ListenSession {
     /// What the bleed gate discarded (text and times only), oldest first.
     public nonisolated var droppedEchoLog: [DroppedEcho] { counters.log }
 
+    /// Every `.me` result the gate measured (kept or dropped), oldest first. Numbers and text only; for tuning the gate.
+    public nonisolated var gateDecisions: [GateDecision] { counters.decisions }
+
     /// The session clock's "now" (seconds since `start()`).
     public func now() -> TimeInterval { clock.now() }
 
@@ -118,11 +121,15 @@ public actor ListenSession {
                                                 audioStart: origin + r.start, audioEnd: origin + r.end,
                                                 emittedAt: clock.now(), lang: lang)
                     if channel == .me, let remoteEnvelope,
-                       let score = gate.echoScore(mic: micEnvelope, remote: remoteEnvelope, start: event.audioStart, end: event.audioEnd),
-                       score >= gate.threshold {
-                        counters.addDropped(DroppedEcho(text: event.text, isFinal: event.isFinal, audioStart: event.audioStart,
-                                                        audioEnd: event.audioEnd, emittedAt: event.emittedAt, score: score))
-                        return
+                       let f = gate.features(mic: micEnvelope, remote: remoteEnvelope, start: event.audioStart, end: event.audioEnd) {
+                        let verdict = gate.verdict(f)
+                        counters.addDecision(GateDecision(text: event.text, isFinal: event.isFinal, audioStart: event.audioStart,
+                                                          audioEnd: event.audioEnd, emittedAt: event.emittedAt, features: f, verdict: verdict))
+                        if verdict == .drop {
+                            counters.addDropped(DroppedEcho(text: event.text, isFinal: event.isFinal, audioStart: event.audioStart,
+                                                            audioEnd: event.audioEnd, emittedAt: event.emittedAt, score: f.score))
+                            return
+                        }
                     }
                     cont.yield(event)
                 }
@@ -184,9 +191,23 @@ public struct DroppedEcho: Sendable, Equatable {
     public var score: Double
 }
 
+/// One `.me` result the gate measured, and what it decided.
+public struct GateDecision: Sendable, Equatable {
+    public var text: String
+    public var isFinal: Bool
+    public var audioStart: TimeInterval
+    public var audioEnd: TimeInterval
+    public var emittedAt: TimeInterval
+    public var features: GateFeatures
+    public var verdict: BleedGate.Verdict
+}
+
 final class Counters: @unchecked Sendable {
     private let lock = OSAllocatedUnfairLock()
     private var dropped_: [DroppedEcho] = []
+    private var decisions_: [GateDecision] = []
+    var decisions: [GateDecision] { lock.withLockUnchecked { decisions_ } }
+    func addDecision(_ d: GateDecision) { lock.withLockUnchecked { decisions_.append(d) } }
     var dropped: Int { lock.withLockUnchecked { dropped_.count } }
     var log: [DroppedEcho] { lock.withLockUnchecked { dropped_ } }
     func addDropped(_ d: DroppedEcho) { lock.withLockUnchecked { dropped_.append(d) } }

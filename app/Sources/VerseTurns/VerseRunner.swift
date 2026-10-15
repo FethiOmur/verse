@@ -436,6 +436,19 @@ public final class VerseRunner: @unchecked Sendable {
             emitJSON(["type": "metric", "turn_id": "", "stage": "echo_gate_dropped", "text": d.text, "is_final": d.isFinal,
                       "audio_start": Text.ms(d.audioStart), "audio_end": Text.ms(d.audioEnd), "score": Text.ms(d.score), "source": "verse-run"])
         }
+        if o.trace {
+            for d in session.gateDecisions {
+                let w = d.features.window
+                var row: [String: Any] = ["type": "metric", "turn_id": "", "stage": "echo_gate_decision", "text": d.text, "is_final": d.isFinal,
+                                          "audio_start": Text.ms(d.audioStart), "audio_end": Text.ms(d.audioEnd), "score": Text.ms(d.features.score),
+                                          "lag_ms": Text.ms(d.features.lagMs), "mic_only": Text.ms(w.micOnlyShare), "remote_active": Text.ms(w.remoteActiveShare),
+                                          "verdict": d.verdict.rawValue, "source": "verse-run"]
+                if let x = w.ratioDb { row["ratio_db"] = Text.ms(x) }
+                if let x = w.meDb { row["me_db"] = Text.ms(x) }
+                if let x = w.remoteDb { row["remote_db"] = Text.ms(x) }
+                emitJSON(row)
+            }
+        }
         var summary: [String: Any] = ["type": "metric", "turn_id": "", "stage": "listen_summary",
                                       "echo_gate_dropped": session.droppedEchoEvents, "source": "verse-run"]
         if let r = await session.channelOrigin(.remote) { summary["origin_remote"] = Text.ms(r) }
