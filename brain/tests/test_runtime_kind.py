@@ -291,10 +291,11 @@ def test_question_still_selects_speculation_and_skips_d_on_bank_agreement():
 
 
 # ---------------------------------------------------------------- cache layout
-# sha256 of the prompt constants as they were before this change: any edit to them breaks the cache prefix.
+# sha256 of the prompt constants: any edit to them breaks the cache prefix, so this pin moves only on purpose
+# (V1 replaced the personal-voice style line with a pointer to the pack's STYLE GUIDE section).
 PINNED = {
-    "SYSTEM_FAST": "71f3d9dc2e7ef89825c1c4ee55f797976611040284a14fc59cd07a7665289b7b",
-    "SYSTEM_DEEP": "00fd7cabf04f21000357a04e7c41ef17d914c1f80e3eb95f0296dcd40b58753a",
+    "SYSTEM_FAST": "194619b4bf1449d3b76f1c9556155390221e6210585b25f6356db8d718e90164",
+    "SYSTEM_DEEP": "f3054000ff4e9c4cb2e591b576270c83358879980329ae48ef09b8451648193e",
     "PACK_HEADER": "f37a145e475c721f232e440f1ad78c8a7705c196eee5b200db0b973bdc18b525",
     "TRANSCRIPT_HEADER": "d33c9a039282727fa1162a84e507311b69d26fe7e13151611cd4d3836c3421a8",
 }

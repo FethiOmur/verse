@@ -28,6 +28,7 @@ from .sim_pack import MAX_LENGTH_MIN, MIN_LENGTH_MIN, QUESTION_KINDS, question_c
 from .sim_prompt import SYSTEM, render_params, render_sources
 from .sources import MAX_QUOTE_CHARS, MIN_QUOTE_CHARS, SourceBook, norm, numbers_in
 from .vault import Vault, VaultError, VaultRecord
+from .voice import load_voice, sha256_text
 
 INTERVIEW_TYPES = ("screening", "manager", "technical", "mixed")
 DIFFICULTIES = ("friendly", "standard", "tough")
@@ -450,6 +451,7 @@ async def build_sim_async(
     note: Path | None = None, repos: list[Path] | tuple[Path, ...] = (), vault: Vault | None = None,
     interview_type: str = "mixed", difficulty: str = "standard", length_min: int = 30, lang: str = "en",
     company: str | None = None, role: str | None = None, now: datetime | None = None,
+    voice_path: Path | None = None,
 ) -> Path:
     if interview_type not in INTERVIEW_TYPES:
         raise PrepError(f"interview type must be one of {', '.join(INTERVIEW_TYPES)}")
@@ -509,6 +511,9 @@ async def build_sim_async(
         "competencies": parts["competencies"], "evidence": parts["evidence"], "questions": parts["questions"],
         "rubric": parts["rubric"], "warnings": warnings, "prep_model": model.model, "prep_usage": res.usage.as_dict(),
     }
+    voice = load_voice(voice_path)
+    if voice is not None:
+        sim["voice_sha256"] = sha256_text(voice)
 
     out.mkdir(parents=True, exist_ok=True)
     tmp = out / f".{final.name}.tmp"
@@ -518,7 +523,7 @@ async def build_sim_async(
     try:
         (tmp / "posting.txt").write_bytes(raw_posting)
         (tmp / "sim.json").write_text(json.dumps(sim, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        (tmp / "sim_pack.md").write_text(render_sim_pack(sim), encoding="utf-8")
+        (tmp / "sim_pack.md").write_text(render_sim_pack(sim, voice), encoding="utf-8")
         tmp.rename(final)
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)

@@ -6,6 +6,9 @@ No timestamps, session ids or other per-run values may appear in the pack.
 Conflicts (plan F1): a fact whose sources disagree is written as "conflicting in sources: A (ref) vs B (ref)" and its
 own text and value are left out, so no single value is stated as fact; a bank point built on such a figure carries
 the same phrase; a snippet that holds a conflicting figure is marked. Records without conflicts render as before.
+
+Voice (V1): when a voice profile is given, its section is appended last (`voice.with_voice`) and counts toward
+the cap, but it is not in the cut order below, so the trim never removes it. Without a profile the pack is unchanged.
 """
 
 from __future__ import annotations
@@ -14,6 +17,7 @@ import math
 from typing import Awaitable, Callable
 
 from .conflicts import conflict_phrase
+from .voice import with_voice
 
 TOKEN_CAP = 12_000
 SAFETY = 0.97  # trim to 97 % of the cap so a re-count by another tokenizer path still fits
@@ -40,7 +44,8 @@ def _fact_label(f: dict) -> str:
     return t[len("Sources disagree on "):] if t.startswith("Sources disagree on ") else t
 
 
-def render_pack(facts: list[dict], glossary: list[dict], bank: list[dict], snippets: list[dict]) -> str:
+def render_pack(facts: list[dict], glossary: list[dict], bank: list[dict], snippets: list[dict],
+                voice: str | None = None) -> str:
     phrase = {f["id"]: conflict_phrase(f["conflict"]) for f in facts if f.get("status") == "conflict" and f.get("conflict")}
     out: list[str] = []
     out.append("## FACTS")
@@ -67,22 +72,23 @@ def render_pack(facts: list[dict], glossary: list[dict], bank: list[dict], snipp
     for s in sorted(snippets, key=lambda r: r["id"]):
         mark = " | (holds conflicting figures: see FACTS)" if s.get("conflict") else ""
         out.append(f"[{s['id']}] {s['ref']}{mark} | {_one_line(s['text'])}")
-    return "\n".join(out) + "\n"
+    return with_voice("\n".join(out) + "\n", voice)
 
 
 async def fit_pack(
     facts: list[dict], glossary: list[dict], bank: list[dict], snippets: list[dict],
-    count: Counter, cap: int = TOKEN_CAP,
+    count: Counter, cap: int = TOKEN_CAP, voice: str | None = None,
 ) -> tuple[str, int, dict]:
     """Render the pack and trim it to `cap` tokens. Cut order: lowest-priority snippets first (priority = number
     of bank entries a snippet serves, then id), then bank entries from the tail (least likely), then glossary
-    tail, then facts tail. Returns (text, tokens, trimmed-counts)."""
+    tail, then facts tail. Returns (text, tokens, trimmed-counts). The voice section (if any) counts toward the cap
+    and is never cut: the other sections are trimmed to make room."""
     target = int(cap * SAFETY)
     snips = sorted(snippets, key=lambda s: (-len(s.get("bank_ids", [])), s["id"]))  # best first
     keep = {"snippets": list(snips), "bank": sorted(bank, key=lambda r: r["id"]),
             "glossary": sorted(glossary, key=lambda r: r["id"]), "facts": sorted(facts, key=lambda r: r["id"])}
     cut = {"snippets": 0, "bank": 0, "glossary": 0, "facts": 0}
-    text = render_pack(keep["facts"], keep["glossary"], keep["bank"], keep["snippets"])
+    text = render_pack(keep["facts"], keep["glossary"], keep["bank"], keep["snippets"], voice)
     tokens = await count(text)
     for _ in range(40):
         if tokens <= target:
@@ -97,6 +103,6 @@ async def fit_pack(
         k = min(len(items), max(1, math.ceil(over / avg_tokens)))
         del items[len(items) - k:]
         cut[section] += k
-        text = render_pack(keep["facts"], keep["glossary"], keep["bank"], keep["snippets"])
+        text = render_pack(keep["facts"], keep["glossary"], keep["bank"], keep["snippets"], voice)
         tokens = await count(text)
     return text, tokens, cut

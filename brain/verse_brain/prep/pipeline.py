@@ -26,6 +26,7 @@ from .prompt import SYSTEM, render_user
 from .review import render_review
 from .sources import SourceBook
 from .vault import Vault, VaultError, VaultRecord
+from .voice import load_voice, sha256_text
 
 MAX_PREP_NOTE_CHARS = 60_000
 MAX_VAULT_SEED_RECORDS = 12
@@ -129,7 +130,7 @@ def _collect(prep_note: Path, repos: list[Path], vault: Vault | None, warnings: 
 async def build_async(
     prep_note: Path, repos: list[Path], langs: list[str], out: Path, max_questions: int, *,
     model: PrepModel, vault: Vault | None, budget_usd: float = 1.0, now: datetime | None = None,
-    session_id: str | None = None,
+    session_id: str | None = None, voice_path: Path | None = None,
 ) -> Path:
     prep_note = Path(prep_note).expanduser().resolve()
     repos = [Path(r).expanduser().resolve() for r in repos]
@@ -158,7 +159,8 @@ async def build_async(
     else:
         snippets = []
     conflicts = apply_conflicts(book, g, snippets)  # marks facts, bank entries and snippets; must run before the pack
-    pack, pack_tokens, trimmed = await fit_pack(g.facts, g.glossary, g.bank, snippets, model.count_tokens, TOKEN_CAP)
+    voice = load_voice(voice_path)  # None (no path, no file) leaves the pack exactly as before
+    pack, pack_tokens, trimmed = await fit_pack(g.facts, g.glossary, g.bank, snippets, model.count_tokens, TOKEN_CAP, voice)
 
     sid = session_id or f"{now:%Y%m%d-%H%M%S}-" + hashlib.sha256(
         (note + "|" + ",".join(langs) + "|" + ",".join(r.name for r in repos)).encode()
@@ -179,6 +181,7 @@ async def build_async(
         "pack_tokens": pack_tokens, "pack_cap": TOKEN_CAP, "pack_trimmed": trimmed,
         "vault_records_given": len(handles), "commits_given": len(commits), "stop_reason": res.stop_reason,
         "prep_note_sha256": hashlib.sha256(note.encode()).hexdigest(),
+        **({"voice_sha256": sha256_text(voice)} if voice is not None else {}),
     }
     meta = {
         "session_id": sid, "created_at": now.isoformat(timespec="seconds"), "prep_note": str(prep_note),
@@ -212,10 +215,11 @@ async def build_async(
 def build(
     prep_note: Path, repos: list[Path], langs: list[str], out: Path, max_questions: int = 80, *,
     model: PrepModel | None = None, vault: Vault | None = None, budget_usd: float = 1.0,
-    now: datetime | None = None, session_id: str | None = None,
+    now: datetime | None = None, session_id: str | None = None, voice_path: Path | None = None,
 ) -> Path:
     """Build a session folder and return its path. Without `model`, a real Sonnet client is created from the
-    Keychain key (service `verse-anthropic`)."""
+    Keychain key (service `verse-anthropic`). `voice_path`: a voice profile (prep/voice.py) whose section is appended
+    to the pack when the file exists; None builds the pack without one."""
     from .keychain import read_api_key
     from .model import AnthropicPrepModel
 
@@ -226,7 +230,7 @@ def build(
             own = m = AnthropicPrepModel(read_api_key(), PREP_MODEL, progress=True)
         try:
             return await build_async(prep_note, repos, langs, out, max_questions, model=m, vault=vault,
-                                     budget_usd=budget_usd, now=now, session_id=session_id)
+                                     budget_usd=budget_usd, now=now, session_id=session_id, voice_path=voice_path)
         finally:
             if own is not None:
                 await own.aclose()

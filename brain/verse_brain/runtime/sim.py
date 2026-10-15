@@ -42,6 +42,7 @@ from pathlib import Path
 from typing import Awaitable, Callable
 
 from ..prep.model import spend_usd
+from ..prep.voice import VOICE_HEADING
 from .engine import usage_obj
 from .fake import CallInfo, Script, lines_script
 from .prompt import EPHEMERAL, LANG_NAME, bp2_index
@@ -741,7 +742,16 @@ class SimRuntime:
             "sentence only from the candidate's evidence in the SIM PACK and their own answer, and cite each "
             "evidence item you use in square brackets with its id, for example [e2]. Use only ids that exist in the "
             "SIM PACK. Use a number only when it appears in a cited evidence item or in the candidate's answer. "
-            "Nothing else: no heading, no preamble."])
+            "Nothing else: no heading, no preamble." + self._voice_note()])
+
+    def _voice_note(self) -> str:
+        """The pack's STYLE GUIDE section (prep/voice.py) describes how the candidate talks. The coach's "better sentence"
+        follows it; the generic style rules stay here. Empty for a pack without one."""
+        if not any(ln.startswith(VOICE_HEADING) for ln in self.pack.splitlines()):
+            return ""
+        return (" Write the better sentence the way the candidate talks, in the style of the STYLE GUIDE section of the "
+                "SIM PACK (tone, level, phrasing); it changes the wording only, not the evidence, the numbers or the length "
+                "limit, and is never cited.")
 
     def answer_tail(self, question: str) -> str:
         posting = self.posting or "(not available)"
