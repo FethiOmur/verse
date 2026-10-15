@@ -65,6 +65,11 @@ public struct TurnConfig: Sendable {
     /// A bank question is shortened to this many characters for the chip label.
     public var topicLabelMax: Int
     public var topicEnabled: Bool
+    /// Text guard against speaker bleed (`EchoGuard`): a me result whose words are mostly, in order, what the remote channel
+    /// said within `echoWindowSeconds` of it is dropped. Off: `verse-run --no-echo-guard`.
+    public var echoGuardEnabled: Bool
+    public var echoWindowSeconds: Double
+    public var echoSimilarity: Double
 
     public init(ownerName: String = "Alex", ownerAliases: [String] = [], otherNames: [String] = [],
                 cueEndpointMs: Int = 300, plainEndpointMs: Int = 600, meEndpointMs: Int = 1200,
@@ -75,7 +80,8 @@ public struct TurnConfig: Sendable {
                 recognizerSettleMs: Int = 100, recognizerCatchUpMs: Int = 800, minTurnWords: Int = 3, fragmentHoldMs: Int = 1200,
                 topicThreshold: Double = 0.30, topicMargin: Double = 0.05, topicWindowSeconds: Double = 12,
                 topicCooldownSeconds: Double = 12, topicSameIDSeconds: Double = 300, topicLabelMax: Int = 60,
-                topicEnabled: Bool = true) {
+                topicEnabled: Bool = true,
+                echoGuardEnabled: Bool = true, echoWindowSeconds: Double = 1.5, echoSimilarity: Double = 0.6) {
         self.ownerName = ownerName
         self.ownerAliases = ownerAliases
         self.otherNames = otherNames
@@ -104,6 +110,9 @@ public struct TurnConfig: Sendable {
         self.topicSameIDSeconds = topicSameIDSeconds
         self.topicLabelMax = topicLabelMax
         self.topicEnabled = topicEnabled
+        self.echoGuardEnabled = echoGuardEnabled
+        self.echoWindowSeconds = echoWindowSeconds
+        self.echoSimilarity = echoSimilarity
     }
 }
 
@@ -162,6 +171,8 @@ public actor TurnEngine {
     /// What the session knows by name, for short noun-phrase questions ("Notice period").
     private let terms: SessionTerms
     private var topic: TopicTrigger
+    private var echo = EchoGuard()
+    private var echoDrops: [EchoDrop] = []
 
     private var now: TimeInterval = 0
     private var remote: Turn?
@@ -198,6 +209,12 @@ public actor TurnEngine {
         }
     }
 
+    /// What the text guard discarded since the last call (for the runner's metric lines).
+    public func takeEchoDrops() -> [EchoDrop] {
+        defer { echoDrops = [] }
+        return echoDrops
+    }
+
     /// Plan signature: the events caused by `e`, in order.
     public func ingest(_ e: TranscriptEvent) -> [OutboundEvent] {
         ingestTimed(e).map(\.event)
@@ -208,7 +225,10 @@ public actor TurnEngine {
         let text = e.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return out }
         switch e.channel {
-        case .remote: out += ingestRemote(e, text: text)
+        case .remote:
+            echo.noteRemote(text: text, start: e.audioStart, end: e.audioEnd, now: now, lang: config.lang)
+            out += ingestRemote(e, text: text)
+            discardEchoedMeTurn()
         case .me: out += ingestMe(e, text: text)
         }
         // An event can be the one the endpoint was waiting for (the recognizer caught up with the audio).
@@ -436,6 +456,15 @@ public actor TurnEngine {
 
     private func ingestMe(_ e: TranscriptEvent, text: String) -> [Timed] {
         var out: [Timed] = []
+        // Speaker bleed: the remote voice in the microphone is not Alex. Dropped before it can open a me turn or close the
+        // remote one; an open me turn that started inside the same echo goes with it.
+        if config.echoGuardEnabled,
+           let sim = echo.similarity(text: text, start: e.audioStart, end: e.audioEnd, windowSeconds: config.echoWindowSeconds, lang: config.lang),
+           sim >= config.echoSimilarity {
+            echoDrops.append(EchoDrop(text: text, isFinal: e.isFinal, audioStart: e.audioStart, audioEnd: e.audioEnd, at: now, similarity: sim))
+            if let m = me, let first = m.segments.first, abs(first.start - e.audioStart) < 0.4 { me = nil }
+            return out
+        }
         // The owner starts talking: the remote question is over, right now. Only the first event of a me turn does this;
         // the later events of the same utterance (Alex talking over the interviewer) leave the remote turn alone.
         if me == nil, remote != nil { out += closeRemote(at: now) }
@@ -448,6 +477,17 @@ public actor TurnEngine {
         turn.lastResult = max(turn.lastResult, e.emittedAt)
         me = turn
         return out
+    }
+
+    /// The microphone recognizer can be a result ahead of the remote one, so an echo is sometimes not recognizable as such
+    /// until the remote words arrive. Each remote result therefore re-checks the open me turn; one that turns out to be an
+    /// echo is discarded unsent.
+    private func discardEchoedMeTurn() {
+        guard config.echoGuardEnabled, let m = me, let first = m.segments.first else { return }
+        guard let sim = echo.similarity(text: m.text, start: first.start, end: m.audioEnd, windowSeconds: config.echoWindowSeconds, lang: config.lang),
+              sim >= config.echoSimilarity else { return }
+        echoDrops.append(EchoDrop(text: m.text, isFinal: false, audioStart: first.start, audioEnd: m.audioEnd, at: now, similarity: sim))
+        me = nil
     }
 
     private func closeMe(at t: TimeInterval) -> [Timed] {

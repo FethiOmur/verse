@@ -19,6 +19,7 @@ func usage() -> Never {
       --me-file PATH      play an audio file as the "me" channel (the microphone) next to --file, both at real-time
                           pace from the same start; the owner's speech must land as "me" turns
       --no-bleed-gate     switch the envelope echo gate of the "me" channel off (bleed measurements)
+      --no-echo-guard     switch the text echo guard of the turn engine off (bleed measurements)
       --no-mic            live: remote audio only
       --bundle-ids a,b    apps whose audio is the remote channel (default Brave, Comet, Zoom, Teams)
       --owner NAME        your name for the addressee check (default Alex); --alias a,b adds spellings the
@@ -39,7 +40,7 @@ func usage() -> Never {
 func parse(_ args: [String]) -> RunOptions {
     var session: String?
     var o: RunOptions?
-    var lang = "en", seconds: Double?, file: String?, meFile: String?, noBleedGate = false, mic = true
+    var lang = "en", seconds: Double?, file: String?, meFile: String?, noBleedGate = false, noEchoGuard = false, mic = true
     var bundles: [String]?, brainDir: String?, fake = false, budget: Double?
     var turn = TurnConfig()
     var drain: Double?, format = OutputFormat.json, echo = false, trace = false
@@ -57,6 +58,7 @@ func parse(_ args: [String]) -> RunOptions {
         case "--file": file = value(k)
         case "--me-file": meFile = value(k)
         case "--no-bleed-gate": noBleedGate = true
+        case "--no-echo-guard": noEchoGuard = true
         case "--no-mic": mic = false
         case "--bundle-ids": bundles = list(value(k))
         case "--owner": turn.ownerName = value(k)
@@ -98,6 +100,7 @@ func parse(_ args: [String]) -> RunOptions {
     opts.fakeBrain = fake
     opts.budgetUSD = budget
     opts.turn = turn
+    if noEchoGuard { opts.turn.echoGuardEnabled = false }
     if let drain { opts.drainSeconds = drain }
     opts.format = format
     opts.echoOutbound = echo

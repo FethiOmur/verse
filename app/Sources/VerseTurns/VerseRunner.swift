@@ -414,6 +414,11 @@ public final class VerseRunner: @unchecked Sendable {
                 o.transcriptTap?(e)
                 if o.trace { log(String(format: "trace event %@ t=%.2f audio=%.2f-%.2f final=%@ %@", e.channel.rawValue, e.emittedAt, e.audioStart, e.audioEnd, e.isFinal ? "y" : "n", e.text)) }
                 dispatch(await engine.ingestTimed(e))
+                for d in await engine.takeEchoDrops() {
+                    emitJSON(["type": "metric", "turn_id": "", "stage": "echo_guard_dropped", "text": d.text, "is_final": d.isFinal,
+                              "audio_start": Text.ms(d.audioStart), "audio_end": Text.ms(d.audioEnd), "similarity": Text.ms(d.similarity),
+                              "source": "verse-run"])
+                }
             case .tick(let t, let db):
                 if o.trace, Int(t * 100) % 10 == 0 { log(String(format: "trace level t=%.2f %@", t, db.map { String(format: "%.1f dBFS", $0) } ?? "silent")) }
                 dispatch(await engine.noteRemoteLevel(db, at: t))
