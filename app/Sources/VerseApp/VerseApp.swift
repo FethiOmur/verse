@@ -28,6 +28,13 @@ struct VerseApp: App {
         }
         .defaultLaunchBehavior(.suppressed)
 
+        // P2: prep from a conversation.
+        Window("New Session from a Conversation", id: ConversationWindow.id) {
+            ConversationSetupView(model: delegate.conversation)
+        }
+        .windowResizability(.contentSize)
+        .defaultLaunchBehavior(.suppressed)
+
         // S4: the practice-interview setup window.
         Window("Practice Interview", id: "sim-setup") {
             SimSetupView(sim: delegate.sim, meeting: delegate.controller)
@@ -93,6 +100,7 @@ struct VerseMenu: View {
             Button("Last practice report") { sim.openLastReport() }
         }
         PrompterMenuBlock(controller: controller)
+        ConversationMenuBlock()
         Divider()
         Button("Settings…") {
             NSApp.activate()
@@ -110,6 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let simSettings = SimSettings()
     lazy var controller = VerseController(settings: settings)
     lazy var sim = SimController(settings: settings, simSettings: simSettings, meeting: controller)
+    lazy var conversation = ConversationController(settings: settings, meeting: controller)
     private var quitting = false
     private var signalSources: [DispatchSourceSignal] = []
 

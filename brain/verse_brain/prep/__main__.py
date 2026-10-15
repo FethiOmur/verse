@@ -19,6 +19,13 @@ Interview simulation (S1):
       [--repo PATH]... --type mixed --difficulty standard --length 30 --lang en [--company C] [--role R] [--fake]
 builds sessions/sim-<YYYYMMDD-HHMM>-<company>/ {posting.txt, sim.json, sim_pack.md}. Stdout is the session folder path, one
 line; the summary goes to stderr. --fake is deterministic and offline (no key, no network, no vault).
+
+Prep from a conversation (P2): python -m verse_brain.prep conversation --thread FILE [--posting-file F] [--posting-url U]
+  [--company-url U] [--note F] [--fake]
+reads a pasted LinkedIn/email thread, researches the company with the Anthropic web_search tool (at most 8 searches, a URL on
+every fact, "unverified" otherwise), writes a prep note and runs the meeting prep. Stdout is the session folder
+(conv-<YYYYMMDD-HHMM>-<company>, with thread.md, research.md, prep_note.md); stderr has the summary and the cost. See
+prep/conversation.py.
 """
 
 from __future__ import annotations
@@ -67,6 +74,9 @@ def main(argv: list[str] | None = None) -> int:
     if args and args[0] == "script":
         from .script import script_main
         return script_main(args[1:])
+    if args and args[0] == "conversation":
+        from .conversation import conversation_main
+        return conversation_main(args[1:], DEFAULT_OUT)
     return _main(args)
 
 
