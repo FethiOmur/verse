@@ -84,11 +84,31 @@ public enum ScreenRenderer {
         var failed = OverlayState()
         failed.status = .error("The session ended: brain did not become ready (timeout); stopping")
 
+        // W2: the notch questions before and after a meeting (nothing is running).
+        var detected = OverlayState()
+        detected.meetingPrompt = .detected(appName: "Comet", eventTitle: "Mara · Northwind Labs", plan: .prepared("mara-northwindlabs"))
+        var detectedNoEvent = OverlayState()
+        detectedNoEvent.meetingPrompt = .detected(appName: "Comet", eventTitle: nil, plan: .selected("mara-northwindlabs"))
+        var detectedInvite = OverlayState()
+        detectedInvite.meetingPrompt = .detected(appName: "Zoom", eventTitle: "Design review with Ingrid", plan: .fromInvite)
+        var upcoming = OverlayState()
+        upcoming.meetingPrompt = .upcoming(eventTitle: "Mara · Northwind Labs", minutes: 4, plan: .prepared("mara-northwindlabs"))
+        var saveSummary = OverlayState()
+        saveSummary.meetingPrompt = .saveSummary(session: "mara-northwindlabs", folder: "📥 000-Inbox/Verse")
+        var listeningHeard = idle
+        listeningHeard.startup = StartupPanel(phase: .listening, session: "mara-northwindlabs", app: "Comet", transcribing: true)
+
         return [
             Shot(name: "starting", state: starting),
             Shot(name: "ready", state: ready),
             Shot(name: "listening", state: listening),
             Shot(name: "error", state: failed),
+            Shot(name: "meeting-detected", state: detected),
+            Shot(name: "meeting-detected-no-event", state: detectedNoEvent),
+            Shot(name: "meeting-detected-invite", state: detectedInvite),
+            Shot(name: "meeting-upcoming", state: upcoming),
+            Shot(name: "summary-save", state: saveSummary),
+            Shot(name: "listening-transcribing", state: listeningHeard),
             Shot(name: "card-persistent", state: q),
             Shot(name: "capsule-idle", state: idle),
             Shot(name: "capsule-for-marco", state: marco),

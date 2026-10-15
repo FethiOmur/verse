@@ -141,6 +141,9 @@ public struct OverlayState: Equatable, Sendable {
     public var sim: SimOverlay?
     /// The last run was a practice interview: its error message offers no Retry (that would start a meeting).
     public var practiceEnded = false
+    /// A question under the notch with two buttons: "Meeting detected · Start Verse?" before a session, "Save summary to
+    /// the vault?" after one. Set by `MeetingCoordinator`, never by runner events.
+    public var meetingPrompt: MeetingPrompt?
 
     public init() {}
 
@@ -165,11 +168,14 @@ public struct StartupPanel: Equatable, Sendable {
     public var session: String
     /// The meeting app being listened to ("Comet"); nil when none of the known apps is running.
     public var app: String?
+    /// The recognizer has produced text from the meeting's audio (separate from `.listening`, which follows the sound).
+    public var transcribing = false
 
-    public init(phase: Phase, session: String, app: String?) {
+    public init(phase: Phase, session: String, app: String?, transcribing: Bool = false) {
         self.phase = phase
         self.session = session
         self.app = app
+        self.transcribing = transcribing
     }
 
     public var title: String {
@@ -184,7 +190,9 @@ public struct StartupPanel: Equatable, Sendable {
         switch phase {
         case .starting(let step): return step
         case .ready: return app.map { "listening to \($0)" } ?? "waiting for the meeting app's audio"
-        case .listening: return app.map { "hearing \($0)" } ?? "hearing the meeting"
+        case .listening:
+            let hearing = app.map { "hearing \($0)" } ?? "hearing the meeting"
+            return transcribing ? hearing + " · transcribing" : hearing
         }
     }
 }
@@ -201,6 +209,11 @@ public struct OverlayConfig: Equatable, Sendable {
     /// Topic chips (no question card open) fade after this many seconds. They are hints, not answers, so they never
     /// follow `cardTimeout` (whose default is "never").
     public var topicTimeout: TimeInterval = 15
+    /// The meeting's audio counts as sound above this level (dBFS over the last 200 ms; speech through the tap sits far
+    /// above, digital silence reads as nil). The "Listening" label follows it.
+    public var audibleDbfs: Double = -50
+    /// The label goes back to "Ready" after this many seconds without sound.
+    public var audibleHold: TimeInterval = 2.5
 
     public init(cardTimeout: TimeInterval = .infinity, otherNames: [String] = []) {
         self.cardTimeout = cardTimeout
@@ -273,6 +286,8 @@ public struct OverlayReducer: Sendable {
     private var topicSeen: [String: TimeInterval] = [:]
     /// The turn each topic chip (by text) came from, so a bank hit in that turn can take it down again.
     private var topicTurn: [String: String] = [:]
+    /// When the meeting's audio was last above `config.audibleDbfs` (or text from it arrived).
+    private var lastAudible: TimeInterval = -.infinity
 
     public init(config: OverlayConfig = OverlayConfig(), bank: [String: BankOpener] = [:]) {
         self.config = config
@@ -288,6 +303,7 @@ public struct OverlayReducer: Sendable {
         lastRemoteTurnID = nil
         topicSeen = [:]
         topicTurn = [:]
+        lastAudible = -.infinity
     }
 
     // MARK: events
@@ -300,6 +316,7 @@ public struct OverlayReducer: Sendable {
         case .status(let st, let m): applyStatus(st, message: m)
         case .issue(let code, let m):
             if code == "permission_denied" { state.status = .permission(m.contains("microphone") ? "microphone" : "audioCapture") }
+        case .level(let remote, _): applyLevel(remoteDbfs: remote, now: now)
         case .metric(let o):
             if o[string: "stage"] == "session_t0" {
                 state.running = true
@@ -357,6 +374,8 @@ public struct OverlayReducer: Sendable {
 
     mutating func setStatus(_ s: OverlayStatus?) { state.status = s }
 
+    mutating func setPrompt(_ p: MeetingPrompt?) { state.meetingPrompt = p }
+
     private mutating func applyStatus(_ st: String, message: String) {
         switch st {
         case "warming": state.activity = .warming
@@ -378,10 +397,27 @@ public struct OverlayReducer: Sendable {
         }
     }
 
+    /// Raw level of the meeting's audio (about ten a second): the start-up panel says "Listening" while there is sound,
+    /// within a poll or two of it starting, and "Ready" again after `audibleHold` without. The text signal
+    /// (`transcribing`) is separate and arrives later.
+    private mutating func applyLevel(remoteDbfs: Double?, now: TimeInterval) {
+        guard case .some(let panel) = state.startup else { return }
+        if case .starting = panel.phase { return }
+        if let db = remoteDbfs, db > config.audibleDbfs {
+            lastAudible = now
+            if panel.phase == .ready { state.startup?.phase = .listening }
+        } else if panel.phase == .listening, lastAudible.isFinite, now - lastAudible >= config.audibleHold {
+            state.startup?.phase = .ready
+            state.startup?.transcribing = false
+        }
+    }
+
     private mutating func applyOutbound(_ o: [String: JSONValue], now: TimeInterval) {
-        if (o.type == "partial" || o.type == "turn"), o[string: "speaker"] == "remote", state.startup?.phase == .ready {
-            // The meeting app's audio is being transcribed.
-            state.startup?.phase = .listening
+        if (o.type == "partial" || o.type == "turn"), o[string: "speaker"] == "remote", state.startup != nil {
+            // The meeting app's audio is being transcribed (text implies sound: the label stays on for the hold time).
+            if state.startup?.phase == .ready { state.startup?.phase = .listening }
+            if state.startup?.phase == .listening { state.startup?.transcribing = true }
+            lastAudible = now
         }
         guard let tid = o[string: "turn_id"] else { return }
         switch o.type {

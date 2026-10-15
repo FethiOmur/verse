@@ -429,6 +429,10 @@ public struct OverlayView: View {
                 StatusPanelView(status: s, scale: scale, onOpenSettings: onOpenSettings, onDismiss: { model.dismissStatus() },
                                 onRetry: canRetry ? onRetry : nil)
                     .frame(width: max(capsuleWidth, CGFloat(min(settings.cardWidth, 520))))
+            } else if let prompt = state.meetingPrompt {
+                // "Meeting detected · Start Verse?" / "Save summary to vault?": a question with two buttons.
+                MeetingPromptView(prompt: prompt, scale: scale, onAction: { model.promptAction($0) })
+                    .frame(width: max(capsuleWidth, CGFloat(min(settings.cardWidth, 460))))
             } else if let sim = state.sim {
                 // Practice interview: the sim panel, and under it the hint card when hints are on.
                 VStack(spacing: 0) {

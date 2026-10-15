@@ -89,7 +89,7 @@ public final class NotchPanelController {
         // Nothing running and nothing to read: no window on screen.
         stateSub = model.$state.receive(on: RunLoop.main).sink { [weak self] s in
             MainActor.assumeIsolated {
-                if !s.running, s.status == nil { self?.hide() }
+                if !s.running, s.status == nil, s.meetingPrompt == nil { self?.hide() }
             }
         }
     }

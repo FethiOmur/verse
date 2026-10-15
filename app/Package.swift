@@ -81,7 +81,8 @@ let package = Package(
         .target(
             name: "VerseUI",
             // S4: the practice-interview setup (posting fetch, voice keys) and report window.
-            dependencies: ["VerseTurns", "VerseVoice", "VersePosting"],
+            // W2: VerseMeet for the "Meeting detected, start?" prompt and calendar-matched sessions.
+            dependencies: ["VerseTurns", "VerseVoice", "VersePosting", "VerseMeet"],
             swiftSettings: [.swiftLanguageMode(.v6)],
             linkerSettings: [.linkedFramework("ScreenCaptureKit"), .linkedFramework("WebKit"), .linkedFramework("Carbon")]
         ),
@@ -97,7 +98,7 @@ let package = Package(
         ),
         .testTarget(
             name: "VerseUITests",
-            dependencies: ["VerseUI", "VerseTurns", "VerseVoice"],
+            dependencies: ["VerseUI", "VerseTurns", "VerseVoice", "VerseMeet"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // F5: calendar prep (EventKit) and meeting detection (Core Audio process input flags).

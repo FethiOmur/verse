@@ -106,6 +106,21 @@ public final class OverlayModel: ObservableObject {
         simActions?(a)
     }
 
+    // MARK: meeting prompt
+
+    /// What the prompt's buttons do; the `MeetingCoordinator` sets it.
+    public var promptActions: ((PromptAction) -> Void)?
+
+    /// Shows (or, with nil, removes) the notch prompt. A running session replaces it by itself (`sessionStarting`).
+    public func showPrompt(_ p: MeetingPrompt?) {
+        reducer.setPrompt(p)
+        publish()
+    }
+
+    public func promptAction(_ a: PromptAction) {
+        promptActions?(a)
+    }
+
     private func publish() {
         if state != reducer.state { state = reducer.state }
     }
