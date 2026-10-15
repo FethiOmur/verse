@@ -1,6 +1,11 @@
 """Live replay: drive the real runtime process over its pipes with 10 scripted question turns.
 
-    python -m verse_brain.runtime.replay --live [--session DIR] [--out PATH]
+    python -m verse_brain.runtime.replay --live --session DIR [--out PATH]
+
+The replay never writes into the session folder it is given: it runs on a temporary copy (the brain writes
+`summary.md` there), and whatever the run produced is copied next to the metrics file, into
+`<out dir>/replay-session/`. (It used to write `summary.md` into the fixture `tests/fixtures/runtime/session/`,
+which broke `test_stop_without_turns_writes_nothing`.)
 
 The replay plays the Swift side: partials grow one word every `--word-ms` with a question cue where Swift's
 P1-4 logic would set it, bank hits where its matcher would fire, `turn` 300 ms after the last word (the
@@ -15,8 +20,10 @@ import json
 import math
 import os
 import queue
+import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -138,8 +145,45 @@ def _turn_resolved(tid: str, addressee: str):
     return check
 
 
+OUTPUTS_DIRNAME = "replay-session"
+
+
+def _snapshot(folder: Path) -> dict[str, bytes]:
+    return {str(p.relative_to(folder)): p.read_bytes() for p in sorted(folder.rglob("*")) if p.is_file()}
+
+
 def run_live(session: Path, out: Path, word_ms: int, budget: float, fake: bool = False) -> dict:
+    """Runs the replay on a temporary copy of `session`; the given folder is only read.
+
+    Files the run produced or changed in the copy (`summary.md`, ...) are copied to `<out dir>/replay-session/`, and the
+    paths in the result point there.
+    """
+    session = session.expanduser()
+    if not (session / "pack.md").is_file():
+        raise SystemExit(f"not a session folder (no pack.md): {session}")
     out.parent.mkdir(parents=True, exist_ok=True)
+    outputs = out.parent / OUTPUTS_DIRNAME
+    with tempfile.TemporaryDirectory(prefix="verse-replay-") as tmp:
+        work = Path(tmp) / session.name
+        shutil.copytree(session, work)
+        before = _snapshot(work)
+        res = _run_on(work, out, word_ms, budget, fake)
+        produced = [rel for rel, data in _snapshot(work).items() if before.get(rel) != data]
+        if produced:
+            outputs.mkdir(parents=True, exist_ok=True)
+            for rel in produced:
+                dest = outputs / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(work / rel, dest)
+        # The copy is gone when this block ends: point every path at the kept outputs (or the original folder).
+        text = json.dumps(res).replace(str(work), str(outputs))
+        res = json.loads(text)
+    res["session"] = str(session)
+    res["session_outputs"] = {"dir": str(outputs) if produced else None, "files": sorted(produced)}
+    return res
+
+
+def _run_on(session: Path, out: Path, word_ms: int, budget: float, fake: bool = False) -> dict:
     proc = Proc(budget, out.with_name("live-runtime.log"), fake=fake)
     turn_log: list[dict] = []
     summarize_s = None
@@ -342,7 +386,7 @@ def main(argv: list[str] | None = None) -> int:
         ap.error("pass exactly one of --live or --fake")
     if a.session is None:
         ap.error("--session is required")
-    res = run_live(a.session.expanduser(), a.out, a.word_ms, min(a.budget_usd, 1.0), fake=a.fake)
+    res = run_live(a.session, a.out, a.word_ms, min(a.budget_usd, 1.0), fake=a.fake)
     a.out.write_text(json.dumps(res, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print_table(res)
     print(f"wrote {a.out}")
