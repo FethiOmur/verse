@@ -45,10 +45,11 @@ public struct EchoGuard: Sendable {
         spans.removeAll { now - $0.at > retainSeconds }
     }
 
-    /// Similarity of a me result to the remote speech around it, nil when the remote channel said nothing near it.
-    func similarity(text: String, start: Double, end: Double, windowSeconds: Double, lang: String) -> Double? {
+    /// Similarity of a me result to the remote speech around it, nil when the remote channel said nothing near it or the
+    /// result has fewer than `minWords` words (a single common word such as "you" proves nothing).
+    func similarity(text: String, start: Double, end: Double, windowSeconds: Double, minWords: Int, lang: String) -> Double? {
         let mine = Text.tokens(text, lang: lang)
-        guard !mine.isEmpty else { return nil }
+        guard mine.count >= max(minWords, 1) else { return nil }
         let near = spans.filter { $0.end >= start - windowSeconds && $0.start <= end + windowSeconds }.sorted { $0.start < $1.start }
         let theirs = near.flatMap(\.tokens)
         guard !theirs.isEmpty else { return nil }

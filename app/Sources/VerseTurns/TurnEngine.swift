@@ -70,6 +70,8 @@ public struct TurnConfig: Sendable {
     public var echoGuardEnabled: Bool
     public var echoWindowSeconds: Double
     public var echoSimilarity: Double
+    /// A me result with fewer words is never judged an echo (one common word of the question proves nothing).
+    public var echoMinWords: Int
 
     public init(ownerName: String = "Alex", ownerAliases: [String] = [], otherNames: [String] = [],
                 cueEndpointMs: Int = 300, plainEndpointMs: Int = 600, meEndpointMs: Int = 1200,
@@ -81,7 +83,7 @@ public struct TurnConfig: Sendable {
                 topicThreshold: Double = 0.30, topicMargin: Double = 0.05, topicWindowSeconds: Double = 12,
                 topicCooldownSeconds: Double = 12, topicSameIDSeconds: Double = 300, topicLabelMax: Int = 60,
                 topicEnabled: Bool = true,
-                echoGuardEnabled: Bool = true, echoWindowSeconds: Double = 1.5, echoSimilarity: Double = 0.6) {
+                echoGuardEnabled: Bool = true, echoWindowSeconds: Double = 1.5, echoSimilarity: Double = 0.6, echoMinWords: Int = 2) {
         self.ownerName = ownerName
         self.ownerAliases = ownerAliases
         self.otherNames = otherNames
@@ -113,6 +115,7 @@ public struct TurnConfig: Sendable {
         self.echoGuardEnabled = echoGuardEnabled
         self.echoWindowSeconds = echoWindowSeconds
         self.echoSimilarity = echoSimilarity
+        self.echoMinWords = echoMinWords
     }
 }
 
@@ -459,7 +462,7 @@ public actor TurnEngine {
         // Speaker bleed: the remote voice in the microphone is not Alex. Dropped before it can open a me turn or close the
         // remote one; an open me turn that started inside the same echo goes with it.
         if config.echoGuardEnabled,
-           let sim = echo.similarity(text: text, start: e.audioStart, end: e.audioEnd, windowSeconds: config.echoWindowSeconds, lang: config.lang),
+           let sim = echo.similarity(text: text, start: e.audioStart, end: e.audioEnd, windowSeconds: config.echoWindowSeconds, minWords: config.echoMinWords, lang: config.lang),
            sim >= config.echoSimilarity {
             echoDrops.append(EchoDrop(text: text, isFinal: e.isFinal, audioStart: e.audioStart, audioEnd: e.audioEnd, at: now, similarity: sim))
             if let m = me, let first = m.segments.first, abs(first.start - e.audioStart) < 0.4 { me = nil }
@@ -484,7 +487,7 @@ public actor TurnEngine {
     /// echo is discarded unsent.
     private func discardEchoedMeTurn() {
         guard config.echoGuardEnabled, let m = me, let first = m.segments.first else { return }
-        guard let sim = echo.similarity(text: m.text, start: first.start, end: m.audioEnd, windowSeconds: config.echoWindowSeconds, lang: config.lang),
+        guard let sim = echo.similarity(text: m.text, start: first.start, end: m.audioEnd, windowSeconds: config.echoWindowSeconds, minWords: config.echoMinWords, lang: config.lang),
               sim >= config.echoSimilarity else { return }
         echoDrops.append(EchoDrop(text: m.text, isFinal: false, audioStart: first.start, audioEnd: m.audioEnd, at: now, similarity: sim))
         me = nil

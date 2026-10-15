@@ -79,6 +79,19 @@ final class EchoGuardTests: XCTestCase {
         XCTAssertTrue(drops.isEmpty, "\(drops)")
     }
 
+    /// One common word of the question ("you") is not an echo: the owner's answer "You build dispatch software ..." started
+    /// that way in the two-track replay and the guard dropped its first result.
+    func testSingleCommonWordIsNotDropped() async {
+        let engine = TurnEngine(config: TurnConfig(), bank: .empty, facts: .empty)
+        _ = await engine.ingestTimed(ev("What do you know about our company and product", at: 5.0, start: 3.0))
+        _ = await engine.ingestTimed(ev("You", at: 5.3, channel: .me, start: 5.0))
+        _ = await engine.ingestTimed(ev("You build dispatch software for freight companies", at: 6.0, channel: .me, start: 5.0))
+        let later = await engine.advance(to: 9.0)
+        XCTAssertEqual(later.turns.filter { $0.speaker == .me }.map(\.text), ["You build dispatch software for freight companies"])
+        let drops = await engine.takeEchoDrops()
+        XCTAssertTrue(drops.isEmpty, "\(drops)")
+    }
+
     /// A me result when the remote side said nothing near it can never be an echo.
     func testNothingToEchoMeansNothingIsDropped() async {
         let engine = TurnEngine(config: TurnConfig(), bank: .empty, facts: .empty)
