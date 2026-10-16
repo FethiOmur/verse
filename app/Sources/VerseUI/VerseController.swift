@@ -116,9 +116,10 @@ public final class VerseController: ObservableObject {
 
     /// The runner options for one Start. A test file plays to its end; live listens until Stop.
     public static func runOptions(sessionDir dir: URL, settings: AppSettings, fakeBrain: Bool, testFile: String?,
-                                  micWithFile: Bool = false) -> RunOptions {
+                                  micWithFile: Bool = false, follow: Bool = false) -> RunOptions {
         var o = RunOptions(sessionDir: dir)
         o.micWithFile = micWithFile
+        o.follow = follow
         o.lang = settings.language
         o.turn = settings.turnConfig
         o.fakeBrain = fakeBrain
@@ -164,7 +165,7 @@ public final class VerseController: ObservableObject {
         }
         let dir = SessionCatalog.url(settings.sessionName)
         var o = Self.runOptions(sessionDir: dir, settings: settings, fakeBrain: fakeBrain, testFile: testFile,
-                                micWithFile: remoteFileOverride != nil)
+                                micWithFile: remoteFileOverride != nil, follow: meeting.settings.followMyAnswer)
         log("start session=\(settings.sessionName) lang=\(settings.language) fake=\(fakeBrain) file=\(testFile ?? "-") live_seconds=\(o.seconds.map { String(Int($0)) } ?? "file")")
         lastLogLine = nil
         o.sink = { [weak self] e in

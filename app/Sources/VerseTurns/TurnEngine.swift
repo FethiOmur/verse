@@ -81,6 +81,10 @@ public struct TurnConfig: Sendable {
     /// matching words (the owner's own words) closes the remote turn at once as before.
     public var meCloseHoldMs: Int
     public var echoHoldSimilarity: Double
+    /// "Follow my answer": also emit a `partial` for the owner's speech (speaker `me`) whenever the open me turn's text
+    /// changes, so the brain can see what he is saying while he says it. Off (the default): only the closed `me` turn
+    /// goes to the brain, exactly as before. Emitting it changes no turn logic.
+    public var emitMePartials: Bool
 
     public init(ownerName: String = "Alex", ownerAliases: [String] = [], otherNames: [String] = [],
                 cueEndpointMs: Int = 300, plainEndpointMs: Int = 600, meEndpointMs: Int = 1200,
@@ -92,7 +96,9 @@ public struct TurnConfig: Sendable {
                 topicThreshold: Double = 0.30, topicMargin: Double = 0.05, topicWindowSeconds: Double = 12,
                 topicCooldownSeconds: Double = 12, topicSameIDSeconds: Double = 300, topicLabelMax: Int = 60,
                 topicEnabled: Bool = true,
-                echoGuardEnabled: Bool = true, echoWindowSeconds: Double = 1.5, echoSimilarity: Double = 0.6, echoMinWords: Int = 2, meCloseHoldMs: Int = 1200, echoHoldSimilarity: Double = 0.4) {
+                echoGuardEnabled: Bool = true, echoWindowSeconds: Double = 1.5, echoSimilarity: Double = 0.6, echoMinWords: Int = 2, meCloseHoldMs: Int = 1200, echoHoldSimilarity: Double = 0.4,
+                emitMePartials: Bool = false) {
+        self.emitMePartials = emitMePartials
         self.ownerName = ownerName
         self.ownerAliases = ownerAliases
         self.otherNames = otherNames
@@ -507,9 +513,12 @@ public actor TurnEngine {
             me = Turn(id: "m\(meCount)", startedAt: now, lastChange: now, lastResult: now)
         }
         guard var turn = me else { return out }
-        _ = Self.apply(&turn, start: e.audioStart, end: e.audioEnd, text: text, isFinal: e.isFinal, now: now)
+        let changed = Self.apply(&turn, start: e.audioStart, end: e.audioEnd, text: text, isFinal: e.isFinal, now: now)
         turn.lastResult = max(turn.lastResult, e.emittedAt)
         me = turn
+        if config.emitMePartials, changed {
+            out.append(Timed(at: now, event: .partial(turnID: turn.id, speaker: .me, text: turn.text, cue: false, tAudioEnd: e.audioEnd)))
+        }
         // The held result grew into speech that is not echo-like: the question was interrupted when it started.
         if remoteCloseHeldSince != nil, remote != nil, let first = turn.segments.first,
            Text.tokens(turn.text, lang: config.lang).count >= config.echoMinWords,

@@ -14,6 +14,9 @@ struct SettingsMeetingSection: View {
 
     var body: some View {
         Section {
+            Toggle("Follow my answer", isOn: $settings.followMyAnswer)
+            Text("When you leave the card and talk about something else, Verse updates it to continue your line and strikes through the points you make. Takes effect at the next Start.")
+                .font(.caption).foregroundStyle(.secondary)
             Toggle("Offer to start when a meeting is detected", isOn: $settings.detectMeetings)
             Toggle("Use my calendar", isOn: Binding(
                 get: { settings.useCalendar },

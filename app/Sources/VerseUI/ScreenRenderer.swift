@@ -60,6 +60,27 @@ public enum ScreenRenderer {
         corrected.card?.sayCorrected = true
         corrected.card?.deepPoints = ["Flagged fields carried the extractor's confidence score into the review UI (prep:L14)"]
 
+        // Follow my answer: the original card, the follow card with its mark, and the follow card with one point said.
+        var followOriginal = idle
+        followOriginal.addresseeTag = "for you"
+        var fCard = OverlayCard(turnID: "r5", question: "What was the hardest project you worked on?")
+        fCard.say = "The hardest was Lantern: bad invoices had to be flagged without blocking the batch."
+        fCard.sayTier = "F"
+        fCard.bullets = ["Schema-validated extraction with one retry on a failed field",
+                         "Low-confidence fields went to an operator, not straight to the ERP",
+                         "Manual entry fell from 11 minutes to 2 per invoice"]
+        fCard.chips = [OverlayChip(text: "38,000 invoices a month", source: "prep note", kind: "number")]
+        followOriginal.card = fCard
+        var followCard = followOriginal
+        followCard.card?.say = "And on the route optimiser I built the first pilot on my own, in six weeks."
+        followCard.card?.sayTier = "C"
+        followCard.card?.bullets = ["12 depots in the pilot, ETA drift down by a third",
+                                    "I wrote the re-plan loop that runs every 90 seconds",
+                                    "Dispatchers kept an override on every route"]
+        followCard.card?.following = true
+        var followCovered = followCard
+        followCovered.card?.struck = [0]
+
         var credit = idle
         credit.status = .creditExhausted("Max API credit used up until 1 December. Verse keeps transcribing locally.")
 
@@ -121,6 +142,9 @@ public enum ScreenRenderer {
             Shot(name: "capsule-idle", state: idle),
             Shot(name: "capsule-for-marco", state: marco),
             Shot(name: "card-question", state: q),
+            Shot(name: "card-follow-original", state: followOriginal),
+            Shot(name: "card-follow", state: followCard),
+            Shot(name: "card-follow-covered", state: followCovered),
             Shot(name: "card-sonnet-points", state: d),
             Shot(name: "card-opener-corrected", state: corrected),
             Shot(name: "credit-exhausted", state: credit),

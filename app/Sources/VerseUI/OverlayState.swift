@@ -35,7 +35,7 @@ public struct OverlayCard: Equatable, Sendable {
     public var question: String
     /// The line to say first (P opener, then the selected S or the F answer). nil until something arrives.
     public var say: String?
-    /// Which tier the SAY line came from: "P", "S", "F" or "D" (corrected).
+    /// Which tier the SAY line came from: "P", "S", "F", "D" (corrected) or "C" (follow card).
     public var sayTier: String?
     /// D said the shown opener was wrong; `say` is D's first line now.
     public var sayCorrected = false
@@ -44,6 +44,11 @@ public struct OverlayCard: Equatable, Sendable {
     public var chips: [OverlayChip] = []
     /// Sonnet's detail points, under the divider.
     public var deepPoints: [String] = []
+    /// "Follow my answer": Alex went his own way and `say`/`bullets` are the C tier's continuation of his line, not the
+    /// answer to the question. The view marks the card "following you".
+    public var following = false
+    /// Indices into `bullets` that Alex has already said (the brain's `covered`); the view strikes them through.
+    public var struck: Set<Int> = []
 
     public init(turnID: String, question: String) {
         self.turnID = turnID
@@ -272,6 +277,23 @@ public struct OverlayReducer: Sendable {
         var fID: String?
         var dID: String?
         var openerOK: Bool?
+        /// Follow my answer: the newest follow card the brain announced for this turn (`follow.card_id`) ...
+        var followCardID: String?
+        /// ... the newest one that already has a SAY line (the card keeps showing the previous follow card, or the
+        /// original, until the new one has something to show) ...
+        var shownFollowID: String?
+        /// ... every follow card id announced for the turn (the rest of `covered` belongs to the original card) ...
+        var followIDs: Set<String> = []
+        /// ... and the points Alex covered, by card id (`covered.card_id` -> point indices).
+        var covered: [String: Set<Int>] = [:]
+
+        /// A new remote question: nothing of the follow state carries over.
+        mutating func endFollow() {
+            followCardID = nil
+            shownFollowID = nil
+            followIDs = []
+            covered = [:]
+        }
     }
 
     private var lines: [String: Lines] = [:]
@@ -451,6 +473,8 @@ public struct OverlayReducer: Sendable {
 
     private mutating func openCard(turnID tid: String, question: String, addressee who: String, now: TimeInterval) {
         statements[tid] = nil
+        // A new remote question ends follow mode for the card it replaces.
+        if let previous = state.card?.turnID, previous != tid { turns[previous]?.endFollow() }
         state.addresseeTag = who == "me" ? "for you" : nil
         state.tagDimmed = false
         state.card = OverlayCard(turnID: tid, question: question)
@@ -523,14 +547,16 @@ public struct OverlayReducer: Sendable {
             bankHitLanded(turnID: tid, now: now)
         case "delta":
             guard let id = o[string: "id"], let tid = o[string: "turn_id"], let tier = o[string: "tier"] else { return }
-            var l = lines[id] ?? Lines(tier: tier, turnID: tid)
+            // A C line belongs to a follow card: it is kept by that card's id, apart from the original card's lines.
+            let key = tier == "C" ? Self.followKey(o[string: "card_id"] ?? id) : id
+            var l = lines[key] ?? Lines(tier: tier, turnID: tid)
             l.current += o[string: "text"] ?? ""
             if o[bool: "line_done"] == true {
                 let s = l.current.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !s.isEmpty { l.done.append(s) }
                 l.current = ""
             }
-            lines[id] = l
+            lines[key] = l
             var info = turns[tid, default: TurnInfo()]
             if tier == "F", info.fID == nil { info.fID = id }
             if tier == "D", info.dID == nil { info.dID = id }
@@ -551,12 +577,28 @@ public struct OverlayReducer: Sendable {
             if let bid = o[string: "bank_id"] ?? info.bankHit { info.rejectedBankIDs.insert(bid) }
             turns[tid] = info
             if state.card?.turnID == tid { refreshCard(now: now) }
+        case "follow":
+            // Alex left the card: a new card version (the C deltas of `card_id`) replaces the visible text. Only the open
+            // card's turn counts; a late message for an earlier question changes nothing.
+            guard let tid = o[string: "turn_id"], let cid = o[string: "card_id"], !cid.isEmpty, state.card?.turnID == tid else { return }
+            var info = turns[tid, default: TurnInfo()]
+            info.followCardID = cid
+            info.followIDs.insert(cid)
+            turns[tid] = info
+            refreshCard(now: now)
+        case "covered":
+            guard let tid = o[string: "turn_id"], let cid = o[string: "card_id"], let p = o[double: "point"], p >= 0, p < 1000,
+                  state.card?.turnID == tid else { return }
+            turns[tid, default: TurnInfo()].covered[cid, default: []].insert(Int(p))
+            refreshCard(now: now)
         case "status":
             applyStatus(o[string: "state"] ?? "", message: o[string: "message"] ?? "")
         default:
-            break
+            break   // unknown message types (and unknown fields) are ignored
         }
     }
+
+    private static func followKey(_ cardID: String) -> String { "C|" + cardID }
 
     // MARK: card assembly
 
@@ -576,6 +618,19 @@ public struct OverlayReducer: Sendable {
             return body.isEmpty ? nil : .point(body)
         }
         return s.isEmpty ? nil : .point(s)
+    }
+
+    /// SAY line and points of one streamed call: the first SAY line, then every other line as a point.
+    private static func parseLines(_ l: Lines?) -> (say: String?, points: [String]) {
+        var say: String?, points: [String] = []
+        for raw in l?.all ?? [] {
+            switch parse(raw) {
+            case .say(let s)?: if say == nil { say = s } else { points.append(s) }
+            case .point(let p)?: points.append(p)
+            case nil: break
+            }
+        }
+        return (say, points)
     }
 
     /// Rebuilds the card from what is known about its turn. Text is replaced in place (never animated).
@@ -621,12 +676,38 @@ public struct OverlayReducer: Sendable {
             }
             deep = points
         }
+        // Follow my answer: once the newest follow card has a SAY line, its text replaces the question's answer (SAY and
+        // points; the D points belong to the original answer and go). Until then the card keeps what it shows.
+        var fi = info
+        var following = false
+        var coveredNow: Set<Int>
+        if let cid = fi.followCardID, Self.parseLines(lines[Self.followKey(cid)]).say != nil { fi.shownFollowID = cid }
+        if let shown = fi.shownFollowID {
+            let c = Self.parseLines(lines[Self.followKey(shown)])
+            if let csay = c.say {
+                say = csay
+                sayTier = "C"
+                bullets = c.points
+                deep = []
+                corrected = false
+                following = true
+            }
+        }
+        if following, let shown = fi.shownFollowID {
+            coveredNow = fi.covered[shown] ?? []
+        } else {
+            // The original card: whatever was reported for a card that is not a follow card.
+            coveredNow = fi.covered.filter { !fi.followIDs.contains($0.key) }.reduce(into: Set<Int>()) { $0.formUnion($1.value) }
+        }
+        turns[card.turnID] = fi
         card.say = say
         card.sayTier = sayTier
         card.sayCorrected = corrected
         card.bullets = Array(bullets.prefix(config.maxBullets))
         card.chips = info.chips
         card.deepPoints = Array(deep.prefix(config.maxDeepPoints))
+        card.following = following
+        card.struck = coveredNow.filter { $0 < card.bullets.count }
         if card != before {
             touch(now)
             if card.say != nil || !card.bullets.isEmpty, state.activity == .thinking { state.activity = .listening }

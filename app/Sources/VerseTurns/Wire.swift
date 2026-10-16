@@ -113,14 +113,16 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
 
 /// The two brain messages that are not turn events.
 public enum BrainCommand: Sendable, Equatable {
-    case start(sessionDir: String, lang: String)
+    /// `follow`: the brain may watch the owner's own speech and send follow cards (spec "follow my answer"). Always sent
+    /// explicitly, so the brain never has to guess a default.
+    case start(sessionDir: String, lang: String, follow: Bool = false)
     case stop
     case summarize
 
     public func jsonLine() -> String {
         let obj: [String: Any]
         switch self {
-        case .start(let dir, let lang): obj = ["type": "start", "session_dir": dir, "lang": lang]
+        case .start(let dir, let lang, let follow): obj = ["type": "start", "session_dir": dir, "lang": lang, "follow": follow]
         case .stop: obj = ["type": "control", "action": "stop"]
         case .summarize: obj = ["type": "control", "action": "summarize"]
         }

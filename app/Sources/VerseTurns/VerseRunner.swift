@@ -141,6 +141,8 @@ public struct RunOptions: Sendable {
     public var fakeBrain = false
     public var budgetUSD: Double?
     public var turn = TurnConfig()
+    /// "Follow my answer": the brain gets `follow:true` in `start` and the owner's own partials (speaker `me`).
+    public var follow = false
     /// How long to wait for the brain's answers after the audio ended, at most.
     public var drainSeconds = 15.0
     /// ... and how long the brain must be quiet before that wait ends early.
@@ -287,6 +289,7 @@ public final class VerseRunner: @unchecked Sendable {
         }
         var turnCfg = o.turn
         turnCfg.lang = o.lang
+        if o.follow { turnCfg.emitMePartials = true }
         let bank: Bank, facts: FactIndex
         do {
             bank = try Bank.load(sessionDir: o.sessionDir)
@@ -490,7 +493,7 @@ public final class VerseRunner: @unchecked Sendable {
     /// Sends `start` to the current brain and waits for its first readiness status.
     private func startAndWaitReady() async -> String? {
         guard let b = state.withLock({ $0.brain }) else { return "error" }
-        b.send(BrainCommand.start(sessionDir: options.sessionDir.path, lang: options.lang).jsonLine())
+        b.send(BrainCommand.start(sessionDir: options.sessionDir.path, lang: options.lang, follow: options.follow).jsonLine())
         return await waitReady(timeout: options.readyTimeout, brain: b)
     }
 
