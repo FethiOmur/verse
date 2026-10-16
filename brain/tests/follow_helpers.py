@@ -31,6 +31,9 @@ class ConceptEmbedder:
     def __init__(self) -> None:
         self.calls: list[str] = []
 
+    def close(self) -> None:
+        pass
+
     def embed(self, text: str) -> list[float]:
         body = text[len(PREFIX):] if text.startswith(PREFIX) else text
         self.calls.append(body)

@@ -264,6 +264,10 @@ class Call:
             if self.probe and self.kind is None:
                 self.kind = "question" if line[5:].strip().lower().startswith("question") else "statement"
                 self.kind_known.set()
+                if self.kind == "question":
+                    # the SAY and point lines may follow in the same chunk, before any waiter runs: the follow machine must
+                    # already be on this question when they complete
+                    self.brain.on_probe_escalated(self)
         elif line.startswith("BANK:"):
             if self.probe and self.kind != "question":
                 return
@@ -428,6 +432,7 @@ class Brain:
         self._follow_req: NeedEmbed | None = None  # newest embedding request not yet started (older ones are dropped)
         self._follow_busy = False
         self._follow_embed_failed = False
+        self._follow_embed_ok: bool | None = None
         self._follow_task: asyncio.Task | None = None   # the ticker: not in `tasks`, so `settle()` does not wait for it
         self._follow_calls: list[Call] = []
         self._follow_detected: dict[str, float] = {}      # turn_id -> time.time() of the last divergence/refresh decision
@@ -1078,7 +1083,6 @@ class Brain:
                 return
             if probe.kind == "question":
                 self.emitter.metric(st.turn_id, "statement_escalated", id=probe.id)
-                self._follow_question(st)
                 await self._decide_d(st)
                 return
             await probe.done.wait()
@@ -1164,7 +1168,12 @@ class Brain:
         f = self.follow
         if f is None:
             return False
-        f.embed_ok = self.embed is not None and self.embed.ready and not getattr(self, "_follow_embed_failed", False)
+        ok = self.embed is not None and self.embed.ready and not self._follow_embed_failed
+        f.embed_ok = ok
+        if ok != self._follow_embed_ok:      # without the embedder the card never flips: say so once per change
+            self._follow_embed_ok = ok
+            self.emitter.metric("", "follow_embed_state", ok=ok, divergence=("on" if ok else "off (coverage only)"),
+                                state=self.embed.state if self.embed is not None else "absent")
         return True
 
     async def _follow_loop(self) -> None:
@@ -1214,7 +1223,7 @@ class Brain:
         else:
             if f.turn_id is not None and not f.ended and any(f.stats.values()):
                 self.emitter.metric(f.turn_id, "follow_end", reason="new_question", **dict(f.stats))
-            f.new_turn(st.turn_id)
+            f.new_turn(st.turn_id, since=st.partial_changed or st.finished_at)
             for c in self._follow_calls:
                 if c.turn_id != st.turn_id and not c.done.is_set():
                     c.discard()           # a follow card of the old answer must not land on the new question
@@ -1233,12 +1242,18 @@ class Brain:
         if rec is None or bid in self._follow_banks:
             return
         self._follow_banks.add(bid)
+        orig = f"orig-{st.turn_id}"          # the overlay shows the bank card as the original card until the fast tier answers
         if rec.get("opener"):
-            f.add_line(f"bank:{bid}", "bank", "say", str(rec["opener"]), source="bank")
+            f.add_line(f"bank:{bid}", "bank", "say", str(rec["opener"]), source="bank", report_as=orig)
         for pt in rec.get("points", []):
-            f.add_line(f"bank:{bid}", "bank", "point", str(pt), source="bank")
+            f.add_line(f"bank:{bid}", "bank", "point", str(pt), source="bank", report_as=orig)
 
     @_follow_safe
+    def on_probe_escalated(self, call: Call) -> None:
+        st = self.ts.get(call.turn_id)
+        if st is not None and self.follow is not None:
+            self._follow_question(st)
+
     def on_card_line(self, call: Call, kind: str, text: str) -> None:
         """A complete line of a card the overlay shows (S/F/D/C). Lines of a buffered S call arrive in `on_card_released`."""
         if self.follow is None or call.discarded or call.buffered or (call.probe and call.kind != "question"):

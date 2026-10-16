@@ -138,7 +138,7 @@ def test_a_refresh_is_not_started_while_the_follow_call_still_streams():
 
 def test_all_points_covered_and_stopped_means_quiet():
     clock = Clock(10.0)
-    m, drv, clock, fx = following(clock, FollowParams(pause_s=0.7, quiet_s=0.0))
+    m, drv, clock, fx = following(clock)
     # He says exactly the two points on the follow card; the card has nothing left to offer and he has stopped.
     t = speak(m, drv, clock, fx, "it is live on the app store and it reached the first thousand users", 15.0)
     idle(m, drv, clock, fx, t, 2.0)

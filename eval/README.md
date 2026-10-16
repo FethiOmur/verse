@@ -54,7 +54,7 @@ PYTHONPATH=../brain ../brain/.venv/bin/python tune_follow.py                    
 ```
 
 `run_follow.py` feeds the Python brain directly (fake brain = canned transport answering from the pack's bank, with the embedding
-model; `--no-embed` for the lexical-only detector). It exists because `verse-run` has no `--follow` yet and sends no `partial` for the owner's
+model; with `--no-embed` follow cannot diverge, it only strikes points: the embedder is required for a follow card). It exists because `verse-run` has no `--follow` yet and sends no `partial` for the owner's
 speech without it; the `say` voices only fix the true start and end of each utterance and the words are delivered like a streaming
 recognizer would (see the module docstring). `score_twotrack.py` adds, per labelled owner utterance, `follow_events`, `detection_ms`
 (first `follow` event after the first off-card word was spoken), `first_sentence_ms` (first complete SAY line of the follow card),

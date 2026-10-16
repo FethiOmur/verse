@@ -27,7 +27,7 @@ C_CANNED = ("SAY: And that is where I keep the model on a short leash.\n"
             "- Fields below 0.8 confidence go to a human operator.\n- That was about 7 percent of invoices.")
 OFF_CARD = ("Actually the thing I am most proud of is a running app for the marathon, it is called Trailhead and it is on "
             "the App Store with thousands of weekly users")
-FAST_PARAMS = FollowParams(lex_only_words=7, lex_only_s=2.0, pause_s=0.15, refresh_gap_s=0.4, quiet_s=0.3, embed_wait_s=0.3, embed_gap_s=0.0, end_silence_s=0.5)
+FAST_PARAMS = FollowParams(pause_s=0.15, refresh_gap_s=0.4, embed_wait_s=0.3, embed_gap_s=0.0, end_silence_s=0.5)
 
 
 def responder(c_script=C_CANNED, c_delay=0.0, f_body=FAST_OK):
@@ -40,7 +40,10 @@ def responder(c_script=C_CANNED, c_delay=0.0, f_body=FAST_OK):
     return r
 
 
-def make(resp=None, follow=True, params=FAST_PARAMS, embedder=None, session=FIX, **cfg):
+def make(resp=None, follow=True, params=FAST_PARAMS, embedder="concept", session=FIX, **cfg):
+    """`embedder="concept"`: the concept fake (divergence needs an embedder); None: no embedding path at all."""
+    if embedder == "concept":
+        embedder = ConceptEmbedder()
     t = FakeTransport(resp or responder())
     em = ListEmitter()
     conf = Config(follow=params, follow_tick_s=0.02, **cfg)
@@ -109,14 +112,14 @@ def test_divergence_launches_one_c_call_and_streams_the_follow_card():
     stages = {e["stage"] for e in ev if e["type"] == "metric"}
     assert {"follow_diverged", "follow_card"} <= stages
     d = next(e for e in ev if e["type"] == "metric" and e["stage"] == "follow_diverged")
-    assert d["unmatched"] >= 7 and d["embed"] is None and d["reason"] == "lexical"
+    assert d["reason"] == "lexical+embed" and d["embed"] is not None and d["embed"] < 0.80
     # the request: F's cached prefix byte for byte, the instructions and his words in the tail
     f = t.by_route("F")[0]
     c = cs[0]
     assert c.request["system"] == f.request["system"]
     assert tuple_of(c.request) == tuple_of(f.request)
     assert c.request["messages"][0]["content"][:-1] == f.request["messages"][0]["content"][:-1]
-    assert "FOLLOW MY ANSWER" in c.tail and "Trailhead" in c.tail
+    assert "FOLLOW MY ANSWER" in c.tail and "proud" in c.tail
     assert "SAY: Sure, here is the short version." in c.tail and "- I led Lantern." in c.tail      # the original card
     assert "CURRENT QUESTION (finished): Can you tell me about yourself?" in c.tail
     assert f.index < c.index
@@ -321,13 +324,17 @@ def test_pre_warm_and_follow_call_share_one_prompt_cache_entry():
 def _degraded_rig(**cfg):
     from test_runtime_fallback import rig as fb_rig
     from verse_brain.runtime.transport import Offline
-    return fb_rig(fault=Offline("simulated"), follow=FAST_PARAMS, follow_tick_s=0.02, **cfg)
+    b0, em, ft, prim, api, backend = fb_rig(fault=Offline("simulated"), follow=FAST_PARAMS, follow_tick_s=0.02, **cfg)
+    b = Brain(ft, b0.emitter, b0.config, embedder_factory=lambda: ConceptEmbedder())      # divergence needs the embedder
+    b.start_background = False
+    return b, em, ft, prim, api, backend
 
 
 def test_in_degraded_mode_the_follow_card_is_written_by_gemma_like_f():
     async def go():
         b, em, ft, prim, api, backend = _degraded_rig()
         await b.handle({"type": "start", "session_dir": str(FIX), "lang": "en", "follow": True})
+        await asyncio.sleep(0.3)
         await question(b)
         assert ft.degraded
         await me(b, OFF_CARD)

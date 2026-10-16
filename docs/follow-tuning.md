@@ -27,11 +27,12 @@ Streaming model: words at 2.7 per second, delivered in 560 ms chunks (the recogn
 the arrival of the first chunk that holds an off-card word. Small set, one author: treat the numbers as an operating point, not
 as a guarantee. The same file drives the unit tests (with a concept-vector fake embedder) and an optional real-model check.
 
-## What the lexical test alone does (no embedder)
+## What the lexical test alone would do (why there is no lexical fallback)
 
-Count rule N unmatched content words in the last 8, or a run of unmatched words lasting T seconds (at least 3 words):
+Count rule N unmatched content words in the last 8, or a run of unmatched words lasting T seconds (at least 3 words). Share of the
+46 on-card answers it would flip:
 
-| N, T | false divergences on the 46 stay cases | missed of 41 | detection median |
+| N, T | would flip (of 46) | missed of 41 | detection median |
 |---|---|---|---|
 | 5, 1.2 s (the spec's numbers) | 26 | 0 | 2.8 s |
 | 7, 2.0 s | 19 | 0 | 3.4 s |
@@ -39,9 +40,12 @@ Count rule N unmatched content words in the last 8, or a run of unmatched words 
 | 11, 4.0 s | 12 | 3 | 5.0 s |
 | 13, 5.0 s | 12 | 4 | 6.2 s |
 
-So the lexical test only raises suspicion; it cannot decide. Paraphrases routinely carry five or more words that match
-nothing ("typing", "went down", "spent", "invoice data"). Without the embedder (model missing) the detector runs N=11, T=4 s:
-12 of 46 stay cases still flip, which is why the embedder is a hard part of this feature, not an extra.
+So the lexical test only raises suspicion; it cannot decide. Paraphrases routinely carry five or more words that match nothing
+("typing", "went down", "spent", "invoice data"). A first version shipped an 11 words / 4 s fallback for when the embedder is
+unavailable; review showed it flips legitimate paraphrases (12 of 46), the failure Alex named, so it is gone: **while the
+embedder is not available (model missing, still loading, failed) nothing diverges and the card stays; coverage (striking points
+through) keeps working**. A divergence check whose embedding does not come in `embed_wait_s` is asked again, never decided
+without it. The brain says so once per change (`follow_embed_state` metric).
 
 ## What the embedding says
 

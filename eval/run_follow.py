@@ -106,7 +106,7 @@ def main() -> int:
     ap.add_argument("--brain-dir", default=os.environ.get("VERSE_BRAIN_DIR"))
     ap.add_argument("--session", default=str(Path("~/Library/Application Support/Verse/sessions/sample-interview").expanduser()))
     ap.add_argument("--live", action="store_true", help="the real brain (spends: Haiku calls on the session's pack)")
-    ap.add_argument("--no-embed", action="store_true", help="fake brain without the embedding model (the lexical-only detector)")
+    ap.add_argument("--no-embed", action="store_true", help="fake brain without the embedding model (follow then never diverges: coverage only)")
     ap.add_argument("--no-follow", action="store_true", help="start with follow:false (the baseline)")
     ap.add_argument("--lead-in", type=float, default=3.0)
     ap.add_argument("--drain", type=float, default=8.0, help="seconds after the last message before `control stop`")

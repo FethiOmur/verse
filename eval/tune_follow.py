@@ -78,21 +78,40 @@ def probe(card: dict, text: str, emb, cache, pack, p: FollowParams) -> list[dict
     return rows
 
 
+def lex_first_trigger(card: dict, text: str, p: FollowParams) -> float | None:
+    """When the lexical test alone (count N / run T of `p`) first fires on this answer; None if never."""
+    clock = Clock()
+    m = FollowMachine(p, clock, embed_ok=True)
+    m.new_turn("q1")
+    m.add_line("f1", "F", "say", card["say"])
+    for pt in card["points"]:
+        m.add_line("f1", "F", "point", pt)
+    m.drain()
+    for t, part in chunks(text):
+        clock.t = t
+        m.on_me("m1", part, False)
+        m.drain()
+        if m._lex_trigger()[0]:
+            return t
+    return None
+
+
 def part1(ctx) -> None:
     cards, stay, div, p0 = ctx["cards"], ctx["stay"], ctx["div"], ctx["p0"]
-    print("\n== 1. lexical only (no embedder): false divergences / misses for count N, run seconds T")
+    print("\n== 1. what the lexical test alone would do (count N unmatched in the last 8, or a run of T seconds, >= 3 words)."
+          "\n      Shipped behaviour without the embedder: nothing diverges; this is why.")
     lex = []
     for N, T in ((5, 1.2), (7, 2.0), (9, 3.0), (11, 4.0), (13, 5.0)):
-        p = replace(p0, lex_only_words=N, lex_only_s=T)
-        fd = [c["id"] for c in stay if simulate(cards[c["card"]], c["text"], params=p).first(Diverged)]
+        p = replace(p0, diverge_words=N, diverge_s=T)
+        fd = [c["id"] for c in stay if lex_first_trigger(cards[c["card"]], c["text"], p) is not None]
         det, miss = [], 0
         for c in div:
-            d = simulate(cards[c["card"]], c["text"], params=p).first(Diverged)
-            if d is None:
+            t = lex_first_trigger(cards[c["card"]], c["text"], p)
+            if t is None:
                 miss += 1
             else:
-                det.append(d.t - first_off_t(c))
-        print(f"   N={N:2d} T={T}: false divergences {len(fd):2d}/{len(stay)}, missed {miss:2d}/{len(div)}, "
+                det.append(t - first_off_t(c))
+        print(f"   N={N:2d} T={T}: would flip {len(fd):2d}/{len(stay)} on-card answers, miss {miss:2d}/{len(div)}, "
               f"detection median {statistics.median(det):.2f}s p90 {pct(det, 0.9):.2f}s")
         lex.append({"N": N, "T": T, "false": len(fd), "missed": miss, "det_median_s": round(statistics.median(det), 2)})
     ctx["out"]["lexical_only"] = lex

@@ -22,14 +22,17 @@ What is measured (every number lives in `FollowParams`; the evidence for the val
   match. Reading the card verbatim, with ASR slips, matches almost everything; a paraphrase matches in part.
 * Semantic match (EmbeddingGemma, same model and prefix as the bank matcher): the cosine between a window of his last words
   and each card line. A window that is similar enough to a line counts as matched ("rescued"), whatever the words.
-* Diverged: among his last `window` content words at least `diverge_words` are unmatched (lexically AND, when the embedder
-  is available, semantically), or the trailing run of unmatched content words lasts `diverge_s` seconds of his speech
-  (with at least `time_min_words` words). The lexical test only raises suspicion; the embedding gets the last word.
+* Diverged: among his last `window` content words at least `diverge_words` are unmatched, or the trailing run of unmatched
+  content words lasts `diverge_s` seconds of his speech (with at least `time_min_words` words). The lexical test only raises
+  suspicion; the embedding gets the last word. Without the embedder (`embed_ok` false: model missing, still loading, failed)
+  nothing ever diverges: the lexical test alone flips 12 to 26 of 46 on-card answers (docs/follow-tuning.md), so the card
+  stays; coverage keeps working. A pending check whose embedding never comes is asked again, never decided without it.
 * Coverage: a point is covered when most of its content stems occur close together in his speech, or a window of his
   words is semantically close enough to the point (numbers must not contradict). Covered points are struck through.
 * Refresh: after a follow card, at his sentence ends only (a final result, or `pause_s` without new words), at most every
-  `refresh_gap_s`, only with `refresh_new_words` new content words since the last C call, never while all points are covered
-  and he has stopped (`quiet_s`).
+  `refresh_gap_s`, only with `refresh_new_words` new content words since the last C call (words that match a card that is not
+  on screen, the original or the bank, are not news), and once every point on the card is covered only with that many new
+  words said after the last point was covered.
 * End: a new remote question (`new_turn`), or `end_silence_s` of silence from Alex after the remote spoke again.
 """
 
@@ -51,8 +54,6 @@ class FollowParams:
     diverge_words: int = 5           # spec: >= 5 content words that do not match the card
     diverge_s: float = 1.2           # spec: ... or >= 1.2 s of his speech
     time_min_words: int = 3          # the time rule needs this many unmatched content words in the run (one slow word is not a topic)
-    lex_only_words: int = 11         # without the embedder the count rule is stricter (docs/follow-tuning.md part 1: still 12 of 46 false)
-    lex_only_s: float = 4.0
     cluster_span: int = 3            # +-content words around a word that must hold a second stem of the same line
     cluster_min: int = 2             # distinct stems of one line (the word itself included)
     # semantic
@@ -70,7 +71,7 @@ class FollowParams:
     stretch_ctx: int = 2             # raw words before the unmatched run that go into the stretch text
     stretch_min_tokens: int = 6
     use_stretch: bool = True         # embed the unmatched run (plus context) instead of the plain last-12 window
-    embed_wait_s: float = 1.0        # a pending divergence waits this long for the embedding; then only the strict lexical rule decides
+    embed_wait_s: float = 1.0        # a pending divergence waits this long for its embedding, then asks again (it never decides without)
     embed_gap_s: float = 0.25        # background requests (coverage) are at least this far apart
     embed_new_words: int = 2         # ... and wait for this many new content words
     # coverage
@@ -81,9 +82,9 @@ class FollowParams:
     pause_s: float = 0.7             # no new words this long = sentence end
     refresh_gap_s: float = 4.0
     refresh_new_words: int = 4
-    quiet_s: float = 1.5
     end_silence_s: float = 4.0       # Alex silent this long after the remote spoke again ends follow mode
     min_gap_after_fail_s: float = 4.0
+    carry_back_s: float = 1.0        # his turn that began this long before the question's last word still counts as an answer to it
 
 
 # ---------------------------------------------------------------------------------------------------------- tokenizer
@@ -285,7 +286,8 @@ class Line:
     stems: frozenset[str]
     nums: frozenset[str]
     covered: bool = False
-    visible: bool = True      # a model card line the overlay shows (bank lines are reference-only: no covered events)
+    visible: bool = True      # a line the overlay shows and `covered` may strike (reference lines: bank, D, and bank lines once the fast tier has a card)
+    report_id: str = ""       # the card id `covered` events carry for it ("orig-<turn>" for the bank points shown before the fast SAY)
 
     @property
     def key(self) -> tuple[str, str, int]:
@@ -431,18 +433,37 @@ class FollowMachine:
         self._last_req_t = -1e9
         self._last_req_content = 0
         self.stats = {"diverged": 0, "refresh": 0, "covered": 0}
+        self.all_covered_t: float | None = None        # when the card on screen became fully covered
+        self._fast_say = False                         # the S/F card has its SAY line (the bank card is no longer on screen)
         self.last_embed: float | None = None
         self.last_margin: float | None = None
 
-    def new_turn(self, turn_id: str) -> None:
-        """A remote question was endpointed: follow mode of the previous turn is over, the card state starts again."""
+    def new_turn(self, turn_id: str, since: float | None = None) -> None:
+        """A remote question was endpointed: follow mode of the previous turn is over, the card state starts again.
+
+        `since`: the time (this machine's clock) of the question's last word. A turn of his whose first word arrived at or after
+        `since - carry_back_s` began after the question ended, so it is the answer to the new question and moves over (the brain
+        hears the question's `turn` event a moment after he may already have started); older turns are answers to earlier
+        questions, and an open one that keeps sending cumulative text is ignored from now on."""
         if turn_id == self.turn_id:
             return
         self.turn_id = turn_id
         keep = self.stats
-        self._stale_turns |= set(self.turn_order)      # his turn that is still open keeps sending cumulative text: ignore it
+        carried: dict[str, tuple[list[Tok], str]] = {}
+        if since is not None:
+            for tid in self.turn_order:
+                toks = self.turn_toks.get(tid) or []
+                if toks and toks[0].t >= since - self.p.carry_back_s:
+                    carried[tid] = (toks, self.turn_text.get(tid, ""))
+        self._stale_turns |= set(self.turn_order) - set(carried)
         self._reset()
         self.stats = keep
+        for tid, (toks, text) in carried.items():
+            self.turn_order.append(tid)
+            self.turn_toks[tid] = toks
+            self.turn_text[tid] = text
+            self.last_word_t = max(self.last_word_t or 0.0, toks[-1].t)
+        self._toks_cache = None
 
     def reset_cards(self) -> None:
         """The same question is answered again (offline retry, late bank hit): the old card lines are void, his words stay."""
@@ -453,12 +474,18 @@ class FollowMachine:
         self.diverged_at = None
         self._pend_div = None
         self.c_in_flight = False
+        self.all_covered_t = None
+        self._fast_say = False
 
     # ------------------------------------------------------------------------------------------------ cards
-    def add_line(self, card_id: str, tier: str, kind: str, text: str, *, source: str = "model") -> None:
-        """A complete card line. `kind` is "say" or "point"; points are indexed in arrival order on their card. Lines with
-        `source="bank"` (the prepared answer) or `"ref"` (D's detail points) are references only: they keep a paraphrase of
-        them from counting as a divergence, but they carry no `covered` events."""
+    def add_line(self, card_id: str, tier: str, kind: str, text: str, *, source: str = "model",
+                 report_as: str | None = None) -> None:
+        """A complete card line. `kind` is "say" or "point"; points are indexed in arrival order on their card.
+
+        `source="ref"` (D's detail points) is a reference only: it keeps a paraphrase from counting as a divergence but carries
+        no `covered` events. `source="bank"` (the prepared answer the overlay shows from a bank hit) is on screen, and its
+        points can be struck (as `report_as`, the id of the original card, with the bank point's index), until the fast tier's
+        card has its SAY line; from then on it is a reference."""
         text = clean_line(text)
         if not text or self.ended:
             return
@@ -468,16 +495,26 @@ class FollowMachine:
             self.order.append(card_id)
             if tier in ("S", "F") and self.original_id is None:
                 self.original_id = card_id
-            if tier == "C":
+            if self.visible_id is None and tier in ("S", "F"):
                 self.visible_id = card_id
-            elif self.visible_id is None and tier in ("S", "F"):
-                self.visible_id = card_id
+        if tier == "C" and kind == "say" and self.visible_id != card_id:
+            self.visible_id = card_id          # the overlay switches to a follow card once its SAY line is there
+            self.all_covered_t = None
+        if tier in ("S", "F") and kind == "say" and not self._fast_say:
+            self._fast_say = True              # the fast tier's card replaces the bank card on screen
+            for cid in self.order:
+                for old in self.cards[cid].lines:
+                    if old.tier == "bank":
+                        old.visible = False
         idx = -1
         if kind == "point":
             idx = card.points
             card.points += 1
-        ln = Line(card_id, tier, kind, idx, text, content_stems(text), numbers_of(text), visible=(source == "model"))
+        shown = source == "model" or (source == "bank" and not self._fast_say and kind == "point")
+        ln = Line(card_id, tier, kind, idx, text, content_stems(text), numbers_of(text), visible=shown,
+                  report_id=report_as or card_id)
         card.lines.append(ln)
+        self._note_all_covered()
         self._recompute()
         self._check_all()
 
@@ -549,7 +586,8 @@ class FollowMachine:
             best_n = 0
             for ln in cand:
                 n = 1 + len((near - {s}) & ln.stems)
-                if n > best_n:
+                if n > best_n or (n == best_n and best is not None and ln.card_id == self.visible_id
+                                  and best.card_id != self.visible_id):
                     best, best_n = ln, n
             if best is not None and best_n >= need:
                 toks[i].lex = True
@@ -573,14 +611,12 @@ class FollowMachine:
         return run
 
     # ---------------------------------------------------------------------------------------------- decisions
-    def _lex_trigger(self, strict: bool = False) -> tuple[bool, int, list[Tok]]:
+    def _lex_trigger(self) -> tuple[bool, int, list[Tok]]:
         p = self.p
         n, _ = self._unmatched_window()
         run = self._run()
-        words = p.diverge_words if self.embed_ok and not strict else p.lex_only_words
-        secs = p.diverge_s if self.embed_ok and not strict else p.lex_only_s
-        by_count = n >= words
-        by_time = len(run) >= p.time_min_words and run[-1].t - run[0].t >= secs
+        by_count = n >= p.diverge_words
+        by_time = len(run) >= p.time_min_words and run[-1].t - run[0].t >= p.diverge_s
         return (by_count or by_time), n, run
 
     def _check_all(self, now: float | None = None, final: bool = False) -> None:
@@ -595,16 +631,14 @@ class FollowMachine:
             self._check_refresh(now, final=final)
 
     def _check_diverge(self, now: float) -> None:
-        if not self.ref_lines():
-            return                        # no card yet: nothing to diverge from
+        if not self.ref_lines() or not self.embed_ok:
+            self._pend_div = None
+            return                        # no card yet, or no embedder: nothing may flip the card
         if self.diverged_at is not None or now - self.fail_t < self.p.min_gap_after_fail_s:
             return
         trig, n, run = self._lex_trigger()
         if not trig:
             self._pend_div = None
-            return
-        if not self.embed_ok:
-            self._diverge(now, "lexical", n, run, None)
             return
         if self._pend_div is None:
             req = self._request(now, for_div=True)
@@ -740,11 +774,14 @@ class FollowMachine:
         if pend is not None and (pend["seq"] is None or seq >= pend["seq"]):
             self._pend_div = None
             if self.mode == "watch" and self.diverged_at is None:
-                trig, n, run = self._lex_trigger()
-                if trig and not on_card:
-                    self._diverge(now, "lexical+embed", n, run, round(best_stay, 4), margin)
-                elif not trig or on_card:
-                    pass
+                if not same:
+                    # his words changed under the request (a revision): these scores are about other words. Ask again for
+                    # the current text instead of deciding on them.
+                    self._check_diverge(now)
+                else:
+                    trig, n, run = self._lex_trigger()
+                    if trig and not on_card:
+                        self._diverge(now, "lexical+embed", n, run, round(best_stay, 4), margin)
         self._maybe_request(now)
         if self.mode == "following":
             self._check_refresh(now)
@@ -761,7 +798,8 @@ class FollowMachine:
             return
         ln.covered = True
         self.stats["covered"] += 1
-        self._fx.append(Covered(ln.card_id, ln.index, via, round(score, 4)))
+        self._fx.append(Covered(ln.report_id or ln.card_id, ln.index, via, round(score, 4)))
+        self._note_all_covered()
 
     def _coverage_lex(self) -> None:
         p = self.p
@@ -807,19 +845,27 @@ class FollowMachine:
     def c_done(self) -> None:
         self.c_in_flight = False
 
-    def _new_words_since_c(self) -> int:
+    def _new_words_since_c(self, after: float | None = None) -> int:
+        """Content words said since the last C call (or since `after`) that are news for the card on screen: words that match a
+        card that is not on screen (the original, the bank's, D's, an older follow card) are him going back over old ground."""
         if self.c_launch_t is None:
             return 0
-        orig = self.original_id
+        since = self.c_launch_t if after is None else max(self.c_launch_t, after)
         vis = self.visible_id
         n = 0
         for t in self.toks():
-            if not t.content or t.t <= self.c_launch_t:
+            if not t.content or t.t <= since:
                 continue
-            if t.matched and t.card == orig and orig != vis:
-                continue                      # he is back on the original card: not news for the follow card
+            if t.matched and t.card is not None and t.card != vis:
+                continue
             n += 1
         return n
+
+    def _note_all_covered(self) -> None:
+        if not self._all_covered():
+            self.all_covered_t = None
+        elif self.all_covered_t is None:
+            self.all_covered_t = self.clock()
 
     def _all_covered(self) -> bool:
         pts = [ln for ln in self.card_lines(self.visible_id) if ln.kind == "point"]
@@ -837,11 +883,14 @@ class FollowMachine:
         sentence_end = final or pause >= p.pause_s
         if not sentence_end:
             return
-        n = self._new_words_since_c()
+        after = None
+        if self._all_covered():
+            # He has said everything on the card: it stays as it is (no pause, no final result brings a new one) until he
+            # goes on with enough new material after the last point.
+            after = self.all_covered_t if self.all_covered_t is not None else now
+        n = self._new_words_since_c(after)
         if n < p.refresh_new_words:
             return
-        if self._all_covered() and pause >= p.quiet_s and not final:
-            return                            # he said everything on the card and stopped: no push
         self.refreshed_at_word_t = self.last_word_t
         self.stats["refresh"] += 1
         self._fx.append(Refresh(n, self.his_text()))
@@ -854,10 +903,8 @@ class FollowMachine:
         p = self.p
         pend = self._pend_div
         if pend is not None and now >= pend["deadline"] and self.mode == "watch" and self.diverged_at is None:
-            self._pend_div = None             # the embedding did not come: only the strict lexical rule may decide alone
-            trig, n, run = self._lex_trigger(strict=True)
-            if trig:
-                self._diverge(now, "embed_timeout", n, run, None)
+            self._pend_div = None             # the embedding did not come: ask again; nothing is decided without it
+            self._check_diverge(now)
         if self.mode == "following":
             self._check_refresh(now)
         if self.remote_at is not None:

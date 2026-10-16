@@ -20,7 +20,7 @@ IN_TYPES = {"start", "partial", "turn", "bank_hit", "control"}
 SIM_IN_TYPES = {"sim_start", "answer", "spoken"}
 SIM_CONTROL_ACTIONS = {"skip", "repeat", "end"}
 # Follow my answer (docs/specs/2026-10-16-verse-follow-my-answer-design.md section 3), additive. Swift -> brain: `start.follow`
-# (bool, default true) and `partial{speaker:"me"}` (the text of the owner's turn so far, cumulative like the remote partials).
+# (bool; absent = off) and `partial{speaker:"me"}` (the text of the owner's turn so far, cumulative like the remote partials).
 # Brain -> Swift: `follow{turn_id,reason:"diverged"|"refresh",card_id}` followed by `delta{id=card_id,card_id,tier:"C"}`;
 # `covered{turn_id,card_id,point}` (card_id "orig-<turn_id>" for the original F/S card, the C call id for a follow card;
 # point = 0-based index among the card's "- " lines; D points are not counted); metric stages `follow_diverged`,

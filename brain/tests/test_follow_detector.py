@@ -12,7 +12,7 @@ import pytest
 from follow_helpers import CARD, PACK_FOR_DETECTOR, ConceptEmbedder
 
 from verse_brain.runtime.follow import Covered, Diverged, FollowMachine, FollowParams, NeedEmbed, Refresh, is_content, tokenize
-from verse_brain.runtime.follow_drive import Clock, simulate
+from verse_brain.runtime.follow_drive import Clock, SyncDriver, simulate
 
 WORD = dict(wps=2.5, chunk_s=0.4)        # one word per update, like a slow stream
 
@@ -58,11 +58,23 @@ def test_a_paraphrase_triggers_nothing(text):
     assert diverged(r) is None, "the embedding path keeps a paraphrase on the card"
 
 
-def test_without_the_embedder_a_long_paraphrase_is_what_the_lexical_rule_cannot_hold():
-    """Measured, not assumed: the second paraphrase has 7 content words that match nothing. With the embedder off the
-    stricter lexical-only rule (`lex_only_words`) is the only guard; with a tight rule it fires, with the embedder it does not."""
+def test_the_lexical_test_alone_would_flip_a_long_paraphrase_and_the_embedding_is_what_holds_it():
+    """Measured, not assumed: the second paraphrase has 7 content words that match nothing, so the lexical test fires; only
+    the embedding says it is still the card. (Without the embedder the card simply stays: see test_follow_review.)"""
     text = PARAPHRASES[1]
-    assert diverged(run(text, embed=False, params=FollowParams(lex_only_words=6, lex_only_s=9.0))) is not None
+    m = FollowMachine(clock=Clock(), embed_ok=True)
+    m.new_turn("q1")
+    m.add_line("orig-q1", "F", "say", CARD["say"])
+    for p_ in CARD["points"]:
+        m.add_line("orig-q1", "F", "point", p_)
+    m.drain()
+    fired = False
+    for i, w in enumerate(text.split(), 1):
+        m.clock.t = 0.4 * i
+        m.on_me("m1", " ".join(text.split()[:i]), False)
+        fired = fired or m._lex_trigger()[0]
+        m.drain()
+    assert fired
     assert diverged(run(text, embed=True)) is None
 
 
@@ -105,14 +117,19 @@ def test_fillers_and_backchannels_are_nothing():
 
 def test_divergence_waits_for_the_card():
     """Words said before any card line exists are kept, nothing is decided until there is a card to diverge from."""
-    m = FollowMachine(FollowParams(lex_only_words=7, lex_only_s=2.0), clock=Clock(), embed_ok=False)
+    clock = Clock()
+    m = FollowMachine(clock=clock, embed_ok=True)
+    drv = SyncDriver(m, ConceptEmbedder(), PACK_FOR_DETECTOR)
     m.new_turn("q1")
+    fx: list = []
     for i in range(1, 9):
-        m.clock.t = 0.4 * i
+        clock.t = 0.4 * i
         m.on_me("m1", " ".join(NEW_PROJECT.split()[: i + 6]), False)
-    assert not m.drain()
+    drv.pump(fx.append, now=clock.t)
+    assert not fx
     m.add_line("orig-q1", "F", "say", CARD["say"])
-    assert [e for e in m.drain() if isinstance(e, Diverged)], "the card arrived: his words so far are compared at once"
+    drv.pump(fx.append, now=clock.t)
+    assert [e for e in fx if isinstance(e, Diverged)], "the card arrived: his words so far are compared at once"
 
 
 def test_diverge_then_return_to_the_card_does_not_flicker():
