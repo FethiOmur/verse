@@ -46,6 +46,16 @@ final class AnytimeWireTests: XCTestCase {
         XCTAssertEqual(BrainCommand.stop.jsonLine(), #"{"action":"stop","type":"control"}"#)
     }
 
+    /// `control route` (anytime-swap): the route of the running call changed. `room_auto` and `follow` ride along only when set.
+    func testRouteControlLines() throws {
+        XCTAssertEqual(BrainCommand.setRoute(.meeting).jsonLine(), #"{"action":"route","route":"meeting","type":"control"}"#)
+        XCTAssertEqual(BrainCommand.setRoute(.room, roomAuto: .off, follow: true).jsonLine(),
+                       #"{"action":"route","follow":true,"room_auto":"off","route":"room","type":"control"}"#)
+        let o = try object(BrainCommand.setRoute(.meeting, follow: false).jsonLine())
+        XCTAssertEqual(o["follow"] as? Bool, false, "an explicit false is sent: the brain cannot guess it")
+        XCTAssertNil(o["room_auto"])
+    }
+
     func testRoomSpeakerRoundTrips() throws {
         let turn = OutboundEvent.turn(turnID: "r1", speaker: .room, text: "Can you tell me about the project", addressee: .unknown, tAudioEnd: 4.2, kind: .question)
         let o = try object(turn.jsonLine())

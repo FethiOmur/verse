@@ -43,6 +43,13 @@ public final class OverlayModel: ObservableObject {
         publish()
     }
 
+    /// The running call now listens on another route and/or in another language (the listen pipeline was swapped in place).
+    /// Only the labels move: the card, the topics, the transcript state and the clock are the call's, untouched.
+    public func listeningChanged(route: AudioRoute, lang: String, app: String? = nil) {
+        reducer.listeningChanged(route: route, lang: lang, app: app)
+        publish()
+    }
+
     /// "Press ⌥⌘V again to stop" on or off. It overlays whatever the island shows and never replaces a real status
     /// (an error or a permission message stays); taking it down leaves any other status alone.
     public func setStopConfirm(_ on: Bool) {

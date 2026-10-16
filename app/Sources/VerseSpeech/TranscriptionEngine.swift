@@ -10,6 +10,13 @@ public struct EngineResult: Sendable {
     public var isFinal: Bool
     public var start: TimeInterval
     public var end: TimeInterval
+
+    public init(text: String, isFinal: Bool, start: TimeInterval, end: TimeInterval) {
+        self.text = text
+        self.isFinal = isFinal
+        self.start = start
+        self.end = end
+    }
 }
 
 /// A streaming speech recognizer. One instance per channel and session.

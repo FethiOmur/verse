@@ -207,8 +207,9 @@ public actor TurnEngine {
         var audioEnd: Double
     }
 
-    private let config: TurnConfig
-    private let matcher: MatchCache
+    private var config: TurnConfig
+    private var matcher: MatchCache
+    private let bank: Bank
     private let facts: FactIndex
     /// What the session knows by name, for short noun-phrase questions ("Notice period").
     private let terms: SessionTerms
@@ -238,6 +239,7 @@ public actor TurnEngine {
 
     public init(config: TurnConfig, bank: Bank, facts: FactIndex) {
         self.config = config
+        self.bank = bank
         self.matcher = MatchCache(BankMatcher(bank: bank, lang: config.lang))
         self.facts = facts
         self.terms = SessionTerms(bank: bank, facts: facts)
@@ -257,6 +259,33 @@ public actor TurnEngine {
             topic.forget(turn: turnID)
         }
     }
+
+    /// A mid-call route or language switch (the listen pipeline was swapped in place, the call goes on): the settings that
+    /// depend on them change, everything the engine knows stays. Turn numbers go on (`r7` is followed by `r8`, never by a second
+    /// `r1`), the topic and echo memory of the call stay, and so does time, because the caller keeps feeding session time that
+    /// continues across the swap.
+    ///
+    /// Call `flush(at:)` first: it closes the turns that are open, so no partial of the old pipeline is left to be continued
+    /// by the new one. What this drops is only what could mistake the new recognizer's first words for a continuation of the
+    /// old one: the memory of the last closed remote turn (`closedRemote`, which strips repeated words) and an unsent follow
+    /// partial. Nil leaves a setting as it is.
+    public func reconfigure(lang: String? = nil, roomMode: Bool? = nil, roomAuto: RoomAuto? = nil, emitMePartials: Bool? = nil) {
+        let langChanged = lang.map { $0 != config.lang } ?? false
+        if let lang { config.lang = lang }
+        if let roomMode { config.roomMode = roomMode }
+        if let roomAuto { config.roomAuto = roomAuto }
+        if let emitMePartials { config.emitMePartials = emitMePartials }
+        if langChanged {
+            // The bank's n-gram matcher is per language; the topic trigger's windows are in the old language's words.
+            matcher = MatchCache(BankMatcher(bank: bank, lang: config.lang))
+            topic = TopicTrigger(config: config, bank: bank, bankMatches: matcher, facts: facts)
+        }
+        closedRemote = nil
+        mePartialSent = ""
+    }
+
+    /// The settings the engine runs with now (for tests and logs).
+    public var currentConfig: TurnConfig { config }
 
     /// What the text guard discarded since the last call (for the runner's metric lines).
     public func takeEchoDrops() -> [EchoDrop] {

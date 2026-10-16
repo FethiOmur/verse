@@ -125,6 +125,9 @@ public struct RunOptions: Sendable {
     /// Stop listening after this long. nil: a file plays to its end; live listens for `defaultLiveSeconds`.
     public var seconds: Double?
     public var file: URL?
+    /// Tests: the permissions, sources and recognizers every listen session of this run is built from (a mid-call route or
+    /// language switch builds another one). nil: the real ones.
+    public var listenEnvironment: ListenEnvironment?
     /// Tests and the replay harness: an explicit listen source (e.g. `.memory(remote:me:)` for both speakers).
     /// Overrides `file`; nil: `file` when set, otherwise live.
     public var source: ListenConfig.Source?
@@ -189,10 +192,47 @@ public struct RunOptions: Sendable {
 /// Supervision: when the brain exits unexpectedly it is restarted once with the same session; a second crash stops
 /// listening and ends the run with `status error`.
 public final class VerseRunner: @unchecked Sendable {
+    /// What the run loop consumes. Times are the run's own (they continue across a listen swap, see `Leg.offset`); `ended`
+    /// names the listen pipeline whose stream finished.
     private enum Input: Sendable {
         case event(TranscriptEvent)
         case tick(TimeInterval, Double?)
-        case ended
+        case ended(Int)
+    }
+
+    /// One listen pipeline of the run. The first one starts with the run; a route or language switch builds another and the
+    /// loop cuts over to it between two events. `offset` is the run time at which the pipeline's own clock started, so audio
+    /// and event times (which each session counts from its own `start()`) stay on one timeline for the turn engine and the brain.
+    private final class Leg: @unchecked Sendable {
+        let gen: Int
+        let session: ListenSession
+        let offset: TimeInterval
+        let route: AudioRoute
+        var tasks: [Task<Void, Never>] = []
+        init(gen: Int, session: ListenSession, offset: TimeInterval, route: AudioRoute) {
+            self.gen = gen
+            self.session = session
+            self.offset = offset
+            self.route = route
+        }
+        func cancelTasks() { for t in tasks { t.cancel() } }
+    }
+
+    /// A switch that is waiting for the old pipeline to finish: the new one is already prepared (models loaded).
+    private final class PendingSwap: @unchecked Sendable {
+        let next: ListenSession
+        let route: AudioRoute
+        let lang: String
+        let stoppedAtWall: Double
+        private let continuation: CheckedContinuation<Bool, Never>
+        init(next: ListenSession, route: AudioRoute, lang: String, stoppedAtWall: Double, continuation: CheckedContinuation<Bool, Never>) {
+            self.next = next
+            self.route = route
+            self.lang = lang
+            self.stoppedAtWall = stoppedAtWall
+            self.continuation = continuation
+        }
+        func resume(_ ok: Bool) { continuation.resume(returning: ok) }
     }
 
     private enum BrainPhase: Sendable {
@@ -205,7 +245,7 @@ public final class VerseRunner: @unchecked Sendable {
 
     private let options: RunOptions
     private let outLock = OSAllocatedUnfairLock()
-    private let state = OSAllocatedUnfairLock<State>(initialState: State())
+    private let state: OSAllocatedUnfairLock<State>
     private let logFn: @Sendable (String) -> Void
 
     private struct State {
@@ -230,6 +270,18 @@ public final class VerseRunner: @unchecked Sendable {
         var brainFailed = false
         /// The turn engine of the running session, for the brain's paraphrase hits (`noteBrainBankHit`).
         var engine: TurnEngine?
+        // listen swap
+        /// The route and language the call listens in now (they start as the options and change with `switchListening`).
+        var route = AudioRoute.meeting
+        var lang = "en"
+        /// The first listen pipeline is up and the run loop is consuming (false before and after).
+        var listening = false
+        var swapping = false
+        var pendingSwap: PendingSwap?
+        /// `RunOptions.seconds` ran out: the run ends, no switch starts.
+        var limitReached = false
+        var listenFailed = false
+        var swaps = 0
     }
 
     private let transcript = OSAllocatedUnfairLock<FileHandle?>(initialState: nil)
@@ -240,6 +292,10 @@ public final class VerseRunner: @unchecked Sendable {
     public init(options: RunOptions, log: @escaping @Sendable (String) -> Void = { _ in }) {
         self.options = options
         self.logFn = log
+        var initial = State()
+        initial.route = options.route
+        initial.lang = options.lang
+        state = OSAllocatedUnfairLock(initialState: initial)
     }
 
     /// Ends listening early (SIGINT, the app's Stop). The run still shuts the brain down.
@@ -348,18 +404,8 @@ public final class VerseRunner: @unchecked Sendable {
 
         // Listening.
         let source: ListenConfig.Source = o.source ?? (o.file.map { .file($0) } ?? .live)
-        let mic: Bool
-        switch source {
-        case .live: mic = o.micEnabled
-        case .file: mic = o.micEnabled && o.micWithFile
-        case .memory(let remote, let me): mic = o.route == .room ? (me ?? remote) != nil : me != nil
-        }
-        var cfg = ListenConfig(lang: o.lang, remoteBundleIDs: o.bundleIDs, micEnabled: mic, source: source)
-        cfg.micAsRemote = o.route == .room
-        cfg.voiceProcessing = false
-        cfg.micWithFile = o.micWithFile
-        cfg.bleedGate = o.bleedGate
-        let session = ListenSession(config: cfg)
+        let environment = o.listenEnvironment ?? .system
+        let session = ListenSession(config: listenConfig(route: o.route, lang: o.lang, source: source), environment: environment)
         let stream: AsyncStream<TranscriptEvent>
         do {
             stream = try await session.start()
@@ -378,7 +424,7 @@ public final class VerseRunner: @unchecked Sendable {
             await stopBrain()
             return 1
         }
-        let stopEarly = state.withLock { s -> Bool in s.session = session; return s.stopRequested || s.brainFailed }
+        let stopEarly = state.withLock { s -> Bool in s.session = session; s.listening = true; return s.stopRequested || s.brainFailed }
         let now0 = await session.now()
         let origin = await session.channelOrigin(.remote) ?? 0
         let originMe = await session.channelOrigin(.me)
@@ -391,39 +437,66 @@ public final class VerseRunner: @unchecked Sendable {
         if stopEarly { await session.stop() }
 
         let (inputs, cont) = AsyncStream.makeStream(of: Input.self, bufferingPolicy: .unbounded)
-        let pump = Task {
-            for await e in stream { cont.yield(.event(e)) }
-            cont.yield(.ended)
-        }
-        let ticker = Task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(10))
-                let t = await session.now()
-                let level = await session.levels(window: 0.1)[.remote]
-                cont.yield(.tick(t, level?.rmsDbfs))
-            }
-        }
-        // Raw level for the overlay's "Listening" label (a front end only: nothing without a sink).
-        let levelTask: Task<Void, Never>? = options.sink == nil ? nil : Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(Self.levelPeriodMs))
-                if Task.isCancelled { break }
-                let lv = await session.levels(window: 0.2)
-                self?.emitSinkOnly(.level(remoteDbfs: lv[.remote]?.rmsDbfs, meDbfs: lv[.me]?.rmsDbfs))
-            }
-        }
-        let issues = Task { [weak self] in
-            for await issue in session.issues {
-                self?.emitJSON(["type": "issue", "code": issue.code, "message": issue.description])
-            }
-        }
+        var leg = startLeg(Leg(gen: 0, session: session, offset: 0, route: o.route), stream: stream, into: cont)
+        var legs: [Leg] = [leg]
         let timer = Task { [weak self] in
             var isLive = false
             if case .live = source { isLive = true }
             let limit = o.seconds ?? (isLive ? RunOptions.defaultLiveSeconds : nil)
             guard let limit else { return }
             try? await Task.sleep(for: .seconds(limit))
-            if !Task.isCancelled { self?.log("time limit reached"); await session.stop() }
+            guard let self, !Task.isCancelled else { return }
+            self.log("time limit reached")
+            let current = self.state.withLock { s -> ListenSession? in s.limitReached = true; return s.session }
+            await current?.stop()
+        }
+
+        /// The cut-over of a listen swap, run by the loop once the old pipeline's stream has ended (so every result it
+        /// still had to deliver has gone through the engine). False: the run is over (stopped, or the new pipeline did not start).
+        func cutOver(_ p: PendingSwap) async -> Bool {
+            let old = leg
+            old.cancelTasks()
+            let (route0, lang0) = state.withLock { ($0.route, $0.lang) }
+            // 1. What the old pipeline had open is over now: its turns are closed (one final each) before the new recognizer's
+            //    first words can be taken for a continuation. Turn numbers go on in the same engine.
+            let endOfOld = old.offset + (await old.session.now())
+            dispatch(await engine.flush(at: endOfOld))
+            // 2. The engine, the run and the brain learn the new route and language. The control lines follow the flushed turns
+            //    on the brain's stdin, so the brain sees one continuous stream: old turns, the control, new turns.
+            let follow = o.follow && p.route != .room
+            await engine.reconfigure(lang: p.lang, roomMode: p.route == .room, roomAuto: p.route == .room ? o.roomAuto : nil,
+                                     emitMePartials: follow)
+            state.withLock { s in s.route = p.route; s.lang = p.lang }
+            if p.route != route0 {
+                sendControl(.setRoute(p.route, roomAuto: p.route == .room ? o.roomAuto : nil, follow: o.follow))
+            }
+            if p.lang != lang0 { sendControl(.setLanguage(p.lang)) }
+            // 3. The new pipeline's clock starts now; its times continue where the old one's ended.
+            let offset = old.offset + (await old.session.now())
+            let next: AsyncStream<TranscriptEvent>
+            do {
+                next = try await p.next.start()
+            } catch {
+                log("listen swap failed: \(error)")
+                emitSinkOnly(.status(state: "listen_failed", message: "\(error)"))
+                state.withLock { $0.listenFailed = true }
+                p.resume(false)
+                return false
+            }
+            let startedWall = Date().timeIntervalSince1970
+            leg = startLeg(Leg(gen: old.gen + 1, session: p.next, offset: offset, route: p.route), stream: next, into: cont)
+            legs.append(leg)
+            let ended = state.withLock { s -> Bool in
+                s.session = p.next
+                s.swaps += 1
+                return s.stopRequested || s.limitReached || s.brainFailed
+            }
+            emitJSON(["type": "metric", "turn_id": "", "stage": "listen_swap", "route": p.route.rawValue, "lang": p.lang,
+                      "from_route": route0.rawValue, "from_lang": lang0,
+                      "gap_ms": Text.ms((startedWall - p.stoppedAtWall) * 1000), "offset": Text.ms(offset), "source": "verse-run"])
+            if ended { await p.next.stop() }
+            p.resume(true)
+            return true
         }
 
         loop: for await input in inputs {
@@ -440,45 +513,170 @@ public final class VerseRunner: @unchecked Sendable {
             case .tick(let t, let db):
                 if o.trace, Int(t * 100) % 10 == 0 { log(String(format: "trace level t=%.2f %@", t, db.map { String(format: "%.1f dBFS", $0) } ?? "silent")) }
                 dispatch(await engine.noteRemoteLevel(db, at: t))
-            case .ended:
+            case .ended(let gen):
+                guard gen == leg.gen else { continue }
+                let (swap, over) = state.withLock { s -> (PendingSwap?, Bool) in
+                    let p = s.pendingSwap
+                    s.pendingSwap = nil
+                    return (p, s.stopRequested || s.limitReached || s.brainFailed)
+                }
+                if let swap {
+                    if over { swap.resume(false); break loop }
+                    if await cutOver(swap) { continue loop }
+                }
                 break loop
             }
         }
-        ticker.cancel()
-        levelTask?.cancel()
+        state.withLock { $0.listening = false }
+        // A switch that was asked for and never happened (the run ended first) gives up; its prepared recognizers are released.
+        if let p = state.withLock({ s -> PendingSwap? in let p = s.pendingSwap; s.pendingSwap = nil; return p }) { p.resume(false) }
         timer.cancel()
-        pump.cancel()
-        dispatch(await engine.flush(at: await session.now()))
+        for l in legs { l.cancelTasks() }
+        let last = leg
+        dispatch(await engine.flush(at: last.offset + (await last.session.now())))
         // What the two echo defenses discarded (text and times only), one line each plus a total.
-        for d in session.droppedEchoLog {
-            emitJSON(["type": "metric", "turn_id": "", "stage": "echo_gate_dropped", "text": d.text, "is_final": d.isFinal,
-                      "audio_start": Text.ms(d.audioStart), "audio_end": Text.ms(d.audioEnd), "score": Text.ms(d.score), "source": "verse-run"])
+        for l in legs {
+            for d in l.session.droppedEchoLog {
+                emitJSON(["type": "metric", "turn_id": "", "stage": "echo_gate_dropped", "text": d.text, "is_final": d.isFinal,
+                          "audio_start": Text.ms(d.audioStart + l.offset), "audio_end": Text.ms(d.audioEnd + l.offset), "score": Text.ms(d.score), "source": "verse-run"])
+            }
         }
         if o.trace {
-            for d in session.gateDecisions {
-                let w = d.features.window
-                var row: [String: Any] = ["type": "metric", "turn_id": "", "stage": "echo_gate_decision", "text": d.text, "is_final": d.isFinal,
-                                          "audio_start": Text.ms(d.audioStart), "audio_end": Text.ms(d.audioEnd), "score": Text.ms(d.features.score),
-                                          "lag_ms": Text.ms(d.features.lagMs), "mic_only": Text.ms(w.micOnlyShare), "remote_active": Text.ms(w.remoteActiveShare),
-                                          "verdict": d.verdict.rawValue, "source": "verse-run"]
-                if let x = w.ratioDb { row["ratio_db"] = Text.ms(x) }
-                if let x = w.meDb { row["me_db"] = Text.ms(x) }
-                if let x = w.remoteDb { row["remote_db"] = Text.ms(x) }
-                emitJSON(row)
+            for l in legs {
+                for d in l.session.gateDecisions {
+                    let w = d.features.window
+                    var row: [String: Any] = ["type": "metric", "turn_id": "", "stage": "echo_gate_decision", "text": d.text, "is_final": d.isFinal,
+                                              "audio_start": Text.ms(d.audioStart + l.offset), "audio_end": Text.ms(d.audioEnd + l.offset), "score": Text.ms(d.features.score),
+                                              "lag_ms": Text.ms(d.features.lagMs), "mic_only": Text.ms(w.micOnlyShare), "remote_active": Text.ms(w.remoteActiveShare),
+                                              "verdict": d.verdict.rawValue, "source": "verse-run"]
+                    if let x = w.ratioDb { row["ratio_db"] = Text.ms(x) }
+                    if let x = w.meDb { row["me_db"] = Text.ms(x) }
+                    if let x = w.remoteDb { row["remote_db"] = Text.ms(x) }
+                    emitJSON(row)
+                }
             }
         }
         var summary: [String: Any] = ["type": "metric", "turn_id": "", "stage": "listen_summary",
-                                      "echo_gate_dropped": session.droppedEchoEvents, "source": "verse-run"]
-        if let r = await session.channelOrigin(.remote) { summary["origin_remote"] = Text.ms(r) }
-        if let m = await session.channelOrigin(.me) { summary["origin_me"] = Text.ms(m) }
+                                      "echo_gate_dropped": legs.reduce(0) { $0 + $1.session.droppedEchoEvents }, "source": "verse-run"]
+        if let r = await last.session.channelOrigin(.remote) { summary["origin_remote"] = Text.ms(r + last.offset) }
+        if let m = await last.session.channelOrigin(.me) { summary["origin_me"] = Text.ms(m + last.offset) }
         emitJSON(summary)
 
         // Let the brain finish what it has started.
         await drain()
-        await session.stop()
-        issues.cancel()
+        for l in legs { await l.session.stop() }
         await stopBrain()
-        return state.withLock { $0.brainFailed } ? 1 : 0
+        return state.withLock { $0.brainFailed || $0.listenFailed } ? 1 : 0
+    }
+
+    /// The listen configuration of one pipeline: which route it is (the room route's microphone is the remote channel and has
+    /// no `me`; the bleed gate exists only where a second channel does) and which language its recognizers run in.
+    private func listenConfig(route: AudioRoute, lang: String, source: ListenConfig.Source) -> ListenConfig {
+        let o = options
+        let mic: Bool
+        switch source {
+        case .live: mic = o.micEnabled
+        case .file: mic = o.micEnabled && o.micWithFile
+        case .memory(let remote, let me): mic = route == .room ? (me ?? remote) != nil : me != nil
+        }
+        var cfg = ListenConfig(lang: lang, remoteBundleIDs: o.bundleIDs, micEnabled: mic, source: source)
+        cfg.micAsRemote = route == .room
+        cfg.voiceProcessing = false
+        cfg.micWithFile = o.micWithFile
+        cfg.bleedGate = o.bleedGate
+        return cfg
+    }
+
+    /// Starts the tasks that carry one pipeline's output into the run loop: its events (times moved by `offset`), a 10 ms tick
+    /// with the remote level, the overlay's level meter and its runtime issues.
+    private func startLeg(_ leg: Leg, stream: AsyncStream<TranscriptEvent>, into cont: AsyncStream<Input>.Continuation) -> Leg {
+        let session = leg.session, offset = leg.offset, gen = leg.gen
+        // The pump ends by itself when the stream does; it is never cancelled, so the last results are delivered.
+        Task {
+            for await var e in stream {
+                e.audioStart += offset
+                e.audioEnd += offset
+                e.emittedAt += offset
+                cont.yield(.event(e))
+            }
+            cont.yield(.ended(gen))
+        }
+        let ticker = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(10))
+                let t = await session.now()
+                let level = await session.levels(window: 0.1)[.remote]
+                cont.yield(.tick(t + offset, level?.rmsDbfs))
+            }
+        }
+        // Raw level for the overlay's "Listening" label (a front end only: nothing without a sink).
+        let levelTask: Task<Void, Never>? = options.sink == nil ? nil : Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(Self.levelPeriodMs))
+                if Task.isCancelled { break }
+                let lv = await session.levels(window: 0.2)
+                self?.emitSinkOnly(.level(remoteDbfs: lv[.remote]?.rmsDbfs, meDbfs: lv[.me]?.rmsDbfs))
+            }
+        }
+        let issues = Task { [weak self] in
+            for await issue in session.issues {
+                self?.emitJSON(["type": "issue", "code": issue.code, "message": issue.description])
+            }
+        }
+        leg.tasks = [ticker, issues] + (levelTask.map { [$0] } ?? [])
+        return leg
+    }
+
+    // MARK: switching the route or the language mid-call
+
+    /// Switches the route and/or the language of the running call without restarting it. Only the audio and recognition side
+    /// is rebuilt: the next pipeline is prepared (permissions, sources, recognizers) while the old one keeps listening, then the
+    /// old one is stopped and flushed (its pending finals are delivered), the turn engine closes what is open and takes the new
+    /// settings, the brain gets `control route` / `control lang`, and the new pipeline starts. The brain process, its transcript,
+    /// its cached prefix and its follow state, the turn numbering, the session folder and the end-of-meeting steps are the ones
+    /// of the same call. What is missed is the stretch between the old sources stopping and the new ones starting (the
+    /// `listen_swap` metric's `gap_ms`).
+    ///
+    /// Returns false when nothing changed: not listening, a switch in progress, the run stopping, the brain restarting, a file
+    /// source (it cannot be resumed), the same route and language, or the new pipeline could not be prepared (the old one then
+    /// goes on listening; the failure is an `issue`).
+    @discardableResult
+    public func switchListening(route newRoute: AudioRoute? = nil, lang newLang: String? = nil) async -> Bool {
+        let o = options
+        let source: ListenConfig.Source = o.source ?? (o.file.map { .file($0) } ?? .live)
+        if case .file = source { return false }
+        let plan: (route: AudioRoute, lang: String)? = state.withLock { s in
+            guard s.listening, !s.swapping, !s.stopRequested, !s.limitReached, !s.brainFailed, s.phase == .running,
+                  s.session != nil else { return nil }
+            let route = newRoute ?? s.route, lang = newLang ?? s.lang
+            guard route != s.route || lang != s.lang else { return nil }
+            s.swapping = true
+            return (route, lang)
+        }
+        guard let plan else { return false }
+        defer { state.withLock { $0.swapping = false } }
+        log("switch listening to \(plan.route.rawValue) / \(plan.lang)")
+        let next = ListenSession(config: listenConfig(route: plan.route, lang: plan.lang, source: source), environment: o.listenEnvironment ?? .system)
+        do {
+            try await next.prepare()
+        } catch {
+            log("listen swap not possible: \(error)")
+            emitJSON(["type": "issue", "code": "swap_failed", "message": "\(error)"])
+            return false
+        }
+        let ok = await withCheckedContinuation { (c: CheckedContinuation<Bool, Never>) in
+            let old: ListenSession? = state.withLock { s in
+                guard s.listening, !s.stopRequested, !s.limitReached, !s.brainFailed, let cur = s.session else { return nil }
+                s.pendingSwap = PendingSwap(next: next, route: plan.route, lang: plan.lang,
+                                            stoppedAtWall: Date().timeIntervalSince1970, continuation: c)
+                return cur
+            }
+            guard let old else { c.resume(returning: false); return }
+            // Stopping the old pipeline ends its stream after the last results; the loop sees that and cuts over.
+            Task { await old.stop() }
+        }
+        if !ok { await next.discardPrepared() }
+        return ok
     }
 
     // MARK: brain supervision
@@ -507,10 +705,14 @@ public final class VerseRunner: @unchecked Sendable {
 
     /// The `start` message: the anytime-calls fields only where they differ from a prepared meeting session, so that one
     /// produces exactly the line it always did.
+    ///
+    /// The route and language are the call's current ones, not the options': a brain restarted after a crash in a call that was
+    /// switched must start in the route the call is in now.
     func startCommand() -> BrainCommand {
-        let room = options.route == .room
-        return .start(sessionDir: options.sessionDir.path, lang: options.lang, follow: options.follow && !room,
-                      mode: options.mode == .prepared ? nil : options.mode, route: options.route == .meeting ? nil : options.route,
+        let (route, lang) = state.withLock { ($0.route, $0.lang) }
+        let room = route == .room
+        return .start(sessionDir: options.sessionDir.path, lang: lang, follow: options.follow && !room,
+                      mode: options.mode == .prepared ? nil : options.mode, route: route == .meeting ? nil : route,
                       me: options.me, roomAuto: room ? options.roomAuto : nil)
     }
 

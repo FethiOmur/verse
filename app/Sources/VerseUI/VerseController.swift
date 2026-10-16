@@ -87,7 +87,7 @@ public final class VerseController: ObservableObject {
     private var stopArmTask: Task<Void, Never>?
     /// The route picked by hand in the menu for the next Start; nil = the automatic pick. Used once.
     @Published public private(set) var routeChoice: AudioRoute?
-    /// A route or language change restarts the listening of the running call: the run that ends is not a finished meeting.
+    /// A route or language change of the running call is under way (one at a time).
     private var switching = false
     /// The clock the double-press stop uses; tests replace it.
     public var clock: () -> Date = { Date() }
@@ -332,7 +332,7 @@ public final class VerseController: ObservableObject {
     }
 
     public func startStopKeyPressed() {
-        if stopping || switching { return }
+        if stopping { return }
         switch startStopKeyAction() {
         case .start: startNow()
         case .arm: break
@@ -395,20 +395,28 @@ public final class VerseController: ObservableObject {
         }
     }
 
-    /// Changes the route and/or language of the running call. The listening engines are the runner's, so this ends the run
-    /// without the end-of-meeting steps and starts the same session again with the new route or language: the gap is the
-    /// brain's start-up, not the ≈ 1 s of an engine restart alone (the runner has no hook to swap its engines in place).
-    /// The pack, the me layer and the folder are the same; the brain's memory of the earlier part of the call is not.
+    /// Changes the route and/or language of the running call in place. The runner swaps its listen pipeline (audio sources and
+    /// recognizers) and tells the brain; the brain process, the session folder, the overlay's card, the turn numbering and the
+    /// end-of-meeting summary are the ones of the same call, so the call goes on and `summary.md` covers all of it. What is lost
+    /// is the audio of the swap itself (about a second). If the new pipeline cannot be prepared, the call keeps listening as it was.
     public func switchListening(route newRoute: AudioRoute? = nil, lang newLang: String? = nil) async {
-        guard running, !stopping, !switching, let dir = runSessionDir else { return }
+        guard running, !stopping, !switching, let r = runner else { return }
         let route = QuickStart.runnableRoute(newRoute ?? self.route)
         let lang = newLang ?? callLanguage
         guard route != self.route || lang != callLanguage else { return }
         log("switch listening route \(self.route.rawValue)→\(route.rawValue) lang \(callLanguage)→\(lang)")
         switching = true
-        await stop()
+        let applied = await r.switchListening(route: route, lang: lang)
         switching = false
-        launchSession(name: dir.lastPathComponent, mode: sessionMode, route: route, lang: lang, anytimeStart: true)
+        // The call may have ended while the swap was under way: the controller's view of it is then already reset.
+        guard running, runner === r else { return }
+        guard applied else {
+            log("switch listening not applied")
+            return
+        }
+        self.route = route
+        callLanguage = lang
+        overlay.listeningChanged(route: route, lang: lang, app: route == .meeting ? Self.meetingAppName() : nil)
     }
 
     /// ⌥⌘↩: answer the latest remote/room turn at once.
@@ -459,7 +467,6 @@ public final class VerseController: ObservableObject {
     }
 
     private func runEnded(_ code: Int32) {
-        let wasSwitching = switching
         running = false
         stopping = false
         hotKeys?.setSessionRunning(false)
@@ -472,9 +479,7 @@ public final class VerseController: ObservableObject {
         prompter.meetingEnded()
         persistSpend()
         monthSpend = SpendLedger.thisMonth()
-        log("run ended code=\(code)\(wasSwitching ? " (restarting to switch route or language)" : "")")
-        // A restart for a route or language change goes straight on with the same call: nothing to offer, nothing to hide.
-        if wasSwitching { return }
+        log("run ended code=\(code)")
         if let dir = runSessionDir {
             meeting.runFinished(FinishedRun(code: code, sessionName: dir.lastPathComponent, sessionDir: dir, startedAt: runStartedAt,
                                             isTest: runWasFake || remoteFileOverride != nil || testFile != nil))
@@ -504,7 +509,7 @@ public final class VerseController: ObservableObject {
             sessionSpend += c
             persistSpend()
         }
-        if case .ended = e, !switching, overlay.state.status?.needsPanel != true, overlay.state.meetingPrompt == nil { panel?.hide() }
+        if case .ended = e, overlay.state.status?.needsPanel != true, overlay.state.meetingPrompt == nil { panel?.hide() }
     }
 
     /// Gives the event to the overlay (which handles the room speaker and card-now turns itself) and keeps what the Me page

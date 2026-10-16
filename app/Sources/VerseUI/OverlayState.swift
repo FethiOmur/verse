@@ -441,6 +441,17 @@ public struct OverlayReducer: Sendable {
                                      route: route, lang: lang)
     }
 
+    /// A mid-call route or language switch: the labels follow, nothing else moves. The open card, the topic chips and what the
+    /// reducer remembers of the turns belong to the call, which goes on.
+    public mutating func listeningChanged(route: AudioRoute, lang: String, app: String?) {
+        state.route = route
+        state.lang = lang
+        guard state.startup != nil else { return }
+        state.startup?.route = route
+        state.startup?.lang = lang
+        state.startup?.app = app
+    }
+
     /// The user collapsed the open panel or card (click on the capsule).
     public mutating func collapse() {
         if state.card != nil {

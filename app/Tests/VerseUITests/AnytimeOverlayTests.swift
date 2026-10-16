@@ -185,6 +185,44 @@ final class AnytimeOverlayTests: XCTestCase {
         XCTAssertEqual(ready.subtitle, "listening to Comet")
     }
 
+    /// A route or language switch in the middle of a call (anytime-swap) moves the labels only: the open card stays.
+    func testASwitchMidCallKeepsTheCurrentCardAndMovesTheLabels() {
+        let m = started(route: .room)
+        m.apply(turn("r1", "Can you walk me through the payments project?", addressee: "unknown", speaker: "room"))
+        for e in stream("F1", "r1", "F", "SAY: It processed about 41,000 payments a month.") { m.apply(e) }
+        let card = m.state.card
+        XCTAssertEqual(card?.turnID, "r1")
+        m.listeningChanged(route: .meeting, lang: "it", app: "Comet")
+        XCTAssertEqual(m.state.card, card, "the card is the call's, not the pipeline's")
+        XCTAssertEqual(m.state.route, .meeting)
+        XCTAssertEqual(m.state.lang, "it")
+        XCTAssertTrue(m.state.running)
+        XCTAssertEqual(m.state.unprepared, true, "the call is still unprepared")
+    }
+
+    func testASwitchBeforeTheFirstCardUpdatesTheStartCardChips() {
+        let m = started(route: .room)
+        m.listeningChanged(route: .meeting, lang: "tr", app: "Comet")
+        let p = try! XCTUnwrap(m.state.startup)
+        XCTAssertEqual(p.route, .meeting)
+        XCTAssertEqual(p.lang, "tr")
+        XCTAssertEqual(p.app, "Comet")
+        XCTAssertEqual(p.phase, .ready, "still ready, not starting over")
+        // Back to the room: the app name goes.
+        m.listeningChanged(route: .room, lang: "tr", app: nil)
+        XCTAssertNil(m.state.startup?.app)
+        XCTAssertEqual(m.state.startup?.route, .room)
+    }
+
+    func testASwitchWithTheStartCardClosedDoesNotReopenIt() {
+        let m = started(route: .room)
+        m.collapse()
+        XCTAssertNil(m.state.startup)
+        m.listeningChanged(route: .meeting, lang: "en", app: nil)
+        XCTAssertNil(m.state.startup)
+        XCTAssertEqual(m.state.route, .meeting)
+    }
+
     func testTheChipsReachTheController() {
         let m = OverlayModel(config: OverlayConfig(), clock: { 1000 })
         var seen: [StartChipAction] = []

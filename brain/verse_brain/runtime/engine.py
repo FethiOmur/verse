@@ -33,6 +33,8 @@ Output contract towards Swift (in addition to the plan's event list):
   is treated like `remote`, the addressee is always unknown, and an automatic card needs a question cue and >= 6 words
   (`start.room_auto:"off"` leaves only card-now). `control card_now` answers the latest remote/room turn at once on turn
   id `now-<n>`, past the cue, kind and addressee gates. `control lang` changes the session language from then on.
+  `control route` (+ optional `room_auto`, `follow`) does the same for the audio route: Swift swaps its listen pipeline in
+  place and the session, transcript, cached prefix and open turns go on; only the room gate and follow mode follow the route.
 """
 
 from __future__ import annotations
@@ -525,6 +527,8 @@ class Brain:
                 self._card_now()
             elif a == "lang":
                 self._set_lang(msg.get("lang"))
+            elif a == "route":
+                self._set_route(msg)
 
     # ------------------------------------------------------------------ start / warm transport
     def _prefix_request(self, route: str, max_tokens: int | None, tail: str, turns: list[Turn] | None = None) -> dict:
@@ -638,8 +642,35 @@ class Brain:
                 self.embed.start(self.session.bank, lang)     # the index is built from the phrases of this language
             else:
                 self._bank_embed = False
-        if self.session is not None:
-            self._follow_start({"follow": self._follow_want})
+        self._follow_resync()
+
+    def _set_route(self, msg: dict) -> None:
+        """`control route`: the audio route changed in the running call (Swift swapped its listen pipeline in place). The session,
+        the transcript, the cached prefix and the open turns stay. Only what depends on the route changes: the room route's
+        automatic-card gate (`room_auto`, when given) and follow mode, which is off in the room route (no `me` channel) and
+        comes back with the meeting. `follow` (when given) is the user's setting, as `start.follow` was, so a call that began
+        in the room can still turn follow on when it moves to the meeting."""
+        route = msg.get("route")
+        if route not in ("meeting", "phone", "room"):
+            return
+        if "room_auto" in msg:
+            self.room_auto = "off" if msg.get("room_auto") == "off" else "questions"
+        if "follow" in msg:
+            self._follow_want = bool(msg.get("follow"))
+        if route != self.route_kind:
+            self.route_kind = route
+            self.emitter.metric("", "route_change", route=route)
+        self._follow_resync()
+
+    def _follow_resync(self) -> None:
+        """Follow mode after the language or the route changed: starts, stops or keeps it. A change that leaves it as it was
+        (English to English, a lang control that repeats the route) keeps the running machine and the card it follows."""
+        if self.session is None:
+            return
+        on = self._follow_want and self.lang in self.config.follow_langs and self.route_kind != "room"
+        if on == self.follow_on and (self.follow is not None) == on:
+            return
+        self._follow_start({"follow": self._follow_want})
 
     def _card_now(self) -> None:
         """`control card_now`: answer the latest remote/room turn now. The open partial if there is one, else the last final.

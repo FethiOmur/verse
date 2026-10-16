@@ -181,6 +181,10 @@ public enum BrainCommand: Sendable, Equatable {
     case cardNow
     /// The session language from now on (the speech engines restart on the Swift side).
     case setLanguage(String)
+    /// The audio route of the running call changed (the listen pipeline was swapped in place); the session goes on. `roomAuto`
+    /// (room route only) and `follow` (the user's setting, not yet gated by the route) are sent when the brain cannot know
+    /// them from `start`: a call that began in the meeting never got `room_auto`, one that began in the room got `follow:false`.
+    case setRoute(AudioRoute, roomAuto: RoomAuto? = nil, follow: Bool? = nil)
 
     public func jsonLine() -> String {
         var obj: [String: Any]
@@ -195,6 +199,10 @@ public enum BrainCommand: Sendable, Equatable {
         case .summarize: obj = ["type": "control", "action": "summarize"]
         case .cardNow: obj = ["type": "control", "action": "card_now"]
         case .setLanguage(let lang): obj = ["type": "control", "action": "lang", "lang": lang]
+        case .setRoute(let route, let roomAuto, let follow):
+            obj = ["type": "control", "action": "route", "route": route.rawValue]
+            if let roomAuto { obj["room_auto"] = roomAuto.rawValue }
+            if let follow { obj["follow"] = follow }
         }
         let d = (try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data("{}".utf8)
         return String(decoding: d, as: UTF8.self)

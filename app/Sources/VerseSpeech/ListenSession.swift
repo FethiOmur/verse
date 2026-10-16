@@ -10,6 +10,7 @@ public actor ListenSession {
     private var pipelines: [Channel: ChannelPipeline] = [:]
     private var clock = SessionClock()
     private var started = false
+    private var prepared = false
     private var watchdog: Task<Void, Never>?
     private var lifecycle: Task<Void, Never>?
     private var eventContinuation: AsyncStream<TranscriptEvent>.Continuation?
@@ -69,14 +70,16 @@ public actor ListenSession {
     /// The session clock's "now" (seconds since `start()`).
     public func now() -> TimeInterval { clock.now() }
 
-    public func start() async throws -> AsyncStream<TranscriptEvent> {
-        guard !started else { throw ListenError.alreadyStarted }
-        started = true
-
+    /// Everything `start()` needs that takes time and opens no audio: the permissions, the sources (made, not started) and the
+    /// recognizers (model loaded). Idempotent. A mid-call route or language switch calls it while the old session still
+    /// listens, so the gap between the two is the old one's flush and the new sources' start, not a model load; a failure
+    /// here leaves the old session untouched.
+    public func prepare() async throws {
+        guard !prepared else { return }
         // Permissions first, so "denied" is never confused with silence.
         let perms = environment.permissions
-        var remoteSource = try environment.makeRemoteSource(config)
-        var micSource = try environment.makeMicSource(config)
+        let remoteSource = try environment.makeRemoteSource(config)
+        let micSource = try environment.makeMicSource(config)
         if config.remoteIsTap, remoteSource != nil, perms.status(.audioCapture) == .denied {
             throw ListenError.permissionDenied(.audioCapture)
         }
@@ -100,10 +103,30 @@ public actor ListenSession {
         if let s = micSource {
             built[.me] = ChannelPipeline(channel: .me, source: s, engine: try makeEngine(for: .me))
         }
-        remoteSource = nil
-        micSource = nil
-        for p in built.values { try await p.prepare() }
+        do {
+            for p in built.values { try await p.prepare() }
+        } catch {
+            for p in built.values { await p.engine.cancel() }
+            throw error
+        }
         pipelines = built
+        prepared = true
+    }
+
+    /// Drops a session that was prepared and never started (a switch that was given up): the recognizers are released.
+    public func discardPrepared() async {
+        guard prepared, !started else { return }
+        prepared = false
+        for p in pipelines.values { await p.engine.cancel() }
+        pipelines = [:]
+    }
+
+    public func start() async throws -> AsyncStream<TranscriptEvent> {
+        guard !started else { throw ListenError.alreadyStarted }
+        try await prepare()
+        started = true
+        let built = pipelines
+        let perms = environment.permissions
 
         let (stream, cont) = AsyncStream.makeStream(of: TranscriptEvent.self, bufferingPolicy: .unbounded)
         eventContinuation = cont

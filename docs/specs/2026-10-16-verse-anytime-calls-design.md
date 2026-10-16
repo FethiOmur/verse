@@ -28,10 +28,10 @@ It listens in the session's one language, which in practice means English. Alex 
 | Triggers | **⌥⌘V** (Carbon hot key, registered at launch and always on). Also: menu bar "Start now" and the island's idle state (click). A Start on the meeting prompt (state 0) works as before. |
 | ⌥⌘V while running | First press shows the island status "Press ⌥⌘V again to stop" for 2 s. A second press inside that window stops the session (summary as usual). One stray press never ends a call. |
 | Session choice | If a prepared session is linked to a calendar event within ±15 min of now (the existing `eventMap`), use it. Otherwise start **unprepared**: create `sessions/adhoc-YYYYMMDD-HHMM-<route>/` with `meta.json {"kind":"adhoc","mode":"unprepared","route":…,"lang":…}` and an empty `pack.md`. Nothing is prepared and there is no wait. |
-| Audio route | Picked automatically at start, in this order: **phone** (a Continuity call is active, phase B) → **meeting** (a known meeting app holds the mic, today's detector) → **room** (mic only). The island start card shows the route chip. A click changes it before or during the session (an engine restart, ≈ 1 s gap). |
+| Audio route | Picked automatically at start, in this order: **phone** (a Continuity call is active, phase B) → **meeting** (a known meeting app holds the mic, today's detector) → **room** (mic only). The island start card shows the route chip. A click changes it before or during the session. During one the listen pipeline is swapped in place (≈ 1 s gap; 0.18 s measured with scripted recognizers, the next ones being prepared while the old ones still listen; real recognizers add their own flush time): same brain process, session folder, turn numbering, overlay card and end-of-meeting summary. |
 | Room route before phase D | The mic feeds the **remote** pipeline with speaker label `room`, and there is no `me` channel. Auto cards fire only for turns with a question cue and ≥ 6 words. The **card-now** hot key covers everything else. Follow mode is off in room route. D replaces this with real separation. |
 | Card now | **⌥⌘↩**, registered only while a session runs (like `SimHotKey`). It answers the latest remote/room turn at once: the current partial if one is open, otherwise the last final. This skips cue, kind and addressee gates. The brain gets `control{action:"card_now"}`. |
-| Language at start | Settings → Meetings → "Default call language" (en, default). The island's language chip (EN/IT/TR, plus AUTO once C3 ships) switches it during a session: an engine restart plus `control{action:"lang"}`. No hot key: the free ⌥⌘ combinations clash with Finder. |
+| Language at start | Settings → Meetings → "Default call language" (en, default). The island's language chip (EN/IT/TR, plus AUTO once C3 ships) switches it during a session: the recognizers are swapped in place plus `control{action:"lang"}`; the call goes on. No hot key: the free ⌥⌘ combinations clash with Finder. |
 | Labelling | The island's right wing shows "Unprepared" for adhoc sessions. Sessions page rows carry an "Unprepared" tag and the route ("Phone", "Room", "Meeting"). |
 
 ### 2.2 The me layer
@@ -117,6 +117,7 @@ Swift → brain:
     `unknown` and statement probes are skipped when `room_auto` is `questions`).
 - `control{action:"card_now"}`: answer the latest remote/room turn now.
 - `control{action:"lang","lang":"it"}`: the session language from now on (the engines restart on the Swift side).
+- `control{action:"route","route":"meeting"|"phone"|"room"}` (+ optional `"room_auto"`, `"follow"`): the audio route of the running call changed (the listen pipeline was swapped in place); the session, transcript, cached prefix and open turns stay, only the room gate and follow mode (off in the room route) follow the route.
 
 Brain → Swift:
 - `notice{kind:"me_conflicts","items":[{"me":"m412","pack":"f003","topic":str}]}`, once after `start`.

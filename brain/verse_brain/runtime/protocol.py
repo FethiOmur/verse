@@ -17,7 +17,8 @@ IN_TYPES = {"start", "partial", "turn", "bank_hit", "control"}
 # Anytime calls (docs/specs/2026-10-16-verse-anytime-calls-design.md section 3), additive. Swift -> brain: `start` gains `mode`
 # ("prepared"|"unprepared"), `route` ("meeting"|"phone"|"room"), `me` ({core,library,facts} paths, or null) and `room_auto`
 # ("questions"|"off"); `partial`/`turn` gain an optional `lang` and may carry `speaker:"room"`; `control` gains
-# `card_now` and `lang` (with `lang`). Brain -> Swift: `notice{kind:"me_conflicts",items}` and `notice{kind:"me_missing"}`,
+# `card_now`, `lang` (with `lang`) and `route` (with `route`, optional `room_auto` and `follow`: the route of the running call
+# changed, the session goes on). Brain -> Swift: `notice{kind:"me_conflicts",items}` and `notice{kind:"me_missing"}`,
 # `status ready` gains `me:{tokens,built_at}|null`, metric stages `me_retrieval` and `card_now`.
 LANGS = {"en", "it", "tr"}
 REMOTE_SPEAKERS = ("remote", "room")     # the room route's one mic is treated like the remote channel
