@@ -18,6 +18,13 @@ Output contract towards Swift (in addition to the plan's event list):
   lane 1, no hedge) runs on `control stop|summarize`, merges everything and writes `summary.md` into the session
   folder; its `summary` event adds `final`, `conflicts`, `text`, `path` (and `draft_reason` when the merge failed and
   summary.md holds the rolling notes only). R and A never emit `delta`, and spend counts in the session budget.
+- Follow my answer (docs/specs/2026-10-16-verse-follow-my-answer-design.md; runtime/follow.py is the state machine). the owner's
+  own `partial`/`turn` (speaker me) feed a detector that compares his words with the card of the latest remote question. When
+  he goes off the card, one tier-C call (Haiku, the S/F tuple and cached prefix) writes the card that continues his line:
+  `follow{turn_id,reason,card_id}`, then `delta`s with tier C and `card_id`. Points he says (also in other words) are sent as
+  `covered{turn_id,card_id,point}`; the original card's id is `orig-<turn_id>`. After a follow card, refreshes come at his
+  sentence ends only. `start.follow` turns it on (Swift sends it; its setting defaults to on; absent means off); it is English only until the thresholds are tuned for
+  other languages. C never changes the S/F/D flow: a failed or dropped C leaves the original card on screen.
 """
 
 from __future__ import annotations
@@ -33,10 +40,11 @@ from pathlib import Path
 from typing import Callable
 
 from ..prep.model import Usage, spend_usd
-from .embed import Embedder, EmbedPath, Job, Result
+from .embed import PREFIX, Embedder, EmbedPath, EmbedUnavailable, Job, Result
+from .follow import (Covered, Diverged, Ended, FollowMachine, NeedEmbed, Refresh, clean_line, score_matrix)
 from .lines import LineAssembler
 from .prompt import (STATEMENT_SAY_WORDS, WARMUP_TAIL, Turn, build_request, deep_tail, fast_tail, final_tail,
-                     rolling_tail, statement_tail)
+                     follow_tail, rolling_tail, statement_tail)
 from .protocol import Emitter, Session, load_session, turn_kind
 from .ratelimit import ModelLimiter
 from .settings import HAIKU, MODEL_ROUTE, SONNET, Config, route_params
@@ -58,6 +66,31 @@ _WORD = re.compile(r"[\w']+", re.UNICODE)
 
 def tokens(text: str) -> list[str]:
     return _WORD.findall(text.lower())
+
+
+_FACT_LINE = re.compile(r"^\[f\d+\]\s+[^|]*\|\s*([^|]+?)\s*(?:\||$)")
+_GLOSS_LINE = re.compile(r"^\[g\d+\]\s+(.*?)\s*(?:\|\s*[^|]*)?$")
+
+
+def follow_pack_lines(session: Session) -> list[str]:
+    """Everything the pack can say, line by line (bank openers and points, facts, glossary): the reference the follow
+    detector's margin looks at to see that Alex is on another topic of the pack."""
+    out: list[str] = []
+    for rec in session.bank.values():
+        out.append(str(rec.get("opener", "")))
+        out += [str(x) for x in rec.get("points", [])]
+    for ln in session.pack.splitlines():
+        m = _FACT_LINE.match(ln) or _GLOSS_LINE.match(ln)
+        if m:
+            out.append(m.group(1))
+    seen: set[str] = set()
+    res = []
+    for x in out:
+        x = clean_line(x)
+        if x and x not in seen:
+            seen.add(x)
+            res.append(x)
+    return res
 
 
 def edit_distance(a: list[str], b: list[str]) -> int:
@@ -116,7 +149,10 @@ class Call:
         self.hedged = False
         self.winner_lane: int | None = None
         self.new_connection: bool | None = None
-        self.retries_left = 1 if tier in ("D", "A") else 0  # S/F/R: max_retries 0; D, A: one retry
+        self.retries_left = 1 if tier in ("D", "A") else 0  # S/F/R/C: max_retries 0; D, A: one retry
+        self.follow_reason: str | None = None   # tier C: "diverged" | "refresh"
+        self.follow_sent = False                # tier C: the `follow` event went out (just before its first delta)
+        self.follow_t0: float = 0.0             # tier C: when the divergence / refresh was decided (time.time())
         self.lane = 1 if tier in ("R", "A") else 0   # summaries keep off the S/F/D connection (lane 0)
         self.summary_lines: list[str] = []
         self.t: dict[str, float] = {}
@@ -152,6 +188,7 @@ class Call:
         buf, self.buffer = self.buffer, []
         for ev in buf:
             self._out(ev)
+        self.brain.on_card_released(self)
 
     def discard(self) -> None:
         if self.discarded:
@@ -178,14 +215,21 @@ class Call:
         if self.probe and self.kind != "question":
             self._on_statement_text(line_done, line)
             return
-        self._out(self.brain.emitter.delta(self.id, self.turn_id, self.tier, chunk, line_done))
+        if self.tier == "C" and not self.follow_sent and not self.discarded:
+            self.follow_sent = True      # the card switches when its first text arrives, not when the call is launched
+            self.brain.emitter.emit({"type": "follow", "turn_id": self.turn_id, "reason": self.follow_reason,
+                                     "card_id": self.id})
+        self._out(self.brain.emitter.delta(self.id, self.turn_id, self.tier, chunk, line_done,
+                                           card_id=self.id if self.tier == "C" else None))
         if line_done:
             s = line.strip()
             if s.startswith("SAY:") and self.say_line is None:
                 self.say_line = s[4:].strip()
                 self._stage("say_line")
+                self.brain.on_card_line(self, "say", self.say_line)
             elif s.startswith("- "):
                 self.points.append(s[2:].strip())
+                self.brain.on_card_line(self, "point", s[2:].strip())
                 if self.first_point is None:
                     self.first_point = s[2:].strip()
                     self._stage("first_point")
@@ -357,6 +401,19 @@ class Brain:
         self._final_task: asyncio.Task | None = None
         self._final_n = -1
         self._final_events: list[dict] = []
+        # follow my answer
+        self.follow: FollowMachine | None = None
+        self.follow_on = False
+        self._follow_pack: list[str] = []         # every opener, point, fact and glossary line of the pack (the margin's reference)
+        self._follow_cache: dict[str, list[float]] = {}   # text -> unit vector (touched on the embedding thread only)
+        self._follow_req: NeedEmbed | None = None  # newest embedding request not yet started (older ones are dropped)
+        self._follow_busy = False
+        self._follow_embed_failed = False
+        self._follow_task: asyncio.Task | None = None   # the ticker: not in `tasks`, so `settle()` does not wait for it
+        self._follow_calls: list[Call] = []
+        self._follow_detected: dict[str, float] = {}      # turn_id -> time.time() of the last divergence/refresh decision
+        self._follow_banks: set[str] = set()
+        self.follow_counts = {"diverged": 0, "refresh": 0, "covered": 0, "c_calls": 0, "c_empty": 0}
 
     # ------------------------------------------------------------------ helpers
     def _spawn(self, coro) -> asyncio.Task:
@@ -427,6 +484,7 @@ class Brain:
         self.lang = msg.get("lang", "en")
         if self.embed is not None and self.lang in self.config.embed_langs:
             self.embed.start(self.session.bank, self.lang)   # on the embedding thread, while the pre-warm runs
+        self._follow_start(msg)
         self._status("warming", f"pre-warming {HAIKU} and {SONNET}")
         try:
             # Open every lane now (pre-warm on one lane, ping on the other) so no connection is opened at t = 0.
@@ -616,8 +674,8 @@ class Brain:
             if call.tier in ("D", "A"):
                 self._status("rate_limited", "429 from the API", turn_id=call.turn_id, id=call.id)
             # S/F: dropped silently (the metric records it)
-        elif call.tier == "R":
-            pass   # a failed rolling pass is silent (the metric records it); the next window retries
+        elif call.tier in ("R", "C"):
+            pass   # a failed rolling pass or follow card is silent (the metric records it); the original card stays
         elif isinstance(e, BadRequest):
             self._status("error", f"request rejected: {e}", turn_id=call.turn_id, id=call.id)
         else:
@@ -634,14 +692,20 @@ class Brain:
             self._status("refusal", f"{call.tier} declined this turn", turn_id=call.turn_id, id=call.id)
         if call.tier == "R":
             self._rolling_done(call)
+        if call.tier == "C":
+            self._follow_c_done(call)
         if self.config.budget_usd is not None and self.spend >= self.config.budget_usd and not self.halted:
             self._halt("error", f"budget cap ${self.config.budget_usd:.2f} reached")
         self._maybe_roll()
 
     # ------------------------------------------------------------------ partials: S and early D
     def on_partial(self, msg: dict) -> None:
+        if msg.get("speaker") == "me":
+            self._follow_me(msg, final=False)
+            return
         if msg.get("speaker") != "remote" or self.session is None:
             return
+        self._follow_remote_activity()
         tid = msg["turn_id"]
         if self.active_remote and self.active_remote != tid:
             old = self.ts.get(self.active_remote)
@@ -798,6 +862,7 @@ class Brain:
             st.verdict_sent = False          # Haiku's BANK line is checked against the new id
         self.emitter.emit({"type": "bank_hit", "turn_id": st.turn_id, "bank_id": bank_id, "score": round(score, 4),
                            "via": "embed"})
+        self._follow_bank(st)
         self._maybe_verdict(st)
         self._late_hit(st)
 
@@ -813,6 +878,7 @@ class Brain:
             st.verdict_sent = False          # the overlay rejects per id: the new id gets its own verdict
         if self.embed is not None:
             self.embed.drop(st.turn_id)      # Swift's hit wins; no embedding for this turn from now on
+        self._follow_bank(st)
         self._maybe_verdict(st)
         self._late_hit(st)
 
@@ -892,10 +958,12 @@ class Brain:
         self.emitter.metric(tid, "turn_recv", speaker=speaker, t_audio_end=msg.get("t_audio_end"))
         if speaker != "remote":
             self.turns.append(Turn(tid, speaker, text))
+            self._follow_me(msg, final=True)
             return
         st = self._ts(tid)
         if st.finished:
             return
+        self._follow_remote_activity()
         st.finished = True
         st.finished_at = time.monotonic()
         st.final_text = text
@@ -936,6 +1004,7 @@ class Brain:
         # a statement ("So, have you built ..." starts with a discourse word and has no question cue).
         if st.kind == "statement" and st.bank_hit is None:
             return self._endpoint_statement(st)
+        self._follow_question(st)
         cfg = self.config
         final = tokens(st.final_text)
         best: tuple[int, int] | None = None   # (distance, -seq): closest input wins, the newest on a tie
@@ -990,6 +1059,7 @@ class Brain:
                 return
             if probe.kind == "question":
                 self.emitter.metric(st.turn_id, "statement_escalated", id=probe.id)
+                self._follow_question(st)
                 await self._decide_d(st)
                 return
             await probe.done.wait()
@@ -1035,6 +1105,227 @@ class Brain:
             opener = self._shown_opener_guess(st)
         st.d_call = self._fire_d(st, st.final_text, final=True, buffered=False, opener=opener)
 
+    # ------------------------------------------------------------------ follow my answer (tier C)
+    def _follow_start(self, msg: dict) -> None:
+        cfg = self.config
+        want = bool(msg.get("follow", cfg.follow_default))
+        self.follow_on = want and self.lang in cfg.follow_langs
+        self.emitter.metric("", "follow_state", on=self.follow_on, requested=want, lang=self.lang)
+        if not self.follow_on or self.session is None:
+            self.follow = None
+            return
+        self.follow = FollowMachine(cfg.follow, time.monotonic, embed_ok=False)
+        self._follow_pack = follow_pack_lines(self.session)
+        self._follow_embed_failed = False
+        if self.embed is not None and self.lang in cfg.embed_langs:
+            self._spawn(self._follow_warm())
+        if self._follow_task is None:
+            self._follow_task = asyncio.get_running_loop().create_task(self._follow_loop())
+
+    async def _follow_warm(self) -> None:
+        """Embed the pack lines once, on the embedding thread, after the bank index (the margin needs them)."""
+        pack, cache = list(self._follow_pack), self._follow_cache
+
+        def work(e: Embedder) -> int:
+            for t in pack:
+                if t not in cache:
+                    from .follow import unit   # noqa: PLC0415
+                    cache[t] = unit(e.embed(PREFIX + t))
+            return len(pack)
+
+        try:
+            t0 = time.perf_counter()
+            n = await self.embed.run_job(work)       # type: ignore[union-attr]
+            self.emitter.metric("", "follow_warm", lines=n, ms=round((time.perf_counter() - t0) * 1000, 1))
+        except Exception as e:  # noqa: BLE001 - without it the margin is simply absent
+            self.emitter.metric("", "follow_warm_failed", reason=f"{type(e).__name__}: {e}"[:160])
+
+    def _follow_sync(self) -> bool:
+        f = self.follow
+        if f is None:
+            return False
+        f.embed_ok = self.embed is not None and self.embed.ready and not getattr(self, "_follow_embed_failed", False)
+        return True
+
+    async def _follow_loop(self) -> None:
+        while not self.stopped.is_set():
+            await asyncio.sleep(self.config.follow_tick_s)
+            f = self.follow
+            if f is None or f.turn_id is None or f.ended or self.halted:
+                continue
+            self._follow_sync()
+            f.tick()
+            self._follow_apply()
+
+    def _follow_me(self, msg: dict, final: bool) -> None:
+        if self.session is None or self.halted or self.closing or not self._follow_sync():
+            return
+        tid = msg.get("turn_id")
+        if not isinstance(tid, str) or not tid:
+            return
+        self.follow.on_me(tid, str(msg.get("text", "")), final)     # type: ignore[union-attr]
+        self._follow_apply()
+
+    def _follow_remote_activity(self) -> None:
+        if self.follow is not None:
+            self.follow.on_remote_activity()
+
+    def _follow_question(self, st: TurnState) -> None:
+        """A question is being answered: follow mode of the previous turn is over, this card is the reference."""
+        f = self.follow
+        if f is None or self.session is None:
+            return
+        self._follow_sync()
+        if f.turn_id == st.turn_id:
+            f.reset_cards()               # the same question answered again (offline retry, late bank hit)
+        else:
+            f.new_turn(st.turn_id)
+            for c in self._follow_calls:
+                if c.turn_id != st.turn_id and not c.done.is_set():
+                    c.discard()           # a follow card of the old answer must not land on the new question
+            self._follow_calls = [c for c in self._follow_calls if c.turn_id == st.turn_id]
+        self._follow_banks.clear()
+        self._follow_bank(st)
+        self._follow_apply()
+
+    def _follow_bank(self, st: TurnState) -> None:
+        f = self.follow
+        if f is None or f.turn_id != st.turn_id or st.bank_hit is None or self.session is None:
+            return
+        bid = st.bank_hit.bank_id
+        rec = self.session.bank.get(bid)
+        if rec is None or bid in self._follow_banks:
+            return
+        self._follow_banks.add(bid)
+        if rec.get("opener"):
+            f.add_line(f"bank:{bid}", "bank", "say", str(rec["opener"]), source="bank")
+        for pt in rec.get("points", []):
+            f.add_line(f"bank:{bid}", "bank", "point", str(pt), source="bank")
+
+    def on_card_line(self, call: Call, kind: str, text: str) -> None:
+        """A complete line of a card the overlay shows (S/F/D/C). Lines of a buffered S call arrive in `on_card_released`."""
+        if self.follow is None or call.discarded or call.buffered or (call.probe and call.kind != "question"):
+            return
+        self._follow_feed(call, kind, text)
+
+    def on_card_released(self, call: Call) -> None:
+        if self.follow is None or call.discarded or (call.probe and call.kind != "question"):
+            return
+        if call.say_line:
+            self._follow_feed(call, "say", call.say_line)
+        for pt in call.points:
+            self._follow_feed(call, "point", pt)
+
+    def _follow_feed(self, call: Call, kind: str, text: str) -> None:
+        f = self.follow
+        if f is None or f.turn_id != call.turn_id:
+            return
+        if call.tier in ("S", "F"):
+            f.add_line(f"orig-{call.turn_id}", call.tier, kind, text)
+        elif call.tier == "C":
+            f.add_line(call.id, "C", kind, text)
+            if kind == "say" and "follow_card" not in call.t:
+                now = time.time()
+                call.t["follow_card"] = now
+                self.emitter.metric(call.turn_id, "follow_card", now, id=call.id, reason=call.follow_reason,
+                                    first_sentence_ms=round((now - call.t.get("fire", now)) * 1000, 1),
+                                    since_decision_ms=round((now - call.follow_t0) * 1000, 1))
+        elif call.tier == "D":
+            f.add_line(f"d:{call.id}", "D", kind if kind == "point" else "say", text, source="ref")
+        else:
+            return
+        self._follow_sync()
+        self._follow_apply()
+
+    def _follow_apply(self) -> None:
+        f = self.follow
+        if f is None:
+            return
+        for fx in f.drain():
+            if isinstance(fx, Covered):
+                self.follow_counts["covered"] += 1
+                self.emitter.emit({"type": "covered", "turn_id": f.turn_id, "card_id": fx.card_id, "point": fx.point})
+                self.emitter.metric(f.turn_id or "", "follow_covered", card_id=fx.card_id, point=fx.point, via=fx.via,
+                                    score=fx.score)
+            elif isinstance(fx, Diverged):
+                self.follow_counts["diverged"] += 1
+                self.emitter.metric(f.turn_id or "", "follow_diverged", reason=fx.reason, lexical=fx.lex_score,
+                                    unmatched=fx.words, embed=fx.embed, margin=fx.margin, run_words=fx.run_words,
+                                    ms=fx.ms, ms_since_start=fx.start_ms)
+                self._follow_launch("diverged")
+            elif isinstance(fx, Refresh):
+                self.follow_counts["refresh"] += 1
+                self.emitter.metric(f.turn_id or "", "follow_refresh", new_words=fx.new_words)
+                self._follow_launch("refresh")
+            elif isinstance(fx, NeedEmbed):
+                self._follow_embed(fx)
+            elif isinstance(fx, Ended):
+                self.emitter.metric(f.turn_id or "", "follow_end", reason=fx.reason, **{k: v for k, v in f.stats.items()})
+
+    def _follow_launch(self, reason: str) -> None:
+        f = self.follow
+        st = self.ts.get(f.turn_id or "") if f is not None else None
+        if f is None or st is None or self.halted or self.closing or self.session is None:
+            if f is not None:
+                f.c_failed()
+            return
+        orig = f.card_lines(f.original_id)
+        card = [("SAY: " if ln.kind == "say" else "- ") + ln.text for ln in orig]
+        cur = f.card_lines(f.visible_id) if f.visible_id != f.original_id else []
+        said = [ln.text for cid in f.order for ln in f.cards[cid].lines if ln.covered and ln.visible]
+        now_card = [("SAY: " if ln.kind == "say" else "- ") + ln.text for ln in cur] if reason == "refresh" and cur else None
+        words = f.his_text().split()
+        his = ("... " if len(words) > 160 else "") + " ".join(words[-160:])
+        tail = follow_tail(st.final_text, self.lang, his, card, said, now_card, reason)
+        call = self._launch("C", st.turn_id, his, tail, st.turns_before, buffered=False)
+        if call is None:
+            f.c_failed()
+            self.emitter.metric(st.turn_id, "follow_dropped", reason=reason)
+            return
+        call.follow_reason = reason
+        call.follow_t0 = time.time()
+        self._follow_calls.append(call)
+        self.follow_counts["c_calls"] += 1
+        f.c_started(call.id)
+
+    def _follow_c_done(self, call: Call) -> None:
+        f = self.follow
+        if f is None or f.turn_id != call.turn_id:
+            return
+        f.c_done()
+        if not call.discarded and call.error is None and call.say_line is None and not call.points:
+            self.follow_counts["c_empty"] += 1
+            self.emitter.metric(call.turn_id, "follow_empty", id=call.id, reason=call.follow_reason,
+                                stop=call.stop_reason)
+
+    def _follow_embed(self, req: NeedEmbed) -> None:
+        self._follow_req = req            # a request that has not started yet is replaced: only the newest runs
+        if not self._follow_busy:
+            self._follow_busy = True
+            self._spawn(self._follow_embed_loop())
+
+    async def _follow_embed_loop(self) -> None:
+        try:
+            while self._follow_req is not None and self.follow is not None and self.embed is not None:
+                req, self._follow_req = self._follow_req, None
+                pack, cache = self._follow_pack, self._follow_cache
+                t0 = time.perf_counter()
+                try:
+                    scores, others = await self.embed.run_job(
+                        lambda e, req=req: score_matrix(e.embed, req, cache, PREFIX, pack))     # type: ignore[arg-type]
+                except Exception as e:  # noqa: BLE001 - the detector falls back to the lexical rule
+                    self._follow_embed_failed = True
+                    self.emitter.metric("", "follow_embed_failed", reason=f"{type(e).__name__}: {e}"[:160])
+                    self._follow_sync()
+                    return
+                self.emitter.metric(self.follow.turn_id or "", "follow_embed", ms=round((time.perf_counter() - t0) * 1000, 2),
+                                    seq=req.seq)
+                self._follow_sync()
+                self.follow.on_embed(req.seq, scores, others if pack else None)
+                self._follow_apply()
+        finally:
+            self._follow_busy = False
+
     # ------------------------------------------------------------------ offline recovery
     def _retry_pending(self) -> None:
         tid, self.pending_turn = self.pending_turn, None
@@ -1068,7 +1359,7 @@ class Brain:
             return True
         if self.active_remote is not None and time.monotonic() - self._last_partial_t < self.config.summary_partial_stale_s:
             return True
-        return any(c.tier in ("S", "F", "D") and not c.done.is_set() for c in self.calls)
+        return any(c.tier in ("S", "F", "D", "C") and not c.done.is_set() for c in self.calls)
 
     def _defer(self, reason: str) -> None:
         if reason != self._defer_reason:    # one metric per reason, not one per event
@@ -1118,7 +1409,9 @@ class Brain:
     def _write_summary(self, r: Running, *, note: str | None, n: int) -> Path | None:
         assert self.session is not None
         md = render_markdown(r, text=r.text, meta={"session": self.session.meta.get("session_id"), "turns": n,
-                                                   "model": SONNET if note is None else HAIKU}, note=note)
+                                                   "model": SONNET if note is None else HAIKU,
+                                                   "follow": dict(self.follow_counts) if self.follow_on else None},
+                             note=note)
         path = self.session.path / "summary.md"
         tmp = path.with_name(".summary.md.tmp")
         try:
@@ -1206,6 +1499,8 @@ class Brain:
         if self.stopped.is_set():
             return
         self.stopped.set()
+        if self._follow_task is not None:
+            self._follow_task.cancel()
         if self.embed is not None:
             self.embed.close()
         for c in self.calls:

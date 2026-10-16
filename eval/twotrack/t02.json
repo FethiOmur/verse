@@ -1,0 +1,48 @@
+{
+ "id": "t02",
+ "title": "Follow my answer: Alex reads the card, then paraphrases the next one; no follow card, the points are struck",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid"
+ ],
+ "voices": {
+  "Ingrid": "Kathy",
+  "Alex": "Mara"
+ },
+ "session": "sample-interview",
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "Can you tell me about yourself and your background?",
+   "offset_s": 0.8,
+   "expect": "answer",
+   "role": "question",
+   "bank_id": "b001"
+  },
+  {
+   "speaker": "Alex",
+   "text": "Sure, I'll give you the short version of what I've worked on. I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices. Lantern cut manual data entry from eleven minutes to two minutes per invoice.",
+   "offset_s": 1.2,
+   "expect": "me_turn",
+   "role": "reads the card verbatim",
+   "follow": "none"
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "What results did Lantern deliver?",
+   "offset_s": 1.5,
+   "expect": "answer",
+   "role": "next question",
+   "bank_id": "b004"
+  },
+  {
+   "speaker": "Alex",
+   "text": "The big win was speed. People used to spend something like eleven minutes on each invoice and now it's about two. And the models cost roughly nineteen hundred euros a month.",
+   "offset_s": 1.2,
+   "expect": "me_turn",
+   "role": "paraphrases the card",
+   "follow": "none"
+  }
+ ]
+}

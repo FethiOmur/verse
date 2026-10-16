@@ -238,6 +238,17 @@ class EmbedPath:
         finally:
             self._busy = False
 
+    # ---- other jobs on the same thread (follow my answer: card lines, pack lines, his words)
+    async def run_job(self, fn: Callable[[Embedder], object]):
+        """Run `fn(embedder)` on the embedding worker thread (serialised with the bank jobs; the engine and the GPU are
+        shared) once the model is loaded. Raises EmbedUnavailable when the path is off or failed."""
+        while self.state == "loading":
+            await asyncio.sleep(0.02)
+        if self.state != "ready" or self._embedder is None:
+            raise EmbedUnavailable(f"embedding path {self.state}")
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self._pool, fn, self._embedder)
+
     # ---- shutdown
     def close(self) -> None:
         self.state = "off" if self.state != "unavailable" else self.state

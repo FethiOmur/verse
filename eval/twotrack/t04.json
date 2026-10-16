@@ -1,0 +1,33 @@
+{
+ "id": "t04",
+ "title": "Follow my answer: Alex leaves the card for a topic that is not in the pack at all (running); a follow card with at most one point and no invented fact",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid"
+ ],
+ "voices": {
+  "Ingrid": "Kathy",
+  "Alex": "Mara"
+ },
+ "session": "sample-interview",
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "Can you tell me about yourself and your background?",
+   "offset_s": 0.8,
+   "expect": "answer",
+   "role": "question",
+   "bank_id": "b001"
+  },
+  {
+   "speaker": "Alex",
+   "text": "Sure, I'll give you the short version. Outside of work I run a lot. I just finished a half marathon last month and I'm planning a trail race next spring.",
+   "offset_s": 1.2,
+   "expect": "me_turn",
+   "role": "starts on the card, then goes off it on a topic outside the pack",
+   "follow": "diverge",
+   "off_from_word": 7
+  }
+ ]
+}

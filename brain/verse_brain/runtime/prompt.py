@@ -79,7 +79,7 @@ stands alone: never comment on the draft notes or on your own edits. If a kind \
 has no items, write no line of that kind: for example, write a CONFLICT line only for a real disagreement with \
 the pack."""
 
-SYSTEMS = {"S": SYSTEM_FAST, "F": SYSTEM_FAST, "D": SYSTEM_DEEP}
+SYSTEMS = {"S": SYSTEM_FAST, "F": SYSTEM_FAST, "C": SYSTEM_FAST, "D": SYSTEM_DEEP}   # C shares F's system prompt: one cache entry
 
 SPEAKER_LABEL = {"remote": "Other side", "me": "Alex"}
 PACK_HEADER = "MEETING PACK\n\n"
@@ -145,6 +145,40 @@ def statement_tail(text: str, lang: str) -> str:
         f"{STATEMENT_SAY_WORDS} words>, or the single word NONE. Write NONE unless the speaker expects a reply "
         "(a greeting, a thank-you, a request for permission, a how-are-you). No points, no BANK line.\n"
         f"CURRENT TURN (finished): {' '.join(text.split())}")
+
+
+def follow_tail(question: str, lang: str, his_words: str, card: list[str], said: list[str], now_card: list[str] | None,
+                reason: str) -> str:
+    """C call (follow my answer). Alex is answering in his own direction; write the card he needs next. The instructions
+    live in the tail (never cached), so the system prompt and the cached prefix stay byte-identical to F's.
+
+    `card`: the original card as lines ("SAY: ...", "- ..."); `said`: the card points he has already covered (they are not
+    to be repeated); `now_card`: the follow card on screen at a refresh (None at the first switch)."""
+    lines = [
+        f"Language: {LANG_NAME.get(lang, lang)}",
+        "FOLLOW MY ANSWER. Alex is answering the question below in his own direction, not by reading the card. Do not "
+        "answer the question again. Continue HIS line. The answer format above changes: write exactly these lines and "
+        "nothing else (no BANK line):",
+        "SAY: <ONE sentence Alex can say next that continues what he just said, first person, spoken style, at most 20 "
+        "words>",
+        "- <a point he has not said yet and fits his topic, at most 18 words>   (2 or 3 such lines; fewer, or none, when the "
+        "meeting pack has nothing grounded for his topic)",
+        "Rules: never contradict what he said. Stay on his topic. Every number, date and name in a point must come from "
+        "the meeting pack (bank, facts, evidence); a point the pack cannot support is left out. When the pack has "
+        "nothing for his topic, write the SAY line alone, with no invented fact. Do not repeat what he already said, "
+        "and do not repeat the points under ALREADY SAID. Follow the STYLE GUIDE for tone. No comment on the card, on "
+        "the question or on him.",
+        f"CURRENT QUESTION (finished): {' '.join(question.split())}",
+        f"WHAT OWNER HAS SAID SO FAR: {' '.join(his_words.split()) or '(nothing yet)'}",
+        "THE CARD HE DID NOT FOLLOW:",
+        *(card or ["(none)"]),
+    ]
+    if said:
+        lines += ["ALREADY SAID (struck through for him):", *[f"- {x}" for x in said]]
+    if now_card:
+        lines += ["THE FOLLOW CARD ON HIS SCREEN NOW (replace it; do not repeat it):", *now_card]
+    lines.append("Reason for this card: " + ("he went off the card" if reason == "diverged" else "he has said more since the last follow card"))
+    return "\n".join(lines)
 
 
 def deep_tail(question: str, lang: str, final: bool, shown_opener: str | None, bank: dict | None) -> str:

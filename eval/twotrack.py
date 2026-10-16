@@ -14,6 +14,8 @@ true acoustic end of the previous utterance (negative: it starts before the prev
   no_answer  a remote statement or fragment: no answer (a short acknowledgement is allowed)
   either     ambiguous by design (an interrupted question, a backchannel): reported, never counted as wrong
   me_turn    the owner's speech: must land as me turn(s), and never be answered
+Follow my answer (optional, owner utterances only): `follow` = "none" (he stays on the card: no follow card may come) or
+"diverge" (he leaves it: a follow card must come), `off_from_word` = index of the first word that is off the card.
 """
 
 from __future__ import annotations
@@ -50,6 +52,12 @@ def validate(d: dict) -> list[str]:
     if errs:
         return errs
     for i, u in enumerate(d["utterances"]):
+        if u.get("follow") not in (None, "none", "diverge"):
+            errs.append(f"utterance {i}: bad follow {u.get('follow')!r}")
+        if u.get("follow") and u.get("speaker") != d.get("owner"):
+            errs.append(f"utterance {i}: only the owner's utterances carry a follow label")
+        if u.get("follow") == "diverge" and not isinstance(u.get("off_from_word"), int):
+            errs.append(f"utterance {i}: a diverge label needs off_from_word")
         for k in ("speaker", "text", "offset_s", "expect"):
             if k not in u:
                 errs.append(f"utterance {i}: missing {k!r}")

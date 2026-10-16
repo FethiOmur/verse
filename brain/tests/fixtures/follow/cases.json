@@ -1,0 +1,989 @@
+{
+ "note": "Synthetic answers for the follow-my-answer tuning (docs/follow-tuning.md). Cards are the sample-interview bank entries (opener + points). expect: stay = on the card (verbatim, ASR slips, paraphrase, fillers); diverge = off the card (off_pack: a pack topic that the card does not carry, off_other: not in the pack, read_then_off: prefix on the card then a new topic; prefix/tail split for measuring the words to detection). pack = every opener, point and fact text of the sample-interview pack (the reference the divergence margin looks at).",
+ "cards": {
+  "b001": {
+   "question": "Can you tell me about yourself and your background?",
+   "say": "Sure, I'll give you the short version of what I've worked on.",
+   "points": [
+    "I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices.",
+    "Lantern cut manual data entry from 11 minutes to 2 minutes per invoice.",
+    "I also built a small route optimiser for a courier pilot that reduced empty runs by 14 percent."
+   ]
+  },
+  "b004": {
+   "question": "What results did Lantern deliver?",
+   "say": "I can give you concrete numbers on that.",
+   "points": [
+    "Manual data entry dropped from 11 minutes to 2 minutes per invoice.",
+    "Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.",
+    "It ran on 38,000 invoices a month."
+   ]
+  },
+  "b007": {
+   "question": "Tell me about the route optimiser you built for the courier pilot.",
+   "say": "It was a small project, but it had a measurable result.",
+   "points": [
+    "I built a small route optimiser for a courier pilot.",
+    "It reduced empty runs by 14 percent.",
+    "The pilot ran for 10 weeks across 23 vans in Milan."
+   ]
+  },
+  "b010": {
+   "question": "How do you handle cases where the model is unsure or wrong?",
+   "say": "I built explicit safeguards around the model rather than trusting it blindly.",
+   "points": [
+    "Extraction is schema-validated with one retry, then escalated.",
+    "I never let the model guess a total.",
+    "Low-confidence fields, below 0.8, go to a human operator; that was about 7 percent of invoices."
+   ]
+  },
+  "b013": {
+   "question": "How would you approach building an LLM-assisted dispatcher?",
+   "say": "I'd start from the practices that have worked for me before.",
+   "points": [
+    "I'd gate changes on a frozen evaluation set, rerun on every prompt change before release.",
+    "I'd validate outputs against a schema, retry once, then escalate.",
+    "I'd send low-confidence cases to a human operator."
+   ]
+  },
+  "b020": {
+   "question": "How do you approach starting a new prototype or project?",
+   "say": "I start small and ship early.",
+   "points": [
+    "I ship a thin version in the first week.",
+    "I used to over-engineer early prototypes, and I changed that habit."
+   ]
+  },
+  "b008": {
+   "question": "What do you know about our company and product?",
+   "say": "I've read up on the company, so let me share what I understood.",
+   "points": [
+    "The company builds route-planning software for mid-size European haulage firms.",
+    "Compass re-plans delivery routes every 90 seconds using live traffic and driver status.",
+    "You are moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027."
+   ]
+  },
+  "b019": {
+   "question": "How did you choose between small and large models?",
+   "say": "I used a tiered approach rather than one model for everything.",
+   "points": [
+    "I chose a small model for the first pass and a larger one only on low-confidence documents.",
+    "Fields below 0.8 confidence go to a human operator; that was about 7 percent of invoices.",
+    "Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved."
+   ]
+  }
+ },
+ "pack": [
+  "Sure, I'll give you the short version of what I've worked on.",
+  "I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices.",
+  "Lantern cut manual data entry from 11 minutes to 2 minutes per invoice.",
+  "I also built a small route optimiser for a courier pilot that reduced empty runs by 14 percent.",
+  "What stands out to me is the direction the product is taking.",
+  "The company is moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027.",
+  "I have built LLM pipelines: I led Lantern, which extracts structured fields from supplier invoices.",
+  "I have also built a route optimiser for a courier pilot.",
+  "Happy to; it's the project I can speak about in the most detail.",
+  "Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.",
+  "It cut manual data entry from 11 minutes to 2 minutes per invoice.",
+  "Extraction is schema-validated with one retry, then escalated; the model never guesses a total.",
+  "I can give you concrete numbers on that.",
+  "Manual data entry dropped from 11 minutes to 2 minutes per invoice.",
+  "Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.",
+  "It ran on 38,000 invoices a month.",
+  "One I've actively worked on is how I approach early prototypes.",
+  "I used to over-engineer early prototypes.",
+  "Now I ship a thin version in the first week.",
+  "I can walk through a few decisions and why I made them.",
+  "Extraction is schema-validated with one retry, then escalated; I never let the model guess a total.",
+  "I chose a small model for the first pass and a larger one only on low-confidence documents.",
+  "Evaluation uses a frozen set of 400 invoices, rerun on every prompt change before release.",
+  "It was a small project, but it had a measurable result.",
+  "I built a small route optimiser for a courier pilot.",
+  "It reduced empty runs by 14 percent.",
+  "The pilot ran for 10 weeks across 23 vans in Milan.",
+  "I've read up on the company, so let me share what I understood.",
+  "The company builds route-planning software for mid-size European haulage firms.",
+  "Compass re-plans delivery routes every 90 seconds using live traffic and driver status.",
+  "You are moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027.",
+  "I treat evaluation as a gate on every change.",
+  "I use a frozen set of 400 invoices.",
+  "I rerun that set on every prompt change before release.",
+  "On the held-out set, accuracy was 96.4 percent for totals and 91 percent for line items.",
+  "I built explicit safeguards around the model rather than trusting it blindly.",
+  "Extraction is schema-validated with one retry, then escalated.",
+  "I never let the model guess a total.",
+  "Low-confidence fields, below 0.8, go to a human operator; that was about 7 percent of invoices.",
+  "I measured it on a held-out set, so I can be specific.",
+  "Accuracy on the held-out set was 96.4 percent for totals.",
+  "Accuracy on line items was 91 percent.",
+  "Fields below 0.8 confidence go to a human operator; that was about 7 percent of invoices.",
+  "I tracked cost against the labour it replaced, so I can give you the comparison.",
+  "Monthly model cost was around EUR 1,900.",
+  "That compared with EUR 9,500 of manual labour saved.",
+  "This was at a volume of 38,000 invoices a month.",
+  "I'd start from the practices that have worked for me before.",
+  "I'd gate changes on a frozen evaluation set, rerun on every prompt change before release.",
+  "I'd validate outputs against a schema, retry once, then escalate.",
+  "I'd send low-confidence cases to a human operator.",
+  "Yes, a few, mostly about how the team tests and runs things.",
+  "I'd ask how the dispatcher will be evaluated before it touches live routes.",
+  "I'd ask what the on-call rotation for the AI team looks like.",
+  "I'd ask which part of Compass is hardest to test today.",
+  "I can give you the exact timing.",
+  "My notice period at my current company is 30 days.",
+  "That makes my earliest start mid-December 2026.",
+  "I'm happy to be open about that.",
+  "I'm looking for EUR 70,000 to 80,000 gross per year.",
+  "I'm flexible for equity.",
+  "Yes, I've shipped an LLM pipeline that ran on real volume every month.",
+  "I led an LLM pipeline that ran on 38,000 invoices a month.",
+  "Every prompt change was checked against a frozen set of 400 invoices before release.",
+  "I used a small model for the first pass and a larger one only on low-confidence documents.",
+  "There's a direct overlap, and I can point to a specific project.",
+  "I built a small route optimiser for a courier pilot that reduced empty runs by 14 percent.",
+  "The pilot ran for 10 weeks across 23 vans in Milan.",
+  "I also led an LLM pipeline, which is relevant to the planned LLM-assisted dispatcher.",
+  "I used a tiered approach rather than one model for everything.",
+  "I chose a small model for the first pass and a larger one only on low-confidence documents.",
+  "Fields below 0.8 confidence go to a human operator; that was about 7 percent of invoices.",
+  "Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.",
+  "I start small and ship early.",
+  "I ship a thin version in the first week.",
+  "I used to over-engineer early prototypes, and I changed that habit.",
+  "Yes, I recently automated one step in a deploy workflow.",
+  "I made the deploy ping IndexNow automatically after each deploy.",
+  "Let me give you the definition I work with.",
+  "ETA drift is the gap between the promised and the actual arrival time.",
+  "The interview is on Thursday 22 October 2026 at 15:00 CEST on Google Meet.",
+  "Ingrid Solberg is the VP Engineering and the hiring manager on the panel.",
+  "Tomas Weir is the tech lead of the platform team and is on the panel.",
+  "Halden Freight Systems builds route-planning software for mid-size European haulage firms.",
+  "Compass is the Halden product that re-plans delivery routes.",
+  "Lantern is the LLM invoice-extraction project that Alex led.",
+  "Compass re-plans delivery routes every 90 seconds.",
+  "The Halden AI team has 6 people and reports to Ingrid.",
+  "Halden has about 140 employees.",
+  "Lantern cut manual data entry from 11 minutes to 2 minutes per invoice.",
+  "Lantern ran on 38,000 invoices a month.",
+  "Lantern's accuracy on the held-out set was 96.4 percent for totals.",
+  "Lantern's accuracy on the held-out set was 91 percent for line items.",
+  "Fields below a confidence of 0.8 go to a human operator.",
+  "About 7 percent of invoices had low-confidence fields that went to a human operator.",
+  "Monthly model cost for Lantern was around EUR 1,900.",
+  "Lantern saved EUR 9,500 of manual labour per month against about EUR 1,900 of model cost.",
+  "The evaluation set is a frozen set of 400 invoices.",
+  "The courier route optimiser reduced empty runs by 14 percent.",
+  "The courier pilot ran for 10 weeks.",
+  "The courier pilot covered 23 vans in Milan.",
+  "Notice period at the current company is 30 days.",
+  "The lower end of the salary expectation is EUR 70,000 gross per year.",
+  "The upper end of the salary expectation is EUR 80,000 gross per year."
+ ],
+ "cases": [
+  {
+   "card": "b001",
+   "kind": "verbatim",
+   "text": "Sure, I'll give you the short version of what I've worked on. I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices.",
+   "expect": "stay",
+   "id": "b001-verbatim-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b001",
+   "kind": "verbatim",
+   "text": "Lantern cut manual data entry from eleven minutes to two minutes per invoice. I also built a small route optimiser for a courier pilot that reduced empty runs by fourteen percent.",
+   "expect": "stay",
+   "id": "b001-verbatim-2",
+   "covers": [
+    1,
+    2
+   ]
+  },
+  {
+   "card": "b001",
+   "kind": "verbatim_asr",
+   "text": "Sure I'll give you the short version of what I've worked on. I led lantern an L L M pipeline that extracts structure fields from supplier invoice.",
+   "expect": "stay",
+   "id": "b001-verbatim_asr-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b001",
+   "kind": "paraphrase",
+   "text": "Yeah so recently I led a project called Lantern. It's an LLM thing that reads supplier invoices and pulls the fields out for us.",
+   "expect": "stay",
+   "id": "b001-paraphrase-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b001",
+   "kind": "paraphrase",
+   "text": "With Lantern the time people spent typing invoice data went down from around eleven minutes to just two.",
+   "expect": "stay",
+   "id": "b001-paraphrase-2",
+   "covers": [
+    1
+   ]
+  },
+  {
+   "card": "b001",
+   "kind": "paraphrase",
+   "text": "Before that I made a small tool for a courier pilot that planned the routes better and cut the empty runs by about fourteen percent.",
+   "expect": "stay",
+   "id": "b001-paraphrase-3",
+   "covers": [
+    2
+   ]
+  },
+  {
+   "card": "b001",
+   "kind": "paraphrase",
+   "text": "Mostly I work with language models. Lately I built a system that reads invoices automatically so nobody has to type everything in by hand.",
+   "expect": "stay",
+   "id": "b001-paraphrase-4",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b001",
+   "kind": "off_pack",
+   "text": "At the courier pilot we ran for ten weeks on twenty three vans in Milan and the hardest part was honestly the quality of the GPS data.",
+   "expect": "diverge",
+   "id": "b001-off_pack-1",
+   "covers": []
+  },
+  {
+   "card": "b001",
+   "kind": "off_pack",
+   "text": "What I like about Halden is that Compass plans the routes again every ninety seconds, using live traffic and what the drivers are doing.",
+   "expect": "diverge",
+   "id": "b001-off_pack-2",
+   "covers": []
+  },
+  {
+   "card": "b001",
+   "kind": "off_other",
+   "text": "Outside of work I run a lot. I just finished a half marathon last month and I'm planning a trail race next spring.",
+   "expect": "diverge",
+   "id": "b001-off_other-1",
+   "covers": []
+  },
+  {
+   "card": "b001",
+   "kind": "off_other",
+   "text": "My first job was at a small agency in Istanbul, where I built websites for local shops and learned how to talk to clients.",
+   "expect": "diverge",
+   "id": "b001-off_other-2",
+   "covers": []
+  },
+  {
+   "card": "b001",
+   "kind": "off_other",
+   "text": "Actually the thing I'm most proud of is a running app I built on my own, it's called Trailhead and it's live on the App Store.",
+   "expect": "diverge",
+   "id": "b001-off_other-3",
+   "covers": []
+  },
+  {
+   "card": "b001",
+   "kind": "read_then_off",
+   "text": "Sure, I'll give you the short version of what I've worked on. I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices. But honestly my favourite project was a mobile app for runners that I shipped to the App Store last summer.",
+   "prefix": "Sure, I'll give you the short version of what I've worked on. I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices.",
+   "tail": "But honestly my favourite project was a mobile app for runners that I shipped to the App Store last summer.",
+   "expect": "diverge",
+   "id": "b001-read_then_off-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b004",
+   "kind": "verbatim",
+   "text": "I can give you concrete numbers on that. Manual data entry dropped from eleven minutes to two minutes per invoice.",
+   "expect": "stay",
+   "id": "b004-verbatim-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b004",
+   "kind": "paraphrase",
+   "text": "The big win was speed. People used to spend something like eleven minutes on each invoice and now it's about two.",
+   "expect": "stay",
+   "id": "b004-paraphrase-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b004",
+   "kind": "paraphrase",
+   "text": "On cost, the models were roughly nineteen hundred euros a month, and we saved around nine and a half thousand euros of manual work.",
+   "expect": "stay",
+   "id": "b004-paraphrase-2",
+   "covers": [
+    1
+   ]
+  },
+  {
+   "card": "b004",
+   "kind": "paraphrase",
+   "text": "It was running at real volume, around thirty eight thousand invoices every month.",
+   "expect": "stay",
+   "id": "b004-paraphrase-3",
+   "covers": [
+    2
+   ]
+  },
+  {
+   "card": "b004",
+   "kind": "paraphrase",
+   "text": "So in short, the pipeline paid for itself many times over compared to people doing the same work by hand.",
+   "expect": "stay",
+   "id": "b004-paraphrase-4",
+   "covers": [
+    1
+   ]
+  },
+  {
+   "card": "b004",
+   "kind": "off_pack",
+   "text": "What I'm happy about is the accuracy too. On the held out set we got ninety six point four percent on totals and ninety one on line items.",
+   "expect": "diverge",
+   "id": "b004-off_pack-1",
+   "covers": []
+  },
+  {
+   "card": "b004",
+   "kind": "off_pack",
+   "text": "We also kept a frozen set of four hundred invoices and ran it again every time we changed the prompt.",
+   "expect": "diverge",
+   "id": "b004-off_pack-2",
+   "covers": []
+  },
+  {
+   "card": "b004",
+   "kind": "off_other",
+   "text": "I should say the team was great, we had a lot of fun and the Friday lunches were honestly the best part of that job.",
+   "expect": "diverge",
+   "id": "b004-off_other-1",
+   "covers": []
+  },
+  {
+   "card": "b004",
+   "kind": "off_other",
+   "text": "Before Lantern I never worked with anything like this, I came from a background in web development and a bit of mobile.",
+   "expect": "diverge",
+   "id": "b004-off_other-2",
+   "covers": []
+  },
+  {
+   "card": "b004",
+   "kind": "read_then_off",
+   "text": "I can give you concrete numbers on that. Manual data entry dropped from eleven minutes to two minutes per invoice. Another thing worth saying is that I wrote the whole evaluation harness myself over a long weekend.",
+   "prefix": "I can give you concrete numbers on that. Manual data entry dropped from eleven minutes to two minutes per invoice.",
+   "tail": "Another thing worth saying is that I wrote the whole evaluation harness myself over a long weekend.",
+   "expect": "diverge",
+   "id": "b004-read_then_off-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b007",
+   "kind": "verbatim",
+   "text": "It was a small project but it had a measurable result. I built a small route optimiser for a courier pilot. It reduced empty runs by fourteen percent.",
+   "expect": "stay",
+   "id": "b007-verbatim-1",
+   "covers": [
+    0,
+    1
+   ]
+  },
+  {
+   "card": "b007",
+   "kind": "paraphrase",
+   "text": "So the pilot was with a courier company, and I wrote a little tool that planned their routes.",
+   "expect": "stay",
+   "id": "b007-paraphrase-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b007",
+   "kind": "paraphrase",
+   "text": "The result was that vans drove empty about fourteen percent less than before.",
+   "expect": "stay",
+   "id": "b007-paraphrase-2",
+   "covers": [
+    1
+   ]
+  },
+  {
+   "card": "b007",
+   "kind": "paraphrase",
+   "text": "We tested it for around ten weeks with twenty three vans in Milan.",
+   "expect": "stay",
+   "id": "b007-paraphrase-3",
+   "covers": [
+    2
+   ]
+  },
+  {
+   "card": "b007",
+   "kind": "paraphrase",
+   "text": "It wasn't a big system, but it showed that smarter routing really cuts down wasted trips.",
+   "expect": "stay",
+   "id": "b007-paraphrase-4",
+   "covers": null
+  },
+  {
+   "card": "b007",
+   "kind": "off_pack",
+   "text": "Later I took the same ideas and thought about how an LLM assisted dispatcher could use them, with a pilot planned for the first quarter of next year.",
+   "expect": "diverge",
+   "id": "b007-off_pack-1",
+   "covers": []
+  },
+  {
+   "card": "b007",
+   "kind": "off_pack",
+   "text": "On the invoice side, anything below point eight confidence goes to a human operator, which was about seven percent of the invoices.",
+   "expect": "diverge",
+   "id": "b007-off_pack-2",
+   "covers": []
+  },
+  {
+   "card": "b007",
+   "kind": "off_other",
+   "text": "The drivers were a mixed group, some of them loved the app and a few of them hated it because it changed their old habits.",
+   "expect": "diverge",
+   "id": "b007-off_other-1",
+   "covers": []
+  },
+  {
+   "card": "b007",
+   "kind": "off_other",
+   "text": "Milan is a great city by the way, I used to go to the market near Brera every Saturday morning for fruit.",
+   "expect": "diverge",
+   "id": "b007-off_other-2",
+   "covers": []
+  },
+  {
+   "card": "b007",
+   "kind": "read_then_off",
+   "text": "It was a small project but it had a measurable result. I built a small route optimiser for a courier pilot. The most interesting bit for me was how the drivers reacted when the app told them to change their usual streets.",
+   "prefix": "It was a small project but it had a measurable result. I built a small route optimiser for a courier pilot.",
+   "tail": "The most interesting bit for me was how the drivers reacted when the app told them to change their usual streets.",
+   "expect": "diverge",
+   "id": "b007-read_then_off-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b010",
+   "kind": "verbatim",
+   "text": "I built explicit safeguards around the model rather than trusting it blindly. Extraction is schema validated with one retry, then escalated. I never let the model guess a total.",
+   "expect": "stay",
+   "id": "b010-verbatim-1",
+   "covers": [
+    0,
+    1
+   ]
+  },
+  {
+   "card": "b010",
+   "kind": "paraphrase",
+   "text": "I don't just trust what the model says. Every answer is checked against a schema, we try once more, and if it still fails somebody looks at it.",
+   "expect": "stay",
+   "id": "b010-paraphrase-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b010",
+   "kind": "paraphrase",
+   "text": "The rule I follow is that the model is never allowed to make up a total, it has to be read from the document.",
+   "expect": "stay",
+   "id": "b010-paraphrase-2",
+   "covers": [
+    1
+   ]
+  },
+  {
+   "card": "b010",
+   "kind": "paraphrase",
+   "text": "When the model isn't confident, around seven percent of the invoices, a person checks those fields.",
+   "expect": "stay",
+   "id": "b010-paraphrase-3",
+   "covers": [
+    2
+   ]
+  },
+  {
+   "card": "b010",
+   "kind": "paraphrase",
+   "text": "So there are safety nets around it. If the output is badly formed we retry, and if that fails we hand it to a human.",
+   "expect": "stay",
+   "id": "b010-paraphrase-4",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b010",
+   "kind": "off_pack",
+   "text": "We measured all this on a frozen set of four hundred invoices, and totals came out at ninety six percent accurate.",
+   "expect": "diverge",
+   "id": "b010-off_pack-1",
+   "covers": []
+  },
+  {
+   "card": "b010",
+   "kind": "off_pack",
+   "text": "The cost side was fine too, about nineteen hundred euros a month for the models against nine and a half thousand of labour saved.",
+   "expect": "diverge",
+   "id": "b010-off_pack-2",
+   "covers": []
+  },
+  {
+   "card": "b010",
+   "kind": "off_other",
+   "text": "Honestly the hardest bug I ever had was a timezone problem in a scheduler. It took me two days to find and the fix was one line.",
+   "expect": "diverge",
+   "id": "b010-off_other-1",
+   "covers": []
+  },
+  {
+   "card": "b010",
+   "kind": "off_other",
+   "text": "In my last job I was also on call every third week, which taught me how to stay calm when production breaks at night.",
+   "expect": "diverge",
+   "id": "b010-off_other-2",
+   "covers": []
+  },
+  {
+   "card": "b010",
+   "kind": "read_then_off",
+   "text": "I built explicit safeguards around the model rather than trusting it blindly. Extraction is schema validated with one retry, then escalated. And separately I'm also learning Italian at the moment, which helps a lot with the colleagues here.",
+   "prefix": "I built explicit safeguards around the model rather than trusting it blindly. Extraction is schema validated with one retry, then escalated.",
+   "tail": "And separately I'm also learning Italian at the moment, which helps a lot with the colleagues here.",
+   "expect": "diverge",
+   "id": "b010-read_then_off-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b013",
+   "kind": "verbatim",
+   "text": "I'd start from the practices that have worked for me before. I'd gate changes on a frozen evaluation set, rerun on every prompt change before release.",
+   "expect": "stay",
+   "id": "b013-verbatim-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b013",
+   "kind": "paraphrase",
+   "text": "First I'd make a fixed test set and run it again every time we touch the prompt, before anything ships.",
+   "expect": "stay",
+   "id": "b013-paraphrase-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b013",
+   "kind": "paraphrase",
+   "text": "I would check every output against a schema, try again once if it fails, and then pass it up.",
+   "expect": "stay",
+   "id": "b013-paraphrase-2",
+   "covers": [
+    1
+   ]
+  },
+  {
+   "card": "b013",
+   "kind": "paraphrase",
+   "text": "Cases where the model is not sure would go to a person instead of being guessed.",
+   "expect": "stay",
+   "id": "b013-paraphrase-3",
+   "covers": [
+    2
+   ]
+  },
+  {
+   "card": "b013",
+   "kind": "paraphrase",
+   "text": "Basically I'd bring the same discipline I used on Lantern: test first, check the outputs, and keep a human in the loop for the hard ones.",
+   "expect": "stay",
+   "id": "b013-paraphrase-4",
+   "covers": null
+  },
+  {
+   "card": "b013",
+   "kind": "off_pack",
+   "text": "The dispatcher would replace the rules based system and the pilot is planned for the first quarter of twenty twenty seven, as far as I understood.",
+   "expect": "diverge",
+   "id": "b013-off_pack-1",
+   "covers": []
+  },
+  {
+   "card": "b013",
+   "kind": "off_pack",
+   "text": "Compass already re-plans routes every ninety seconds so the dispatcher has to be fast enough to keep up with that.",
+   "expect": "diverge",
+   "id": "b013-off_pack-2",
+   "covers": []
+  },
+  {
+   "card": "b013",
+   "kind": "off_other",
+   "text": "One thing I'd do on day one is just sit with the dispatchers for a few hours and watch how they actually work, without any laptop.",
+   "expect": "diverge",
+   "id": "b013-off_other-1",
+   "covers": []
+  },
+  {
+   "card": "b013",
+   "kind": "off_other",
+   "text": "I'd also want to understand how the team handles their weekends and holidays, because that tells you a lot about the culture.",
+   "expect": "diverge",
+   "id": "b013-off_other-2",
+   "covers": []
+  },
+  {
+   "card": "b013",
+   "kind": "read_then_off",
+   "text": "I'd start from the practices that have worked for me before. I'd gate changes on a frozen evaluation set. Then I'd want to talk about hiring, because I think the first two engineers on that team decide everything.",
+   "prefix": "I'd start from the practices that have worked for me before. I'd gate changes on a frozen evaluation set.",
+   "tail": "Then I'd want to talk about hiring, because I think the first two engineers on that team decide everything.",
+   "expect": "diverge",
+   "id": "b013-read_then_off-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b020",
+   "kind": "verbatim",
+   "text": "I start small and ship early. I ship a thin version in the first week.",
+   "expect": "stay",
+   "id": "b020-verbatim-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b020",
+   "kind": "paraphrase",
+   "text": "My rule is to get something simple out in the first week, not to build everything up front.",
+   "expect": "stay",
+   "id": "b020-paraphrase-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b020",
+   "kind": "paraphrase",
+   "text": "Earlier I tended to make early prototypes much too complicated, so I stopped doing that.",
+   "expect": "stay",
+   "id": "b020-paraphrase-2",
+   "covers": [
+    1
+   ]
+  },
+  {
+   "card": "b020",
+   "kind": "paraphrase",
+   "text": "Basically the first version is tiny, I put it in front of people fast and then improve it.",
+   "expect": "stay",
+   "id": "b020-paraphrase-3",
+   "covers": null
+  },
+  {
+   "card": "b020",
+   "kind": "paraphrase",
+   "text": "I learned the hard way that polishing before anyone has used it is mostly a waste.",
+   "expect": "stay",
+   "id": "b020-paraphrase-4",
+   "covers": null
+  },
+  {
+   "card": "b020",
+   "kind": "off_pack",
+   "text": "A good example is the courier pilot, where the first version of the optimiser was just a script that sorted the stops.",
+   "expect": "diverge",
+   "id": "b020-off_pack-1",
+   "covers": []
+  },
+  {
+   "card": "b020",
+   "kind": "off_pack",
+   "text": "With Lantern we first ran on a handful of invoices by hand before we put anything in production at thirty eight thousand a month.",
+   "expect": "diverge",
+   "id": "b020-off_pack-2",
+   "covers": []
+  },
+  {
+   "card": "b020",
+   "kind": "off_other",
+   "text": "I get this from cooking, honestly. A simple pasta with three ingredients done well beats a complicated recipe every time.",
+   "expect": "diverge",
+   "id": "b020-off_other-1",
+   "covers": []
+  },
+  {
+   "card": "b020",
+   "kind": "off_other",
+   "text": "At university I was in a startup club and we had to pitch a product every month, that's where I picked up this habit.",
+   "expect": "diverge",
+   "id": "b020-off_other-2",
+   "covers": []
+  },
+  {
+   "card": "b020",
+   "kind": "read_then_off",
+   "text": "I start small and ship early. I ship a thin version in the first week. Last summer I did exactly that with a running app, I put a bare map screen on TestFlight in four days.",
+   "prefix": "I start small and ship early. I ship a thin version in the first week.",
+   "tail": "Last summer I did exactly that with a running app, I put a bare map screen on TestFlight in four days.",
+   "expect": "diverge",
+   "id": "b020-read_then_off-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b008",
+   "kind": "verbatim",
+   "text": "I've read up on the company, so let me share what I understood. The company builds route planning software for mid size European haulage firms.",
+   "expect": "stay",
+   "id": "b008-verbatim-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b008",
+   "kind": "paraphrase",
+   "text": "You make software that plans routes for medium sized trucking companies in Europe.",
+   "expect": "stay",
+   "id": "b008-paraphrase-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b008",
+   "kind": "paraphrase",
+   "text": "Your product Compass plans the routes again every ninety seconds, looking at traffic and what the drivers are doing.",
+   "expect": "stay",
+   "id": "b008-paraphrase-2",
+   "covers": [
+    1
+   ]
+  },
+  {
+   "card": "b008",
+   "kind": "paraphrase",
+   "text": "And I understand you're replacing the old rule based dispatch with an LLM dispatcher, starting a pilot early in twenty twenty seven.",
+   "expect": "stay",
+   "id": "b008-paraphrase-3",
+   "covers": [
+    2
+   ]
+  },
+  {
+   "card": "b008",
+   "kind": "paraphrase",
+   "text": "Basically you help trucking firms plan their deliveries, and Compass is the part that adjusts the plan live.",
+   "expect": "stay",
+   "id": "b008-paraphrase-4",
+   "covers": null
+  },
+  {
+   "card": "b008",
+   "kind": "off_pack",
+   "text": "I also saw that the AI team has six people and reports to Ingrid, which I think is a nice size to work in.",
+   "expect": "diverge",
+   "id": "b008-off_pack-1",
+   "covers": []
+  },
+  {
+   "card": "b008",
+   "kind": "off_pack",
+   "text": "The company has about a hundred and forty employees so I'd expect a lot of ownership for each engineer.",
+   "expect": "diverge",
+   "id": "b008-off_pack-2",
+   "covers": []
+  },
+  {
+   "card": "b008",
+   "kind": "off_other",
+   "text": "I also watched a talk from your CTO last year about scaling the platform, he made a good point about queues.",
+   "expect": "diverge",
+   "id": "b008-off_other-1",
+   "covers": []
+  },
+  {
+   "card": "b008",
+   "kind": "off_other",
+   "text": "I have to say I'm a big fan of trucks. When I was a kid my uncle drove one across Turkey and I rode with him in the summer.",
+   "expect": "diverge",
+   "id": "b008-off_other-2",
+   "covers": []
+  },
+  {
+   "card": "b008",
+   "kind": "read_then_off",
+   "text": "I've read up on the company, so let me share what I understood. The company builds route planning software for mid size European haulage firms. My uncle used to drive trucks across Turkey so this world feels very familiar to me.",
+   "prefix": "I've read up on the company, so let me share what I understood. The company builds route planning software for mid size European haulage firms.",
+   "tail": "My uncle used to drive trucks across Turkey so this world feels very familiar to me.",
+   "expect": "diverge",
+   "id": "b008-read_then_off-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b019",
+   "kind": "verbatim",
+   "text": "I used a tiered approach rather than one model for everything. I chose a small model for the first pass and a larger one only on low confidence documents.",
+   "expect": "stay",
+   "id": "b019-verbatim-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b019",
+   "kind": "paraphrase",
+   "text": "Most documents go through a cheap small model, and only the difficult ones get sent to the bigger one.",
+   "expect": "stay",
+   "id": "b019-paraphrase-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b019",
+   "kind": "paraphrase",
+   "text": "I didn't want one model for all of it, so it works in two steps, small first and big only when needed.",
+   "expect": "stay",
+   "id": "b019-paraphrase-2",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b019",
+   "kind": "paraphrase",
+   "text": "Anything the model wasn't sure about, about seven percent, went to a person to check.",
+   "expect": "stay",
+   "id": "b019-paraphrase-3",
+   "covers": [
+    1
+   ]
+  },
+  {
+   "card": "b019",
+   "kind": "paraphrase",
+   "text": "That kept the bill low, roughly nineteen hundred euros a month, while saving close to ten thousand in manual work.",
+   "expect": "stay",
+   "id": "b019-paraphrase-4",
+   "covers": [
+    2
+   ]
+  },
+  {
+   "card": "b019",
+   "kind": "off_pack",
+   "text": "I tested both on a labelled sample first, and the small one was good enough on the clean invoices.",
+   "expect": "diverge",
+   "id": "b019-off_pack-1",
+   "covers": []
+  },
+  {
+   "card": "b019",
+   "kind": "off_pack",
+   "text": "The evaluation set had four hundred invoices and I reran it every time I swapped the model.",
+   "expect": "diverge",
+   "id": "b019-off_pack-2",
+   "covers": []
+  },
+  {
+   "card": "b019",
+   "kind": "off_other",
+   "text": "To be honest I also tried a few open source models on my laptop, mostly for fun on the weekend, and one of them was surprisingly fast.",
+   "expect": "diverge",
+   "id": "b019-off_other-1",
+   "covers": []
+  },
+  {
+   "card": "b019",
+   "kind": "off_other",
+   "text": "My manager at the time liked simple things, so he always asked me to explain the choice in one slide.",
+   "expect": "diverge",
+   "id": "b019-off_other-2",
+   "covers": []
+  },
+  {
+   "card": "b019",
+   "kind": "read_then_off",
+   "text": "I used a tiered approach rather than one model for everything. I chose a small model for the first pass. By the way, I also gave a talk about this at a local meetup in Milan last spring and people asked a lot of questions.",
+   "prefix": "I used a tiered approach rather than one model for everything. I chose a small model for the first pass.",
+   "tail": "By the way, I also gave a talk about this at a local meetup in Milan last spring and people asked a lot of questions.",
+   "expect": "diverge",
+   "id": "b019-read_then_off-1",
+   "covers": [
+    0
+   ]
+  },
+  {
+   "card": "b001",
+   "kind": "fillers",
+   "text": "So, um, yeah.",
+   "expect": "stay",
+   "id": "b001-fillers-1",
+   "covers": []
+  },
+  {
+   "card": "b001",
+   "kind": "fillers",
+   "text": "Yeah okay, right, uh huh, mm hmm, well.",
+   "expect": "stay",
+   "id": "b001-fillers-2",
+   "covers": []
+  },
+  {
+   "card": "b001",
+   "kind": "fillers",
+   "text": "Let me think about that for a second, um.",
+   "expect": "stay",
+   "id": "b001-fillers-3",
+   "covers": []
+  },
+  {
+   "card": "b001",
+   "kind": "fillers",
+   "text": "Okay, so, yeah, well, you know, I mean, like.",
+   "expect": "stay",
+   "id": "b001-fillers-4",
+   "covers": []
+  }
+ ]
+}

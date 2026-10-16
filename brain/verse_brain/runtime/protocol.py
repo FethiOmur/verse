@@ -19,6 +19,14 @@ IN_TYPES = {"start", "partial", "turn", "bank_hit", "control"}
 # message of a process decides its mode (runtime/__main__.py); the meeting Brain ignores the sim types.
 SIM_IN_TYPES = {"sim_start", "answer", "spoken"}
 SIM_CONTROL_ACTIONS = {"skip", "repeat", "end"}
+# Follow my answer (docs/specs/2026-10-16-verse-follow-my-answer-design.md section 3), additive. Swift -> brain: `start.follow`
+# (bool, default true) and `partial{speaker:"me"}` (the text of the owner's turn so far, cumulative like the remote partials).
+# Brain -> Swift: `follow{turn_id,reason:"diverged"|"refresh",card_id}` followed by `delta{id=card_id,card_id,tier:"C"}`;
+# `covered{turn_id,card_id,point}` (card_id "orig-<turn_id>" for the original F/S card, the C call id for a follow card;
+# point = 0-based index among the card's "- " lines; D points are not counted); metric stages `follow_diverged`,
+# `follow_card`, `follow_refresh`, `follow_covered`, `follow_end`.
+FOLLOW_OUT_TYPES = {"follow", "covered"}
+
 # Brain -> Swift in a sim: `say{id,text,final}`, `listen{q_id}`, `coach{q_id,lines}`, `sim_progress{q_index,q_total}`
 # (q_index is 1-based), `sim_report{path}`, plus `status` and `metric` as in meetings.
 SIM_OUT_TYPES = {"say", "listen", "coach", "sim_progress", "sim_report"}
@@ -42,8 +50,11 @@ class Emitter:
         self._out.flush()
 
     # helpers
-    def delta(self, id: str, turn_id: str, tier: str, text: str, line_done: bool) -> dict:
-        return {"type": "delta", "id": id, "turn_id": turn_id, "tier": tier, "text": text, "line_done": line_done}
+    def delta(self, id: str, turn_id: str, tier: str, text: str, line_done: bool, card_id: str | None = None) -> dict:
+        ev = {"type": "delta", "id": id, "turn_id": turn_id, "tier": tier, "text": text, "line_done": line_done}
+        if card_id is not None:       # tier C: the follow card this text belongs to (equal to `id`)
+            ev["card_id"] = card_id
+        return ev
 
     def status(self, state: str, message: str = "", **extra) -> None:
         assert state in STATUS_STATES, state

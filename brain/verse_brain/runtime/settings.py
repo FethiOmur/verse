@@ -8,7 +8,9 @@ call, the pre-warm and the keep-alive. Only `max_tokens` differs: 0 on pre-warm/
 from __future__ import annotations
 
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from .follow import FollowParams
 
 from ..prep.model import HAIKU, PREP_MODEL
 
@@ -22,6 +24,9 @@ _ROUTES: dict[str, dict] = {
     # S and F share one tuple (and therefore one cache entry): Haiku, thinking off, effort low.
     "S": {"model": HAIKU, "max_tokens": 120, "thinking": {"type": "disabled"}, "output_config": {"effort": "low"}},
     "F": {"model": HAIKU, "max_tokens": 120, "thinking": {"type": "disabled"}, "output_config": {"effort": "low"}},
+    # C (follow my answer): the S/F tuple byte for byte, so it rides their prompt cache (and their pre-warm). Only max_tokens
+    # is its own: a follow card is a SAY line and two or three points, like F's.
+    "C": {"model": HAIKU, "max_tokens": 160, "thinking": {"type": "disabled"}, "output_config": {"effort": "low"}},
     # D: Sonnet, between_tools (the lowest thinking setting; disabled is a 400 on Sonnet 5.5), effort medium,
     # server-side fallback opt-in.
     "D": {"model": SONNET, "max_tokens": 600, "thinking": {"type": "between_tools"},
@@ -73,6 +78,11 @@ class Config:
     keepalive_idle_s: float = 240.0
     keepalive_check_s: float = 10.0
     bucket_fraction: float = 0.80
+    # follow my answer (docs/specs/2026-10-16-verse-follow-my-answer-design.md); thresholds and their evidence: docs/follow-tuning.md
+    follow_default: bool = False       # `start.follow` absent = off (Swift always sends it; its setting defaults to on)
+    follow_langs: tuple[str, ...] = ("en",)   # tuned on English only; other languages keep the card as it is
+    follow: FollowParams = field(default_factory=FollowParams)
+    follow_tick_s: float = 0.1         # timer resolution of the machine (pauses, embed timeouts, the 4 s end)
     # F2 incremental summary (lowest priority: never competes with S/F/D)
     summary_every_turns: int = 6        # finalized turns (both speakers) between rolling passes
     summary_every_s: float = 180.0      # ...or this much speech (audio clock), whichever comes first
