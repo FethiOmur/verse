@@ -217,7 +217,7 @@ def read_sources(paths: Paths, sources: list[dict], vault: Path = DEFAULT_VAULT)
         kind, p = str(s.get("kind", "file")), Path(str(s["path"])).expanduser()
         label = str(s.get("label") or p.name)
         if kind == "sessions":
-            text, ref = session_facts_text(p), f"session:{p.name}"
+            text, ref = session_facts_text(p), "session:facts"
         else:
             if forbidden_vault_path(p, vault):
                 warnings.append(f"refused {label}: it is inside a private vault folder")

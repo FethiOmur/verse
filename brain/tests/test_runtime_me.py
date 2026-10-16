@@ -453,6 +453,18 @@ def test_without_an_embedder_the_core_still_works(tmp_path):
     assert b.lib is None and "FROM USER'S FILES" not in t.by_route("F")[0].tail and len(t.by_route("F")[0].request["system"]) == 2
 
 
+def test_follow_card_tail_names_the_me_layer_as_grounding_only_when_it_is_on():
+    from verse_brain.runtime.prompt import follow_tail
+
+    args = ("what did you build?", "en", "I built a service", ["SAY: x", "- y"], [], None, "diverged")
+    off, on = follow_tail(*args), follow_tail(*args, me_on=True)
+    assert follow_tail(*args, me_on=False) == off and "ABOUT OWNER" not in off
+    for sentence in ("must come from the meeting pack (bank, facts, evidence), ABOUT OWNER or FROM USER'S FILES",
+                     "the meeting pack and ABOUT OWNER have nothing grounded", "When none of them has anything for his topic"):
+        assert sentence in on, sentence
+    assert "the pack cannot support" not in on and "a point they cannot support" in on
+
+
 # ---------------------------------------------------------------- the G1 fallback prompt
 def big_about(sections: dict[str, int]) -> str:
     """A me.md-shaped ABOUT OWNER block with `n` long lines per section (ids m0xx, m1xx, ... as in me.md)."""
@@ -523,3 +535,74 @@ def test_gemma_gets_the_me_layer_inside_the_9500_char_prefix():
     parts = ll.split_request(build_request("F", route_params("F"), pack, [], "tail", block))
     assert parts.me == block and parts.system.startswith("You are Verse") and "ABOUT OWNER" in parts.system
     assert ll.split_request(build_request("F", route_params("F"), pack, [], "tail")).me == ""
+
+
+# ---------------------------------------------------------------- the real model: where the floor sits
+import os  # noqa: E402
+
+from verse_brain.runtime.embed import DEFAULT_MODEL, LiteRtEmbedder, unit  # noqa: E402
+
+_HAVE_MODEL = os.path.isfile(os.path.expanduser(DEFAULT_MODEL))
+try:
+    import litert_lm  # noqa: F401, E402
+    _HAVE_LITERT = True
+except ImportError:
+    _HAVE_LITERT = False
+
+# (question, the library chunks that answer it as (source, heading)); None = the files say nothing about it
+REAL_QUERIES = [
+    ("How did you handle matching bank lines to invoices when the reference was missing?", [("Harbor Ledger.md", "Notes")]),
+    ("Tell me about the payments reconciliation service you led.", [("dana_profile.md", "Harbor Ledger"), ("Harbor Ledger.md", "Harbor Ledger"), ("Harbor Ledger.md", "Numbers")]),
+    ("How many users does your hiking app have?", [("Trailhead.md", "Status")]),
+    ("What does it cost to run Trailhead each month?", [("Trailhead.md", "Stack")]),
+    ("What stack is Trailhead built on?", [("Trailhead.md", "Stack"), ("dana_profile.md", "Trailhead")]),
+    ("Tell me about a production incident you dealt with.", [("dana_profile.md", "Incident story")]),
+    ("Where have you worked before your current job?", [("dana_profile.md", "Work history")]),
+    ("What kind of role are you looking for next?", [("dana_profile.md", "What Dana is looking for")]),
+    ("How do you like to work with other people?", [("dana_profile.md", "How Dana works")]),
+    ("What is your notice period at the moment?", None),
+    ("Do you have experience with Kubernetes in production?", None),
+    ("What are your salary expectations for this position?", None),
+    ("How would you roll out a pilot of an LLM dispatcher across four countries?", None),
+    ("Can you tell me a bit about yourself and your background?", None),
+    ("What is the weather like where you live?", None),
+    ("Why do you want to leave your current company?", None),
+]
+
+
+@pytest.mark.skipif(not (_HAVE_MODEL and _HAVE_LITERT), reason="EmbeddingGemma model or litert_lm missing")
+def test_real_model_floor():
+    """EmbeddingGemma's background similarity is high (unrelated texts sit near 0.75-0.80), so the floor matters: unrelated
+    questions must stay under it and most answerable ones above (measured 16 Oct 2026: unrelated <= 0.797, answerable
+    0.756-0.884, 6 of 9 above 0.81)."""
+    from operator import mul
+
+    from verse_brain.prep import me as M
+
+    docs = [M.Doc(f"S{i + 1}", f"s{i + 1}", kind, f"{kind}:{f.name}", f.name, f.read_text(encoding="utf-8"))
+            for i, (kind, f) in enumerate([("file", ME_DIR / "dana_profile.md"), ("vault", ME_DIR / "vault" / "Harbor Ledger.md"),
+                                           ("vault", ME_DIR / "vault" / "Trailhead.md")])]
+    chunks, _ = M.build_library(docs)
+    where = {(c["source"], c["heading"]): c["id"] for c in chunks}
+    try:
+        e = LiteRtEmbedder(DEFAULT_MODEL, Config().embed_backend)
+    except Exception as exc:  # noqa: BLE001 - no GPU in this environment
+        pytest.skip(f"embedding engine not available: {type(exc).__name__}")
+    try:
+        vecs = {c["id"]: unit(e.embed(PREFIX + c["text"])) for c in chunks}
+        floor = Config().me_retrieval_floor
+        found = missed = 0
+        for q, exp in REAL_QUERIES:
+            qv = unit(e.embed(PREFIX + q))
+            scores = {cid: sum(map(mul, qv, v)) for cid, v in vecs.items()}
+            if exp is None:
+                assert max(scores.values()) < floor, (q, max(scores.values()))      # nothing unrelated gets in
+            else:
+                want = {where[k] for k in exp}
+                if max(scores[i] for i in want) >= floor:
+                    found += 1
+                else:
+                    missed += 1
+        assert found >= 5 and found + missed == 9, (found, missed)       # 6 of 9 on the GPU, 5 on the CPU backend
+    finally:
+        e.close()

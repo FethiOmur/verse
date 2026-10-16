@@ -6,9 +6,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import queue
+import threading
 import time
 
 from test_runtime_helpers import FIX, partial, run, settle, turn
+from test_runtime_ipc import _collect, _reader, _send, _spawn
 from test_runtime_me import LibEmbedder, bp_count, lib_ready, make, me_spec, session_dir, start, until
 
 from verse_brain.runtime.fake import CARD_NOW_CANNED
@@ -282,3 +285,59 @@ def test_lang_control_changes_the_language_of_later_tails_and_a_turn_lang_wins(t
     langs = [c.tail.split("\n")[0] for c in f_calls(t)]
     assert langs == ["Language: English", "Language: Italian", "Language: Turkish"]
     assert b.lang == "it" and em.of("metric", stage="lang_change")[0]["lang"] == "it"
+
+
+# ---------------------------------------------------------------- over the pipes (the real process, --fake)
+def test_the_new_messages_over_the_pipes(tmp_path):
+    sd = session_dir(tmp_path)
+    p = _spawn()
+    try:
+        q: queue.Queue = queue.Queue()
+        threading.Thread(target=_reader, args=(p, q), daemon=True).start()
+        _send(p, {"type": "start", "session_dir": str(sd), "lang": "en", "mode": "unprepared", "route": "room", "room_auto": "questions",
+                  "me": me_spec()})
+        got = []
+        end = time.time() + 10
+        while time.time() < end and not any(e.get("state") == "ready" for _, e in got):
+            got += _collect(q, time.time() + 1)
+        ready = [e for _, e in got if e.get("state") == "ready"]
+        assert ready and ready[0]["me"]["tokens"] == 640
+        _send(p, {"type": "control", "action": "card_now"})             # nothing said yet
+        _send(p, {"type": "turn", "turn_id": "q1", "speaker": "room", "kind": "question", "lang": "en", "t_audio_end": time.time(),
+                  "text": "what was the hardest bug you fixed in production"})
+        _send(p, {"type": "control", "action": "lang", "lang": "it"})
+        events = [e for _, e in _collect(q, time.time() + 1.5)]
+        assert any(e["type"] == "status" and "nothing" in e.get("message", "") for e in events)
+        assert any(e["type"] == "delta" and e["tier"] == "F" and e["turn_id"] == "q1" for e in events)
+        # a message the brain does not know is still ignored, and a missing me file is a notice, not a crash
+        _send(p, {"type": "control", "action": "something_new"})
+        assert p.poll() is None
+        _send(p, {"type": "control", "action": "stop"})
+        assert p.wait(timeout=8) == 0
+    finally:
+        if p.poll() is None:
+            p.kill()
+            p.wait(timeout=5)
+
+
+def test_missing_me_files_over_the_pipes_give_a_notice(tmp_path):
+    sd = session_dir(tmp_path)
+    p = _spawn()
+    try:
+        q: queue.Queue = queue.Queue()
+        threading.Thread(target=_reader, args=(p, q), daemon=True).start()
+        _send(p, {"type": "start", "session_dir": str(sd), "lang": "en", "mode": "unprepared",
+                  "me": {"core": str(tmp_path / "gone" / "me.md"), "library": "a", "facts": "b"}})
+        got = []
+        end = time.time() + 10
+        while time.time() < end and not any(e.get("state") == "ready" for _, e in got):
+            got += _collect(q, time.time() + 1)
+        events = [e for _, e in got]
+        assert {"type": "notice", "kind": "me_missing"} in events
+        assert [e for e in events if e.get("state") == "ready"][0]["me"] is None
+        _send(p, {"type": "control", "action": "stop"})
+        assert p.wait(timeout=8) == 0
+    finally:
+        if p.poll() is None:
+            p.kill()
+            p.wait(timeout=5)

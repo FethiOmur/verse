@@ -248,7 +248,7 @@ def statement_tail(text: str, lang: str, files: str = "") -> str:
 
 
 def follow_tail(question: str, lang: str, his_words: str, card: list[str], said: list[str], now_card: list[str] | None,
-                reason: str) -> str:
+                reason: str, me_on: bool = False) -> str:
     """C call (follow my answer). Alex is answering in his own direction; write the card he needs next. The instructions
     live in the tail (never cached), so the system prompt and the cached prefix stay byte-identical to F's.
 
@@ -280,7 +280,13 @@ def follow_tail(question: str, lang: str, his_words: str, card: list[str], said:
         lines += ["THE FOLLOW CARD ON HIS SCREEN NOW (it is replaced by yours: new SAY sentence, new points, nothing from it):",
                   *now_card]
     lines.append("Reason for this card: " + ("he went off the card" if reason == "diverged" else "he has said more since the last follow card"))
-    return "\n".join(lines)
+    text = "\n".join(lines)
+    if me_on:    # the me layer is grounding too (system prompt): the sentences about the pack name it as well
+        text = text.replace("the meeting pack has nothing grounded for his topic", "the meeting pack and ABOUT OWNER have nothing grounded for his topic")
+        text = text.replace("must come from the meeting pack (bank, facts, evidence)", "must come from the meeting pack (bank, facts, evidence), ABOUT OWNER or FROM USER'S FILES")
+        text = text.replace("When the pack has nothing for his topic", "When none of them has anything for his topic")
+        text = text.replace("a point the pack cannot support", "a point they cannot support")
+    return text
 
 
 def deep_tail(question: str, lang: str, final: bool, shown_opener: str | None, bank: dict | None, files: str = "") -> str:

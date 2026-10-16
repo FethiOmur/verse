@@ -111,7 +111,10 @@ class Config:
     embed_final_pass: bool = True
     # The me layer (docs/specs/2026-10-16-verse-anytime-calls-design.md 2.2): retrieval of chunks of his files for a remote turn
     # (same partials as the bank matcher, on the same embedding thread), and the unprepared / room / card-now rules.
-    me_retrieval_floor: float = 0.80   # cosine floor of a chunk (start value; the evidence is in tests/test_runtime_me.py)
+    # cosine floor of a chunk. The real model's background similarity is high: on the Dana fixtures (13 chunks, 9 questions
+    # the files answer, 7 they do not) unrelated questions top out at 0.797 and answerable ones sit at 0.76-0.88, so 0.81 keeps
+    # all 7 unrelated ones out and 6 of the 9 answerable ones in (the band is narrow: a miss only means no extra chunk). test_runtime_me.py::test_real_model_floor records it.
+    me_retrieval_floor: float = 0.81
     me_retrieval_k: int = 3            # chunks per turn in an unprepared call
     me_retrieval_k_prepared: int = 2   # ...and in a prepared one (the pack carries most of it)
     me_retrieval_min_words: int = 5    # words in the partial (the bank matcher's gate)

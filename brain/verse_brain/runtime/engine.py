@@ -645,7 +645,7 @@ class Brain:
         """`control card_now`: answer the latest remote/room turn now. The open partial if there is one, else the last final.
         The cue, kind and addressee gates are skipped; the card is a normal F (+ D) answer on a turn id `now-<n>`."""
         t0 = time.time()
-        if self.session is None or self.halted:
+        if self.session is None or self.halted or self.closing:
             return
         src: TurnState | None = None
         text, final = "", True
@@ -1561,7 +1561,7 @@ class Brain:
         now_card = [("SAY: " if ln.kind == "say" else "- ") + ln.text for ln in cur] if reason == "refresh" and cur else None
         words = f.his_text().split()
         his = ("... " if len(words) > 160 else "") + " ".join(words[-160:])
-        tail = follow_tail(st.final_text, self.lang, his, card, said, now_card, reason)
+        tail = follow_tail(st.final_text, self.lang, his, card, said, now_card, reason, me_on=self.about is not None)
         call = self._launch("C", st.turn_id, his, tail, st.turns_before, buffered=False)
         if call is None:
             f.c_failed()
