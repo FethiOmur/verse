@@ -30,6 +30,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import audio  # noqa: E402
+import run_replay as RR  # noqa: E402
 import score_twotrack as ST  # noqa: E402
 import twotrack  # noqa: E402
 from paths import OUT  # noqa: E402
@@ -52,7 +53,7 @@ def partials_for(text: str, t_start: float, t_end: float, chunk_s: float = CHUNK
     last = 0
     while True:
         k += 1
-        t = t_start + k * chunk_s + lag_s
+        t = min(t_start + k * chunk_s + lag_s, t_end + lag_s)          # nothing arrives after the utterance's last word + lag
         upto = min(n, int((t - lag_s - t_start) / dur * n + 1e-9))
         if upto > last:
             out.append((round(t, 3), " ".join(words[:upto])))
@@ -184,6 +185,10 @@ def main() -> int:
                 pass
     (out_dir / f"{a.name}.meta.json").write_text(json.dumps(meta, indent=1) + "\n")
     scored = ST.score(fixture, ST.load_events(jsonl), meta, a.ack_text, stderr_log)
+    if a.live:           # the package's spend ledger (cap in run_replay.TOTAL_CAP_USD)
+        usd = sum(o.get("cost_usd", 0.0) for _, o in ST.load_events(jsonl) if o.get("type") == "metric" and o.get("stage") in ("done", "prewarm", "keepalive"))
+        RR.ledger_add(a.name, f"run_follow {fixture['id']} live", usd)
+        print(f"  spend ${usd:.4f}; ledger total ${RR.ledger_total():.4f} of ${RR.TOTAL_CAP_USD:.2f}")
     (out_dir / f"{a.name}.score.json").write_text(json.dumps(scored, indent=1, ensure_ascii=False) + "\n")
     print(f"[{a.name}] exit {p.returncode}, {len(out_lines)} lines, {elapsed:.0f} s, "
           f"{'live' if a.live else 'fake'} brain, follow {'on' if not a.no_follow else 'off'}")

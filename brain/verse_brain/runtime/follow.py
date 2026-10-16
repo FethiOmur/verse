@@ -58,6 +58,8 @@ class FollowParams:
     # semantic
     sem_floor: float = 0.80          # best cosine of his words (the unmatched run) to a card line must reach this to count as still on the card
     sem_margin: float = 0.04         # ... and no other line of the pack may beat the card by this much (he is on another pack topic then)
+    long_run: int = 9                # an unmatched run this long is stronger evidence: the floor rises to `sem_floor_long`
+    sem_floor_long: float = 0.83
     sem_mark: float = 0.88           # a window this close to the card is also remembered as matched; a borderline one only vetoes this check
     cover_score: float = 0.88        # ... at or above this a card point counts as said
     cover_best_gap: float = 0.01     # ... and no other line scores more than this above it for that window
@@ -68,7 +70,7 @@ class FollowParams:
     stretch_ctx: int = 2             # raw words before the unmatched run that go into the stretch text
     stretch_min_tokens: int = 6
     use_stretch: bool = True         # embed the unmatched run (plus context) instead of the plain last-12 window
-    embed_wait_s: float = 0.6        # a pending divergence waits this long for the embedding, then decides lexically
+    embed_wait_s: float = 1.0        # a pending divergence waits this long for the embedding; then only the strict lexical rule decides
     embed_gap_s: float = 0.25        # background requests (coverage) are at least this far apart
     embed_new_words: int = 2         # ... and wait for this many new content words
     # coverage
@@ -571,12 +573,12 @@ class FollowMachine:
         return run
 
     # ---------------------------------------------------------------------------------------------- decisions
-    def _lex_trigger(self) -> tuple[bool, int, list[Tok]]:
+    def _lex_trigger(self, strict: bool = False) -> tuple[bool, int, list[Tok]]:
         p = self.p
         n, _ = self._unmatched_window()
         run = self._run()
-        words = p.diverge_words if self.embed_ok else p.lex_only_words
-        secs = p.diverge_s if self.embed_ok else p.lex_only_s
+        words = p.diverge_words if self.embed_ok and not strict else p.lex_only_words
+        secs = p.diverge_s if self.embed_ok and not strict else p.lex_only_s
         by_count = n >= words
         by_time = len(run) >= p.time_min_words and run[-1].t - run[0].t >= secs
         return (by_count or by_time), n, run
@@ -608,7 +610,7 @@ class FollowMachine:
             req = self._request(now, for_div=True)
             self._pend_div = {"seq": req.seq if req else None, "deadline": now + self.p.embed_wait_s}
             if req is None:
-                self._diverge(now, "embed_timeout", n, run, None)
+                self._pend_div = None
 
     def _diverge(self, now: float, reason: str, n: int, run: list[Tok], embed: float | None,
                  margin: float | None = None) -> None:
@@ -713,7 +715,8 @@ class FollowMachine:
         other = (others or {}).get(names[0], -1.0)
         margin = round(other - best_stay, 4) if others else 0.0
         self.last_margin = margin
-        on_card = best_stay >= p.sem_floor and margin < p.sem_margin
+        floor = p.sem_floor_long if len(self._run()) >= p.long_run else p.sem_floor
+        on_card = best_stay >= floor and margin < p.sem_margin
         # rescue: his words are still the card, said another way
         if same and on_card and best_ln is not None and best_stay >= p.sem_mark:
             start = meta["starts"][names[0]]
@@ -851,8 +854,8 @@ class FollowMachine:
         p = self.p
         pend = self._pend_div
         if pend is not None and now >= pend["deadline"] and self.mode == "watch" and self.diverged_at is None:
-            self._pend_div = None
-            trig, n, run = self._lex_trigger()
+            self._pend_div = None             # the embedding did not come: only the strict lexical rule may decide alone
+            trig, n, run = self._lex_trigger(strict=True)
             if trig:
                 self._diverge(now, "embed_timeout", n, run, None)
         if self.mode == "following":

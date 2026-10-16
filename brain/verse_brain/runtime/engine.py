@@ -358,6 +358,25 @@ class TurnState:
     embed_final_queued: bool = False    # the final-text pass was queued for this turn (at most once)
 
 
+def _follow_safe(fn):
+    """Follow my answer is an extra: whatever goes wrong inside it turns it off for the session and never reaches the
+    S/F/D path or the process (one `follow_error` metric says what)."""
+    import functools  # noqa: PLC0415
+
+    @functools.wraps(fn)
+    def wrapper(self, *a, **kw):
+        try:
+            return fn(self, *a, **kw)
+        except Exception as e:  # noqa: BLE001
+            log.exception("follow my answer failed in %s", fn.__name__)
+            if self.follow is not None:
+                self.follow = None
+                self.follow_on = False
+                self.emitter.metric("", "follow_error", where=fn.__name__, reason=f"{type(e).__name__}: {e}"[:200])
+            return None
+    return wrapper
+
+
 class Brain:
     def __init__(self, transport: Transport, emitter: Emitter, config: Config | None = None,
                  embedder_factory: Callable[[], Embedder] | None = None) -> None:
@@ -705,7 +724,6 @@ class Brain:
             return
         if msg.get("speaker") != "remote" or self.session is None:
             return
-        self._follow_remote_activity()
         tid = msg["turn_id"]
         if self.active_remote and self.active_remote != tid:
             old = self.ts.get(self.active_remote)
@@ -719,6 +737,7 @@ class Brain:
         st = self._ts(tid)
         if st.finished:
             return
+        self._follow_remote_activity()         # a late partial of a closed turn is not "the remote speaks again"
         text = msg.get("text", "")
         now = time.monotonic()
         st.cue = bool(msg.get("cue"))
@@ -1106,6 +1125,7 @@ class Brain:
         st.d_call = self._fire_d(st, st.final_text, final=True, buffered=False, opener=opener)
 
     # ------------------------------------------------------------------ follow my answer (tier C)
+    @_follow_safe
     def _follow_start(self, msg: dict) -> None:
         cfg = self.config
         want = bool(msg.get("follow", cfg.follow_default))
@@ -1153,10 +1173,22 @@ class Brain:
             f = self.follow
             if f is None or f.turn_id is None or f.ended or self.halted:
                 continue
-            self._follow_sync()
-            f.tick()
-            self._follow_apply()
+            self._follow_tick(f)
 
+    @_follow_safe
+    @_follow_safe
+    def _follow_tick(self, f: FollowMachine) -> None:
+        self._follow_sync()
+        f.tick()
+        self._follow_apply()
+
+    @_follow_safe
+    def _follow_embed_result(self, req: NeedEmbed, scores: dict, others: dict | None) -> None:
+        self._follow_sync()
+        self.follow.on_embed(req.seq, scores, others)       # type: ignore[union-attr]
+        self._follow_apply()
+
+    @_follow_safe
     def _follow_me(self, msg: dict, final: bool) -> None:
         if self.session is None or self.halted or self.closing or not self._follow_sync():
             return
@@ -1170,6 +1202,7 @@ class Brain:
         if self.follow is not None:
             self.follow.on_remote_activity()
 
+    @_follow_safe
     def _follow_question(self, st: TurnState) -> None:
         """A question is being answered: follow mode of the previous turn is over, this card is the reference."""
         f = self.follow
@@ -1179,6 +1212,8 @@ class Brain:
         if f.turn_id == st.turn_id:
             f.reset_cards()               # the same question answered again (offline retry, late bank hit)
         else:
+            if f.turn_id is not None and not f.ended and any(f.stats.values()):
+                self.emitter.metric(f.turn_id, "follow_end", reason="new_question", **dict(f.stats))
             f.new_turn(st.turn_id)
             for c in self._follow_calls:
                 if c.turn_id != st.turn_id and not c.done.is_set():
@@ -1188,6 +1223,7 @@ class Brain:
         self._follow_bank(st)
         self._follow_apply()
 
+    @_follow_safe
     def _follow_bank(self, st: TurnState) -> None:
         f = self.follow
         if f is None or f.turn_id != st.turn_id or st.bank_hit is None or self.session is None:
@@ -1202,12 +1238,14 @@ class Brain:
         for pt in rec.get("points", []):
             f.add_line(f"bank:{bid}", "bank", "point", str(pt), source="bank")
 
+    @_follow_safe
     def on_card_line(self, call: Call, kind: str, text: str) -> None:
         """A complete line of a card the overlay shows (S/F/D/C). Lines of a buffered S call arrive in `on_card_released`."""
         if self.follow is None or call.discarded or call.buffered or (call.probe and call.kind != "question"):
             return
         self._follow_feed(call, kind, text)
 
+    @_follow_safe
     def on_card_released(self, call: Call) -> None:
         if self.follow is None or call.discarded or (call.probe and call.kind != "question"):
             return
@@ -1216,6 +1254,7 @@ class Brain:
         for pt in call.points:
             self._follow_feed(call, "point", pt)
 
+    @_follow_safe
     def _follow_feed(self, call: Call, kind: str, text: str) -> None:
         f = self.follow
         if f is None or f.turn_id != call.turn_id:
@@ -1237,6 +1276,7 @@ class Brain:
         self._follow_sync()
         self._follow_apply()
 
+    @_follow_safe
     def _follow_apply(self) -> None:
         f = self.follow
         if f is None:
@@ -1262,6 +1302,7 @@ class Brain:
             elif isinstance(fx, Ended):
                 self.emitter.metric(f.turn_id or "", "follow_end", reason=fx.reason, **{k: v for k, v in f.stats.items()})
 
+    @_follow_safe
     def _follow_launch(self, reason: str) -> None:
         f = self.follow
         st = self.ts.get(f.turn_id or "") if f is not None else None
@@ -1288,6 +1329,7 @@ class Brain:
         self.follow_counts["c_calls"] += 1
         f.c_started(call.id)
 
+    @_follow_safe
     def _follow_c_done(self, call: Call) -> None:
         f = self.follow
         if f is None or f.turn_id != call.turn_id:
@@ -1320,9 +1362,7 @@ class Brain:
                     return
                 self.emitter.metric(self.follow.turn_id or "", "follow_embed", ms=round((time.perf_counter() - t0) * 1000, 2),
                                     seq=req.seq)
-                self._follow_sync()
-                self.follow.on_embed(req.seq, scores, others if pack else None)
-                self._follow_apply()
+                self._follow_embed_result(req, scores, others if pack else None)
         finally:
             self._follow_busy = False
 

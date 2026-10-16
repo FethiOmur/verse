@@ -159,15 +159,16 @@ def follow_tail(question: str, lang: str, his_words: str, card: list[str], said:
         "FOLLOW MY ANSWER. Alex is answering the question below in his own direction, not by reading the card. Do not "
         "answer the question again. Continue HIS line. The answer format above changes: write exactly these lines and "
         "nothing else (no BANK line):",
-        "SAY: <ONE sentence Alex can say next that continues what he just said, first person, spoken style, at most 20 "
-        "words>",
+        "SAY: <ONE sentence that picks up exactly where his last words stopped and carries his line one step further, first "
+        "person, spoken style, at most 20 words>",
         "- <a point he has not said yet and fits his topic, at most 18 words>   (2 or 3 such lines; fewer, or none, when the "
         "meeting pack has nothing grounded for his topic)",
         "Rules: never contradict what he said. Stay on his topic. Every number, date and name in a point must come from "
         "the meeting pack (bank, facts, evidence); a point the pack cannot support is left out. When the pack has "
-        "nothing for his topic, write the SAY line alone, with no invented fact. Do not repeat what he already said, "
-        "and do not repeat the points under ALREADY SAID. Follow the STYLE GUIDE for tone. No comment on the card, on "
-        "the question or on him.",
+        "nothing for his topic, write the SAY line alone, with no invented fact. Never offer something he has already "
+        "said, not even in other words: read WHAT OWNER HAS SAID SO FAR first and write only what is new. Start the SAY "
+        "with the content, not with a reaction word (no \"Right\", \"Yes\", \"Exactly\", \"Well\"). Follow the "
+        "STYLE GUIDE for tone. No comment on the card, on the question or on him.",
         f"CURRENT QUESTION (finished): {' '.join(question.split())}",
         f"WHAT OWNER HAS SAID SO FAR: {' '.join(his_words.split()) or '(nothing yet)'}",
         "THE CARD HE DID NOT FOLLOW:",
@@ -176,7 +177,8 @@ def follow_tail(question: str, lang: str, his_words: str, card: list[str], said:
     if said:
         lines += ["ALREADY SAID (struck through for him):", *[f"- {x}" for x in said]]
     if now_card:
-        lines += ["THE FOLLOW CARD ON HIS SCREEN NOW (replace it; do not repeat it):", *now_card]
+        lines += ["THE FOLLOW CARD ON HIS SCREEN NOW (it is replaced by yours: new SAY sentence, new points, nothing from it):",
+                  *now_card]
     lines.append("Reason for this card: " + ("he went off the card" if reason == "diverged" else "he has said more since the last follow card"))
     return "\n".join(lines)
 
