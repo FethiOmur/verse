@@ -620,17 +620,27 @@ public struct OverlayReducer: Sendable {
         return s.isEmpty ? nil : .point(s)
     }
 
-    /// SAY line and points of one streamed call: the first SAY line, then every other line as a point.
-    private static func parseLines(_ l: Lines?) -> (say: String?, points: [String]) {
-        var say: String?, points: [String] = []
+    /// A displayed point and its number for `covered`. The brain numbers the lines that start with `- ` (dash and space), 0-based,
+    /// in arrival order on one card; a second SAY line, a line with no dash or a `•` line may still be shown (the display is
+    /// tolerant) but has no number, so a `covered` index can never land on it.
+    private struct Item { var text: String; var point: Int? }
+
+    private static func isNumbered(_ raw: String) -> Bool { raw.trimmingCharacters(in: .whitespaces).hasPrefix("- ") }
+
+    /// SAY line and displayed points of one streamed call: the first SAY line, then every other line, each point with the
+    /// brain's number when it has one.
+    private static func parseLines(_ l: Lines?) -> (say: String?, items: [Item]) {
+        var say: String?, items: [Item] = [], n = 0
         for raw in l?.all ?? [] {
             switch parse(raw) {
-            case .say(let s)?: if say == nil { say = s } else { points.append(s) }
-            case .point(let p)?: points.append(p)
+            case .say(let s)?:
+                if say == nil { say = s } else { items.append(Item(text: s, point: nil)) }
+            case .point(let p)?:
+                if isNumbered(raw) { items.append(Item(text: p, point: n)); n += 1 } else { items.append(Item(text: p, point: nil)) }
             case nil: break
             }
         }
-        return (say, points)
+        return (say, items)
     }
 
     /// Rebuilds the card from what is known about its turn. Text is replaced in place (never animated).
@@ -639,22 +649,19 @@ public struct OverlayReducer: Sendable {
         let before = card
 
         // Fast tier: the selected S; F only when no S was selected.
-        var say: String?, sayTier: String?, bullets: [String] = []
+        var say: String?, sayTier: String?, bullets: [Item] = []
         let fastID = info.selectedS ?? info.fID
         if let fid = fastID, let l = lines[fid] {
-            for raw in l.all {
-                switch Self.parse(raw) {
-                case .say(let s)?: if say == nil { say = s; sayTier = l.tier } else { bullets.append(s) }
-                case .point(let p)?: bullets.append(p)
-                case nil: break
-                }
-            }
+            let parsed = Self.parseLines(l)
+            say = parsed.say
+            if say != nil { sayTier = l.tier }
+            bullets = parsed.items
         }
         // P: the bank opener until the fast tier has a SAY line of its own (and only while the brain has not rejected it).
         if say == nil, let bid = info.bankHit, !info.rejectedBankIDs.contains(bid), let p = bank[bid] {
             say = p.opener
             sayTier = "P"
-            if bullets.isEmpty { bullets = p.points }
+            if bullets.isEmpty { bullets = p.points.enumerated().map { Item(text: $1, point: $0) } }
         }
         // D: points under the divider; on OPENER_WRONG its first line replaces the SAY line.
         var deep: [String] = []
@@ -687,7 +694,7 @@ public struct OverlayReducer: Sendable {
             if let csay = c.say {
                 say = csay
                 sayTier = "C"
-                bullets = c.points
+                bullets = c.items
                 deep = []
                 corrected = false
                 following = true
@@ -703,11 +710,13 @@ public struct OverlayReducer: Sendable {
         card.say = say
         card.sayTier = sayTier
         card.sayCorrected = corrected
-        card.bullets = Array(bullets.prefix(config.maxBullets))
+        let shownItems = Array(bullets.prefix(config.maxBullets))
+        card.bullets = shownItems.map(\.text)
         card.chips = info.chips
         card.deepPoints = Array(deep.prefix(config.maxDeepPoints))
         card.following = following
-        card.struck = coveredNow.filter { $0 < card.bullets.count }
+        // `covered` counts the brain's numbered points; the card strikes the displayed line that has that number.
+        card.struck = Set(shownItems.enumerated().compactMap { i, item in item.point.flatMap { coveredNow.contains($0) ? i : nil } })
         if card != before {
             touch(now)
             if card.say != nil || !card.bullets.isEmpty, state.activity == .thinking { state.activity = .listening }

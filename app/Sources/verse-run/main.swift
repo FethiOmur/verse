@@ -33,6 +33,7 @@ func usage() -> Never {
       --echo              also print the partial/turn/bank_hit lines sent to the brain
       --trace             log every transcript event and the remote audio level to stderr
       --drain N           wait at most N s for the brain after the audio ends (default 15)
+      --follow            "follow my answer": send follow:true in start and the me partials (default off, as the brain's)
       --brain-dir DIR     the brain/ folder (default: found next to the repo, or VERSE_BRAIN_DIR)
       --fake-brain        brain with canned replies (no network, no key)
       --budget-usd N      optional spend cap passed to the brain (default: none)
@@ -43,7 +44,7 @@ func usage() -> Never {
 func parse(_ args: [String]) -> RunOptions {
     var session: String?
     var o: RunOptions?
-    var lang = "en", seconds: Double?, file: String?, meFile: String?, noBleedGate = false, gateCorrOnly = false, noEchoGuard = false, mic = true
+    var lang = "en", seconds: Double?, file: String?, meFile: String?, noBleedGate = false, gateCorrOnly = false, noEchoGuard = false, mic = true, follow = false
     var bundles: [String]?, brainDir: String?, fake = false, budget: Double?
     var turn = TurnConfig()
     var drain: Double?, format = OutputFormat.json, echo = false, trace = false
@@ -65,6 +66,7 @@ func parse(_ args: [String]) -> RunOptions {
         case "--no-echo-guard": noEchoGuard = true
         case "--me-hold-ms": turn.meCloseHoldMs = Int(value(k)) ?? turn.meCloseHoldMs
         case "--no-mic": mic = false
+        case "--follow": follow = true
         case "--bundle-ids": bundles = list(value(k))
         case "--owner": turn.ownerName = value(k)
         case "--alias": turn.ownerAliases = list(value(k))
@@ -107,6 +109,7 @@ func parse(_ args: [String]) -> RunOptions {
     opts.budgetUSD = budget
     opts.turn = turn
     if noEchoGuard { opts.turn.echoGuardEnabled = false }
+    opts.follow = follow
     if let drain { opts.drainSeconds = drain }
     opts.format = format
     opts.echoOutbound = echo

@@ -141,6 +141,57 @@ final class FollowOverlayTests: XCTestCase {
         XCTAssertTrue(card.struck.isEmpty)
     }
 
+    // MARK: review fixes
+
+    /// The brain numbers the points of a card 0-based over the lines that start with `- ` only. A second SAY line or a line with
+    /// no dash is shown (the display is tolerant) but takes no number, so `covered` must not drift onto it.
+    func testCoveredIndexCountsOnlyDashLinesLikeTheBrain() throws {
+        let m = modelWithCard()
+        m.apply(follow("c1"))
+        m.apply(cDelta("c1", "SAY: And on the route optimiser I built the pilot."))
+        m.apply(cDelta("c1", "SAY: A stray second say line."))        // shown, but not point 0
+        m.apply(cDelta("c1", "12 depots in the pilot"))               // no dash: shown, not point 0
+        m.apply(cDelta("c1", "- ETA drift down by a third"))          // the brain's point 0
+        m.apply(cDelta("c1", "- I wrote the re-plan loop"))           // the brain's point 1
+        let card = try XCTUnwrap(m.state.card)
+        XCTAssertEqual(card.bullets, ["A stray second say line.", "12 depots in the pilot", "ETA drift down by a third"],
+                       "the display stays tolerant (and shows at most three lines)")
+        m.apply(covered("c1", 0))
+        XCTAssertEqual(m.state.card?.struck, [2], "point 0 is the first dash line, not the first line shown")
+        m.apply(covered("c1", 1))
+        XCTAssertEqual(m.state.card?.struck, [2], "point 1 is beyond the three displayed lines: nothing else struck")
+    }
+
+    func testCoveredIndexOnTheOriginalCardAlsoSkipsLinesWithoutADash() throws {
+        let m = OverlayModel(config: OverlayConfig(cardTimeout: .infinity), clock: { 1000 })
+        m.sessionStarting(lang: "en")
+        m.apply(turn("r1", "What was the hardest project?"))
+        for l in ["SAY: The hardest was Lantern.", "an undashed line", "- first real point", "- second real point"] {
+            for e in stream("f0001", "r1", "F", l) { m.apply(e) }
+        }
+        XCTAssertEqual(m.state.card?.bullets, ["an undashed line", "first real point", "second real point"])
+        m.apply(covered("orig-r1", 1))     // the brain's original card id is "orig-<turn>"
+        XCTAssertEqual(m.state.card?.struck, [2], "brain point 1 = the second dash line")
+    }
+
+    /// The follow card appears only when its SAY line has arrived, also when the model wrote a point first.
+    func testAFollowCardWhoseFirstLineIsAPointStaysHiddenUntilItsSayLine() throws {
+        let m = modelWithCard()
+        m.apply(follow("c1"))
+        m.apply(cDelta("c1", "- 12 depots in the pilot"))
+        var card = try XCTUnwrap(m.state.card)
+        XCTAssertFalse(card.following, "a point alone does not switch the card")
+        XCTAssertEqual(card.say, "The hardest was Lantern, the invoice pipeline.")
+        XCTAssertEqual(card.bullets, ["schema-validated extraction", "low-confidence fields go to an operator"], "the original is untouched")
+        m.apply(cDelta("c1", "SAY: And on the route optimiser I built the pilot."))
+        card = try XCTUnwrap(m.state.card)
+        XCTAssertTrue(card.following)
+        XCTAssertEqual(card.say, "And on the route optimiser I built the pilot.")
+        XCTAssertEqual(card.bullets, ["12 depots in the pilot"], "the point that came first is kept, and still point 0")
+        m.apply(covered("c1", 0))
+        XCTAssertEqual(m.state.card?.struck, [0])
+    }
+
     // MARK: reset
 
     func testANewRemoteQuestionResetsTheFollowState() throws {
