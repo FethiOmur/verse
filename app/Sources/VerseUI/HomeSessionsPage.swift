@@ -128,10 +128,11 @@ private struct HomeSessionDetailView: View {
 
     @ViewBuilder private var plate: some View {
         if let report = session.reportURL {
-            HomeReportView(url: report)
-                .clipShape(RoundedRectangle(cornerRadius: VT.Radius.group, style: .continuous))
-                .overlay { RoundedRectangle(cornerRadius: VT.Radius.group, style: .continuous).strokeBorder(ink.groupEdge) }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            HomeGroup(plate: true) {
+                HomeReportView(url: report, ink: ink)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: VT.Radius.group, style: .continuous))
         } else {
             HomeGroup(plate: true) {
                 ScrollView {

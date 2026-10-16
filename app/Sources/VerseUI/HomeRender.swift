@@ -33,6 +33,15 @@ public enum HomeRender {
         ]
         var out: [URL] = []
         for dark in [false, true] {
+            // Sessions on a practice run: its report on the reading plate.
+            if only?.contains(.sessions) ?? true {
+                let router = HomeRouter()
+                router.page = .sessions
+                router.selectedSession = fixtures.practiceSession
+                let url = dir.appendingPathComponent("home-sessions-report-\(dark ? "dark" : "light").png")
+                try await capture(Scene(context: fixtures.context(router: router), dark: dark, override: nil), size: canvas, dark: dark, to: url)
+                out.append(url)
+            }
             for v in variants {
                 for page in v.pages where only?.contains(page) ?? true {
                     let router = HomeRouter()
@@ -132,6 +141,7 @@ public enum HomeRender {
         let sessions: HomeSessionsModel
         let upNext: HomeUpNextModel
         let selectedSession = "Mara · Northwind Labs"
+        let practiceSession = "sim-20261013-1000-Brightwave"
 
         init() throws {
             let fm = FileManager.default
@@ -190,10 +200,15 @@ public enum HomeRender {
                     try fm.setAttributes([.modificationDate: date], ofItemAtPath: summary.path)
                     try Data(Self.transcript.utf8).write(to: d.appendingPathComponent("transcript.jsonl"))
                 } else {
-                    // A practice run without a report shows as a prepared pack; the date comes from the folder.
-                    try fm.setAttributes([.modificationDate: date], ofItemAtPath: d.path)
-                    try Data("{}".utf8).write(to: d.appendingPathComponent("meta.json"))
-                    try fm.setAttributes([.modificationDate: date], ofItemAtPath: d.appendingPathComponent("meta.json").path)
+                    // A practice run: its report.html. `VERSE_RENDER_REPORT` points at a real one (made by the brain's
+                    // renderer); without it a small page in the same markup stands in.
+                    let report = d.appendingPathComponent("report.html")
+                    if let path = ProcessInfo.processInfo.environment["VERSE_RENDER_REPORT"], let real = try? Data(contentsOf: URL(fileURLWithPath: path)) {
+                        try real.write(to: report)
+                    } else {
+                        try Data(Self.sampleReport.utf8).write(to: report)
+                    }
+                    try fm.setAttributes([.modificationDate: date], ofItemAtPath: report.path)
                 }
             }
         }
@@ -212,6 +227,16 @@ public enum HomeRender {
         - Send a one-page v1 scope by Friday
         - Ask Marta for three agency logins to test with
         - Price the recall-followup agent per location, not per seat
+        """
+
+        static let sampleReport = """
+        <!doctype html><html><head><meta charset="utf-8"><style>
+        :root{--bg:#050405;--ink:#eae5ec;--mute:#9a929f;--faint:#6d6672;--rule:#2a262d;--panel:#0d0b0e;--accent:#8fb8ab}
+        html{background:var(--bg);color-scheme:dark}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 -apple-system,sans-serif}
+        main{max-width:760px;margin:0 auto;padding:56px 24px}h1{font-size:34px;font-weight:600}h2{font-size:13px;text-transform:uppercase;color:var(--mute)}
+        .meta{color:var(--mute)}.answer{border-left:2px solid var(--rule);padding-left:16px;color:#cfc9d3}</style></head>
+        <body><main><h1>Practice report</h1><p class="meta">Brightwave · technical · 30 min</p>
+        <section><h2>Answers</h2><p class="answer">I would start with the evaluation harness.</p></section></main></body></html>
         """
 
         static let transcript = """

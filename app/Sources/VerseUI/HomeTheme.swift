@@ -453,16 +453,10 @@ struct HomeNote: View {
 // MARK: - Scroll container for single-column pages
 
 /// A single-column page: 28 pt side padding, 22 top, content at most 760 wide.
-struct HomeColumnPage<Content: View, Footer: View>: View {
+struct HomeColumnPage<Content: View>: View {
     @ViewBuilder var content: Content
-    /// Pinned under the scrolling content (a page's primary action when the page is taller than the window).
-    @ViewBuilder var footer: Footer
-    @Environment(\.homeInk) private var ink
 
-    init(@ViewBuilder content: () -> Content, @ViewBuilder footer: () -> Footer) {
-        self.content = content()
-        self.footer = footer()
-    }
+    init(@ViewBuilder content: () -> Content) { self.content = content() }
 
     var body: some View {
         ScrollView {
@@ -472,19 +466,7 @@ struct HomeColumnPage<Content: View, Footer: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .scrollIndicators(.automatic)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if Footer.self != EmptyView.self {
-                footer.padding(.horizontal, 28).padding(.vertical, 14)
-                    .frame(maxWidth: 760, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(ink.background.opacity(ink.reduceTransparency ? 1 : 0.9))
-                    .overlay(alignment: .top) { Rectangle().fill(ink.separator).frame(height: 1) }
-            }
-        }
     }
-}
-
-extension HomeColumnPage where Footer == EmptyView {
-    init(@ViewBuilder content: () -> Content) { self.init(content: content, footer: { EmptyView() }) }
 }
 
 // MARK: - Cloud voice keys

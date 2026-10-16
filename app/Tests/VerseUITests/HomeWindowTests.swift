@@ -111,6 +111,32 @@ final class HomeSessionsModelTests: XCTestCase {
     }
 }
 
+final class HomeReportStyleTests: XCTestCase {
+    func testStylesheetMapsTheReportColoursToTheWindowInkInBothAppearances() {
+        let light = HomeReportView.stylesheet(ink: VT.Window(dark: false))
+        let dark = HomeReportView.stylesheet(ink: VT.Window(dark: true))
+        for css in [light, dark] {
+            XCTAssertTrue(css.contains("--bg:transparent"), "no opaque page background")
+            XCTAssertTrue(css.contains(".answer{color:var(--ink)}"), "the hard-coded answer colour is replaced")
+        }
+        XCTAssertTrue(light.contains("--ink:rgba(0,0,0,0.860)"), light)
+        XCTAssertTrue(dark.contains("--ink:rgba(255,255,255,0.920)"), dark)
+        XCTAssertTrue(light.contains("color-scheme:light") && dark.contains("color-scheme:dark"))
+    }
+
+    func testOverridesComeLastInTheHead() throws {
+        let dir = try homeScratch()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let f = dir.appendingPathComponent("report.html")
+        try "<html><head><style>:root{--bg:#050405}</style></head><body><main>x</main></body></html>".write(to: f, atomically: true, encoding: .utf8)
+        let page = try XCTUnwrap(HomeReportView.html(of: f, ink: VT.Window(dark: false)))
+        let original = try XCTUnwrap(page.range(of: "#050405")), override = try XCTUnwrap(page.range(of: "--bg:transparent"))
+        XCTAssertLessThan(original.lowerBound, override.lowerBound)
+        XCTAssertLessThan(override.lowerBound, try XCTUnwrap(page.range(of: "</head>")).lowerBound)
+        XCTAssertTrue(page.contains("<main>x</main>"), "the content is untouched")
+    }
+}
+
 @MainActor
 final class HomeRouterTests: XCTestCase {
     func testReportOpensSessionsOnItsFolder() {

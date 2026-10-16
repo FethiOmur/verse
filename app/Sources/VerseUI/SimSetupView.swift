@@ -29,8 +29,7 @@ public struct SimSetupView: View {
             interviewGroup.disabled(locked)
             HomeSectionHeader("Your experience")
             experienceGroup.disabled(locked)
-        } footer: {
-            runArea
+            runArea.padding(.top, 16)
         }
         .onAppear { voiceKeys.refresh() }
         .accessibilityIdentifier("verse.home.practice")
