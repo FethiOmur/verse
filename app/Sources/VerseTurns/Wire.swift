@@ -2,6 +2,54 @@ import Foundation
 
 public enum Speaker: String, Sendable, Codable, Equatable {
     case remote, me
+    /// Room route (anytime calls, phase A): the one microphone feeds the remote pipeline, so the other person and the
+    /// room are not told apart from Alex. The brain treats it like `remote` with the addressee always `unknown`.
+    case room
+}
+
+/// How a session was started (`start.mode`). Absent on the wire = prepared.
+public enum SessionMode: String, Sendable, Codable, Equatable {
+    case prepared, unprepared
+}
+
+/// Where the audio comes from (`start.route`). Absent on the wire = meeting.
+public enum AudioRoute: String, Sendable, Codable, Equatable, CaseIterable {
+    /// A meeting app's output (process tap) plus the microphone as `me`.
+    case meeting
+    /// A Continuity phone call answered on the Mac (phase B; until then it is not picked).
+    case phone
+    /// The microphone only, as the `room` speaker (a phone call on speaker next to the Mac).
+    case room
+}
+
+/// `start.room_auto` (room route only): which room turns get a card by themselves.
+public enum RoomAuto: String, Sendable, Codable, Equatable {
+    case questions, off
+}
+
+/// `start.me`: the files of the permanent "me" layer (`~/Library/Application Support/Verse/profile/`).
+public struct MeProfilePaths: Sendable, Equatable {
+    public var core: String
+    public var library: String
+    public var facts: String
+
+    public init(core: String, library: String, facts: String) {
+        self.core = core
+        self.library = library
+        self.facts = facts
+    }
+
+    /// The default profile folder.
+    public static var defaultDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Verse/profile", isDirectory: true)
+    }
+
+    public init(directory: URL = MeProfilePaths.defaultDirectory) {
+        core = directory.appendingPathComponent("me.md").path
+        library = directory.appendingPathComponent("me.library.jsonl").path
+        facts = directory.appendingPathComponent("me.facts.jsonl").path
+    }
 }
 
 public enum Addressee: String, Sendable, Codable, Equatable {
@@ -99,6 +147,13 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
         }
     }
 
+    /// Decodes one line, or nil when it is not a known event. Older and newer builds of the two sides can disagree about
+    /// which event types exist; the unknown ones are skipped, never an error for the stream.
+    public static func decodeLenient(_ line: String) -> OutboundEvent? {
+        guard let d = line.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(OutboundEvent.self, from: d)
+    }
+
     private static let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.outputFormatting = [.withoutEscapingSlashes]
@@ -111,22 +166,81 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
     }
 }
 
-/// The two brain messages that are not turn events.
+/// The messages Swift sends to the brain that are not turn events.
 public enum BrainCommand: Sendable, Equatable {
     /// `follow`: the brain may watch the owner's own speech and send follow cards (spec "follow my answer"). Always sent
     /// explicitly, so the brain never has to guess a default.
-    case start(sessionDir: String, lang: String, follow: Bool = false)
+    ///
+    /// The anytime-calls fields (spec 3) are sent only when set; absent means today's behaviour (prepared, meeting,
+    /// no me layer), so a session that sets none of them produces exactly the line it always did.
+    case start(sessionDir: String, lang: String, follow: Bool = false, mode: SessionMode? = nil, route: AudioRoute? = nil,
+               me: MeProfilePaths? = nil, roomAuto: RoomAuto? = nil)
     case stop
     case summarize
+    /// Answer the latest remote/room turn now: the open partial, else the last final.
+    case cardNow
+    /// The session language from now on (the speech engines restart on the Swift side).
+    case setLanguage(String)
 
     public func jsonLine() -> String {
-        let obj: [String: Any]
+        var obj: [String: Any]
         switch self {
-        case .start(let dir, let lang, let follow): obj = ["type": "start", "session_dir": dir, "lang": lang, "follow": follow]
+        case .start(let dir, let lang, let follow, let mode, let route, let me, let roomAuto):
+            obj = ["type": "start", "session_dir": dir, "lang": lang, "follow": follow]
+            if let mode { obj["mode"] = mode.rawValue }
+            if let route { obj["route"] = route.rawValue }
+            if let me { obj["me"] = ["core": me.core, "library": me.library, "facts": me.facts] }
+            if let roomAuto { obj["room_auto"] = roomAuto.rawValue }
         case .stop: obj = ["type": "control", "action": "stop"]
         case .summarize: obj = ["type": "control", "action": "summarize"]
+        case .cardNow: obj = ["type": "control", "action": "card_now"]
+        case .setLanguage(let lang): obj = ["type": "control", "action": "lang", "lang": lang]
         }
         let d = (try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data("{}".utf8)
         return String(decoding: d, as: UTF8.self)
+    }
+}
+
+/// One pair of the me layer and the meeting pack that disagree on a number (`notice{kind:"me_conflicts"}`).
+public struct MeConflict: Sendable, Equatable {
+    public var me: String
+    public var pack: String
+    public var topic: String
+}
+
+/// What the brain tells the front end beyond cards (`notice`, spec 3). Unknown kinds, and unknown event types, decode to
+/// nil: an older build of the app must keep working when the brain learns a new notice.
+public enum BrainNotice: Sendable, Equatable {
+    case meConflicts([MeConflict])
+    /// `start.me` named files that do not exist: the session runs without the layer.
+    case meMissing
+
+    public init?(_ o: [String: JSONValue]) {
+        guard o.type == "notice" else { return nil }
+        switch o[string: "kind"] {
+        case "me_conflicts":
+            let items = (o["items"]?.array ?? []).compactMap { v -> MeConflict? in
+                guard case .object(let it) = v, let me = it[string: "me"], let pack = it[string: "pack"] else { return nil }
+                return MeConflict(me: me, pack: pack, topic: it[string: "topic"] ?? "")
+            }
+            self = .meConflicts(items)
+        case "me_missing":
+            self = .meMissing
+        default:
+            return nil
+        }
+    }
+}
+
+/// The `me` field of the brain's `ready` status: how big the layer is and when it was built (nil: no layer).
+public struct MeLayerInfo: Sendable, Equatable {
+    public var tokens: Int
+    public var builtAt: String
+
+    public init?(readyStatus o: [String: JSONValue]) {
+        guard o.type == "status", o[string: "state"] == "ready", case .object(let me)? = o["me"],
+              let t = me["tokens"]?.double else { return nil }
+        tokens = Int(t)
+        builtAt = me[string: "built_at"] ?? ""
     }
 }

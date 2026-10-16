@@ -45,6 +45,11 @@ public struct ListenConfig: Sendable {
     /// stays "me" (the app's "Play test file as remote"). Without it a file run is remote-only, as before. The file is
     /// fed straight to the recognizer and not played aloud, so the microphone never hears it.
     public var micWithFile: Bool = false
+    /// Room route (anytime calls): the microphone is the only audio and feeds the `.remote` pipeline, so the turn logic
+    /// sees one other voice and there is no `.me` channel (and no bleed gate: nothing plays on the Mac to bleed). With a
+    /// `.memory` source the `me` clip (else the `remote` one) plays as that microphone. Phase D replaces this with real
+    /// separation of the owner's voice from the others.
+    public var micAsRemote: Bool = false
     /// Bundle-ID tap first, PID-list tap as the fallback.
     public var tapRoute: TapRoutePreference = .auto
     /// Off: voice processing ducks the meeting audio (>= 8 dB even at the minimum level, measured).
@@ -74,6 +79,9 @@ public struct ListenConfig: Sendable {
     /// The real microphone is in use (a live session, or a file played as the remote channel with the mic kept open):
     /// its permission is checked at start.
     var usesRealMic: Bool { isLive || micWithFile }
+
+    /// The remote channel is a process tap (and so needs the system-audio permission) and not the microphone.
+    var remoteIsTap: Bool { isLive && !micAsRemote }
 }
 
 /// What a session is built from. `system` is the real thing; tests swap parts (permissions, sources).
@@ -98,14 +106,18 @@ public struct ListenEnvironment: Sendable {
         makeRemoteSource: { cfg in
             switch cfg.source {
             case .live:
+                if cfg.micAsRemote { return cfg.micEnabled ? MicSource(voiceProcessing: cfg.voiceProcessing) : nil }
                 return ProcessTapSource(bundleIDs: cfg.remoteBundleIDs, preference: cfg.tapRoute)
             case .file(let url):
                 return MemorySource(clip: try PCMClip.read(url), tailSeconds: cfg.clipTailSeconds, name: "file \(url.lastPathComponent)")
-            case .memory(let remote, _):
+            case .memory(let remote, let me):
+                if cfg.micAsRemote { return (me ?? remote).map { MemorySource(clip: $0, tailSeconds: cfg.clipTailSeconds, name: "memory mic as room") } }
                 return remote.map { MemorySource(clip: $0, tailSeconds: cfg.clipTailSeconds, name: "memory remote") }
             }
         },
         makeMicSource: { cfg in
+            // The room route has no second channel: its one microphone is the remote source above.
+            if cfg.micAsRemote { return nil }
             switch cfg.source {
             case .live:
                 return cfg.micEnabled ? MicSource(voiceProcessing: cfg.voiceProcessing) : nil

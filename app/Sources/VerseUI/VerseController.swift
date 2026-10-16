@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import VerseMeet
 import VerseTurns
 
 /// Testing switches from the command line (`open Verse.app --args --fake-brain --file q.wav`). They override Settings.
@@ -16,6 +17,8 @@ public struct LaunchOptions: Sendable {
     /// Test only: `--cycles N` runs N Start → Ready → Stop cycles (Start right after Stop), logs each result to
     /// verse.log and quits.
     public var cycles: Int?
+    /// `--no-hotkeys`: the app does not register ⌥⌘V (a second copy running for a test).
+    public var noHotKeys = false
 
     public init(arguments: [String] = CommandLine.arguments) {
         var it = arguments.dropFirst().makeIterator()
@@ -25,6 +28,7 @@ public struct LaunchOptions: Sendable {
             case "--file": file = it.next()
             case "--session": session = it.next()
             case "--autostart": autostart = true
+            case "--no-hotkeys": noHotKeys = true
             case "--render-screens": renderScreensDir = it.next()
             case "--cycles": cycles = it.next().flatMap { Int($0) }
             case "--preview-overlay": previewOverlay = it.next()?.split(separator: ",").map(String.init)
@@ -44,6 +48,21 @@ public final class VerseController: ObservableObject {
     @Published public private(set) var sessionSpend = 0.0
     @Published public private(set) var monthSpend = 0.0
     @Published public private(set) var lastExitCode: Int32?
+    /// Anytime calls: how the running (or last) session was started. UI hooks; the island and menu read them.
+    @Published public private(set) var route: AudioRoute = .meeting
+    @Published public private(set) var sessionMode: SessionMode = .prepared
+    /// The language the running session listens in.
+    @Published public private(set) var callLanguage = "en"
+    /// ⌥⌘V was pressed once while a session runs: the island shows "Press ⌥⌘V again to stop" for `StopConfirm.window`.
+    @Published public private(set) var stopArmed = false
+    /// False when ⌥⌘V is taken by another app.
+    @Published public private(set) var startHotKeyAvailable = false
+    /// The me layer, as the brain reported it for the running session: nil = no layer.
+    @Published public private(set) var meLayer: MeLayerInfo?
+    /// Where the me layer and the meeting pack disagree on a number (the brain's `notice`, once after start).
+    @Published public private(set) var meConflicts: [MeConflict] = []
+    /// `start.me` named files that do not exist: the session ran without the layer.
+    @Published public private(set) var meLayerMissing = false
 
     public let settings: AppSettings
     public let overlay: OverlayModel
@@ -62,6 +81,29 @@ public final class VerseController: ObservableObject {
     /// Meeting detection ("Meeting detected · Start Verse?") and the summary-to-vault question.
     public lazy var meeting = MeetingCoordinator(host: self)
 
+    // Anytime calls
+    private var hotKeys: GlobalHotKeys?
+    private var stopConfirm = StopConfirm()
+    private var stopArmTask: Task<Void, Never>?
+    private var cardNowBridge = CardNowBridge()
+    /// The clock the double-press stop uses; tests replace it.
+    public var clock: () -> Date = { Date() }
+    /// Calendar events around a time, for choosing a prepared session. Default: the calendar, when its access was granted.
+    public var eventsAround: (Date) -> [MeetingEvent] = { when in
+        CalendarSource().overlapping(now: when, margin: QuickStart.eventWindow)
+    }
+    /// The facts the route is picked from. Default: Core Audio's per-process flags, never audio.
+    public var routeFacts: () -> QuickStart.RouteFacts = {
+        QuickStart.RouteFacts(phoneCallActive: false,
+                              meetingAppHoldsMic: QuickStart.meetingAppHoldsMic(CoreAudioProcessTable().snapshot()))
+    }
+    /// Event id -> prepared session, as the calendar prep remembered it.
+    public var eventSessions = EventSessionMap()
+    /// Something else (the practice interview) owns the microphone: a hot key Start does nothing.
+    public var startBlocked: () -> Bool = { false }
+    /// Where the unprepared session folders go. Tests point it at a temp folder.
+    public var sessionsRoot: URL = SessionCatalog.root
+
     public init(settings: AppSettings, launch: LaunchOptions = LaunchOptions()) {
         self.settings = settings
         self.launch = launch
@@ -73,6 +115,8 @@ public final class VerseController: ObservableObject {
         settings.objectWillChange.sink { [weak self] in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.overlay.config = self?.settings.overlayConfig ?? OverlayConfig() } }
         }.store(in: &cancellables)
+        // Inside the app (not a test process, not a test copy) ⌥⌘V is on from launch.
+        if Bundle.main.bundleIdentifier == AppSettings.suiteName, !launch.noHotKeys { installGlobalHotKeys() }
     }
 
     public var fakeBrain: Bool { launch.fakeBrain || settings.fakeBrain }
@@ -116,11 +160,20 @@ public final class VerseController: ObservableObject {
 
     /// The runner options for one Start. A test file plays to its end; live listens until Stop.
     public static func runOptions(sessionDir dir: URL, settings: AppSettings, fakeBrain: Bool, testFile: String?,
-                                  micWithFile: Bool = false, follow: Bool = false) -> RunOptions {
+                                  micWithFile: Bool = false, follow: Bool = false, mode: SessionMode = .prepared,
+                                  route: AudioRoute = .meeting, lang: String? = nil,
+                                  meProfile: URL = MeProfilePaths.defaultDirectory) -> RunOptions {
         var o = RunOptions(sessionDir: dir)
         o.micWithFile = micWithFile
-        o.follow = follow
-        o.lang = settings.language
+        o.follow = follow && route != .room
+        o.mode = mode
+        o.route = route
+        o.roomAuto = settings.roomAuto
+        // The me layer goes into every session when it is on and has been built; without its file nothing is sent.
+        if settings.useMeProfile, FileManager.default.fileExists(atPath: meProfile.appendingPathComponent("me.md").path) {
+            o.me = MeProfilePaths(directory: meProfile)
+        }
+        o.lang = lang ?? settings.language
         o.turn = settings.turnConfig
         o.fakeBrain = fakeBrain
         o.brainDir = Self.brainDir()
@@ -163,10 +216,46 @@ public final class VerseController: ObservableObject {
             showPanel()
             return
         }
-        let dir = SessionCatalog.url(settings.sessionName)
+        launchSession(name: settings.sessionName, mode: .prepared, route: .meeting, lang: settings.language)
+    }
+
+    // MARK: start anytime
+
+    /// Starts now, with or without a prepared session (⌥⌘V, the menu, the island): a prepared session linked to a calendar
+    /// event around now when there is one, otherwise an unprepared folder. The audio route is picked from what the Mac is
+    /// doing. Nothing waits for a preparation.
+    public func startNow() {
+        guard !running, !stopping else {
+            log("start now ignored: running=\(running) stopping=\(stopping)")
+            return
+        }
+        guard !startBlocked() else {
+            log("start now ignored: the microphone is in use by the practice interview")
+            return
+        }
+        refreshSessions()
+        let now = clock()
+        let events = meeting.settings.useCalendar ? eventsAround(now) : []
+        do {
+            let plan = try QuickStart.plan(now: now, facts: routeFacts(), events: events, remembered: eventSessions.load(),
+                                           sessions: sessions, lang: settings.defaultCallLanguage, root: sessionsRoot)
+            refreshSessions()
+            if plan.mode == .prepared { settings.sessionName = plan.session }
+            log("start now route=\(plan.route.rawValue) mode=\(plan.mode.rawValue) session=\(plan.session)")
+            launchSession(name: plan.session, mode: plan.mode, route: plan.route, lang: plan.lang)
+        } catch {
+            log("start now failed: \(error)")
+            overlay.showError("Could not create a session folder: \(error.localizedDescription)")
+            showPanel()
+        }
+    }
+
+    private func launchSession(name: String, mode: SessionMode, route: AudioRoute, lang: String) {
+        let dir = SessionCatalog.url(name, root: sessionsRoot)
         var o = Self.runOptions(sessionDir: dir, settings: settings, fakeBrain: fakeBrain, testFile: testFile,
-                                micWithFile: remoteFileOverride != nil, follow: meeting.settings.followMyAnswer)
-        log("start session=\(settings.sessionName) lang=\(settings.language) fake=\(fakeBrain) file=\(testFile ?? "-") live_seconds=\(o.seconds.map { String(Int($0)) } ?? "file")")
+                                micWithFile: remoteFileOverride != nil, follow: meeting.settings.followMyAnswer,
+                                mode: mode, route: route, lang: lang)
+        log("start session=\(name) lang=\(lang) mode=\(mode.rawValue) route=\(route.rawValue) me=\(o.me != nil) fake=\(fakeBrain) file=\(testFile ?? "-") live_seconds=\(o.seconds.map { String(Int($0)) } ?? "file")")
         lastLogLine = nil
         o.sink = { [weak self] e in
             // One FIFO hop to the main thread keeps the runner's order.
@@ -181,20 +270,84 @@ public final class VerseController: ObservableObject {
         })
         overlay.bank = BankOpener.load(sessionDir: dir)
         overlay.config = settings.overlayConfig
-        overlay.sessionStarting(lang: settings.language, session: settings.sessionName, app: Self.meetingAppName())
+        overlay.sessionStarting(lang: lang, session: name, app: route == .meeting ? Self.meetingAppName() : nil)
         overlay.startClock()
         runner = r
         runSessionDir = dir
         runWasFake = fakeBrain
         runStartedAt = Date()
         sessionSpend = 0
+        self.route = route
+        sessionMode = mode
+        callLanguage = lang
+        meLayer = nil
+        meConflicts = []
+        meLayerMissing = false
+        cardNowBridge = CardNowBridge()
+        stopConfirm.reset()
+        setStopArmed(false)
         running = true
         lastExitCode = nil
+        hotKeys?.setSessionRunning(true)
         showPanel()
         runTask = Task.detached { [weak self] in
             let code = await r.run()
             await self?.runEnded(code)
         }
+    }
+
+    // MARK: hot keys
+
+    /// Registers ⌥⌘V. Called at launch by the controller itself inside the app.
+    public func installGlobalHotKeys() {
+        guard hotKeys == nil else { return }
+        let keys = GlobalHotKeys(onStartStop: { [weak self] in self?.startStopKeyPressed() },
+                                 onCardNow: { [weak self] in self?.cardNow() })
+        hotKeys = keys
+        startHotKeyAvailable = keys.registerStartStop()
+        if !startHotKeyAvailable { log("⌥⌘V is taken by another app; Start now stays in the menu") }
+        keys.setSessionRunning(running)
+    }
+
+    /// What ⌥⌘V means right now. Not running: start. Running: the first press arms the stop, a second one inside
+    /// `StopConfirm.window` stops. Returns the decision (the side effect is done by `startStopKeyPressed`).
+    func startStopKeyAction(running isRunning: Bool? = nil) -> StopConfirm.Action {
+        let action = stopConfirm.press(running: isRunning ?? (running && !stopping), now: clock())
+        switch action {
+        case .arm: setStopArmed(true)
+        case .start, .stop: setStopArmed(false)
+        }
+        return action
+    }
+
+    public func startStopKeyPressed() {
+        if stopping { return }
+        switch startStopKeyAction() {
+        case .start: startNow()
+        case .arm: break
+        case .stop:
+            log("stop by ⌥⌘V twice")
+            Task { await stop() }
+        }
+    }
+
+    private func setStopArmed(_ on: Bool) {
+        stopArmTask?.cancel()
+        stopArmTask = nil
+        stopArmed = on
+        guard on else { return }
+        stopArmTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(StopConfirm.window))
+            guard !Task.isCancelled else { return }
+            self?.stopArmed = false
+        }
+    }
+
+    /// ⌥⌘↩: answer the latest remote/room turn at once.
+    public func cardNow() {
+        guard running, !stopping, let r = runner else { return }
+        log("card now")
+        r.cardNow()
     }
 
     /// The menu's "Play test file as remote…": runs the selected session with `url` as the remote channel (the same file
@@ -231,6 +384,8 @@ public final class VerseController: ObservableObject {
             if !finished { NSLog("Verse: the run did not end in %.0f s; killing the brain", timeout) }
         }
         BrainProcess.killAll()
+        hotKeys?.unregisterAll()
+        hotKeys = nil
         panel?.close()
         panel = nil
     }
@@ -238,6 +393,9 @@ public final class VerseController: ObservableObject {
     private func runEnded(_ code: Int32) {
         running = false
         stopping = false
+        hotKeys?.setSessionRunning(false)
+        stopConfirm.reset()
+        setStopArmed(false)
         lastExitCode = code
         runner = nil
         runTask = nil
@@ -269,13 +427,38 @@ public final class VerseController: ObservableObject {
         if case .metric(let o) = e, o[string: "stage"] == "session_t0" {
             log(String(format: "ready after %.1f s", Date().timeIntervalSince(runStartedAt)))
         }
-        overlay.apply(e)
+        feedOverlay(e)
         prompter.meetingCard(overlay.state.card)
         if case .brain(let o) = e, o.type == "metric", let c = o[double: "cost_usd"], c > 0 {
             sessionSpend += c
             persistSpend()
         }
         if case .ended = e, overlay.state.status?.needsPanel != true, overlay.state.meetingPrompt == nil { panel?.hide() }
+    }
+
+    /// Gives the event to the overlay. The overlay is written for `remote` and `me`; the room route's turns are `room`, which
+    /// it shows as the other side, and a card-now answer arrives on a turn id the overlay has not seen a turn for.
+    private func feedOverlay(_ e: RunnerEvent) {
+        var event = e
+        switch e {
+        case .outbound(var o):
+            cardNowBridge.noteOutbound(o)
+            if o[string: "speaker"] == "room" {
+                o["speaker"] = .string("remote")
+                event = .outbound(o)
+            }
+        case .brain(let o):
+            if let notice = BrainNotice(o) {
+                switch notice {
+                case .meConflicts(let items): meConflicts = items
+                case .meMissing: meLayerMissing = true
+                }
+            }
+            if let info = MeLayerInfo(readyStatus: o) { meLayer = info }
+            if let opening = cardNowBridge.opening(for: o) { overlay.apply(opening) }
+        default: break
+        }
+        overlay.apply(event)
     }
 
     private func persistSpend() {

@@ -141,8 +141,17 @@ public struct RunOptions: Sendable {
     public var fakeBrain = false
     public var budgetUSD: Double?
     public var turn = TurnConfig()
-    /// "Follow my answer": the brain gets `follow:true` in `start` and the owner's own partials (speaker `me`).
+    /// "Follow my answer": the brain gets `follow:true` in `start` and the owner's own partials (speaker `me`). Never in the
+    /// room route: there is no `me` channel to follow.
     public var follow = false
+    /// Anytime calls (spec 2.1, 3). `mode` and `route` go to the brain in `start` only when they are not today's
+    /// (prepared, meeting). `.room` makes the microphone the only audio: its turns are `room` turns, with no `me` channel.
+    public var mode = SessionMode.prepared
+    public var route = AudioRoute.meeting
+    /// The permanent "me" layer's files, or nil (the layer is off; `start` carries no `me`).
+    public var me: MeProfilePaths?
+    /// Room route: which room turns get a card by themselves (Settings → Meetings → "Room auto cards").
+    public var roomAuto = RoomAuto.questions
     /// How long to wait for the brain's answers after the audio ended, at most.
     public var drainSeconds = 15.0
     /// ... and how long the brain must be quiet before that wait ends early.
@@ -289,7 +298,11 @@ public final class VerseRunner: @unchecked Sendable {
         }
         var turnCfg = o.turn
         turnCfg.lang = o.lang
-        if o.follow { turnCfg.emitMePartials = true }
+        if o.follow, o.route != .room { turnCfg.emitMePartials = true }
+        if o.route == .room {
+            turnCfg.roomMode = true
+            turnCfg.roomAuto = o.roomAuto
+        }
         let bank: Bank, facts: FactIndex
         do {
             bank = try Bank.load(sessionDir: o.sessionDir)
@@ -338,9 +351,10 @@ public final class VerseRunner: @unchecked Sendable {
         switch source {
         case .live: mic = o.micEnabled
         case .file: mic = o.micEnabled && o.micWithFile
-        case .memory(_, let me): mic = me != nil
+        case .memory(let remote, let me): mic = o.route == .room ? (me ?? remote) != nil : me != nil
         }
         var cfg = ListenConfig(lang: o.lang, remoteBundleIDs: o.bundleIDs, micEnabled: mic, source: source)
+        cfg.micAsRemote = o.route == .room
         cfg.voiceProcessing = false
         cfg.micWithFile = o.micWithFile
         cfg.bleedGate = o.bleedGate
@@ -490,10 +504,32 @@ public final class VerseRunner: @unchecked Sendable {
         }
     }
 
+    /// The `start` message: the anytime-calls fields only where they differ from a prepared meeting session, so that one
+    /// produces exactly the line it always did.
+    func startCommand() -> BrainCommand {
+        let room = options.route == .room
+        return .start(sessionDir: options.sessionDir.path, lang: options.lang, follow: options.follow && !room,
+                      mode: options.mode == .prepared ? nil : options.mode, route: options.route == .meeting ? nil : options.route,
+                      me: options.me, roomAuto: room ? options.roomAuto : nil)
+    }
+
+    /// ⌥⌘↩: the brain answers the latest remote/room turn now (the open partial, else the last final). Nothing happens
+    /// when no brain is running.
+    public func cardNow() { sendControl(.cardNow) }
+
+    /// The session language from now on. The listen engines restart on the Swift side (the controller); this only tells the
+    /// brain which language the cards come in.
+    public func setLanguage(_ lang: String) { sendControl(.setLanguage(lang)) }
+
+    private func sendControl(_ c: BrainCommand) {
+        let brain: BrainProcess? = state.withLock { s in s.phase == .running ? s.brain : nil }
+        brain?.send(c.jsonLine())
+    }
+
     /// Sends `start` to the current brain and waits for its first readiness status.
     private func startAndWaitReady() async -> String? {
         guard let b = state.withLock({ $0.brain }) else { return "error" }
-        b.send(BrainCommand.start(sessionDir: options.sessionDir.path, lang: options.lang, follow: options.follow).jsonLine())
+        b.send(startCommand().jsonLine())
         return await waitReady(timeout: options.readyTimeout, brain: b)
     }
 
@@ -627,7 +663,7 @@ public final class VerseRunner: @unchecked Sendable {
     // MARK: engine output
 
     private func isAnswerableQuestion(_ ev: OutboundEvent) -> Bool {
-        if case .turn(_, .remote, _, let who, _, let kind) = ev, who != .other, kind == .question { return true }
+        if case .turn(_, let speaker, _, let who, _, let kind) = ev, speaker != .me, who != .other, kind == .question { return true }
         return false
     }
 
@@ -655,7 +691,7 @@ public final class VerseRunner: @unchecked Sendable {
             } else if case .chip = ev {
                 if let d = try? JSONSerialization.jsonObject(with: Data(ev.jsonLine().utf8)) as? [String: Any] { emitJSON(d) }
             }
-            if case .turn(let id, let speaker, _, _, let audioEnd, _) = ev, speaker == .remote {
+            if case .turn(let id, let speaker, _, _, let audioEnd, _) = ev, speaker != .me {
                 let wall = Date().timeIntervalSince1970
                 let wall0 = state.withLock { s -> Double in
                     s.turnsSent += 1

@@ -48,6 +48,13 @@ public final class AppSettings: ObservableObject {
     @Published public var windowOpacity: Double { didSet { defaults.set(windowOpacity, forKey: "windowOpacity") } }
     /// The session folder name chosen in the menu.
     @Published public var sessionName: String { didSet { defaults.set(sessionName, forKey: "sessionName") } }
+    /// Anytime calls (spec 2.2): the permanent "me" layer goes into every session. Off: `start.me` is null and the prompt
+    /// prefix is what it was before the layer existed.
+    @Published public var useMeProfile: Bool { didSet { defaults.set(useMeProfile, forKey: "useMeProfile") } }
+    /// The language a Start by hotkey, menu or island listens in (en, it or tr). Changed during a session from the island.
+    @Published public var defaultCallLanguage: String { didSet { defaults.set(defaultCallLanguage, forKey: "defaultCallLanguage") } }
+    /// Room route: cards for questions by themselves (on) or only on ⌥⌘↩ (off).
+    @Published public var roomAutoCards: Bool { didSet { defaults.set(roomAutoCards, forKey: "roomAutoCards") } }
     /// Testing: canned brain replies (no network, no key).
     @Published public var fakeBrain: Bool { didSet { defaults.set(fakeBrain, forKey: "fakeBrain") } }
     /// Testing: play this audio file as the meeting instead of listening live. Empty: live.
@@ -71,9 +78,18 @@ public final class AppSettings: ObservableObject {
         islandOpacity = (d.object(forKey: "islandOpacity") as? Double ?? 0.62).clamped(to: Self.islandOpacityRange)
         windowOpacity = (d.object(forKey: "windowOpacity") as? Double ?? 0.34).clamped(to: Self.windowOpacityRange)
         sessionName = d.string(forKey: "sessionName") ?? ""
+        useMeProfile = d.object(forKey: "useMeProfile") as? Bool ?? true
+        let callLang = d.string(forKey: "defaultCallLanguage") ?? "en"
+        defaultCallLanguage = Self.callLanguages.contains(callLang) ? callLang : "en"
+        roomAutoCards = d.object(forKey: "roomAutoCards") as? Bool ?? true
         fakeBrain = d.bool(forKey: "fakeBrain")
         testAudioPath = d.string(forKey: "testAudioPath") ?? ""
     }
+
+    public static let callLanguages = ["en", "it", "tr"]
+
+    /// The brain's `start.room_auto`.
+    public var roomAuto: RoomAuto { roomAutoCards ? .questions : .off }
 
     public static func list(_ s: String) -> [String] {
         s.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
