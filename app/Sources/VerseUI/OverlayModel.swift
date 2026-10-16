@@ -38,9 +38,27 @@ public final class OverlayModel: ObservableObject {
         publish()
     }
 
-    public func sessionStarting(lang: String, session: String = "", app: String? = nil) {
-        reducer.sessionStarting(lang: lang, session: session, app: app)
+    public func sessionStarting(lang: String, session: String = "", app: String? = nil, route: AudioRoute? = nil, unprepared: Bool = false) {
+        reducer.sessionStarting(lang: lang, session: session, app: app, route: route, unprepared: unprepared)
         publish()
+    }
+
+    /// "Press ⌥⌘V again to stop" on or off. It overlays whatever the island shows and never replaces a real status
+    /// (an error or a permission message stays); taking it down leaves any other status alone.
+    public func setStopConfirm(_ on: Bool) {
+        if on {
+            if reducer.state.status == nil || reducer.state.status == .meMissing { reducer.setStatus(.stopConfirm) }
+        } else if reducer.state.status == .stopConfirm {
+            reducer.setStatus(nil)
+        }
+        publish()
+    }
+
+    /// What the start card's chips do; the `VerseController` sets it.
+    public var startChipActions: ((StartChipAction) -> Void)?
+
+    public func startChipAction(_ a: StartChipAction) {
+        startChipActions?(a)
     }
 
     /// Click on the capsule: closes the open card, else the start-up panel.
@@ -128,6 +146,12 @@ public final class OverlayModel: ObservableObject {
 
 extension OverlayReducer {
     mutating func clearStatus() { setStatus(nil) }
+}
+
+/// The start card's chips (anytime calls, spec 2.1): the route chip changes the route, the language chips the language.
+public enum StartChipAction: Equatable, Sendable {
+    case cycleRoute
+    case setLanguage(String)
 }
 
 /// The sim panel's controls.

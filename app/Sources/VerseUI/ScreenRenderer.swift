@@ -191,6 +191,34 @@ public enum ScreenRenderer {
         page7.presentForPreview(page: PromptPage(text: "Northwind Labs keeps shops on the first screen. I build the tools that turn that into a product your team can sell without me in the room."),
                                 state: { var st = PrompterState(); st.pageCount = 5; st.pageIndex = 1; st.wordCount = 28; st.wordPosition = 14.2
                                     st.isPaused = false; st.isSpeaking = true; st.mode = .voicePaced; st.requestedMode = .voicePaced; return st }())
+        // Anytime calls: the start card (route and language chips, "Unprepared"), the stop confirmation, the profile status.
+        var startRoom = OverlayState()
+        startRoom.running = true
+        startRoom.activity = .listening
+        startRoom.route = .room
+        startRoom.unprepared = true
+        startRoom.startup = StartupPanel(phase: .ready, session: "adhoc-20261016-1432-room", app: nil, route: .room, lang: "en")
+        var startMeetingIt = startRoom
+        startMeetingIt.route = .meeting
+        startMeetingIt.lang = "it"
+        startMeetingIt.startup = StartupPanel(phase: .listening, session: "adhoc-20261016-1432-meeting", app: "Comet", transcribing: true,
+                                              route: .meeting, lang: "it")
+        var startStarting = startRoom
+        startStarting.activity = .warming
+        startStarting.startup = StartupPanel(phase: .starting(step: "Starting the brain and loading models"), session: "adhoc-20261016-1432-room",
+                                             app: nil, route: .room, lang: "en")
+        var listeningUnprepared = idle
+        listeningUnprepared.unprepared = true
+        listeningUnprepared.route = .room
+        listeningUnprepared.remoteSpeaking = true
+        listeningUnprepared.remoteBars = [0.45, 0.9, 0.6]
+        var stopConfirm = i4
+        stopConfirm.status = .stopConfirm
+        var stopConfirmIdle = idle
+        stopConfirmIdle.status = .stopConfirm
+        var meMissing = startRoom
+        meMissing.startup = nil
+        meMissing.status = .meMissing
         func shot(_ name: String, _ st: OverlayState, prompter: PrompterModel? = nil, _ tweak: (inout Shot) -> Void = { _ in }) -> Shot {
             var sh = Shot(name: name, state: st, prompter: prompter)
             tweak(&sh)
@@ -210,6 +238,13 @@ public enum ScreenRenderer {
             shot("island-8-status-credit", i8),
             shot("island-6b-practice-coach-note-hover", i6b) { $0.hover = true },
             shot("island-7-teleprompter-hover", idle, prompter: page7) { $0.hover = true },
+            shot("island-start-room-unprepared", startRoom),
+            shot("island-start-meeting-unprepared-it", startMeetingIt),
+            shot("island-start-starting", startStarting),
+            shot("island-2-listening-unprepared", listeningUnprepared),
+            shot("island-stop-confirm", stopConfirmIdle),
+            shot("island-stop-confirm-over-card", stopConfirm),
+            shot("island-me-missing", meMissing),
             shot("island-a1-answer-veil-35", i4) { $0.islandOpacity = 0.35 },
             shot("island-a2-answer-reduce-transparency", i4) { $0.a11y = IslandA11y(reduceTransparency: true) },
             shot("island-a3-answer-increase-contrast", i4) { $0.a11y = IslandA11y(increaseContrast: true) },

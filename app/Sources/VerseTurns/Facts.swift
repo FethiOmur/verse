@@ -49,6 +49,32 @@ public struct FactIndex: Sendable {
     }
 
     /// Reads `facts.jsonl` and `glossary.jsonl` from a P1-1 session folder. Missing files are empty.
+    ///
+    /// `meFacts` (anytime calls): the NUMBERS of the permanent profile, `me.facts.jsonl`, in the same schema. They are
+    /// chips and grounding like the session's own facts, labelled "my profile" (`me:<id>`). A profile fact that says what a
+    /// session fact already says (same kind and value) is left out: the meeting pack wins on a conflict, and one chip is
+    /// enough. A missing or unreadable profile file adds nothing.
+    public static func load(sessionDir: URL, meFacts: URL?) throws -> FactIndex {
+        let session = try load(sessionDir: sessionDir)
+        guard let meFacts, let me = try? loadFacts(file: meFacts) else { return session }
+        let seen = Set(session.facts.map { "\($0.kind)|\($0.value)" })
+        let extra = me.filter { !seen.contains("\($0.kind)|\($0.value)") }
+            .map { FactRecord(id: $0.id, kind: $0.kind, text: $0.text, value: $0.value, sourceRef: "me:\($0.id)") }
+        return FactIndex(facts: session.facts.map { FactRecord(id: $0.id, kind: $0.kind, text: $0.text, value: $0.value, sourceRef: $0.sourceRef) } + extra,
+                         glossary: session.terms.map { GlossaryRecord(id: $0.id, term: $0.term, line: $0.line, sourceRef: $0.sourceRef) })
+    }
+
+    private static func loadFacts(file url: URL) throws -> [FactRecord] {
+        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
+        return try String(contentsOf: url, encoding: .utf8).split(whereSeparator: \.isNewline).compactMap { line -> FactRecord? in
+            guard let o = try JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
+                  let id = o["id"] as? String, let kind = o["kind"] as? String else { return nil }
+            let value: String
+            if let s = o["value"] as? String { value = s } else if let n = o["value"] as? NSNumber { value = n.stringValue } else { value = "" }
+            return FactRecord(id: id, kind: kind, text: o["text"] as? String ?? value, value: value, sourceRef: "")
+        }
+    }
+
     public static func load(sessionDir: URL) throws -> FactIndex {
         func records(_ name: String) throws -> [[String: Any]] {
             let url = sessionDir.appendingPathComponent(name)

@@ -55,15 +55,42 @@ struct VerseMenu: View {
                 .keyboardShortcut("s")
                 .disabled(controller.stopping)
         } else {
-            Button("Start") { controller.start() }
+            // Start at once, with or without a prepared session (anytime calls). ⌥⌘V does the same from anywhere.
+            Button("Start now") { controller.startNow() }
+                .keyboardShortcut("v", modifiers: [.option, .command])
+                .disabled(sim.running || controller.stopping)
+            Button("Start prepared session") { controller.start() }
                 .keyboardShortcut("s")
                 .disabled(controller.sessions.isEmpty || sim.running)
         }
+        // Where Verse listens and in which language: before a Start they are the choice for it; during a call they switch it.
+        Menu("Route") {
+            Picker("Route", selection: Binding<AudioRoute?>(
+                get: { controller.running ? controller.route : controller.routeChoice },
+                set: { controller.chooseRoute($0) })) {
+                if !controller.running { Text("Automatic").tag(AudioRoute?.none) }
+                Text("Meeting app").tag(AudioRoute?.some(.meeting))
+                Text("Room (microphone only)").tag(AudioRoute?.some(.room))
+            }
+            .pickerStyle(.inline)
+        }
+        .disabled(controller.stopping)
+        Menu("Language") {
+            Picker("Language", selection: Binding(
+                get: { controller.running ? controller.callLanguage : settings.defaultCallLanguage },
+                set: { controller.chooseLanguage($0) })) {
+                Text("English").tag("en")
+                Text("Italian").tag("it")
+                Text("Turkish").tag("tr")
+            }
+            .pickerStyle(.inline)
+        }
+        .disabled(controller.stopping)
         Picker("Session", selection: $settings.sessionName) {
             ForEach(controller.sessions, id: \.self) { Text($0).tag($0) }
         }
         .disabled(controller.running)
-        Picker("Language", selection: $settings.language) {
+        Picker("Meeting language", selection: $settings.language) {
             Text("English").tag("en")
             Text("Italian").tag("it")
             Text("Turkish").tag("tr")

@@ -6,15 +6,32 @@ import UniformTypeIdentifiers
 struct SettingsMeetingSection: View {
     @ObservedObject var meeting: MeetingCoordinator
     @ObservedObject private var settings: MeetingSettings
+    /// Anytime calls: the profile toggle, the default call language and the room cards.
+    @ObservedObject var app: AppSettings
     @Environment(\.homeInk) private var ink
 
-    init(meeting: MeetingCoordinator) {
+    init(meeting: MeetingCoordinator, settings app: AppSettings) {
         self.meeting = meeting
+        self.app = app
         _settings = ObservedObject(wrappedValue: meeting.settings)
     }
 
     var body: some View {
         HomeGroup {
+            HomeToggleRow("Use my profile in every session",
+                          detail: "Your experience, projects and numbers go into every call, prepared or not. Edit them on the Me page. Takes effect at the next Start.",
+                          isOn: $app.useMeProfile)
+            HomeRowDivider()
+            HomeRow("Default call language",
+                    detail: "What ⌥⌘V and Start now listen in. Change it during a call from the island or the menu.") {
+                HomePopup(selection: $app.defaultCallLanguage,
+                          options: AppSettings.callLanguages.map { HomeOption(StartRoutes.languageName($0), $0) })
+            }
+            HomeRowDivider()
+            HomeToggleRow("Automatic cards in room mode",
+                          detail: "On: a card appears for a question the microphone hears. Off: only ⌥⌘↩ asks for one. Room mode is a call on speaker next to the Mac.",
+                          isOn: $app.roomAutoCards)
+            HomeRowDivider()
             HomeToggleRow("Follow my answer when I change the subject",
                           detail: "When you leave the card and talk about something else, Verse updates it to continue your line and strikes through the points you make. Takes effect at the next Start.",
                           isOn: $settings.followMyAnswer)

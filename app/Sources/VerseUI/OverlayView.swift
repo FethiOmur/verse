@@ -110,10 +110,14 @@ struct IslandBand: View {
                 Text(s.shortTitle).foregroundStyle(VT.Island.secondary)
             } else if let tag = state.addresseeTag {
                 Text(tag).foregroundStyle(state.tagDimmed ? VT.Island.tertiary : VT.Island.secondary)
+            } else if state.unprepared, state.running, width >= metrics.listeningWidth {
+                Text("Unprepared").foregroundStyle(VT.Island.tertiary)
             }
         case .statusPanel(let s):
             Text(s.shortTitle)
-        case .prompt, .startup, .topics:
+        case .startup:
+            if state.unprepared { Text("Unprepared").foregroundStyle(VT.Island.tertiary) }
+        case .prompt, .topics:
             EmptyView()
         case .sim(let sim):
             if sim.closing {
@@ -276,7 +280,8 @@ public struct OverlayView: View {
             EmptyView()
         case .statusPanel(let s):
             let canRetry: Bool = { if case .error = s { return !state.running && !state.practiceEnded }; return false }()
-            StatusPanelView(status: s, onOpenSettings: onOpenSettings, onDismiss: { model.dismissStatus() }, onRetry: canRetry ? onRetry : nil)
+            StatusPanelView(status: s, onOpenSettings: onOpenSettings, onDismiss: { model.dismissStatus() }, onRetry: canRetry ? onRetry : nil,
+                            onOpenMe: { HomeRouter.shared.show(.me) })
         case .prompt(let prompt):
             // "Meeting detected · Start Verse?" / "Save summary to vault?": a question with two buttons.
             MeetingPromptView(prompt: prompt, onAction: { model.promptAction($0) })
@@ -295,7 +300,7 @@ public struct OverlayView: View {
             // The teleprompter takes the card's place (a status message or a practice interview still comes first).
             PrompterPanelView(model: prompter, settings: prompter.settings, width: width, scale: scale)
         case .startup(let p):
-            StartupPanelView(panel: p)
+            StartupPanelView(panel: p, onAction: { model.startChipAction($0) })
         case .topics:
             ChipRow(chips: state.topics, scale: scale, leading: 15)
                 .padding(.horizontal, VT.islandCardInset)

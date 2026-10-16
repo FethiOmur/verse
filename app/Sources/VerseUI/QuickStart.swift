@@ -83,8 +83,9 @@ public enum QuickStart {
     /// Decides route and session and, for an unprepared call, creates its folder. Nothing is prepared and nothing waits.
     public static func plan(now: Date, facts: RouteFacts, events: [MeetingEvent], remembered: [String: String],
                             sessions: [String], lang: String, root: URL = SessionCatalog.root,
-                            timeZone: TimeZone = .current) throws -> Plan {
-        let route = runnableRoute(pickRoute(facts))
+                            timeZone: TimeZone = .current, routeOverride: AudioRoute? = nil) throws -> Plan {
+        // A route picked by hand (the menu's Route submenu) beats the automatic pick.
+        let route = runnableRoute(routeOverride ?? pickRoute(facts))
         switch pickSession(now: now, events: events, remembered: remembered, sessions: sessions) {
         case .prepared(let name):
             return Plan(route: route, mode: .prepared, session: name, lang: lang)
@@ -193,35 +194,4 @@ public struct StopConfirm: Sendable, Equatable {
 
     /// The session ended or the user moved on.
     public mutating func reset() { armedAt = nil }
-}
-
-// MARK: card now
-
-/// ⌥⌘↩ answers the latest remote/room turn at once. The brain's cards for it arrive as plain `delta`s on a turn id
-/// `now-<n>`, for which no `turn` ever went out, so the overlay would not open a card. This bridge remembers what the other
-/// side said last (the open partial, else the last final) and, on the first `delta` of a `now-*` turn, supplies the
-/// outbound `turn` the overlay opens its card from.
-public struct CardNowBridge: Sendable, Equatable {
-    private var lastText = ""
-    private var seen: Set<String> = []
-
-    public init() {}
-
-    public static func isNowTurn(_ id: String) -> Bool { id.hasPrefix("now-") }
-
-    /// Feed every outbound event (`partial` and `turn` lines going to the brain).
-    public mutating func noteOutbound(_ o: [String: JSONValue]) {
-        guard o.type == "partial" || o.type == "turn", let speaker = o[string: "speaker"], speaker != "me",
-              let text = o[string: "text"], !text.isEmpty else { return }
-        lastText = text
-    }
-
-    /// For a brain `delta` of a `now-*` turn that has not been seen: the synthetic outbound turn to give the overlay first.
-    public mutating func opening(for brain: [String: JSONValue]) -> RunnerEvent? {
-        guard brain.type == "delta", let tid = brain[string: "turn_id"], Self.isNowTurn(tid), !seen.contains(tid) else { return nil }
-        seen.insert(tid)
-        return .outbound(["type": .string("turn"), "turn_id": .string(tid), "speaker": .string("remote"), "text": .string(lastText),
-                          "addressee": .string("me"), "kind": .string("question"), "t_audio_end": .number(0),
-                          "dir": .string("to_brain")])
-    }
 }

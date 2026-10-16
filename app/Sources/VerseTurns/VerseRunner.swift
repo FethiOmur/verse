@@ -306,7 +306,8 @@ public final class VerseRunner: @unchecked Sendable {
         let bank: Bank, facts: FactIndex
         do {
             bank = try Bank.load(sessionDir: o.sessionDir)
-            facts = try FactIndex.load(sessionDir: o.sessionDir)
+            // The permanent profile's numbers (`me.facts.jsonl`) join the session's own facts for chips and grounding.
+            facts = try FactIndex.load(sessionDir: o.sessionDir, meFacts: o.me.map { URL(fileURLWithPath: $0.facts) })
         } catch {
             log("cannot read the session folder: \(error)")
             return 2

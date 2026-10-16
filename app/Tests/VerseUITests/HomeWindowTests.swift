@@ -148,7 +148,10 @@ final class HomeRouterTests: XCTestCase {
     }
 
     func testPagesCoverTheFiveOldWindows() {
-        XCTAssertEqual(HomePage.allCases.map(\.title), ["Prepare", "Sessions", "Practice", "Scripts", "Settings"])
+        XCTAssertEqual(HomePage.allCases.map(\.title), ["Prepare", "Me", "Sessions", "Practice", "Scripts", "Settings"])
+        XCTAssertEqual(HomePage.me.symbol, "person.text.rectangle")
+        XCTAssertEqual(HomePage.allCases.firstIndex(of: .me), (HomePage.allCases.firstIndex(of: .prepare) ?? 0) + 1,
+                       "Me sits between Prepare and Sessions")
         XCTAssertEqual(ConversationWindow.id, HomeRouter.windowID, "the old conversation window id opens home")
     }
 }

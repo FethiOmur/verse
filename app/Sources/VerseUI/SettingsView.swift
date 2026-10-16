@@ -100,6 +100,8 @@ public struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var controller: VerseController
     @ObservedObject var simSettings: SimSettings
+    /// Render only (`--render-home`): the page header and the Meetings group, so that group can be looked at whole.
+    var meetingsOnly = false
     @Environment(\.homeInk) private var ink
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
@@ -109,6 +111,11 @@ public struct SettingsView: View {
         self.simSettings = simSettings
     }
 
+    init(settings: AppSettings, controller: VerseController, simSettings: SimSettings, meetingsOnly: Bool) {
+        self.init(settings: settings, controller: controller, simSettings: simSettings)
+        self.meetingsOnly = meetingsOnly
+    }
+
     private static let usd: FloatingPointFormatStyle<Double>.Currency = .currency(code: "USD").precision(.fractionLength(2...4))
 
     private func percent(_ v: Double) -> String { "\(Int((v * 100).rounded())) %" }
@@ -116,6 +123,17 @@ public struct SettingsView: View {
     public var body: some View {
         HomeColumnPage {
             HomePageHeader("Settings")
+            if !meetingsOnly { appearanceSection }
+
+            HomeSectionHeader("Meetings")
+            SettingsMeetingSection(meeting: controller.meeting, settings: settings)
+
+            if !meetingsOnly { remainingSections }
+        }
+        .accessibilityIdentifier("verse.home.settings")
+    }
+
+    @ViewBuilder private var appearanceSection: some View {
             HomeSectionHeader("Appearance")
             HomeGroup {
                 HomeSliderRow(label: "Island opacity", value: $settings.islandOpacity, range: AppSettings.islandOpacityRange,
@@ -136,10 +154,9 @@ public struct SettingsView: View {
                 }
             }
             HomeFootnote("Reduce Transparency and Increase Contrast (System Settings › Accessibility › Display) override these.")
+    }
 
-            HomeSectionHeader("Meetings")
-            SettingsMeetingSection(meeting: controller.meeting)
-
+    @ViewBuilder private var remainingSections: some View {
             HomeSectionHeader("Claude")
             APIKeySection()
 
@@ -197,8 +214,6 @@ public struct SettingsView: View {
                     if !settings.testAudioPath.isEmpty { HomeSecondaryButton("Clear") { settings.testAudioPath = "" } }
                 }
             }
-        }
-        .accessibilityIdentifier("verse.home.settings")
     }
 
     private func chooseFile() {

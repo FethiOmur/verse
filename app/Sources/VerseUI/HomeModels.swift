@@ -8,7 +8,7 @@ import VerseMeet
 // MARK: - Sessions
 
 public struct HomeSession: Identifiable, Equatable, Sendable {
-    public enum Kind: String, Sendable { case meeting = "Meeting", practice = "Practice", prepared = "Prepared" }
+    public enum Kind: String, Sendable { case meeting = "Meeting", practice = "Practice", prepared = "Prepared", call = "Call" }
 
     public var id: String { name }
     public var name: String
@@ -20,11 +20,26 @@ public struct HomeSession: Identifiable, Equatable, Sendable {
     public var reportURL: URL?
     public var transcriptURL: URL?
     public var spend: Double
+    /// An adhoc session (started with ⌥⌘V and no prepared session): no pack, the Unprepared tag.
+    public var unprepared = false
+    /// "Phone", "Room" or "Meeting" for an adhoc session; nil for the others.
+    public var routeLabel: String?
+
+    /// The second line of a Sessions row after the day: the route of an adhoc session, else the kind.
+    public var kindText: String { routeLabel ?? kind.rawValue }
 
     /// `sim-20261015-0930-brightwave` -> "Practice · brightwave"; `conv-20261015-1857-northwind-labs` -> "Northwind Labs".
     static func title(forFolder name: String) -> String {
         // A folder named like a title already reads as one.
         if name.contains(" "), !name.hasPrefix("sim-") { return name }
+        // `adhoc-20261016-1432-room` -> "Call at 14:32".
+        if SessionCatalog.isAdhoc(name) {
+            let parts = name.split(separator: "-").map(String.init)
+            if parts.count >= 3, parts[2].count == 4, parts[2].allSatisfy(\.isNumber) {
+                return "Call at \(parts[2].prefix(2)):\(parts[2].suffix(2))"
+            }
+            return "Call"
+        }
         var s = name
         var practice = false
         if s.hasPrefix("sim-") { practice = true; s.removeFirst(4) }
@@ -50,11 +65,29 @@ public struct HomeSession: Identifiable, Equatable, Sendable {
         }
         func mtime(_ u: URL) -> Date? { (try? fm.attributesOfItem(atPath: u.path))?[.modificationDate] as? Date }
         let summary = file("summary.md"), report = file("report.html"), transcript = file("transcript.jsonl")
-        let kind: Kind = name.hasPrefix("sim-") ? .practice : (summary != nil ? .meeting : .prepared)
+        let adhoc = SessionCatalog.isAdhoc(name) ? AdhocMeta.read(sessionDir: dir) : nil
+        let kind: Kind = name.hasPrefix("sim-") ? .practice : (SessionCatalog.isAdhoc(name) ? .call : (summary != nil ? .meeting : .prepared))
         let date = (report ?? summary).flatMap(mtime) ?? file("meta.json").flatMap(mtime) ?? mtime(dir) ?? .distantPast
         let spend = SpendLedger.runs(sessionDir: dir).reduce(0) { $0 + $1.costUSD }
-        return HomeSession(name: name, dir: dir, kind: kind, title: title(forFolder: name), date: date, summaryURL: summary,
-                           reportURL: report, transcriptURL: transcript, spend: spend)
+        var session = HomeSession(name: name, dir: dir, kind: kind, title: title(forFolder: name), date: date, summaryURL: summary,
+                                  reportURL: report, transcriptURL: transcript, spend: spend)
+        if kind == .call {
+            session.unprepared = true
+            // The route is in meta.json; a folder without one still carries it in its name (`adhoc-<stamp>-<route>`).
+            let fromName = name.split(separator: "-").dropFirst(3).first.map(String.init)
+            session.routeLabel = Self.routeLabel(adhoc?.route ?? fromName)
+        }
+        return session
+    }
+
+    /// `room` -> "Room".
+    static func routeLabel(_ route: String?) -> String? {
+        switch route {
+        case "phone": return "Phone"
+        case "room": return "Room"
+        case "meeting": return "Meeting"
+        default: return nil
+        }
     }
 }
 

@@ -2,6 +2,7 @@ import AppKit
 import ScreenCaptureKit
 import SwiftUI
 import VersePrompter
+import VerseTurns
 
 // `Verse --render-home DIR`: every home page over the mockups' wallpaper, 1280 x 800 pt at 2x, light and dark, plus
 // Prepare under Reduce Transparency and Increase Contrast. The same canvas, window frame (1100 x 680) and wallpaper as
@@ -13,7 +14,10 @@ import VersePrompter
 
 @MainActor
 public enum HomeRender {
-    public static let canvas = CGSize(width: 1280, height: 800)
+    /// `VERSE_RENDER_TALL=1`: a taller window (1100 x 2000) to look at the whole of a long page (the Me page).
+    static let tall = ProcessInfo.processInfo.environment["VERSE_RENDER_TALL"] != nil
+    public static let canvas = CGSize(width: 1280, height: tall ? 2120 : 800)
+    static var windowHeight: CGFloat { tall ? 2000 : 680 }
 
     struct Variant {
         var suffix: String
@@ -42,6 +46,22 @@ public enum HomeRender {
                 try await capture(Scene(context: fixtures.context(router: router), dark: dark, override: nil), size: canvas, dark: dark, to: url)
                 out.append(url)
             }
+            // Me: the usual state, and the one with "Sources changed · Refresh" (a build older than a week, a source changed).
+            if only?.contains(.me) ?? true {
+                let router = HomeRouter()
+                router.page = .me
+                let url = dir.appendingPathComponent("home-me-stale-\(dark ? "dark" : "light").png")
+                try await capture(Scene(context: fixtures.context(router: router, staleMe: true), dark: dark, override: nil), size: canvas, dark: dark, to: url)
+                out.append(url)
+            }
+            // Settings: the Meetings group alone, whole.
+            if only?.contains(.settings) ?? true {
+                let router = HomeRouter()
+                router.page = .settings
+                let url = dir.appendingPathComponent("home-settings-meetings-\(dark ? "dark" : "light").png")
+                try await capture(Scene(context: fixtures.context(router: router), dark: dark, override: nil, meetingsOnly: true), size: canvas, dark: dark, to: url)
+                out.append(url)
+            }
             for v in variants {
                 for page in v.pages where only?.contains(page) ?? true {
                     let router = HomeRouter()
@@ -65,12 +85,13 @@ public enum HomeRender {
         var context: HomeContext
         var dark: Bool
         var override: HomeA11yOverride?
+        var meetingsOnly = false
 
         var body: some View {
             ZStack {
                 RenderWallpaper(dark: dark)
-                HomeRoot(context: context, a11yOverride: override ?? HomeA11yOverride(), inWindowGlass: true)
-                    .frame(width: 1100, height: 680)
+                HomeRoot(context: context, a11yOverride: override ?? HomeA11yOverride(), inWindowGlass: true, meetingsOnly: meetingsOnly)
+                    .frame(width: 1100, height: HomeRender.windowHeight)
                     .shadow(color: .black.opacity(dark ? 0.45 : 0.18), radius: 30, y: 16)
             }
             .frame(width: HomeRender.canvas.width, height: HomeRender.canvas.height)
@@ -140,6 +161,8 @@ public enum HomeRender {
         let conversation: ConversationController
         let sessions: HomeSessionsModel
         let upNext: HomeUpNextModel
+        /// The fictional profile folder of the Me page (Dana Reyes; never the owner's own).
+        let profileDir: URL
         let selectedSession = "Mara · Northwind Labs"
         let practiceSession = "sim-20261013-1000-Brightwave"
 
@@ -156,6 +179,8 @@ public enum HomeRender {
             controller = VerseController(settings: settings)
             sim = SimController(settings: settings, simSettings: simSettings, meeting: controller)
             conversation = ConversationController(settings: settings, meeting: controller)
+            profileDir = root.appendingPathComponent("profile", isDirectory: true)
+            try Self.writeProfile(into: profileDir)
             try Self.writeSessions(into: sessionsRoot)
             sessions = HomeSessionsModel(root: sessionsRoot)
             upNext = HomeUpNextModel(settings: settings, meeting: controller.meeting.settings, sessions: { [] })
@@ -165,12 +190,73 @@ public enum HomeRender {
             fillPractice()
         }
 
-        func context(router: HomeRouter) -> HomeContext {
+        func context(router: HomeRouter, staleMe: Bool = false) -> HomeContext {
             HomeContext(settings: settings, controller: controller, simSettings: simSettings, sim: sim, conversation: conversation,
-                        sessions: sessions, upNext: upNext, router: router)
+                        sessions: sessions, upNext: upNext, me: meModel(stale: staleMe), router: router)
+        }
+
+        /// The Me page's model over the fictional profile. `stale`: a source changed and the build is more than a week old.
+        func meModel(stale: Bool) -> MeModel {
+            let day = 24.0 * 3600
+            let built = ISO8601DateFormatter().date(from: "2026-10-14T09:00:00Z") ?? Date()
+            let now = built.addingTimeInterval(stale ? 11 * day : 2 * day)
+            let runner = PreviewMeRunner(showOutput: stale ? "stale sources: dana_profile.md, Harbor Ledger.md" : "stale sources: none")
+            let model = MeModel(directory: profileDir, runner: { runner }, brainDir: { self.root }, fake: { false }, now: { now })
+            // The brain's own messages, as JSON: the status `ready` with its `me` block and the conflicts notice.
+            let ready = JSONValue.decodeObject(#"{"type":"status","state":"ready","me":{"tokens":3140,"built_at":"2026-10-14T09:00:00+00:00"}}"#)
+            let notice = JSONValue.decodeObject(#"{"type":"notice","kind":"me_conflicts","items":[{"me":"m402","pack":"f003","topic":"Month-end close time"}]}"#)
+            var conflicts: [MeConflict] = []
+            if let notice, case .meConflicts(let items)? = BrainNotice(notice) { conflicts = items }
+            controller.setMeForPreview(layer: ready.flatMap { MeLayerInfo(readyStatus: $0) }, conflicts: conflicts)
+            return model
         }
 
         func cleanUp() { try? FileManager.default.removeItem(at: root) }
+
+        // the fictional profile
+
+        private static func writeProfile(into dir: URL) throws {
+            let fm = FileManager.default
+            try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            try Data(profileText.utf8).write(to: dir.appendingPathComponent("me.md"))
+            let meta: [String: Any] = ["model": "claude-sonnet-5-5", "built_at": "2026-10-14T09:00:00+00:00", "tokens": 3140,
+                                       "spend_usd_total": 0.07]
+            try JSONSerialization.data(withJSONObject: meta).write(to: dir.appendingPathComponent("me.meta.json"))
+            let sources: [[String: Any]] = [
+                ["id": "s1", "kind": "file", "path": "/Users/dana/Documents/dana_profile.md", "label": "dana_profile.md", "enabled": true],
+                ["id": "s2", "kind": "vault", "path": "/Users/dana/Notes/Projects/Harbor Ledger.md", "label": "Projects/Harbor Ledger.md", "enabled": true],
+                ["id": "s3", "kind": "vault", "path": "/Users/dana/Notes/Projects/Trailhead.md", "label": "Projects/Trailhead.md", "enabled": true],
+                ["id": "s4", "kind": "sessions", "path": "/Users/dana/Sessions", "label": "facts of earlier meeting preps", "enabled": false],
+            ]
+            try JSONSerialization.data(withJSONObject: sources, options: .prettyPrinted).write(to: dir.appendingPathComponent("me.sources.json"))
+        }
+
+        static let profileText = """
+        ## WHO I AM
+        [m001] Backend and machine-learning engineer in Lisbon with six years in production systems. | file:dana_profile.md#L3
+        [m002] Likes small services that do one job well and says what was tested and what was not. | file:dana_profile.md#L20
+        ## EXPERIENCE
+        [m101] 2019-2022 | Backend engineer | Northwind Freight | Built the payment and invoicing services of a freight marketplace. | file:dana_profile.md#L7
+        [m102] 2022-now | Machine-learning engineer | Larkspur Health | Owns the claims-triage model and its serving stack. | file:dana_profile.md#L8
+        ## PROJECTS
+        [m201] Harbor Ledger | Payments reconciliation service | designed and led it | Python, PostgreSQL, Kafka | about 41,000 payments a month | file:dana_profile.md#L13
+        [m202] Trailhead | Hiking route recommendation app | built it alone | Python, FastAPI, PostGIS | 12,000 monthly users | file:dana_profile.md#L16
+        ## SKILLS
+        [m301] Python | Harbor Ledger, Trailhead and the claims-triage model | file:dana_profile.md#L13
+        [m302] PostgreSQL | Harbor Ledger reconciliation store | file:dana_profile.md#L13
+        ## NUMBERS
+        [m401] number | Harbor Ledger processed about 41,000 payments a month. | 41000 | file:dana_profile.md#L13
+        [m402] number | Harbor Ledger cut the month-end close from 6 days to 2 days. | 2 | file:dana_profile.md#L13
+        [m403] number | Trailhead reached 12,000 monthly users. | 12000 | file:dana_profile.md#L16
+        ## STORIES
+        [m501] Double-posted payments | In March 2021 a nightly job posted 300 payments twice. Dana found the missing idempotency key within an hour and shipped a replay-safe fix the same day. | file:dana_profile.md#L24
+        ## LOOKING FOR
+        [m601] Senior machine-learning engineer role in Lisbon or remote in Europe, available from January 2027. | file:dana_profile.md#L28
+        ## MY NOTES
+        [m701] Prefers short sentences and says what was measured. | owner
+        [m702] Available for calls after 16:00 Lisbon time. | owner
+
+        """
 
         // sessions
 
@@ -190,6 +276,17 @@ public enum HomeRender {
                 ("Harbor Tech first call", at(daysAgo: 7, hour: 9, minute: 30), true),
                 ("sim-20261008-1630-Harbor Tech", at(daysAgo: 8, hour: 16, minute: 30), false),
             ] + (0..<6).map { i in ("Earlier call \(i + 1)", at(daysAgo: 9 + i, hour: 10, minute: 0), true) }
+            // Two calls that started without a prepared session (⌥⌘V): the Unprepared tag and the route.
+            for (name, route, date) in [("adhoc-20261016-1432-room", "room", at(daysAgo: 0, hour: 14, minute: 32)),
+                                        ("adhoc-20261015-0905-meeting", "meeting", at(daysAgo: 1, hour: 9, minute: 5))] {
+                let d = dir.appendingPathComponent(name, isDirectory: true)
+                try fm.createDirectory(at: d, withIntermediateDirectories: true)
+                try Data().write(to: d.appendingPathComponent("pack.md"))
+                try Data(#"{"kind":"adhoc","lang":"en","mode":"unprepared","route":"\#(route)"}"#.utf8).write(to: d.appendingPathComponent("meta.json"))
+                let summary = d.appendingPathComponent("summary.md")
+                try Data(Self.summaryText.utf8).write(to: summary)
+                try fm.setAttributes([.modificationDate: date], ofItemAtPath: summary.path)
+            }
             for (name, date, meeting) in rows {
                 let d = dir.appendingPathComponent(name, isDirectory: true)
                 try fm.createDirectory(at: d, withIntermediateDirectories: true)
@@ -304,6 +401,16 @@ public enum HomeRender {
             sim.setup.mode = .coach
         }
     }
+}
+
+/// Render only: a runner that answers `prep me show` with a fixed report and does nothing else.
+final class PreviewMeRunner: MeRunning, @unchecked Sendable {
+    var showOutput: String
+    init(showOutput: String) { self.showOutput = showOutput }
+    func run(_ action: MeAction, profileDir: URL, brainDir: URL, fake: Bool, onLine: @escaping @Sendable (String) -> Void) async -> MeOutcome {
+        .done(stdout: action == .show ? showOutput : profileDir.path, log: [])
+    }
+    func cancel() {}
 }
 
 // MARK: - The mockups' wallpaper (design/mockups/Sources/VerseMockups/Wallpapers.swift), render only

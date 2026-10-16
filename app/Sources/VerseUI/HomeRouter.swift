@@ -3,13 +3,14 @@ import SwiftUI
 
 /// The home window's pages (UI redesign spec 4.2).
 public enum HomePage: String, CaseIterable, Identifiable, Sendable {
-    case prepare, sessions, practice, scripts, settings
+    case prepare, me, sessions, practice, scripts, settings
 
     public var id: String { rawValue }
     public var title: String { rawValue.capitalized }
     var symbol: String {
         switch self {
         case .prepare: "checklist"
+        case .me: "person.text.rectangle"
         case .sessions: "clock.arrow.circlepath"
         case .practice: "person.wave.2"
         case .scripts: "text.alignleft"

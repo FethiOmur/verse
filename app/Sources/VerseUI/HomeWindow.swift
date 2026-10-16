@@ -11,11 +11,13 @@ public struct HomeContext {
     public let conversation: ConversationController
     public let sessions: HomeSessionsModel
     public let upNext: HomeUpNextModel
+    /// The Me page's profile (anytime calls).
+    public let me: MeModel
     public let router: HomeRouter
 
     public init(settings: AppSettings, controller: VerseController, simSettings: SimSettings, sim: SimController,
                 conversation: ConversationController, sessions: HomeSessionsModel? = nil, upNext: HomeUpNextModel? = nil,
-                router: HomeRouter = .shared) {
+                me: MeModel? = nil, router: HomeRouter = .shared) {
         self.settings = settings
         self.controller = controller
         self.simSettings = simSettings
@@ -30,16 +32,19 @@ public struct HomeContext {
                 sessionsModel.reload()
                 if controller?.running == false { settings.sessionName = name }
             })
+        self.me = me ?? MeModel(fake: { [weak controller] in controller?.fakeBrain ?? false })
         self.router = router
     }
 }
 
-/// The home window: one glass sheet with a sidebar (Prepare, Sessions, Practice, Scripts, Settings) and the page.
+/// The home window: one glass sheet with a sidebar (Prepare, Me, Sessions, Practice, Scripts, Settings) and the page.
 public struct HomeRoot: View {
     let context: HomeContext
     var a11yOverride: HomeA11yOverride?
     /// Render only: draws SwiftUI glass behind the veil, standing in for the behind-window sheet.
     var inWindowGlass = false
+    /// Render only: the Settings page as its header and the Meetings group.
+    var meetingsOnly = false
     @ObservedObject private var router: HomeRouter
     @ObservedObject private var settings: AppSettings
     @Environment(\.colorScheme) private var scheme
@@ -50,10 +55,11 @@ public struct HomeRoot: View {
         self.init(context: context, a11yOverride: nil, inWindowGlass: false)
     }
 
-    init(context: HomeContext, a11yOverride: HomeA11yOverride?, inWindowGlass: Bool) {
+    init(context: HomeContext, a11yOverride: HomeA11yOverride?, inWindowGlass: Bool, meetingsOnly: Bool = false) {
         self.context = context
         self.a11yOverride = a11yOverride
         self.inWindowGlass = inWindowGlass
+        self.meetingsOnly = meetingsOnly
         router = context.router
         settings = context.settings
     }
@@ -100,6 +106,8 @@ public struct HomeRoot: View {
         switch router.page {
         case .prepare:
             ConversationSetupView(model: context.conversation, upNext: context.upNext, meeting: context.controller, settings: settings)
+        case .me:
+            MePage(model: context.me, controller: context.controller, settings: settings)
         case .sessions:
             HomeSessionsPage(model: context.sessions, router: router, controller: context.controller, settings: settings)
         case .practice:
@@ -107,7 +115,7 @@ public struct HomeRoot: View {
         case .scripts:
             ScriptEditorView(controller: context.controller)
         case .settings:
-            SettingsView(settings: settings, controller: context.controller, simSettings: context.simSettings)
+            SettingsView(settings: settings, controller: context.controller, simSettings: context.simSettings, meetingsOnly: meetingsOnly)
         }
     }
 }

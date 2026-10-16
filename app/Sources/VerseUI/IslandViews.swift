@@ -1,4 +1,5 @@
 import SwiftUI
+import VerseTurns
 
 // The island's building blocks (UI redesign spec sections 2 and 3). Values come from `VT`; the approved mockups in
 // design/mockups/Sources/VerseMockups/Island.swift are the reference for layout.
@@ -443,6 +444,8 @@ struct StatusPanelView: View {
     var onDismiss: () -> Void
     /// Shown for errors when nothing is running.
     var onRetry: (() -> Void)?
+    /// "Your profile was not found": opens the Me page.
+    var onOpenMe: () -> Void = {}
 
     /// "Max API credit used up until 1 December. Verse keeps transcribing locally." -> the first sentence and the rest.
     static func split(_ text: String) -> (headline: String, line: String?) {
@@ -473,16 +476,22 @@ struct StatusPanelView: View {
                     .foregroundStyle(VT.Island.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            HStack(spacing: 8) {
-                if case .permission(let kind) = status {
-                    Button("Open System Settings") { onOpenSettings(kind) }.buttonStyle(OverlayButtonStyle(prominent: true))
+            // "Press ⌥⌘V again to stop" is a two-second question the key answers: no buttons.
+            if status != .stopConfirm {
+                HStack(spacing: 8) {
+                    if case .permission(let kind) = status {
+                        Button("Open System Settings") { onOpenSettings(kind) }.buttonStyle(OverlayButtonStyle(prominent: true))
+                    }
+                    if status == .meMissing {
+                        Button("Open Me page", action: onOpenMe).buttonStyle(OverlayButtonStyle(prominent: true))
+                    }
+                    if let onRetry {
+                        Button("Retry", action: onRetry).buttonStyle(OverlayButtonStyle(prominent: true))
+                    }
+                    Button("Dismiss", action: onDismiss).buttonStyle(OverlayButtonStyle(prominent: false))
                 }
-                if let onRetry {
-                    Button("Retry", action: onRetry).buttonStyle(OverlayButtonStyle(prominent: true))
-                }
-                Button("Dismiss", action: onDismiss).buttonStyle(OverlayButtonStyle(prominent: false))
+                .padding(.top, 8)
             }
-            .padding(.top, 8)
         }
         .padding(.horizontal, VT.islandCardInset)
         .padding(.top, 10)
@@ -496,18 +505,116 @@ struct StatusPanelView: View {
 /// on the band.
 struct StartupPanelView: View {
     var panel: StartupPanel
+    /// The start card's chips. Ignored for the plain panel.
+    var onAction: (StartChipAction) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(panel.title).font(VT.Font.title).foregroundStyle(VT.Island.primary).lineLimit(1)
-            Text(panel.subtitle).font(VT.Font.meta).foregroundStyle(VT.Island.tertiary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(panel.title).font(VT.Font.title).foregroundStyle(VT.Island.primary).lineLimit(1)
+                Text(panel.subtitle).font(VT.Font.meta).foregroundStyle(VT.Island.tertiary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("verse.startup")
+            if let route = panel.route {
+                StartCardChips(route: route, lang: panel.lang, onAction: onAction).padding(.top, 8)
+            }
         }
         .padding(.horizontal, VT.islandCardInset)
         .padding(.top, 10)
         .padding(.bottom, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("verse.startup")
+    }
+}
+
+/// A chip in the start card: 24 pt, radius 7, 12.5 medium (spec 2.2). The selected one is a step brighter; no accent, the
+/// accent is for the live dot and the primary action.
+struct StartChip: View {
+    var label: String
+    var symbol: String?
+    var selected = true
+    var trailingSymbol: String?
+    var action: () -> Void
+    @Environment(\.islandContrast) private var contrast
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                if let symbol { Image(systemName: symbol).font(.system(size: 11, weight: .medium)) }
+                Text(label)
+                if let trailingSymbol { Image(systemName: trailingSymbol).font(.system(size: 8, weight: .semibold)).opacity(0.7) }
+            }
+            .font(.system(size: 12.5, weight: .medium))
+            .foregroundStyle(selected ? VT.Island.primary : VT.Island.tertiary)
+            .padding(.horizontal, 9).frame(height: 24)
+            .background(selected ? VT.Island.fillStrong : VT.Island.fill, in: RoundedRectangle(cornerRadius: VT.Radius.chip, style: .continuous))
+            .overlay { if contrast { RoundedRectangle(cornerRadius: VT.Radius.chip, style: .continuous).strokeBorder(Color.white.opacity(0.5)) } }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Route and language of an anytime session: a click on the route chip changes the route, the language chips offer EN, IT
+/// and TR (an engine restart; the controller does it).
+struct StartCardChips: View {
+    var route: AudioRoute
+    var lang: String
+    var onAction: (StartChipAction) -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            StartChip(label: StartRoutes.label(route), symbol: StartRoutes.symbol(route), selected: true, trailingSymbol: "chevron.up.chevron.down") {
+                onAction(.cycleRoute)
+            }
+            .accessibilityLabel("Route: \(StartRoutes.label(route))")
+            .accessibilityHint("Changes where Verse listens")
+            Rectangle().fill(Color.white.opacity(0.16)).frame(width: 0.5, height: 14).padding(.horizontal, 2)
+            ForEach(AppSettings.callLanguages, id: \.self) { code in
+                StartChip(label: code.uppercased(), selected: code == lang) { onAction(.setLanguage(code)) }
+                    .accessibilityLabel(StartRoutes.languageName(code))
+                    .accessibilityAddTraits(code == lang ? .isSelected : [])
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("verse.startcard.chips")
+    }
+}
+
+/// Names and symbols of the audio routes, and the ones the app can start now.
+enum StartRoutes {
+    /// The routes a click can pick. Phone joins when the Continuity tap ships (phase B); a phone call is heard through the room
+    /// route until then.
+    static let available: [AudioRoute] = [.meeting, .room]
+
+    static func label(_ r: AudioRoute) -> String {
+        switch r {
+        case .meeting: return "Meeting"
+        case .phone: return "Phone"
+        case .room: return "Room"
+        }
+    }
+
+    static func symbol(_ r: AudioRoute) -> String {
+        switch r {
+        case .meeting: return "video"
+        case .phone: return "phone"
+        case .room: return "mic"
+        }
+    }
+
+    static func languageName(_ code: String) -> String {
+        switch code {
+        case "it": return "Italian"
+        case "tr": return "Turkish"
+        default: return "English"
+        }
+    }
+
+    /// The route after `r` when the chip is clicked.
+    static func next(after r: AudioRoute) -> AudioRoute {
+        guard let i = available.firstIndex(of: r) else { return available[0] }
+        return available[(i + 1) % available.count]
     }
 }
 

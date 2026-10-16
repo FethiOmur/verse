@@ -23,6 +23,7 @@ public struct OverlayChip: Equatable, Sendable, Identifiable {
         case "prep": return "prep note"
         case "vault": return "vault"
         case "commit": return "commit"
+        case "me": return "my profile"
         case "": return "notes"
         default: return prefix
         }
@@ -67,6 +68,10 @@ public enum OverlayStatus: Equatable, Sendable {
     case error(String)
     /// Audio recording ("audioCapture") or microphone permission is missing; the overlay offers System Settings.
     case permission(String)
+    /// ⌥⌘V was pressed once while a session runs: "Press ⌥⌘V again to stop" for `StopConfirm.window` seconds.
+    case stopConfirm
+    /// The brain could not find the "me" profile files: the session runs without them (`notice{kind:"me_missing"}`).
+    case meMissing
 
     /// The short text in the capsule chip.
     public var title: String {
@@ -77,6 +82,8 @@ public enum OverlayStatus: Equatable, Sendable {
         case .restarting: return "Restarting"
         case .error: return "Error"
         case .permission(let k): return k == "microphone" ? "Microphone access needed" : "Audio recording access needed"
+        case .stopConfirm: return "Press ⌥⌘V again to stop"
+        case .meMissing: return "Your profile was not found"
         }
     }
 
@@ -89,6 +96,8 @@ public enum OverlayStatus: Equatable, Sendable {
         case .restarting: return "Restarting"
         case .error: return "Error"
         case .permission: return "Needs access"
+        case .stopConfirm: return "Stop?"
+        case .meMissing: return "No profile"
         }
     }
 
@@ -101,6 +110,8 @@ public enum OverlayStatus: Equatable, Sendable {
                 ? "Verse needs the microphone to hear your side of the call. Allow it in System Settings, then press Start again."
                 : "Verse needs System Audio Recording to hear the meeting app. Allow it in System Settings, then press Start again."
         case .restarting: return "The brain stopped; restarting it once."
+        case .stopConfirm: return "Verse keeps listening if you don't."
+        case .meMissing: return "Verse answers without it. Build it on the Me page."
         default: return nil
         }
     }
@@ -108,7 +119,7 @@ public enum OverlayStatus: Equatable, Sendable {
     /// Statuses that need a bigger message than the capsule chip.
     public var needsPanel: Bool {
         switch self {
-        case .permission, .creditExhausted, .error: return true
+        case .permission, .creditExhausted, .error, .stopConfirm, .meMissing: return true
         default: return false
         }
     }
@@ -155,6 +166,10 @@ public struct OverlayState: Equatable, Sendable {
     public var meBars: [Double] = [0, 0, 0]
     /// The meeting's audio was audible within `audibleHold` seconds: the idle capsule widens to the listening one.
     public var remoteSpeaking = false
+    /// Anytime calls: where the running session listens (nil for a session started the old way, from a meeting prompt).
+    public var route: AudioRoute?
+    /// An adhoc session: no meeting pack. The island's right wing says "Unprepared".
+    public var unprepared = false
 
     public init() {}
 
@@ -181,15 +196,32 @@ public struct StartupPanel: Equatable, Sendable {
     public var app: String?
     /// The recognizer has produced text from the meeting's audio (separate from `.listening`, which follows the sound).
     public var transcribing = false
+    /// Anytime calls: the route this session listens on. Non-nil makes the panel the start card, with the route and
+    /// language chips (spec 2.1).
+    public var route: AudioRoute?
+    /// The session language, for the start card's language chips.
+    public var lang = "en"
 
-    public init(phase: Phase, session: String, app: String?, transcribing: Bool = false) {
+    public init(phase: Phase, session: String, app: String?, transcribing: Bool = false, route: AudioRoute? = nil, lang: String = "en") {
         self.phase = phase
         self.session = session
         self.app = app
         self.transcribing = transcribing
+        self.route = route
+        self.lang = lang
     }
 
+    /// The start card of an anytime session (route and language chips) rather than the plain start-up panel.
+    public var isStartCard: Bool { route != nil }
+
     public var title: String {
+        if isStartCard {
+            switch phase {
+            case .starting: return "Starting…"
+            case .ready: return "Ready"
+            case .listening: return "Listening"
+            }
+        }
         switch phase {
         case .starting: return "Starting…"
         case .ready: return "Ready · \(session)"
@@ -200,9 +232,19 @@ public struct StartupPanel: Equatable, Sendable {
     public var subtitle: String {
         switch phase {
         case .starting(let step): return step
-        case .ready: return app.map { "listening to \($0)" } ?? "waiting for the meeting app's audio"
+        case .ready:
+            switch route {
+            case .room?: return "listening through the microphone"
+            case .phone?: return "listening to the phone call"
+            default: return app.map { "listening to \($0)" } ?? "waiting for the meeting app's audio"
+            }
         case .listening:
-            let hearing = app.map { "hearing \($0)" } ?? "hearing the meeting"
+            let hearing: String
+            switch route {
+            case .room?: hearing = "hearing the room"
+            case .phone?: hearing = "hearing the call"
+            default: hearing = app.map { "hearing \($0)" } ?? "hearing the meeting"
+            }
             return transcribing ? hearing + " · transcribing" : hearing
         }
     }
@@ -309,6 +351,8 @@ public struct OverlayReducer: Sendable {
     private var statements: [String: (text: String, addressee: String)] = [:]
     /// The newest remote turn: only that one may open a card late.
     private var lastRemoteTurnID: String?
+    /// What the other side said last (the open partial, else the last final): the question a card-now answer is for.
+    private var lastHeard = ""
     private var lastContent: TimeInterval = 0
     /// When each topic chip (by text) was last seen.
     private var topicSeen: [String: TimeInterval] = [:]
@@ -329,6 +373,7 @@ public struct OverlayReducer: Sendable {
         turns = [:]
         statements = [:]
         lastRemoteTurnID = nil
+        lastHeard = ""
         topicSeen = [:]
         topicTurn = [:]
         lastAudible = -.infinity
@@ -385,11 +430,15 @@ public struct OverlayReducer: Sendable {
 
     /// Marks the start of a session (Start pressed): the capsule shows warming until the brain is ready, and the
     /// start-up panel stays open until the first card or until the user collapses it.
-    public mutating func sessionStarting(lang: String, session: String = "", app: String? = nil) {
+    public mutating func sessionStarting(lang: String, session: String = "", app: String? = nil, route: AudioRoute? = nil,
+                                         unprepared: Bool = false) {
         reset(lang: lang)
         state.running = true
         state.activity = .warming
-        state.startup = StartupPanel(phase: .starting(step: "Starting the brain and loading models"), session: session, app: app)
+        state.route = route
+        state.unprepared = unprepared
+        state.startup = StartupPanel(phase: .starting(step: "Starting the brain and loading models"), session: session, app: app,
+                                     route: route, lang: lang)
     }
 
     /// The user collapsed the open panel or card (click on the capsule).
@@ -461,8 +510,17 @@ public struct OverlayReducer: Sendable {
         return min(1, max(0, (db + 60) / 40))
     }
 
+    /// The other side of the call: `remote` in a meeting, `room` on the room route (the one microphone, nobody told apart).
+    private static func isOtherSide(_ speaker: String?) -> Bool { speaker == "remote" || speaker == "room" }
+
+    /// Card-now answers (⌥⌘↩) come as plain deltas on a turn id `now-<n>` for which no `turn` was ever sent.
+    private static func isNowTurn(_ id: String) -> Bool { id.hasPrefix("now-") }
+
     private mutating func applyOutbound(_ o: [String: JSONValue], now: TimeInterval) {
-        if (o.type == "partial" || o.type == "turn"), o[string: "speaker"] == "remote", state.startup != nil {
+        if (o.type == "partial" || o.type == "turn"), Self.isOtherSide(o[string: "speaker"]), let text = o[string: "text"], !text.isEmpty {
+            lastHeard = text
+        }
+        if (o.type == "partial" || o.type == "turn"), Self.isOtherSide(o[string: "speaker"]), state.startup != nil {
             // The meeting app's audio is being transcribed (text implies sound: the label stays on for the hold time).
             if state.startup?.phase == .ready { state.startup?.phase = .listening }
             if state.startup?.phase == .listening { state.startup?.transcribing = true }
@@ -475,7 +533,7 @@ public struct OverlayReducer: Sendable {
             turns[tid, default: TurnInfo()].bankHit = bid
             bankHitLanded(turnID: tid, now: now)
         case "turn":
-            guard o[string: "speaker"] == "remote" else { return }
+            guard Self.isOtherSide(o[string: "speaker"]) else { return }
             let who = o[string: "addressee"] ?? "unknown"
             let kind = o[string: "kind"] ?? "question"
             let text = o[string: "text"] ?? ""
@@ -505,6 +563,7 @@ public struct OverlayReducer: Sendable {
         state.addresseeTag = who == "me" ? "for you" : nil
         state.tagDimmed = false
         state.card = OverlayCard(turnID: tid, question: question)
+        if state.status == .meMissing { state.status = nil }
         state.startup = nil
         state.topics = []
         topicSeen = [:]
@@ -584,10 +643,17 @@ public struct OverlayReducer: Sendable {
                 l.current = ""
             }
             lines[key] = l
+            // The first delta of a card-now turn opens its card, for what the other side said last. A card the user closed
+            // stays closed: later deltas of that turn find the turn known.
+            let opensNowCard = Self.isNowTurn(tid) && turns[tid] == nil && state.card?.turnID != tid
             var info = turns[tid, default: TurnInfo()]
             if tier == "F", info.fID == nil { info.fID = id }
             if tier == "D", info.dID == nil { info.dID = id }
             turns[tid] = info
+            if opensNowCard {
+                lastRemoteTurnID = tid
+                openCard(turnID: tid, question: lastHeard, addressee: "me", now: now)
+            }
             openReclassifiedStatement(turnID: tid, tier: tier, lines: l, now: now)
             if state.card?.turnID == tid { refreshCard(now: now) }
         case "select":
@@ -620,6 +686,10 @@ public struct OverlayReducer: Sendable {
             refreshCard(now: now)
         case "status":
             applyStatus(o[string: "state"] ?? "", message: o[string: "message"] ?? "")
+        case "notice":
+            // `me_missing`: the profile files named in `start` do not exist. A status that never covers a card (openCard
+            // takes it down). The other notice (`me_conflicts`) is for the Me page, not the island.
+            if o[string: "kind"] == "me_missing", state.status == nil { state.status = .meMissing }
         default:
             break   // unknown message types (and unknown fields) are ignored
         }

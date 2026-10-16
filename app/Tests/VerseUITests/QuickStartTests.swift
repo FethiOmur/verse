@@ -172,38 +172,15 @@ final class QuickStartTests: XCTestCase {
         XCTAssertFalse(c.stopArmed)
         XCTAssertEqual(c.startStopKeyAction(running: true), .arm)
         XCTAssertTrue(c.stopArmed, "the island says \"Press ⌥⌘V again to stop\"")
+        XCTAssertEqual(c.overlay.state.status, .stopConfirm, "and draws it")
         t = now.addingTimeInterval(1.5)
         XCTAssertEqual(c.startStopKeyAction(running: true), .stop)
         XCTAssertFalse(c.stopArmed)
+        XCTAssertNil(c.overlay.state.status, "the second press takes the message down")
         t = now.addingTimeInterval(30)
         XCTAssertEqual(c.startStopKeyAction(running: true), .arm, "a lone press long after is only an arm")
         XCTAssertEqual(c.startStopKeyAction(running: false), .start)
         XCTAssertFalse(c.stopArmed)
-    }
-
-    // MARK: card now bridge
-
-    func testCardNowBridgeOpensACardForTheNowTurn() throws {
-        var b = CardNowBridge()
-        b.noteOutbound(["type": .string("partial"), "turn_id": .string("r1"), "speaker": .string("room"), "text": .string("so what about the budget")])
-        b.noteOutbound(["type": .string("partial"), "turn_id": .string("m1"), "speaker": .string("me"), "text": .string("my own words")])
-        let delta: [String: JSONValue] = ["type": .string("delta"), "turn_id": .string("now-1"), "id": .string("F-now-1"), "tier": .string("F"), "text": .string("SAY: ")]
-        let opening = try XCTUnwrap(b.opening(for: delta))
-        guard case .outbound(let o) = opening else { return XCTFail("an outbound turn expected") }
-        XCTAssertEqual(o[string: "turn_id"], "now-1")
-        XCTAssertEqual(o[string: "text"], "so what about the budget", "the other side's words, not the owner's")
-        XCTAssertEqual(o[string: "kind"], "question")
-        XCTAssertEqual(o[string: "speaker"], "remote")
-        XCTAssertNil(b.opening(for: delta), "once per now-turn")
-        XCTAssertNil(b.opening(for: ["type": .string("delta"), "turn_id": .string("r1"), "id": .string("F1")]), "ordinary turns have their own")
-        XCTAssertNil(b.opening(for: ["type": .string("status"), "state": .string("ready")]))
-
-        // The overlay opens a card from it.
-        let model = OverlayModel()
-        model.sessionStarting(lang: "en", session: "adhoc", app: nil)
-        model.apply(opening)
-        XCTAssertNotNil(model.state.card)
-        XCTAssertEqual(model.state.card?.turnID, "now-1")
     }
 
     func testANoticeLeavesTheOverlayAlone() throws {

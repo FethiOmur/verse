@@ -37,7 +37,10 @@ struct HomeSessionsPage: View {
                         Button { router.selectedSession = s.name } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(s.title).font(VT.Font.bodyEmph).foregroundStyle(ink.primary).lineLimit(1)
-                                Text("\(HomeFormat.day(s.date)) · \(s.kind.rawValue)").font(VT.Font.callout).foregroundStyle(ink.secondary).lineLimit(1)
+                                HStack(spacing: 6) {
+                                    Text("\(HomeFormat.day(s.date)) · \(s.kindText)").font(VT.Font.callout).foregroundStyle(ink.secondary).lineLimit(1)
+                                    if s.unprepared { UnpreparedTag() }
+                                }
                             }
                             .padding(.horizontal, 10).frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                             .background(s.name == selected?.name ? ink.selection : .clear,
@@ -54,6 +57,17 @@ struct HomeSessionsPage: View {
             }
         }
         .frame(width: 236).padding(.leading, 18).padding(.top, 22)
+    }
+}
+
+/// "Unprepared": a call that started without a prepared session. A neutral fill, like every tag on the window glass.
+struct UnpreparedTag: View {
+    @Environment(\.homeInk) private var ink
+    var body: some View {
+        Text("Unprepared").font(VT.Font.caption).foregroundStyle(ink.secondary)
+            .padding(.horizontal, 6).frame(height: 16)
+            .background(ink.fill, in: RoundedRectangle(cornerRadius: VT.Radius.chip, style: .continuous))
+            .fixedSize()
     }
 }
 
@@ -85,7 +99,7 @@ private struct HomeSessionDetailView: View {
     private let checklist = HomeChecklistStore()
 
     private var meta: String {
-        var parts = [session.kind == .practice ? "Practice" : session.kind.rawValue,
+        var parts = [session.unprepared ? "Unprepared · \(session.kindText)" : (session.kind == .practice ? "Practice" : session.kind.rawValue),
                      "\(HomeFormat.day(session.date)) \(session.date.formatted(HomeFormat.time))"]
         if session.spend > 0 { parts.append(String(format: "$%.2f spent", session.spend)) }
         return parts.joined(separator: " · ")
@@ -99,7 +113,7 @@ private struct HomeSessionDetailView: View {
                     Text(meta).font(VT.Font.callout).foregroundStyle(ink.secondary)
                 }
                 Spacer(minLength: 8)
-                if session.kind != .practice, controller.sessions.contains(session.name) {
+                if session.kind != .practice, !session.unprepared, controller.sessions.contains(session.name) {
                     if settings.sessionName == session.name {
                         Label("Used for Start", systemImage: "checkmark").font(VT.Font.callout).foregroundStyle(ink.secondary)
                     } else {
