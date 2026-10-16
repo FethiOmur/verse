@@ -106,6 +106,24 @@ final class BrainWireTests: XCTestCase {
         XCTAssertFalse(chip.isForBrain)
     }
 
+    /// Follow my answer: `start` carries the flag (always explicit), and a `me` partial is a line the brain accepts.
+    func testStartFlagAndMePartialAreBrainMessages() throws {
+        let on = BrainCommand.start(sessionDir: "/tmp/x", lang: "en", follow: true).jsonLine()
+        let off = BrainCommand.start(sessionDir: "/tmp/x", lang: "en").jsonLine()
+        let mePartial = OutboundEvent.partial(turnID: "m1", speaker: .me, text: "so for the other project", cue: false, tAudioEnd: 21.5).jsonLine()
+        let script = """
+        import sys, json
+        from verse_brain.runtime.protocol import parse_line
+        print(json.dumps([parse_line(l) for l in sys.stdin]))
+        """
+        let result = try runBrainPython(script, stdin: [on, off, mePartial].joined(separator: "\n") + "\n")
+        let msgs = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(result.utf8)) as? [[String: Any]], result)
+        XCTAssertEqual(msgs[0]["follow"] as? Bool, true)
+        XCTAssertEqual(msgs[1]["follow"] as? Bool, false, "default is explicit false, not absent")
+        XCTAssertEqual(Set(msgs[2].keys), ["type", "turn_id", "speaker", "text", "cue", "t_audio_end"])
+        XCTAssertEqual(msgs[2]["speaker"] as? String, "me")
+    }
+
     /// The brain (canned replies, no network) really takes our lines and answers: start -> ready -> turn -> F deltas.
     func testBrainFakeRoundTripAndShutdown() async throws {
         let s = try TempSession()

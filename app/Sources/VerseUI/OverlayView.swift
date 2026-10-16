@@ -105,6 +105,9 @@ struct CardView: View {
                     Capsule().fill(OverlayStyle.accent).frame(width: 3)
                         .padding(.vertical, size(3))
                     VStack(alignment: .leading, spacing: size(4)) {
+                        if card.following {
+                            FollowMark(scale: scale)
+                        }
                         Text(say)
                             .font(.system(size: size(20), weight: .semibold))
                             .tracking(-0.25)
@@ -124,7 +127,7 @@ struct CardView: View {
                     .foregroundStyle(.white.opacity(0.55))
             }
             if !card.bullets.isEmpty {
-                PointList(points: card.bullets, scale: scale, opacity: 0.88)
+                PointList(points: card.bullets, scale: scale, opacity: 0.88, struck: card.struck)
             }
             if !card.chips.isEmpty {
                 ChipRow(chips: card.chips, scale: scale)
@@ -142,22 +145,39 @@ struct CardView: View {
     }
 }
 
+/// "following you": the card is the C tier's continuation of what Alex is saying, not the answer to the question.
+struct FollowMark: View {
+    var scale: CGFloat
+
+    var body: some View {
+        Label("following you", systemImage: "arrow.turn.down.right")
+            .font(.system(size: (11 * scale).rounded(), weight: .medium))
+            .foregroundStyle(.white.opacity(0.6))
+            .accessibilityIdentifier("verse.followMark")
+    }
+}
+
 struct PointList: View {
     var points: [String]
     var scale: CGFloat
     var opacity: Double
+    /// Indices of points already said: struck through and dimmed (no animation, like all card text).
+    var struck: Set<Int> = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6 * scale) {
-            ForEach(Array(points.enumerated()), id: \.offset) { _, p in
+            ForEach(Array(points.enumerated()), id: \.offset) { i, p in
+                let done = struck.contains(i)
                 HStack(alignment: .firstTextBaseline, spacing: 9 * scale) {
-                    Circle().fill(.white.opacity(0.5)).frame(width: 4 * scale, height: 4 * scale)
+                    Circle().fill(.white.opacity(done ? 0.25 : 0.5)).frame(width: 4 * scale, height: 4 * scale)
                         .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 4.5 * scale }
                     Text(p)
                         .font(.system(size: (14 * scale).rounded()))
-                        .foregroundStyle(.white.opacity(opacity))
+                        .strikethrough(done, color: .white.opacity(0.7))
+                        .foregroundStyle(.white.opacity(done ? 0.45 : opacity))
                         .lineSpacing(1.5)
                         .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(done ? "\(p), said" : p)
                 }
             }
         }

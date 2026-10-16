@@ -81,6 +81,17 @@ public struct TurnConfig: Sendable {
     /// matching words (the owner's own words) closes the remote turn at once as before.
     public var meCloseHoldMs: Int
     public var echoHoldSimilarity: Double
+    /// "Follow my answer": also emit a `partial` for the owner's speech (speaker `me`) whenever the open me turn's text
+    /// changes, so the brain can see what he is saying while he says it. Off (the default): only the closed `me` turn
+    /// goes to the brain, exactly as before. Emitting it changes no turn logic.
+    ///
+    /// The brain cannot take a partial back, and the echo guard may call a me turn bleed after the fact (the microphone
+    /// recognizer is often ahead of the remote one), so a partial is only sent for a turn that has passed the echo check: at
+    /// least `mePartialMinWords` words, not `echoHoldSimilarity`-suspicious, no remote turn open or held, and the remote
+    /// channel quiet for `mePartialSettleMs` (its recognizer has caught up with the audio the microphone heard).
+    public var emitMePartials: Bool
+    public var mePartialMinWords: Int
+    public var mePartialSettleMs: Int
 
     public init(ownerName: String = "Alex", ownerAliases: [String] = [], otherNames: [String] = [],
                 cueEndpointMs: Int = 300, plainEndpointMs: Int = 600, meEndpointMs: Int = 1200,
@@ -92,7 +103,11 @@ public struct TurnConfig: Sendable {
                 topicThreshold: Double = 0.30, topicMargin: Double = 0.05, topicWindowSeconds: Double = 12,
                 topicCooldownSeconds: Double = 12, topicSameIDSeconds: Double = 300, topicLabelMax: Int = 60,
                 topicEnabled: Bool = true,
-                echoGuardEnabled: Bool = true, echoWindowSeconds: Double = 1.5, echoSimilarity: Double = 0.6, echoMinWords: Int = 2, meCloseHoldMs: Int = 1200, echoHoldSimilarity: Double = 0.4) {
+                echoGuardEnabled: Bool = true, echoWindowSeconds: Double = 1.5, echoSimilarity: Double = 0.6, echoMinWords: Int = 2, meCloseHoldMs: Int = 1200, echoHoldSimilarity: Double = 0.4,
+                emitMePartials: Bool = false, mePartialMinWords: Int = 3, mePartialSettleMs: Int = 800) {
+        self.emitMePartials = emitMePartials
+        self.mePartialMinWords = mePartialMinWords
+        self.mePartialSettleMs = mePartialSettleMs
         self.ownerName = ownerName
         self.ownerAliases = ownerAliases
         self.otherNames = otherNames
@@ -199,6 +214,10 @@ public actor TurnEngine {
     /// Session time a me result that may be bleed started while a remote turn was open; the remote turn stays open until the
     /// me turn is credible, discarded, or `meCloseHoldMs` passed.
     private var remoteCloseHeldSince: TimeInterval?
+    /// Follow my answer: the text of the open me turn as last sent to the brain in a `me` partial.
+    private var mePartialSent = ""
+    /// Session time of the last remote recognizer result.
+    private var lastRemoteResult: TimeInterval = -.infinity
     // Remote audio activity (optional input, see noteRemoteLevel).
     private var levelsSeen = false
     private var lastActive: TimeInterval = -.infinity
@@ -244,6 +263,7 @@ public actor TurnEngine {
         switch e.channel {
         case .remote:
             echo.noteRemote(text: text, start: e.audioStart, end: e.audioEnd, now: now, lang: config.lang)
+            lastRemoteResult = now
             out += ingestRemote(e, text: text)
             discardEchoedMeTurn()
         case .me: out += ingestMe(e, text: text)
@@ -283,13 +303,34 @@ public actor TurnEngine {
         if let m = me, deadline(m, remote: false) <= now {
             out += closeMe(at: max(deadline(m, remote: false), m.lastChange))
         }
+        out += releaseMePartial()
         return out.sorted { $0.at < $1.at }
     }
 
     /// The session time of the next endpoint, nil when no turn is open.
     public var nextDeadline: TimeInterval? {
         let held = remoteCloseHeldSince.flatMap { h in remote == nil ? nil : h + Double(config.meCloseHoldMs) / 1000 }
-        return [remote.map { deadline($0, remote: true) }, me.map { deadline($0, remote: false) }, held].compactMap { $0 }.min()
+        // A me partial waiting for the remote channel to settle is also a reason to wake up.
+        let settle = (config.emitMePartials && me != nil && lastRemoteResult.isFinite)
+            ? lastRemoteResult + Double(config.mePartialSettleMs) / 1000 : nil
+        return [remote.map { deadline($0, remote: true) }, me.map { deadline($0, remote: false) }, held,
+                settle.flatMap { $0 > now ? $0 : nil }].compactMap { $0 }.min()
+    }
+
+    /// Follow my answer: the `me` partial of the open me turn, when its text moved on since the last one and the turn is
+    /// credibly the owner's own speech (see `TurnConfig.emitMePartials`). Checked on every event and every tick, so a partial
+    /// held back for the remote channel to settle goes out as soon as it may.
+    private func releaseMePartial() -> [Timed] {
+        guard config.emitMePartials, let m = me, let first = m.segments.first, m.text != mePartialSent else { return [] }
+        guard Text.tokens(m.text, lang: config.lang).count >= config.mePartialMinWords else { return [] }
+        guard remote == nil, remoteCloseHeldSince == nil,
+              now - lastRemoteResult >= Double(config.mePartialSettleMs) / 1000 else { return [] }
+        if config.echoGuardEnabled,
+           echo.suspicion(text: m.text, start: first.start, end: m.audioEnd, windowSeconds: config.echoWindowSeconds, lang: config.lang) >= config.echoHoldSimilarity {
+            return []
+        }
+        mePartialSent = m.text
+        return [Timed(at: now, event: .partial(turnID: m.id, speaker: .me, text: m.text, cue: false, tAudioEnd: m.audioEnd))]
     }
 
     /// End of stream: closes whatever is open now.
@@ -505,6 +546,7 @@ public actor TurnEngine {
         if me == nil {
             meCount += 1
             me = Turn(id: "m\(meCount)", startedAt: now, lastChange: now, lastResult: now)
+            mePartialSent = ""
         }
         guard var turn = me else { return out }
         _ = Self.apply(&turn, start: e.audioStart, end: e.audioEnd, text: text, isFinal: e.isFinal, now: now)

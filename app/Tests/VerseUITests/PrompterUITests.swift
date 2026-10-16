@@ -4,6 +4,7 @@ import Synchronization
 import Testing
 import VersePrompter
 import VerseSpeech
+import VerseTurns
 @testable import VerseUI
 
 // T-UI: state mapping, settings, editor, the meeting-card wiring and the brain `script` contract. No audio, no window.
@@ -543,6 +544,44 @@ struct PrompterModelTests {
         #expect(await waitUntil { await session.state.wordPosition >= 7 })
         let position = await session.state.wordPosition
         #expect(position >= 7 && position < 8)                   // only his three words moved it
+        await model.close()
+    }
+
+    /// "Follow my answer": the follow card's SAY goes through `replaceUnread`, so what he already read stays, and a card
+    /// that only strikes through a point (same SAY) does nothing to the prompter. The card is built by the overlay reducer
+    /// from scripted brain lines, the prompter is the real model with a manual clock and a fake transcript source.
+    @Test
+    func aFollowCardReplacesTheUnreadTailAndKeepsWhatWasRead() async throws {
+        let (model, clock, box) = make()
+        let tap = model.meetingStarted()
+        var reducer = OverlayReducer()
+        reducer.sessionStarting(lang: "en")
+        func brain(_ json: String) { reducer.apply(.brain(JSONValue.decodeObject(json)!), now: 1) }
+        reducer.apply(.outbound(JSONValue.decodeObject(#"{"type":"turn","turn_id":"r1","speaker":"remote","text":"Tell me about a project.","addressee":"me","kind":"question","t_audio_end":1,"dir":"to_brain"}"#)!), now: 1)
+        brain(#"{"type":"delta","id":"f1","turn_id":"r1","tier":"F","text":"SAY: Sure, the clearest example is the weather app I built for my family.","line_done":true}"#)
+
+        await model.handleMeetingCard(reducer.state.card)
+        #expect(model.isOpen && model.page.text == "Sure, the clearest example is the weather app I built for my family.")
+        let session = try #require(box.sessions.last)
+        clock.set(1)
+        tap.ingest(micEvent("sure the clearest example"))
+        #expect(await waitUntil { await session.state.wordPosition >= 4 })
+
+        // He leaves the card; the brain follows him.
+        brain(#"{"type":"follow","turn_id":"r1","reason":"diverged","card_id":"c1"}"#)
+        brain(#"{"type":"delta","id":"c1d","card_id":"c1","turn_id":"r1","tier":"C","text":"SAY: Later I built a route planner at work.","line_done":true}"#)
+        brain(#"{"type":"delta","id":"c1d","card_id":"c1","turn_id":"r1","tier":"C","text":"- 12 depots","line_done":true}"#)
+        #expect(reducer.state.card?.following == true)
+        await model.handleMeetingCard(reducer.state.card)
+        #expect(model.page.text == "Sure, the clearest example Later I built a route planner at work.")
+        #expect(await session.state.wordPosition == 4)
+        #expect(box.sessions.count == 1, "the same prompter session, not a new one")
+
+        // A covered point changes the strike-through, not the SAY: the prompter is left alone.
+        brain(#"{"type":"covered","turn_id":"r1","card_id":"c1","point":0}"#)
+        #expect(reducer.state.card?.struck == [0])
+        await model.handleMeetingCard(reducer.state.card)
+        #expect(model.page.text == "Sure, the clearest example Later I built a route planner at work.")
         await model.close()
     }
 
