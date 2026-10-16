@@ -43,7 +43,7 @@ public struct LaunchOptions: Sendable {
 @MainActor
 public final class VerseController: ObservableObject {
     @Published public private(set) var running = false
-    @Published public private(set) var stopping = false
+    @Published public private(set) var stopping = false { didSet { overlay.setStopping(stopping) } }
     @Published public private(set) var sessions: [String] = []
     @Published public private(set) var sessionSpend = 0.0
     @Published public private(set) var monthSpend = 0.0
@@ -114,6 +114,9 @@ public final class VerseController: ObservableObject {
         self.settings = settings
         self.launch = launch
         overlay = OverlayModel(config: settings.overlayConfig)
+        overlay.stopActions = { [weak self] in
+            MainActor.assumeIsolated { guard let c = self else { return }; Task { await c.stop() } }
+        }
         overlay.startChipActions = { [weak self] action in
             MainActor.assumeIsolated { self?.startChip(action) }
         }
@@ -494,6 +497,9 @@ public final class VerseController: ObservableObject {
         panel?.close()
         panel = nil
     }
+
+    /// Renders only: shows the running state without a runner.
+    func setRunningForPreview(_ on: Bool) { running = on }
 
     private func runEnded(_ code: Int32) {
         running = false

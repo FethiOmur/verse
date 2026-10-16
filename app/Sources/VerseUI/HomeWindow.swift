@@ -193,21 +193,51 @@ private struct HomeSidebar: View {
 
     private var status: some View {
         let (label, dot, detail) = statusLines
-        return VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 7) {
-                Circle().fill(dot).frame(width: 7, height: 7)
-                Text(label).font(VT.Font.bodyEmph).foregroundStyle(ink.primary)
+        return VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 7) {
+                    Circle().fill(dot).frame(width: 7, height: 7)
+                    Text(label).font(VT.Font.bodyEmph).foregroundStyle(ink.primary).lineLimit(1)
+                }
+                Text(detail).font(VT.Font.caption).foregroundStyle(ink.tertiary).lineLimit(1)
             }
-            Text(detail).font(VT.Font.caption).foregroundStyle(ink.tertiary).lineLimit(1)
+            .accessibilityElement(children: .combine)
+            if controller.running {
+                SidebarStopButton(stopping: controller.stopping) { Task { await controller.stop() } }
+            }
         }
-        .accessibilityElement(children: .combine)
     }
 
     private var statusLines: (String, Color, String) {
         if controller.stopping { return ("Stopping", VT.amber, controller.settings.sessionName) }
-        if controller.running { return ("Listening", VT.mint, controller.settings.sessionName) }
+        if controller.running { return ("Listening · \(controller.settings.sessionName)", VT.mint, "Also stops with ⌥⌘V twice") }
         if sim.running { return ("Practice running", VT.mint, "Answer under the notch") }
         if controller.sessions.isEmpty { return ("No session", VT.amber, "Prepare one to start") }
         return ("Ready", VT.mint, controller.settings.sessionName)
+    }
+}
+
+/// The sidebar's Stop: a small neutral button under the status line while a session runs.
+private struct SidebarStopButton: View {
+    var stopping: Bool
+    var action: () -> Void
+    @Environment(\.homeInk) private var ink
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: "stop.fill").font(.system(size: 9, weight: .bold))
+                Text(SessionStop.title(stopping: stopping)).font(VT.Font.bodyEmph)
+            }
+            .foregroundStyle(ink.primary)
+            .padding(.horizontal, 12).frame(height: 28)
+            .background(ink.selection, in: RoundedRectangle(cornerRadius: VT.Radius.control, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!SessionStop.canStop(running: true, stopping: stopping))
+        .opacity(stopping ? 0.6 : 1)
+        .accessibilityLabel(SessionStop.accessibilityLabel(stopping: stopping))
+        .accessibilityIdentifier("verse.home.stop")
     }
 }

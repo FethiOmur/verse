@@ -7,6 +7,8 @@ import VerseTurns
 @MainActor
 public final class OverlayModel: ObservableObject {
     @Published public private(set) var state = OverlayState()
+    /// The running session is shutting down (the Stop controls show "Stopping…" and take no clicks). The controller sets it.
+    @Published public private(set) var stopping = false
     private var reducer: OverlayReducer
     private let clock: () -> TimeInterval
     private var timer: Timer?
@@ -60,6 +62,21 @@ public final class OverlayModel: ObservableObject {
             reducer.setStatus(nil)
         }
         publish()
+    }
+
+    /// What the island's Stop button does: the controller's `stop()`, like the menu item.
+    public var stopActions: (() -> Void)?
+
+    public func setStopping(_ on: Bool) {
+        if stopping != on { stopping = on }
+    }
+
+    /// The island's Stop control: only while a session runs and is not already stopping.
+    public var canStop: Bool { SessionStop.canStop(running: state.running, stopping: stopping) }
+
+    public func stopSession() {
+        guard canStop else { return }
+        stopActions?()
     }
 
     /// What the start card's chips do; the `VerseController` sets it.

@@ -237,6 +237,7 @@ public enum ScreenRenderer {
             shot("island-7-teleprompter", idle, prompter: page7),
             shot("island-8-status-credit", i8),
             shot("island-6b-practice-coach-note-hover", i6b) { $0.hover = true },
+            shot("island-4-answer-card-hover", i4) { $0.hover = true },
             shot("island-7-teleprompter-hover", idle, prompter: page7) { $0.hover = true },
             shot("island-start-room-unprepared", startRoom),
             shot("island-start-meeting-unprepared-it", startMeetingIt),

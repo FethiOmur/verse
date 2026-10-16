@@ -46,6 +46,10 @@ struct IslandBand: View {
     var metrics: NotchMetrics
     var width: CGFloat
     var prompter: PrompterBandInfo?
+    /// The Stop button in the right wing while the pointer is over a bare capsule of a running session.
+    var onStop: (() -> Void)?
+    var stopping = false
+    @Environment(\.islandHover) private var hover
 
     var body: some View {
         Wings(width: width, notchWidth: metrics.notchWidth, height: metrics.capsuleHeight, inset: width > 420 ? 22 : 12) {
@@ -105,6 +109,8 @@ struct IslandBand: View {
 
     @ViewBuilder private var rightWing: some View {
         switch kind {
+        case .capsule where hover && state.running && onStop != nil:
+            IslandStopButton(stopping: stopping, compact: true) { onStop?() }
         case .capsule:
             if let s = state.status {
                 Text(s.shortTitle).foregroundStyle(VT.Island.secondary)
@@ -261,7 +267,8 @@ public struct OverlayView: View {
     /// dot and the tags do not move when the surface grows.
     private var content: some View {
         VStack(spacing: 0) {
-            IslandBand(state: state, kind: kind, metrics: metrics, width: width, prompter: prompterInfo)
+            IslandBand(state: state, kind: kind, metrics: metrics, width: width, prompter: prompterInfo,
+                       onStop: { model.stopSession() }, stopping: model.stopping)
                 .contentShape(Rectangle())
                 // Click the band: close the card (or the start-up panel). The panel never becomes key, so Esc can't
                 // reach it; the click is the dismiss.
@@ -309,11 +316,23 @@ public struct OverlayView: View {
                 .frame(width: width, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture { model.collapse() }   // a click on the row clears the topic hints
+                .overlay(alignment: .bottomTrailing) { stopRow }
         case .card(let card):
             LiveCardView(card: card, scale: scale, maxHeight: max(maxIslandHeight - metrics.capsuleHeight, 120), reading: prompter.cardReading)
                 .overlay(alignment: .bottom) {
                     ResizeGrip(onDrag: resize, onEnd: { dragStart = nil })
                 }
+                .overlay(alignment: .bottomTrailing) { stopRow }
+        }
+    }
+
+    /// Stop, in the hover control row at the bottom right of the card (the prompter and practice rows work the same way:
+    /// the panel never becomes key, `acceptsFirstMouse` lets the first click through).
+    @ViewBuilder private var stopRow: some View {
+        if state.running {
+            HoverControls(horizontalInset: VT.islandCardInset - 12) {
+                IslandStopButton(stopping: model.stopping) { model.stopSession() }
+            }
         }
     }
 

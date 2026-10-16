@@ -62,6 +62,17 @@ public enum HomeRender {
                 try await capture(Scene(context: fixtures.context(router: router), dark: dark, override: nil, meetingsOnly: true), size: canvas, dark: dark, to: url)
                 out.append(url)
             }
+            // The sidebar footer while a session runs (Listening · session, with Stop).
+            if only?.contains(.prepare) ?? true {
+                let router = HomeRouter()
+                router.page = .prepare
+                router.selectedSession = fixtures.selectedSession
+                fixtures.controller.setRunningForPreview(true)
+                let url = dir.appendingPathComponent("home-sidebar-running-\(dark ? "dark" : "light").png")
+                try await capture(Scene(context: fixtures.context(router: router), dark: dark, override: nil), size: canvas, dark: dark, to: url)
+                fixtures.controller.setRunningForPreview(false)
+                out.append(url)
+            }
             for v in variants {
                 for page in v.pages where only?.contains(page) ?? true {
                     let router = HomeRouter()
