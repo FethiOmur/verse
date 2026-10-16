@@ -213,7 +213,7 @@ final class IslandTests: XCTestCase {
 
     func testEverySpecStateHasARenderShot() {
         let names = Set(ScreenRenderer.sampleShots().map(\.name))
-        for n in ["island-0-meeting-detected", "island-1-idle", "island-2-listening", "island-3-hearing-question", "island-4-answer-card",
+        for n in ["island-0-meeting-detected", "island-1-idle", "island-2-listening", "island-3-hearing-question", "island-4-answer-card", "island-4-answer-card-mid-reading",
                   "island-5-following-you", "island-6-practice-capsule", "island-6b-practice-coach-note", "island-7-teleprompter",
                   "island-8-status-credit", "island-a1-answer-veil-35", "island-a2-answer-reduce-transparency",
                   "island-a3-answer-increase-contrast", "island-a4-answer-reduce-motion"] {

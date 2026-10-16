@@ -49,6 +49,10 @@ public final class PrompterModel: ObservableObject {
         var maxWidth: Double
     }
 
+    /// How much of the island card's SAY line he has said (the prompter-style answer card). Fed from the same
+    /// meeting mic tap as the meeting-card prompter mode.
+    public let cardReading = CardReading()
+
     // meeting cards (T4)
     private var meetingTap: MeetingMicTap?
     private var cardQueue: Task<Void, Never>?
@@ -227,6 +231,8 @@ public final class PrompterModel: ObservableObject {
     public func meetingStarted() -> MeetingMicTap {
         let tap = MeetingMicTap()
         meetingTap = tap
+        cardReading.connect(tap)
+        cardReading.setSay(nil)
         lastSay = nil
         currentTurn = nil
         dismissedTurn = nil
@@ -237,12 +243,14 @@ public final class PrompterModel: ObservableObject {
     public func meetingEnded() {
         meetingTap?.finish()
         meetingTap = nil
+        cardReading.connect(nil)
         cardQueue = nil
         if isOpen, source.isMeetingCard { Task { @MainActor in await self.close() } }
     }
 
     /// The overlay's current card changed. Queued, so quick changes apply in order.
     public func meetingCard(_ card: OverlayCard?) {
+        cardReading.setSay(card?.say)   // the island card's spoken/unspoken split, whatever the prompter setting is
         let previous = cardQueue
         cardQueue = Task { @MainActor [weak self] in
             await previous?.value

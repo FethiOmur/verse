@@ -29,6 +29,8 @@ public enum ScreenRenderer {
         var practiceCapsule = false
         /// The pointer is over the island (the control rows show). Renders show the at-rest state; the hover ones are named `-hover`.
         var hover = false
+        /// Whole words of the card's SAY line already said (the prompter-style card, mid-reading).
+        var spokenWords = 0
         public init(name: String, state: OverlayState, width: Double = 600, prompter: PrompterModel? = nil) {
             self.name = name
             self.state = state
@@ -164,6 +166,8 @@ public enum ScreenRenderer {
         i4.card?.bullets = ["Schema-validated extraction, one retry on a failed field",
                             "Low-confidence fields went to an operator, not the ERP",
                             "Manual entry fell from 11 minutes to 2 per invoice"]
+        var i4m = i4
+        i4m.card?.struck = [0]
         var i5 = followCovered
         i5.meBars = [0.3, 0.55, 0.4]
         i5.card?.chips = []
@@ -198,7 +202,8 @@ public enum ScreenRenderer {
             shot("island-2-listening", i2),
             shot("island-3-hearing-question", i3),
             shot("island-4-answer-card", i4),
-            shot("island-5-following-you", i5),
+            shot("island-4-answer-card-mid-reading", i4m) { $0.spokenWords = 6 },
+            shot("island-5-following-you", i5) { $0.spokenWords = 5 },
             shot("island-6-practice-capsule", i6) { $0.practiceCapsule = true },
             shot("island-6b-practice-coach-note", i6b),
             shot("island-7-teleprompter", idle, prompter: page7),
@@ -286,7 +291,7 @@ public enum ScreenRenderer {
                     let suffix = scales.count > 1 ? "-\(sc.rawValue)" : ""
                     let url = dir.appendingPathComponent("\(shot.name)-\(b.rawValue)\(suffix).png")
                     try await render(shot.state, settings: settings, backdrop: b, prompter: shot.prompter, a11y: shot.a11y,
-                                     practiceCapsule: shot.practiceCapsule, hover: shot.hover, to: url)
+                                     practiceCapsule: shot.practiceCapsule, hover: shot.hover, spokenWords: shot.spokenWords, to: url)
                     out.append(url)
                 }
             }
@@ -295,9 +300,12 @@ public enum ScreenRenderer {
     }
 
     static func render(_ state: OverlayState, settings: AppSettings, backdrop: Backdrop, prompter: PrompterModel? = nil,
-                              a11y: IslandA11y? = nil, practiceCapsule: Bool = false, hover: Bool = false, to url: URL) async throws {
+                              a11y: IslandA11y? = nil, practiceCapsule: Bool = false, hover: Bool = false, spokenWords: Int = 0,
+                              to url: URL) async throws {
         let model = OverlayModel()
         model.show(state)
+        let prompter = prompter ?? PrompterModel()
+        if spokenWords > 0, let say = state.card?.say { prompter.cardReading.presentForPreview(say: say, spokenWords: spokenWords) }
         let metrics = NotchMetrics.macBookPro
         let wallpaper: MockWallpaper = backdrop == .white ? .light : .dark
         let scene = ZStack(alignment: .top) {
@@ -309,7 +317,7 @@ public enum ScreenRenderer {
             // The hardware notch stand-in.
             UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous).fill(Color.black)
                 .frame(width: metrics.notchWidth, height: metrics.notchHeight)
-            OverlayView(model: model, settings: settings, prompter: prompter ?? PrompterModel(), metrics: metrics,
+            OverlayView(model: model, settings: settings, prompter: prompter, metrics: metrics,
                         forcePracticeCapsule: practiceCapsule)
                 .environment(\.islandA11yOverride, a11y ?? IslandA11y())
                 .environment(\.islandHoverOverride, hover)

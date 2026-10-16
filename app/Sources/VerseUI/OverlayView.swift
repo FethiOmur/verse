@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Visual constants of the overlay that other files still name. The design lives in `VT` (DesignTokens.swift).
 public enum OverlayStyle {
-    /// The single accent: a calm mint, used for the live dot, the SAY marker and the primary action.
+    /// The single accent (lime A), used for the live dot and the primary action.
     public static let accent = VT.mint
     /// The morph between island sizes (spec 3.3: ease-out 140 ms, no spring).
     static let morph = VT.morph
@@ -287,7 +287,7 @@ public struct OverlayView: View {
                     SimPanelView(sim: sim, scale: scale, onAction: { model.simAction($0) })
                     if let card = state.card {
                         Rectangle().fill(.white.opacity(0.12)).frame(height: 0.5).padding(.horizontal, VT.islandCardInset)
-                        CardView(card: card, scale: scale, maxHeight: max(maxIslandHeight * 0.6, 120))
+                        LiveCardView(card: card, scale: scale, maxHeight: max(maxIslandHeight * 0.6, 120), reading: prompter.cardReading)
                     }
                 }
             }
@@ -297,7 +297,7 @@ public struct OverlayView: View {
         case .startup(let p):
             StartupPanelView(panel: p)
         case .topics:
-            ChipRow(chips: state.topics, scale: scale)
+            ChipRow(chips: state.topics, scale: scale, leading: 15)
                 .padding(.horizontal, VT.islandCardInset)
                 .padding(.top, 8)
                 .padding(.bottom, 20)
@@ -305,7 +305,7 @@ public struct OverlayView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { model.collapse() }   // a click on the row clears the topic hints
         case .card(let card):
-            CardView(card: card, scale: scale, maxHeight: max(maxIslandHeight - metrics.capsuleHeight, 120))
+            LiveCardView(card: card, scale: scale, maxHeight: max(maxIslandHeight - metrics.capsuleHeight, 120), reading: prompter.cardReading)
                 .overlay(alignment: .bottom) {
                     ResizeGrip(onDrag: resize, onEnd: { dragStart = nil })
                 }

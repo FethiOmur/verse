@@ -196,41 +196,51 @@ struct Wings<L: View, R: View>: View {
 
 // MARK: - Card pieces
 
-/// The line to say: 22 semibold with the mint bar. Size scales with the text size.
+/// The line to say, in the teleprompter's "current line" type: 30 semibold, -0.4 tracking, scaled with the text size.
+/// Words already said are 100 % white, the rest 55 %. No bar, no colour.
 struct SayLine: View {
     var text: String
     var scale: CGFloat
+    /// Whole words of `text` already said.
+    var spokenWords = 0
     var corrected = false
+    @Environment(\.islandContrast) private var contrast
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Capsule().fill(VT.mint).frame(width: 3).padding(.vertical, 4)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(text)
-                    .font(VT.Font.say(scale))
-                    .tracking(VT.Font.sayTracking)
-                    .lineSpacing(2)
-                    .foregroundStyle(VT.Island.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-                if corrected {
-                    Label("Corrected by Sonnet", systemImage: "arrow.uturn.backward")
-                        .font(VT.Font.meta)
-                        .foregroundStyle(VT.Island.tertiary)
-                }
+        let parts = SaySplit.split(text, spokenWords: spokenWords)
+        VStack(alignment: .leading, spacing: 4) {
+            (Text(parts.spoken).foregroundStyle(VT.Island.saySpoken)
+             + Text(parts.rest).foregroundStyle(contrast ? VT.Island.sayUnspokenContrast : VT.Island.sayUnspoken))
+                .font(VT.Font.prompterCurrent(scale))
+                .tracking(VT.Font.promptSayTracking)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+            if corrected {
+                Label("Corrected by Sonnet", systemImage: "arrow.uturn.backward")
+                    .font(VT.Font.meta)
+                    .foregroundStyle(VT.Island.tertiary)
             }
         }
-        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text)
+        .accessibilityIdentifier("verse.say")
     }
 }
 
-/// "↳ Following you": the card continues what Alex is saying; it does not answer the question.
-struct FollowMark: View {
+/// The line above the SAY: the heard question, or "Following you" (the card continues what Alex is saying; it does not
+/// answer the question). 13 medium, one line, tail-truncated.
+struct CardLead: View {
+    var text: String
+    var scale: CGFloat
+    var symbol: String? = nil
+
     var body: some View {
-        Label("Following you", systemImage: "arrow.turn.down.right")
-            .font(VT.Font.meta)
-            .foregroundStyle(VT.Island.tertiary)
-            .padding(.leading, 15)
-            .accessibilityIdentifier("verse.followMark")
+        HStack(spacing: 6) {
+            if let symbol { Image(systemName: symbol) }
+            Text(text).lineLimit(1).truncationMode(.tail)
+        }
+        .font(VT.Font.cardLead(scale))
+        .foregroundStyle(VT.Island.question)
     }
 }
 
@@ -241,6 +251,8 @@ struct PointList: View {
     /// The deep (Sonnet) points are a step quieter than the fast ones.
     var quiet = false
     var struck: Set<Int> = []
+    /// Left inset: 0 under the prompter-style SAY (no bar to clear).
+    var leading: CGFloat = 0
     @Environment(\.islandContrast) private var contrast
 
     var body: some View {
@@ -260,7 +272,7 @@ struct PointList: View {
                 }
             }
         }
-        .padding(.leading, 15)
+        .padding(.leading, leading)
     }
 
     private func color(done: Bool) -> Color {
@@ -290,7 +302,7 @@ struct FactChip: View {
 struct ChipRow: View {
     var chips: [OverlayChip]
     var scale: CGFloat
-    var leading: CGFloat = 15
+    var leading: CGFloat = 0
 
     var body: some View {
         FlowLayout(spacing: 6) {
@@ -308,7 +320,6 @@ struct SonnetDivider: View {
             Text("Sonnet").font(VT.Font.caption).foregroundStyle(VT.Island.tertiary)
             Rectangle().fill(.white.opacity(0.16)).frame(height: 0.5)
         }
-        .padding(.leading, 15)
     }
 }
 
@@ -338,6 +349,8 @@ struct CardView: View {
     var scale: CGFloat
     /// Room for the body under the band. nil: as tall as the content (previews).
     var maxHeight: CGFloat?
+    /// Whole words of the SAY line Alex has already said (`CardReading`).
+    var spokenWords = 0
 
     var body: some View {
         if let maxHeight {
@@ -359,12 +372,28 @@ struct CardView: View {
 
     private func content(dropping n: Int) -> some View {
         let deep = Array(card.deepPoints.dropFirst(n))
-        return VStack(alignment: .leading, spacing: 12) {
-            if card.following, card.say != nil {
-                FollowMark().padding(.bottom, -4)
-            }
+        return VStack(alignment: .leading, spacing: 0) {
             if let say = card.say {
-                SayLine(text: say, scale: scale, corrected: card.sayCorrected)
+                // Prompter style: the heard question (or "Following you") on one line, the SAY in teleprompter type under
+                // it, then the points and chips.
+                if card.following {
+                    CardLead(text: "Following you", scale: scale, symbol: "arrow.turn.down.right")
+                        .accessibilityIdentifier("verse.followMark")
+                } else {
+                    CardLead(text: card.question.isEmpty ? "Listening to the question…" : "“\(card.question)”", scale: scale)
+                }
+                SayLine(text: say, scale: scale, spokenWords: spokenWords, corrected: card.sayCorrected)
+                    .padding(.top, 8)
+                if !card.bullets.isEmpty {
+                    PointList(points: card.bullets, scale: scale, struck: card.struck).padding(.top, 14)
+                }
+                if !card.chips.isEmpty {
+                    ChipRow(chips: card.chips, scale: scale).padding(.top, 12)
+                }
+                if !deep.isEmpty {
+                    SonnetDivider().padding(.top, 12)
+                    PointList(points: deep, scale: scale, quiet: true).padding(.top, 12)
+                }
             } else {
                 // Hearing: Verse has the question and the answer is on its way.
                 Text(card.question.isEmpty ? "Listening to the question…" : "“\(card.question)”")
@@ -372,24 +401,35 @@ struct CardView: View {
                     .foregroundStyle(VT.Island.tertiary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-            }
-            if !card.bullets.isEmpty {
-                PointList(points: card.bullets, scale: scale, struck: card.struck)
-                    .padding(.top, card.following ? 0 : 0)
-            }
-            if !card.chips.isEmpty {
-                ChipRow(chips: card.chips, scale: scale)
-            }
-            if !deep.isEmpty {
-                SonnetDivider()
-                PointList(points: deep, scale: scale, quiet: true)
+                if !card.bullets.isEmpty {
+                    PointList(points: card.bullets, scale: scale, struck: card.struck).padding(.top, 12)
+                }
+                if !card.chips.isEmpty {
+                    ChipRow(chips: card.chips, scale: scale).padding(.top, 12)
+                }
+                if !deep.isEmpty {
+                    SonnetDivider().padding(.top, 12)
+                    PointList(points: deep, scale: scale, quiet: true).padding(.top, 12)
+                }
             }
         }
         .padding(.horizontal, VT.islandCardInset)
-        .padding(.top, card.following && card.say != nil ? 10 : 12)
+        .padding(.top, 12)
         .padding(.bottom, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .transaction { $0.animation = nil }
+    }
+}
+
+/// `CardView` with the live spoken/unspoken split of its SAY line.
+struct LiveCardView: View {
+    var card: OverlayCard
+    var scale: CGFloat
+    var maxHeight: CGFloat?
+    @ObservedObject var reading: CardReading
+
+    var body: some View {
+        CardView(card: card, scale: scale, maxHeight: maxHeight, spokenWords: reading.spoken(for: card.say))
     }
 }
 

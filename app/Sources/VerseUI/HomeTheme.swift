@@ -348,7 +348,7 @@ struct HomeTextArea: View {
     }
 }
 
-/// The mockup's switch: mint when on, a neutral track when off. Drawn here (not `NSSwitch`) so it stays mint when the
+/// The mockup's switch: accent (lime) when on, a neutral track when off. Drawn here (not `NSSwitch`) so it stays lime when the
 /// window is not key; VoiceOver sees a normal toggle.
 struct HomeSwitch: View {
     @Binding var isOn: Bool
@@ -359,6 +359,7 @@ struct HomeSwitch: View {
         Button { isOn.toggle() } label: {
             ZStack(alignment: isOn ? .trailing : .leading) {
                 Capsule().fill(isOn ? VT.mint : ink.fill).frame(width: 34, height: 20)
+                    .overlay { if isOn { Capsule().strokeBorder(ink.accentEdge, lineWidth: 0.5) } }
                     .overlay { if ink.increaseContrast { Capsule().strokeBorder(ink.controlBorder) } }
                 Circle().fill(Color.white).frame(width: 16, height: 16).padding(2)
                     .shadow(color: .black.opacity(0.15), radius: 1, y: 0.5)
@@ -389,7 +390,7 @@ struct HomeToggleRow: View {
     }
 }
 
-/// The mockup's slider: a 5 pt track filled with mint and a white pill knob. Drawn here for the same reason as `HomeSwitch`.
+/// The mockup's slider: a 5 pt track filled with the accent and a white pill knob. Drawn here for the same reason as `HomeSwitch`.
 struct HomeSlider: View {
     @Binding var value: Double
     var range: ClosedRange<Double>
@@ -404,6 +405,7 @@ struct HomeSlider: View {
         ZStack(alignment: .leading) {
             Capsule().fill(ink.fill).frame(width: width, height: 5)
             Capsule().fill(VT.mint).frame(width: width * fraction, height: 5)
+                .overlay { Capsule().strokeBorder(ink.accentEdge, lineWidth: 0.5) }
             Capsule().fill(Color.white).frame(width: 22, height: 15)
                 .shadow(color: .black.opacity(0.18), radius: 1.5, y: 0.5)
                 .offset(x: width * fraction - 11)

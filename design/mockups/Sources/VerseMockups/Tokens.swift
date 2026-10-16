@@ -4,8 +4,8 @@ import SwiftUI
 /// values mirror it so the renders show exactly what the spec says.
 enum VT {
     // MARK: Colour
-    /// The one accent. Default is Verse mint; `VERSE_ACCENT=lime-a|lime-b|lime-c` swaps in a lime candidate for the
-    /// accent-colour study (the default output is unchanged when the variable is unset).
+    /// The one accent. Default is lime A (approved 16 Oct); `VERSE_ACCENT=mint|lime-b|lime-c` renders the other
+    /// accent-study candidates.
     static let accent = Accent.named(ProcessInfo.processInfo.environment["VERSE_ACCENT"])
     /// Live dot, SAY marker, primary action, toggle and slider fill. Nothing else is coloured.
     static var mint: Color { accent.fill }
@@ -102,10 +102,10 @@ struct Accent: Sendable {
 
     static func named(_ name: String?) -> Accent {
         switch name {
-        case "lime-a": .limeA
+        case "mint": .mint
         case "lime-b": .limeB
         case "lime-c": .limeC
-        default: .mint
+        default: .limeA
         }
     }
 }

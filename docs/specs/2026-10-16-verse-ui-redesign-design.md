@@ -18,7 +18,7 @@ Two surfaces replace today's scattered UI:
 2. **One home window** with a sidebar (Prepare, Sessions, Practice, Scripts, Settings) on a full Liquid Glass
    background. It replaces the sim setup, prep-from-conversation, script editor, report and settings windows.
 
-Direction in one line: **a calm, native macOS 26 instrument**: system type, one mint accent, glass only where the
+Direction in one line: **a calm, native macOS 26 instrument**: system type, one lime accent, glass only where the
 platform puts it, and the line Alex reads is the largest thing on screen.
 
 Left out on purpose: purple/blue "AI" gradient blobs, neon glow, heavy drop shadows, opaque cards, chart-heavy
@@ -34,12 +34,15 @@ The values live in `design/mockups/Sources/VerseMockups/Tokens.swift`; implement
 
 | Token | Value | Use |
 |---|---|---|
-| `mint` | `#6BE6B3` | The only accent: live dot, SAY bar, primary action fill, system control "on" (toggles, slider fill). |
-| `mintDeep` | `#0D8057` | Mint for text/glyphs on light surfaces (4.6:1 on white). |
-| `onMint` | `#052B1C` | Label on a mint fill. |
+| `mint` (lime A) | `#BEDC4C` | The only accent: live dot, primary action fill, system control "on" (toggles, slider fill). The token name stayed `mint` from the first round (accent study 16 Oct: mint → lime A). |
+| `mintDeep` | `#5A6D0B` | The accent for text/glyphs on light surfaces (5.8 : 1 on white). |
+| `onMint` | `#1D2806` | Label on an accent fill (10.0 : 1). |
+| `accentHairline` | black 14 % | A 0.5 pt edge on accent fills that sit on a light surface (toggle "on" track, slider fill). Lime A is 1.55 : 1 on white, so the fill alone does not separate from a light window. Dark appearance: none. |
 | `amber` | `#FFB547` | Status only: credit, permission. |
 | `coral` | `#FF6B5E` | Status only: errors. |
-| Island text | white 100 / 80 / 56 / 36 % | SAY / points / meta / struck or hint. |
+| Island text | white 100 / 80 / 56 / 36 % | SAY (said words) / points / meta / struck or hint. |
+| `Island.question` | `#C2CCDE` at 62 % | The heard question (or "Following you") above the SAY: a neutral cool grey, dimmer than the unspoken SAY words (55 % white) and cooler than the points. |
+| SAY unspoken | white 55 % | Words of the SAY line he has not said yet. Increase Contrast: 78 %. |
 | Island fills | white 11 % (chips, secondary), 17 % (secondary button) | |
 | Window text | light: black 86 / 54 / 34 %; dark: white 92 / 58 / 36 % | primary / secondary / tertiary. |
 | Window background | light `#F5F5F7`, dark `#1D1D20` | The veil colour on the window glass (2.4). |
@@ -52,7 +55,9 @@ The values live in `design/mockups/Sources/VerseMockups/Tokens.swift`; implement
 
 | Role | Size / weight | Tracking | Notes |
 |---|---|---|---|
-| SAY line | 22 semibold | −0.35 | Line spacing +2. Text size S/M/L/XL = 19/22/25/28. |
+| SAY line (answer card) | 30 semibold | −0.4 | The teleprompter's current-line type, line spacing +2, wraps as needed. Text size S/M/L/XL scales it by 0.86 / 1 / 1.14 / 1.27 (26/30/34/38). Said words 100 % white, unsaid 55 %. No bar. |
+| Card lead | 13 medium | 0 | The heard question, one line, tail-truncated, `Island.question`. In state 5 it reads "↳ Following you". Scales with the text size. |
+| SAY line (practice hint, sim panel text mode) | 22 semibold | −0.35 | Unchanged outside the answer card. |
 | Points | 15 regular | 0 | Line spacing +2. Scales with SAY. |
 | Chip | 12.5 medium | 0 | Fact text 94 %, source 56 %. |
 | Wing (band) | 11.5 medium | 0 | Never inside the camera band. |
@@ -67,7 +72,7 @@ The values live in `design/mockups/Sources/VerseMockups/Tokens.swift`; implement
 ### 2.3 Spacing and radii
 
 Spacing is a 4-pt grid: 4, 8, 12, 16, 20, 24, 32. Content inset on the island is shoulder (14) + 22 = 36 pt from the
-silhouette edge, so the wing dot and the SAY bar share one vertical axis.
+silhouette edge, so the wing dot and the card's left text edge share one vertical axis.
 
 Radii are concentric: window 26 → inset group 14 → row / control 9 → chip 7. Island: shoulder 14, bottom corner 26
 (the capsule states scale both arcs down to fit 32 pt).
@@ -105,14 +110,21 @@ On Macs without a notch the same shape hangs from the menu bar centre with a 186
 |---|---|---|---|---|---|
 | 0 | Meeting detected | 480 × auto (≈136) | idle ring | – | "Comet is using the microphone", meeting title, "Prepared · 14 questions", **Not now** + **Start ↩** (primary). |
 | 1 | Idle (session on, quiet) | 266 × 32 | idle ring | – | – |
-| 2 | Listening | 354 × 32 | mint dot + 3 level bars | speaker name | – |
+| 2 | Listening | 354 × 32 | lime dot + 3 level bars | speaker name | – |
 | 3 | Hearing a question for you | 600 × auto (≈96) | dot + bars | "for you" | The heard question, 15 medium, 56 %. Shows the latency honestly: Verse heard it, the answer is coming. |
-| 4 | Answer card | 600 × auto (≈225) | dot | "for you" | SAY line with mint bar, 2–3 points, fact chips. Sonnet's deep points append under a hairline in the same card. |
-| 5 | Following you | 600 × auto | dot + bars | "your answer" | "↳ Following you", the continuation SAY, points; points he has said are struck through and dimmed. |
+| 4 | Answer card (prompter style) | 600 × auto (≈318 for a three-line SAY) | dot | "for you" | The heard question on one line (13 medium, `Island.question`, tail truncation); under it the SAY in prompter type (30 semibold, −0.4), said words 100 % white, unsaid 55 %, no bar; then 2–3 points (struck and dimmed once said) and fact chips. Sonnet's deep points append under a hairline in the same card. |
+| 5 | Following you (prompter style) | 600 × auto (≈245) | dot + bars | "your answer" | "↳ Following you" in the question's place, the continuation SAY in the same prompter type, points; points he has said are struck through and dimmed. |
 | 6 | Practice capsule | 442 × 32 | "Q3 of 8" + timer | "your turn" + dot | – |
 | 6b | Practice coach note | 520 × auto | same | same | "Coach", one note in 16 medium, "⌥Space for the next question". |
 | 7 | Teleprompter | 640 × auto (≈190) | dot + "voice" | page "2 / 5" | Three lines: previous 28 %, current 30 pt (spoken 100 %, unspoken 55 %), next 55 %. |
 | 8 | Status (credit, permission, offline, error) | 480 × auto | amber or coral dot | short label | One sentence, 15 semibold, plus one line of what still works. |
+
+The said/unsaid split of the SAY in states 4 and 5 is live. The card's SAY is fed to the teleprompter's `PromptMatcher`
+(`WordTrackingDriver`, one per SAY text) with the partial transcripts of the owner's `me` channel, the same feed the
+meeting-card prompter mode uses (`MeetingMicTap`, via `PrompterModel.cardReading`); it works whether or not "Prompter on
+meeting cards" is on. With no `me` channel every word stays unsaid. When a new SAY replaces the shown one (a new card, the
+selected tier, follow-my-answer replacing the card) the new SAY starts unsaid, and speech still open at that moment is not
+counted against it. Covered points and follow cards behave as before (the reducer is unchanged).
 
 Card width is a setting (420–960, the existing range; default 600). Card height follows the content (bottom padding 20 pt); a card never
 grows past 420 pt: older deep points drop first.
@@ -163,8 +175,8 @@ The menu-bar item stays; it opens the home window at the right page.
 | Reduce Transparency | No glass: solid `#0E0F11` under the black band. The opacity slider is disabled with a note. | Solid window background; groups solid (`#FFFFFF` / `#2A2A2E`). |
 | Increase Contrast | Veil floor at least 92 %, 1.5 pt white 60 % border, points and wings to 100 % / 85 % white, chip borders. | Groups solid with 50 % separators, button borders, a separator between sidebar and content, secondary text at primary strength. |
 | Reduce Motion | Cross-fade instead of the morph (3.3). | System default. |
-| Text size | S/M/L/XL scales SAY, points, chips and prompter. | Follows the system. |
-| VoiceOver | The island is one element per state with the SAY line as its label and points as children; struck points read "…, said". | Standard controls and labels. |
+| Text size | S/M/L/XL scales SAY (30 pt at M), question line, points, chips and prompter. | Follows the system. |
+| VoiceOver | The island is one element per state with the SAY line as its label (the whole line, said and unsaid words alike) and points as children; struck points read "…, said". | Standard controls and labels. |
 
 The system's own Liquid Glass setting (Clear / Tinted, macOS 26.1) applies on top; Verse's sliders adjust its veil, not
 the system glass.
@@ -177,10 +189,11 @@ the system glass.
 | Island translucency | Smoked Regular glass with a user floor, not clear glass. Measured legible at the minimum (2.4). |
 | Window glass | One Regular glass sheet for the whole window, like ChatGPT's `vibrancy: menu`, but native (`NSGlassEffectView`, behind-window) with a user opacity and a solid fallback. |
 | Glass on glass | Never. Everything on glass is a fill. |
-| Accent | One: mint. Status colours only for status. Selection is neutral. |
+| Accent | One: lime A (`#BEDC4C`, label `#1D2806`, deep `#5A6D0B`; chosen 16 Oct over mint and lime B/C). Status colours only for status. Selection is neutral. Light toggles and slider fills carry a black 14 % hairline because the fill is weak on white. |
 | Buttons | 9 pt continuous rounded rectangles, not pills. One primary per surface. |
-| Wings | Content aligned to the SAY bar's axis (36 pt), not hugging the camera. |
+| Wings | Content aligned to the card's text axis (36 pt), not hugging the camera. |
 | Teleprompter | Three lines, current line split into spoken / unspoken by brightness, no colour highlight. |
+| Answer card | Prompter typography, no bar: the line he reads is the biggest thing on the island, and the said/unsaid brightness split tells him where he is (approved 16 Oct, mockups P1–P3). |
 | Hearing state | Show the heard question while the answer streams: the research's top complaint is stale or invisible latency. |
 
 Rejected:
@@ -190,7 +203,7 @@ Rejected:
 - **A floating glass sidebar over an opaque content pane** (the stock Tahoe layout). It is correct HIG but it is not
   what Alex asked for (the whole window as glass), and the content pane would be the opaque card he dislikes.
 - **Light island in light mode.** It loses the hardware-notch illusion and the black camera band.
-- **Tinted glass buttons in the window.** That would be glass on glass; the mint fill gives the same emphasis.
+- **Tinted glass buttons in the window.** That would be glass on glass; the accent fill gives the same emphasis.
 - **Accent-coloured sidebar selection.** "When every element is tinted, nothing stands out."
 - **Springs on the morph.** The v1 spec's rule (≤ 150 ms, no spring) stays; a bounce on a reading surface distracts.
 
@@ -199,7 +212,7 @@ Rejected:
 Regenerate: `cd design/mockups && swift run verse-mockups OUT_DIR [filter]`. Every state and page renders over a light
 (day dunes + document page) and a dark (night dunes + video call) wallpaper, plus accessibility variants:
 `island-a1` (opacity 35 %), `island-a2` (Reduce Transparency), `island-a3` (Increase Contrast),
-`home-prepare-reduce-transparency`, `home-prepare-increase-contrast`.
+`home-prepare-reduce-transparency`, `home-prepare-increase-contrast`; the prompter-style answer card is `island-P1` (fresh), `island-P2` (mid-reading) and `island-P3` (following you). The accent defaults to lime A; `VERSE_ACCENT=mint|lime-b|lime-c` renders the other candidates.
 
 How the renders differ from the app: the mockups use SwiftUI `glassEffect` inside one offscreen window that also
 holds the wallpaper, captured with ScreenCaptureKit. The app's island samples other apps' windows, which SwiftUI
