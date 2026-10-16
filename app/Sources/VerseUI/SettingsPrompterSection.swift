@@ -1,34 +1,36 @@
 import SwiftUI
 import VersePrompter
 
-/// Settings > Teleprompter. One line in `SettingsView` puts it in the form.
+/// Settings > Teleprompter: one group of the Settings page.
 public struct PrompterSettingsSection: View {
     @ObservedObject var settings: PrompterSettings
+    @Environment(\.homeInk) private var ink
 
     public init(settings: PrompterSettings) { self.settings = settings }
 
     public var body: some View {
-        Section {
-            Picker("Mode", selection: $settings.mode) {
-                ForEach(PrompterMode.allCases, id: \.self) { Text($0.title).tag($0) }
+        HomeGroup {
+            HomeRow("Mode", detail: settings.mode.explanation) {
+                HomePopup(selection: $settings.mode, options: PrompterMode.allCases.map { HomeOption($0.title, $0) })
             }
-            Text(settings.mode.explanation).font(.caption).foregroundStyle(.secondary)
-            Stepper(value: $settings.wordsPerMinute, in: PrompterSettings.wordsPerMinuteRange, step: PrompterSession.speedStep) {
-                LabeledContent("Speed", value: "\(Int(settings.wordsPerMinute)) words per minute")
+            HomeRowDivider()
+            HomeRow("Speed") {
+                Text("\(Int(settings.wordsPerMinute)) words per minute").font(VT.Font.body).foregroundStyle(ink.secondary).monospacedDigit()
+                Stepper("", value: $settings.wordsPerMinute, in: PrompterSettings.wordsPerMinuteRange, step: PrompterSession.speedStep).labelsHidden()
             }
-            Stepper(value: $settings.fontSize, in: PrompterSettings.fontSizeRange, step: 2) {
-                LabeledContent("Font size", value: "\(Int(settings.fontSize)) pt")
+            HomeRowDivider()
+            HomeRow("Font size") {
+                Text("\(Int(settings.fontSize)) pt").font(VT.Font.body).foregroundStyle(ink.secondary).monospacedDigit()
+                Stepper("", value: $settings.fontSize, in: PrompterSettings.fontSizeRange, step: 2).labelsHidden()
             }
-            Toggle("Mirror the text", isOn: $settings.mirror)
-            Toggle("Hide Verse from screen sharing (cards and prompter)", isOn: $settings.hideFromShare)
-            Toggle("Read meeting cards on the prompter", isOn: $settings.followMeetingCards)
-        } header: {
-            Text("Teleprompter")
-        } footer: {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Hiding asks macOS to leave the panel out of captures, only while the prompter is open. Some capture paths ignore it, so test it with your meeting app before relying on it.")
-                Text("Shortcuts while the prompter is open: " + PrompterCommand.allCases.map { "\($0.shortcut) \($0.title.lowercased())" }.joined(separator: ", ") + ".")
-            }
+            HomeRowDivider()
+            HomeToggleRow("Mirror the text", isOn: $settings.mirror)
+            HomeRowDivider()
+            HomeToggleRow("Hide Verse from screen sharing (cards and prompter)", isOn: $settings.hideFromShare)
+            HomeRowDivider()
+            HomeToggleRow("Read meeting cards on the prompter", isOn: $settings.followMeetingCards)
         }
+        HomeFootnote("Hiding asks macOS to leave the panel out of captures, only while the prompter is open. Some capture paths ignore it, so test it with your meeting app before relying on it. "
+                     + "Shortcuts while the prompter is open: " + PrompterCommand.allCases.map { "\($0.shortcut) \($0.title.lowercased())" }.joined(separator: ", ") + ".")
     }
 }

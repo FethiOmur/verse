@@ -1,38 +1,43 @@
 import AppKit
+import SwiftUI
 import WebKit
 
-/// The practice report window: S5's `report.html` from the session folder in a `WKWebView`. The page is
-/// self-contained (inline CSS, no script), so JavaScript is off and the view may read only that folder.
+/// The practice report: S5's `report.html` from the session folder in a `WKWebView`. The page is self-contained
+/// (inline CSS, no script), so JavaScript is off and the view may read only that folder. It no longer has a window of its
+/// own: the report shows on the home window's Sessions page, and `show` takes you there.
 @MainActor
 public enum SimReportWindow {
-    private static var open: [NSWindow] = []
-
+    /// Opens Sessions on the practice run that wrote `url`.
     public static func show(report url: URL) {
+        HomeRouter.shared.showReport(url)
+    }
+
+    /// The report windows are gone with the home window; kept so Quit code stays as it was.
+    public static func closeAll() {}
+}
+
+/// The report page inside the Sessions detail.
+struct HomeReportView: NSViewRepresentable {
+    var url: URL
+
+    func makeNSView(context: Context) -> WKWebView {
         let cfg = WKWebViewConfiguration()
         cfg.defaultWebpagePreferences.allowsContentJavaScript = false
         cfg.websiteDataStore = .nonPersistent()
-        let web = WKWebView(frame: NSRect(x: 0, y: 0, width: 880, height: 960), configuration: cfg)
+        let web = WKWebView(frame: .zero, configuration: cfg)
+        web.setValue(false, forKey: "drawsBackground")
         web.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
-
-        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 880, height: 960),
-                         styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        w.title = "Practice report · " + url.deletingLastPathComponent().lastPathComponent
-        w.isReleasedWhenClosed = false
-        w.contentView = web
-        w.setFrameAutosaveName("VerseSimReport")
-        w.center()
-        open.append(w)
-        let id = ObjectIdentifier(w)
-        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: w, queue: .main) { _ in
-            MainActor.assumeIsolated { open.removeAll { ObjectIdentifier($0) == id } }
-        }
-        NSApp.activate()
-        w.makeKeyAndOrderFront(nil)
+        context.coordinator.loaded = url
+        return web
     }
 
-    /// Closes every report window (Quit).
-    public static func closeAll() {
-        for w in open { w.close() }
-        open = []
+    func updateNSView(_ web: WKWebView, context: Context) {
+        guard context.coordinator.loaded != url else { return }
+        context.coordinator.loaded = url
+        web.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
     }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator { var loaded: URL? }
 }

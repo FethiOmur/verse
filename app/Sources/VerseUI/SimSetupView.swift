@@ -4,11 +4,13 @@ import UniformTypeIdentifiers
 import VerseTurns
 import VerseVoice
 
-/// The "Practice interview…" window: posting (link or paste, with a preview to confirm), experience sources, the
-/// interview's shape, then Prepare (S1 prep) and Start.
+/// The home window's Practice page: the posting (link or paste, with a preview to confirm), experience sources, the
+/// interview's shape, then Prepare (S1 prep) and Start. It replaces the "Practice interview…" window.
 public struct SimSetupView: View {
     @ObservedObject var sim: SimController
     @ObservedObject var meeting: VerseController
+    @StateObject private var voiceKeys = HomeVoiceKeys()
+    @Environment(\.homeInk) private var ink
 
     public init(sim: SimController, meeting: VerseController) {
         self.sim = sim
@@ -18,214 +20,212 @@ public struct SimSetupView: View {
     private var locked: Bool { sim.phase == .preparing || sim.phase == .running }
 
     public var body: some View {
-        Form {
-            postingSection
-            experienceSection
-            interviewSection
-            runSection
+        HomeColumnPage {
+            HomePageHeader("Practice", subtitle: "A spoken mock interview, built from the posting.")
+            HomeSectionHeader("Job posting")
+            postingGroup.disabled(locked)
+            HomeFootnote("Read the preview before you confirm it: the interview is built from this text only.")
+            HomeSectionHeader("Interview")
+            interviewGroup.disabled(locked)
+            HomeSectionHeader("Your experience")
+            experienceGroup.disabled(locked)
+        } footer: {
+            runArea
         }
-        .formStyle(.grouped)
-        .frame(width: 600)
-        .frame(minHeight: 640)
+        .onAppear { voiceKeys.refresh() }
+        .accessibilityIdentifier("verse.home.practice")
     }
 
     // MARK: posting
 
-    private var postingSection: some View {
-        Section {
-            HStack {
-                TextField("Link", text: $sim.postingLink, prompt: Text("LinkedIn, Ashby, Greenhouse, Lever or any job page"))
-                    .onSubmit(sim.fetchPosting)
+    private var postingGroup: some View {
+        HomeGroup {
+            HomeRow("Link") {
+                HomeValueField("LinkedIn, Ashby, Greenhouse, Lever or any job page", text: $sim.postingLink, onSubmit: sim.fetchPosting)
                 if sim.fetching { ProgressView().controlSize(.small) }
-                Button("Fetch", action: sim.fetchPosting)
+                HomeSecondaryButton("Fetch", symbol: "link", action: sim.fetchPosting)
                     .disabled(sim.fetching || sim.postingLink.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            if let m = sim.fetchMessage { Text(m).font(.callout).foregroundStyle(.secondary) }
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Or paste the posting text").font(.callout).foregroundStyle(.secondary)
-                TextEditor(text: $sim.pasteText)
-                    .font(.body)
-                    .frame(height: 80)
-                    .scrollContentBackground(.hidden)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor)))
-                Button("Use pasted text", action: sim.usePastedText)
-                    .disabled(sim.pasteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-            if let p = sim.posting {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(p.title.isEmpty ? "Posting" : p.title).font(.headline).lineLimit(2)
-                        Spacer()
-                        Text([p.company, p.source.rawValue].compactMap { $0 }.joined(separator: " · "))
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    ScrollView {
-                        Text(p.text)
-                            .font(.callout)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .frame(height: 170)
-                    HStack {
-                        if sim.postingConfirmed {
-                            Label("Using this posting", systemImage: "checkmark.circle.fill").foregroundStyle(.secondary)
-                        } else {
-                            Button("Use this posting", action: sim.confirmPosting).keyboardShortcut(.defaultAction)
-                        }
-                        Button("Clear", action: sim.clearPosting)
-                        Spacer()
-                        Text("\(p.text.count) characters").font(.caption).foregroundStyle(.secondary)
-                    }
+            if let m = sim.fetchMessage { HomeNote(text: m).padding(.horizontal, 14).padding(.bottom, 10) }
+            if sim.posting == nil {
+                HomeRowDivider()
+                HomeRow("Posting text") {
+                    HomeValueField("Or paste the posting text", text: $sim.pasteText, lines: 1...4)
+                    HomeSecondaryButton("Use pasted text", action: sim.usePastedText)
+                        .disabled(sim.pasteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
-        } header: {
-            Text("Job posting")
-        } footer: {
-            Text("Read the preview before you confirm it: the interview is built from this text only.")
+            if let p = sim.posting {
+                HomeRowDivider()
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(p.title.isEmpty ? "Posting" : p.title).font(VT.Font.bodyEmph).foregroundStyle(ink.primary).lineLimit(2)
+                        Text([p.company, p.source == .pasted ? nil : p.source.rawValue].compactMap { $0 }.joined(separator: " · "))
+                            .font(VT.Font.callout).foregroundStyle(ink.tertiary).lineLimit(1)
+                        Spacer()
+                        if sim.postingConfirmed {
+                            Label("Confirmed", systemImage: "checkmark").font(VT.Font.callout).foregroundStyle(ink.secondary)
+                        } else {
+                            HomeSecondaryButton("Use this posting", action: sim.confirmPosting)
+                        }
+                        HomeSecondaryButton("Clear", action: sim.clearPosting)
+                    }
+                    if sim.postingConfirmed {
+                        Text(p.text).font(VT.Font.body).foregroundStyle(ink.secondary).lineSpacing(3).lineLimit(2)
+                    } else {
+                        ScrollView {
+                            Text(p.text).font(VT.Font.callout).foregroundStyle(ink.secondary).textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(height: 150)
+                    }
+                    Text("\(p.text.count.formatted()) characters").font(VT.Font.caption).foregroundStyle(ink.tertiary)
+                }
+                .padding(14)
+            }
         }
-        .disabled(locked)
     }
 
     // MARK: experience
 
-    private var experienceSection: some View {
-        Section("Your experience") {
-            LabeledContent("CV") {
-                HStack {
-                    Text(sim.setup.cv?.lastPathComponent ?? "None").foregroundStyle(.secondary).lineLimit(1)
-                    Button("Choose…", action: chooseCV)
-                    if sim.setup.cv != nil { Button("Clear") { sim.setup.cv = nil } }
-                }
+    private var experienceGroup: some View {
+        HomeGroup {
+            HomeRow("CV") {
+                Text(sim.setup.cv?.lastPathComponent ?? "None").font(VT.Font.body).foregroundStyle(ink.secondary).lineLimit(1)
+                HomeSecondaryButton("Choose…", action: chooseCV)
+                if sim.setup.cv != nil { HomeSecondaryButton("Clear") { sim.setup.cv = nil } }
             }
+            HomeRowDivider()
             VStack(alignment: .leading, spacing: 6) {
-                Text("About me (optional)").font(.callout).foregroundStyle(.secondary)
-                TextEditor(text: $sim.setup.note)
-                    .font(.body)
-                    .frame(height: 60)
-                    .scrollContentBackground(.hidden)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(Color(nsColor: .textBackgroundColor)))
+                Text("About me (optional)").font(VT.Font.body).foregroundStyle(ink.primary)
+                HomeTextArea(text: $sim.setup.note, placeholder: "Anything the interviewer should know about you.", minHeight: 40)
             }
-            Toggle("Use my vault", isOn: $sim.setup.useVault)
-            LabeledContent("Repositories") {
+            .padding(14)
+            HomeRowDivider()
+            HomeToggleRow("Use my vault", isOn: $sim.setup.useVault)
+            HomeRowDivider()
+            HomeRow("Repositories") {
                 VStack(alignment: .trailing, spacing: 4) {
                     ForEach(sim.setup.repos, id: \.self) { r in
-                        HStack {
-                            Text((r as NSString).abbreviatingWithTildeInPath).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
-                            Button(action: { sim.setup.repos.removeAll { $0 == r } }) { Image(systemName: "minus.circle") }
-                                .buttonStyle(.borderless)
-                                .accessibilityLabel("Remove \(r)")
+                        HStack(spacing: 6) {
+                            Text((r as NSString).abbreviatingWithTildeInPath).font(VT.Font.body).foregroundStyle(ink.secondary)
+                                .lineLimit(1).truncationMode(.middle)
+                            Button { sim.setup.repos.removeAll { $0 == r } } label: {
+                                Image(systemName: "minus.circle").foregroundStyle(ink.tertiary)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Remove \(r)")
                         }
                     }
-                    Button("Add folder…", action: addRepo)
+                    HomeSecondaryButton("Add folder…", action: addRepo)
                 }
+                .padding(.vertical, sim.setup.repos.isEmpty ? 0 : 8)
             }
         }
-        .disabled(locked)
     }
 
     // MARK: interview
 
-    private var interviewSection: some View {
-        Section("Interview") {
-            TextField("Company", text: $sim.setup.company, prompt: Text("read from the posting"))
-            Picker("Type", selection: $sim.setup.type) {
-                Text("Screening (HR)").tag(SimSetup.InterviewType.screening)
-                Text("Hiring manager").tag(SimSetup.InterviewType.manager)
-                Text("Technical").tag(SimSetup.InterviewType.technical)
-                Text("Mixed").tag(SimSetup.InterviewType.mixed)
+    private var interviewGroup: some View {
+        HomeGroup {
+            HomeRow("Company") { HomeValueField("read from the posting", text: $sim.setup.company) }
+            HomeRowDivider()
+            HomeRow("Type") {
+                HomeSegmented([("Screening", SimSetup.InterviewType.screening), ("Hiring manager", .manager),
+                               ("Technical", .technical), ("Mixed", .mixed)], selection: $sim.setup.type)
             }
-            Picker("Difficulty", selection: $sim.setup.difficulty) {
-                ForEach(SimSetup.Difficulty.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
+            HomeRowDivider()
+            HomeRow("Difficulty") {
+                HomeSegmented(SimSetup.Difficulty.allCases.map { ($0.rawValue.capitalized, $0) }, selection: $sim.setup.difficulty)
             }
-            .pickerStyle(.segmented)
-            Picker("Length", selection: $sim.setup.lengthMin) {
-                Text("15 min · 5 questions").tag(15)
-                Text("30 min · 8 questions").tag(30)
-                Text("45 min · 11 questions").tag(45)
+            HomeRowDivider()
+            HomeRow("Length") {
+                HomePopup(selection: $sim.setup.lengthMin, options: [HomeOption("15 min · 5 questions", 15), HomeOption("30 min · 8 questions", 30),
+                                                                      HomeOption("45 min · 11 questions", 45)])
             }
-            Picker("Feedback", selection: $sim.setup.mode) {
-                Text("Coach (a note after each answer)").tag(SimMode.coach)
-                Text("Realistic (report at the end)").tag(SimMode.realistic)
+            HomeRowDivider()
+            HomeRow("Feedback") {
+                HomeSegmented([("Coach after each answer", SimMode.coach), ("Report at the end", SimMode.realistic)], selection: $sim.setup.mode)
             }
-            Picker("Interviewer voice", selection: $sim.setup.voice) {
-                ForEach([VoiceKind.apple, .elevenlabs, .openai, .text], id: \.self) { k in
-                    Text(SimSettings.label(k) + (SimSettings.isAvailable(k) ? "" : " · add a key in Settings"))
-                        .tag(k)
-                        .selectionDisabled(!SimSettings.isAvailable(k))
-                }
+            HomeRowDivider()
+            HomeRow("Interviewer voice", detail: voiceNote) {
+                HomePopup(selection: $sim.setup.voice, options: [VoiceKind.apple, .elevenlabs, .openai, .text].map { k in
+                    HomeOption(SimSettings.label(k) + (voiceKeys.isAvailable(k) ? "" : " · add a key in Settings"), k, enabled: voiceKeys.isAvailable(k))
+                })
             }
-            if !SimSettings.isAvailable(.elevenlabs) || !SimSettings.isAvailable(.openai) {
-                Text("ElevenLabs and OpenAI voices need your own key (Settings › Practice interview).")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Toggle("Hints during practice (the normal Verse card)", isOn: $sim.setup.hints)
+            HomeRowDivider()
+            HomeToggleRow("Hints during practice", detail: "Shows the normal Verse card under the notch.", isOn: $sim.setup.hints)
         }
-        .disabled(locked)
+    }
+
+    private var voiceNote: String? {
+        !voiceKeys.isAvailable(.elevenlabs) || !voiceKeys.isAvailable(.openai)
+            ? "ElevenLabs and OpenAI voices need your own key (Settings › Practice interview)." : nil
     }
 
     // MARK: prepare / start
 
-    private var runSection: some View {
-        Section {
+    @ViewBuilder private var runArea: some View {
+        VStack(alignment: .leading, spacing: 10) {
             switch sim.phase {
             case .setup:
-                HStack {
-                    Button("Prepare interview", action: sim.prepare)
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(!sim.canPrepare)
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        if !sim.postingConfirmed { HomeNote(text: "Confirm the posting first.") }
+                        if meeting.running { HomeNote(text: "A meeting is running; stop it first.") }
+                        if let n = sim.expectedFolderName { Text(n).font(VT.Font.caption).foregroundStyle(ink.tertiary).lineLimit(1) }
+                    }
                     Spacer()
-                    if let n = sim.expectedFolderName { Text(n).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+                    HomePrimaryButton("Prepare interview", hint: "⌘↩", shortcut: KeyboardShortcut(.return, modifiers: .command), action: sim.prepare)
+                        .disabled(!sim.canPrepare)
                 }
-                if !sim.postingConfirmed { Text("Confirm the posting first.").font(.caption).foregroundStyle(.secondary) }
-                if meeting.running { Text("A meeting is running; stop it first.").font(.caption).foregroundStyle(.secondary) }
-                if let e = sim.prepError { Text(e).font(.callout).foregroundStyle(.red).textSelection(.enabled) }
+                if let e = sim.prepError { HomeNote(text: e, isError: true) }
             case .preparing:
                 HStack(spacing: 10) {
                     ProgressView().controlSize(.small)
                     if let t0 = sim.prepStartedAt {
                         TimelineView(.periodic(from: t0, by: 1)) { ctx in
-                            Text("Preparing · \(SimOverlay.elapsed(from: t0, now: ctx.date))").monospacedDigit()
+                            Text("Preparing · \(SimOverlay.elapsed(from: t0, now: ctx.date))")
+                                .font(VT.Font.bodyEmph).foregroundStyle(ink.primary).monospacedDigit()
                         }
                     }
                     Spacer()
-                    Button("Cancel", action: sim.cancelPrep)
+                    HomeSecondaryButton("Cancel", action: sim.cancelPrep)
                 }
-                if let l = sim.prepLines.last { Text(l).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
+                if let l = sim.prepLines.last { Text(l).font(VT.Font.callout).foregroundStyle(ink.secondary).lineLimit(2) }
             case .prepared, .running, .finished:
                 if let s = sim.summary {
-                    LabeledContent("Interview", value: "\(s.company) · \(s.role)")
-                    LabeledContent("Plan", value: "\(s.questions) questions · \(s.evidence) evidence items from your sources")
+                    HomeGroup {
+                        HomeRow("Interview", value: "\(s.company) · \(s.role)")
+                        HomeRowDivider()
+                        HomeRow("Plan", value: "\(s.questions) questions · \(s.evidence) evidence items from your sources")
+                    }
                     ForEach(s.warnings, id: \.self) { w in
-                        Label(w, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.secondary)
+                        Label(w, systemImage: "exclamationmark.triangle").font(VT.Font.callout).foregroundStyle(ink.secondary)
                     }
                 }
-                HStack {
+                HStack(spacing: 8) {
+                    if sim.phase == .prepared {
+                        Text("Answer out loud. Your answer ends after 2 seconds of silence, or ⌥Space.")
+                            .font(VT.Font.callout).foregroundStyle(ink.secondary)
+                    } else if sim.phase == .running {
+                        Text("Running · under the notch").font(VT.Font.callout).foregroundStyle(ink.secondary)
+                    }
+                    Spacer()
+                    if sim.lastReport != nil { HomeSecondaryButton("Open last report", action: sim.openLastReport) }
                     switch sim.phase {
                     case .running:
-                        Text("Running · under the notch").foregroundStyle(.secondary)
-                        Spacer()
-                        Button("End interview", action: sim.endInterview)
+                        HomeSecondaryButton("End interview", action: sim.endInterview)
                     case .finished:
-                        Button("New interview", action: sim.newInterview)
-                        Spacer()
+                        HomePrimaryButton("New interview", action: sim.newInterview)
                     default:
-                        Button("Start", action: sim.start)
-                            .keyboardShortcut(.defaultAction)
+                        HomeSecondaryButton("Change setup", action: sim.newInterview)
+                        HomePrimaryButton("Start practice", hint: "⌘↩", shortcut: KeyboardShortcut(.return, modifiers: .command), action: sim.start)
                             .disabled(!sim.canStart)
-                        Button("Change setup", action: sim.newInterview)
-                        Spacer()
                     }
-                    if sim.lastReport != nil { Button("Open last report", action: sim.openLastReport) }
-                }
-                if sim.phase == .prepared {
-                    Text("Answer out loud. Your answer ends after 2 seconds of silence, or press ⌥Space.")
-                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
-        } header: {
-            Text("Run")
-        } footer: {
-            if sim.fake { Text("Fake brain is on (Settings › Testing): canned questions, no API calls.") }
+            if sim.fake { HomeNote(text: "Fake brain is on (Settings › Testing): canned questions, no API calls.") }
         }
     }
 

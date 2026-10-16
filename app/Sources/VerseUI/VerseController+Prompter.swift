@@ -28,8 +28,7 @@ public struct PrompterMenuBlock: View {
     public var body: some View {
         Divider()
         Button("Teleprompter scripts…") {
-            NSApp.activate()
-            openWindow(id: "script-editor")
+            HomeRouter.shared.show(.scripts, openWindow: openWindow)
         }
         if prompter.isOpen {
             Button(prompter.state.isPaused ? "Start prompter" : "Pause prompter") { prompter.send(.toggle) }
