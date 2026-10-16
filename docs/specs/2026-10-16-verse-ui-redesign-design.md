@@ -114,7 +114,7 @@ On Macs without a notch the same shape hangs from the menu bar centre with a 186
 | 7 | Teleprompter | 640 × auto (≈190) | dot + "voice" | page "2 / 5" | Three lines: previous 28 %, current 30 pt (spoken 100 %, unspoken 55 %), next 55 %. |
 | 8 | Status (credit, permission, offline, error) | 480 × auto | amber or coral dot | short label | One sentence, 15 semibold, plus one line of what still works. |
 
-Card width is a setting (480–720, default 600). Card height follows the content (bottom padding 20 pt); a card never
+Card width is a setting (420–960, the existing range; default 600). Card height follows the content (bottom padding 20 pt); a card never
 grows past 420 pt: older deep points drop first.
 
 Transitions: `1 ↔ 2` on speech, `2 → 3` when a question is addressed to Alex, `3 → 4` on the first streamed token,

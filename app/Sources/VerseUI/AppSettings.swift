@@ -4,13 +4,15 @@ import VerseTurns
 
 /// Overlay text size.
 public enum TextScale: String, CaseIterable, Sendable, Identifiable {
-    case small = "S", medium = "M", large = "L"
+    case small = "S", medium = "M", large = "L", extraLarge = "XL"
     public var id: String { rawValue }
+    /// SAY line 19 / 22 / 25 / 28 pt (UI redesign spec 2.2).
     public var factor: CGFloat {
         switch self {
-        case .small: return 0.88
+        case .small: return 19.0 / 22
         case .medium: return 1.0
-        case .large: return 1.16
+        case .large: return 25.0 / 22
+        case .extraLarge: return 28.0 / 22
         }
     }
 }
@@ -22,6 +24,10 @@ public final class AppSettings: ObservableObject {
     public static let suiteName = "dev.fethiverse.verse"
     public static let cardWidthRange: ClosedRange<Double> = 420...960
     public static let cardMaxHeightRange: ClosedRange<Double> = 220...720
+    /// Island veil floor (UI redesign spec 2.4). 35 % keeps points >= 7:1 over a white page.
+    public static let islandOpacityRange: ClosedRange<Double> = 0.35...1
+    /// Window background colour over the window glass; 1 = solid.
+    public static let windowOpacityRange: ClosedRange<Double> = 0...1
 
     private let defaults: UserDefaults
 
@@ -38,6 +44,8 @@ public final class AppSettings: ObservableObject {
     @Published public var cardTimeout: Double { didSet { defaults.set(cardTimeout, forKey: "cardTimeoutV2") } }
     @Published public var cardWidth: Double { didSet { defaults.set(cardWidth, forKey: "cardWidth") } }
     @Published public var cardMaxHeight: Double { didSet { defaults.set(cardMaxHeight, forKey: "cardMaxHeight") } }
+    @Published public var islandOpacity: Double { didSet { defaults.set(islandOpacity, forKey: "islandOpacity") } }
+    @Published public var windowOpacity: Double { didSet { defaults.set(windowOpacity, forKey: "windowOpacity") } }
     /// The session folder name chosen in the menu.
     @Published public var sessionName: String { didSet { defaults.set(sessionName, forKey: "sessionName") } }
     /// Testing: canned brain replies (no network, no key).
@@ -58,8 +66,10 @@ public final class AppSettings: ObservableObject {
         matchThreshold = d.object(forKey: "matchThreshold") as? Double ?? 0.55
         textScale = TextScale(rawValue: d.string(forKey: "textScale") ?? "") ?? .medium
         cardTimeout = d.object(forKey: "cardTimeoutV2") as? Double ?? 0
-        cardWidth = (d.object(forKey: "cardWidth") as? Double ?? 560).clamped(to: Self.cardWidthRange)
+        cardWidth = (d.object(forKey: "cardWidth") as? Double ?? 600).clamped(to: Self.cardWidthRange)
         cardMaxHeight = (d.object(forKey: "cardMaxHeight") as? Double ?? 460).clamped(to: Self.cardMaxHeightRange)
+        islandOpacity = (d.object(forKey: "islandOpacity") as? Double ?? 0.62).clamped(to: Self.islandOpacityRange)
+        windowOpacity = (d.object(forKey: "windowOpacity") as? Double ?? 0.34).clamped(to: Self.windowOpacityRange)
         sessionName = d.string(forKey: "sessionName") ?? ""
         fakeBrain = d.bool(forKey: "fakeBrain")
         testAudioPath = d.string(forKey: "testAudioPath") ?? ""
