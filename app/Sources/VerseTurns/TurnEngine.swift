@@ -172,6 +172,8 @@ public actor TurnEngine {
         /// The language of the text of a `partial` or `turn` ("en" | "it" | "tr"): the text's own when the language
         /// recognizer is confident (>= 0.8), else the engine's. Sent to the brain as `lang`, which answers in it.
         public var lang: String? = nil
+        /// The words that set the question cue of a `partial` or `turn`, and whether the cue is unambiguous (nil: no cue).
+        public var cue: CueMatch? = nil
     }
 
     /// The language of one turn's text (spec 2.5, per-turn `lang`). In AUTO the speech engine can lag behind the language that is
@@ -492,10 +494,12 @@ public actor TurnEngine {
         guard changed || !e.isFinal else { return [] }
         var out: [Timed] = []
         let lang = turnLang(turn.text)
-        turn.cue = Cues.hasCue(turn.text, lang: lang)
+        let match = Cues.cueMatch(turn.text, lang: lang)
+        turn.cue = match != nil
         remote = turn
+        let sendsCue = turn.cue && roomAutoAllows(turn.text, lang: lang)
         out.append(Timed(at: now, event: .partial(turnID: turn.id, speaker: remoteSpeaker, text: turn.text,
-                                                  cue: turn.cue && roomAutoAllows(turn.text, lang: lang), tAudioEnd: e.audioEnd), lang: lang))
+                                                  cue: sendsCue, tAudioEnd: e.audioEnd), lang: lang, cue: sendsCue ? match : nil))
         // Fact chips: once per fact per turn.
         for c in facts.chips(in: turn.text) where !turn.chipIDs.contains(c.id) {
             turn.chipIDs.insert(c.id)
@@ -566,7 +570,8 @@ public actor TurnEngine {
         var audioEnd = turn.audioEnd
         if byQuiet, levelsSeen, lastActive.isFinite, lastActive >= turn.startedAt - 3 { audioEnd = max(audioEnd, lastActive - 0.05) }
         return [Timed(at: t, event: .turn(turnID: turn.id, speaker: remoteSpeaker, text: turn.text, addressee: who, tAudioEnd: audioEnd,
-                                          kind: remoteKind(turn, lang: turnLanguage)), lang: turnLanguage)]
+                                          kind: remoteKind(turn, lang: turnLanguage)), lang: turnLanguage,
+                      cue: Cues.cueMatch(turn.text, lang: turnLanguage))]
     }
 
     // MARK: room route

@@ -201,8 +201,8 @@ final class RunnerSinkTests: XCTestCase {
         }
         XCTAssertTrue(objs.contains { ($0[string: "text"] ?? "").lowercased().contains("background") })
         let after = Set(try FileManager.default.contentsOfDirectory(atPath: session.dir.path))
-        // The brain writes its final summary.md at stop (F2); the runner adds only the transcript.
-        XCTAssertTrue(after.subtracting(before).isSubset(of: ["transcript.jsonl", "summary.md"]), "new files: \(after.subtracting(before))")
+        // The brain writes its final summary.md at stop (F2) and its text-only decision log events.jsonl; the runner adds only the transcript.
+        XCTAssertTrue(after.subtracting(before).isSubset(of: ["transcript.jsonl", "summary.md", "events.jsonl"]), "new files: \(after.subtracting(before))")
         let audioExt: Set<String> = ["wav", "caf", "aif", "aiff", "m4a", "mp3", "flac", "pcm"]
         XCTAssertFalse(after.contains { audioExt.contains(($0 as NSString).pathExtension.lowercased()) })
     }

@@ -18,6 +18,11 @@ import VerseSpeech
 /// It does move on a sentence that restates the SAY line in order, though (an interviewer repeating the question the card
 /// answers: 12 of 22 words struck in the fixture test), so a room event only reaches the matcher when the tail of its text
 /// lines up with the SAY line (`RoomReading`): reading the card does, a question that shares a few words does not.
+///
+/// The recognizer can deliver the reading in finals of two to six words (live Italian call, 16 Oct), too short for that window rule.
+/// `RoomReadingGate` therefore also follows a reading cursor on the SAY line: a fragment that begins the line, or that continues
+/// from the cursor inside a reading session, moves the count too (the brain's `own.py` applies the same three rules to the
+/// transcript).
 @MainActor
 public final class CardReading: ObservableObject {
     /// The SAY text the count belongs to.
@@ -29,6 +34,7 @@ public final class CardReading: ObservableObject {
     public var roomRoute = false
 
     private let clock: PrompterClock
+    private var gate = RoomReadingGate()
     private var driver: WordTrackingDriver?
     private var consumer: Task<Void, Never>?
 
@@ -52,6 +58,7 @@ public final class CardReading: ObservableObject {
         let anchor = driver?.openTranscript ?? ""
         say = text
         spokenWords = 0
+        gate.reset()
         guard let text else { driver = nil; return }
         driver = WordTrackingDriver(page: PromptPage(text: text), anchor: anchor)
     }
@@ -73,7 +80,7 @@ public final class CardReading: ObservableObject {
     /// One transcript event. `Channel.me` counts; in the room route the microphone's `remote` events count too.
     public func ingest(_ event: TranscriptEvent) {
         guard event.channel == .me || (roomRoute && event.channel == .remote), let driver else { return }
-        if event.channel == .remote, let say, !RoomReading.reads(event.text, say: say) { return }
+        if event.channel == .remote, let say, !gate.accepts(event, say: say, now: clock.now()) { return }
         let t = clock.now()
         var mine = event
         mine.channel = .me                  // the word tracker only takes his channel; in the room the microphone is both of them
@@ -137,6 +144,34 @@ enum RoomReading {
         return n >= minMatched && Double(n) / Double(tail.count) >= minShare
     }
 
+    /// The longest in-order path of matched pairs (text index, card index), skipping at most `maxGap` card words between two matches;
+    /// `first` says where on the card a path may begin.
+    static func path(_ text: [String], _ card: [String], maxGap: Int, first: (Int) -> Bool) -> [(Int, Int)] {
+        var best: [[Int]: (count: Int, prev: [Int]?)] = [:]
+        var top: [Int]?
+        for i in text.indices {
+            for j in card.indices where card[j] == text[i] {
+                var count = 0
+                var prev: [Int]?
+                for i2 in 0..<i {
+                    for j2 in max(0, j - 1 - maxGap)..<max(0, j) where j2 < j {
+                        if let c = best[[i2, j2]], c.count > count { count = c.count; prev = [i2, j2] }
+                    }
+                }
+                if count == 0 && !first(j) { continue }
+                best[[i, j]] = (count + 1, prev)
+                if top == nil || count + 1 > best[top!]!.count { top = [i, j] }
+            }
+        }
+        var out: [(Int, Int)] = []
+        var cur = top
+        while let c = cur {
+            out.append((c[0], c[1]))
+            cur = best[c]?.prev
+        }
+        return out.reversed()
+    }
+
     /// Most words of `text` on one in-order path through `card`, skipping at most `maxGap` card words between two matches.
     static func aligned(_ text: [String], _ card: [String]) -> Int {
         var best = [Int](repeating: 0, count: card.count)
@@ -151,5 +186,88 @@ enum RoomReading {
             for (j, v) in row where v > best[j] { best[j] = v; top = max(top, v) }
         }
         return top
+    }
+}
+
+
+/// Room route, before speaker separation: the stateful form of `RoomReading`. A microphone event is taken for his reading of the SAY
+/// line by one of three rules, on one in-order path through the SAY words (at most `maxGap` SAY words skipped between two matched
+/// ones):
+///
+/// * window: the last `RoomReading.window` words line up with the line (`RoomReading.reads`);
+/// * start: at least `startMin` words matched from the first `startSlack` words of the line, `startShare` of the text on the path;
+/// * continue: inside a reading session (the last accepted event was within `sessionSeconds`), the first matched SAY word lies at most
+///   `back` before and `ahead` after the cursor (the SAY position after the last matched stretch) with at least `continueWeight`
+///   matched, `continueShare` of the text on the path. A word of four letters or more weighs 1, a shorter one 0.5: a fragment of
+///   three short words proves little, "sia la chiarezza" proves enough.
+///
+/// The cumulative partials and the final of one recognizer range are all judged from the cursor the range started at, not from
+/// where its own earlier partials moved it. Reset with the SAY text.
+struct RoomReadingGate {
+    static let sessionSeconds = 4.0
+    static let startMin = 3
+    static let startSlack = 2
+    static let startShare = 0.75
+    static let allGap = 4
+    static let continueWeight = 2.0
+    static let continueShare = 0.6
+    static let back = 2
+    static let ahead = 4
+
+    private(set) var cursor = 0
+    private var base = 0
+    private var lastRead: TimeInterval?
+    private var lastWords: [String] = []
+    private var lastFinal = true
+    private var lastStart = -1.0
+
+    mutating func reset() {
+        self = RoomReadingGate()
+    }
+
+    func sessionActive(at now: TimeInterval) -> Bool {
+        guard let lastRead else { return false }
+        return now - lastRead <= Self.sessionSeconds
+    }
+
+    mutating func accepts(_ event: TranscriptEvent, say: String, now: TimeInterval) -> Bool {
+        let words = RoomReading.words(event.text)
+        let card = RoomReading.words(say)
+        let newRange = lastFinal || event.audioStart != lastStart || !words.starts(with: lastWords)
+        if newRange { base = cursor }
+        lastWords = words
+        lastFinal = event.isFinal
+        lastStart = event.audioStart
+        guard !words.isEmpty, !card.isEmpty else { return false }
+        let tail = Array(words.suffix(RoomReading.window))
+        var end: Int?
+        if RoomReading.reads(event.text, say: say) {
+            end = RoomReading.path(tail, card, maxGap: RoomReading.maxGap, first: { _ in true }).last?.1
+        }
+        if end == nil {
+            let path = Self.path(words, card, first: { $0 <= Self.startSlack })
+            if path.count >= Self.startMin, Double(path.count) / Double(words.count) >= Self.startShare, Self.weight(path, words) >= 1 {
+                end = path.last?.1
+            }
+        }
+        if end == nil, sessionActive(at: now) {
+            let lo = base - Self.back, hi = base + Self.ahead
+            let path = Self.path(words, card, first: { $0 >= lo && $0 <= hi })
+            if Self.weight(path, words) >= Self.continueWeight, Double(path.count) / Double(words.count) >= Self.continueShare {
+                end = path.last?.1
+            }
+        }
+        guard let end else { return false }
+        cursor = max(cursor, end + 1)
+        lastRead = now
+        return true
+    }
+
+    private static func weight(_ path: [(Int, Int)], _ words: [String]) -> Double {
+        path.reduce(0) { $0 + (words[$1.0].count >= 4 ? 1.0 : 0.5) }
+    }
+
+    private static func path(_ text: [String], _ card: [String], first: (Int) -> Bool) -> [(Int, Int)] {
+        RoomReading.path(text, card, maxGap: allGap, first: first)
     }
 }

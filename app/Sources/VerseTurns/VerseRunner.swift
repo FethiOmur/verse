@@ -979,8 +979,8 @@ public final class VerseRunner: @unchecked Sendable {
                     }
                 }
                 guard let target else { continue }   // dropped while the brain restarts (the latest question is kept)
-                target.send(ev.jsonLine(lang: t.lang))
-                if options.echoOutbound { echoOutbound(ev, lang: t.lang) } else { emitSinkOnly(.outbound(outboundObject(ev, lang: t.lang))) }
+                target.send(ev.jsonLine(lang: t.lang, cue: t.cue))
+                if options.echoOutbound { echoOutbound(ev, lang: t.lang, cue: t.cue) } else { emitSinkOnly(.outbound(outboundObject(ev, lang: t.lang, cue: t.cue))) }
             } else if case .chip = ev {
                 if let d = try? JSONSerialization.jsonObject(with: Data(ev.jsonLine().utf8)) as? [String: Any] { emitJSON(d) }
             }
@@ -999,14 +999,14 @@ public final class VerseRunner: @unchecked Sendable {
         }
     }
 
-    private func outboundObject(_ ev: OutboundEvent, lang: String? = nil) -> [String: JSONValue] {
-        var o = JSONValue.decodeObject(ev.jsonLine(lang: lang)) ?? [:]
+    private func outboundObject(_ ev: OutboundEvent, lang: String? = nil, cue: CueMatch? = nil) -> [String: JSONValue] {
+        var o = JSONValue.decodeObject(ev.jsonLine(lang: lang, cue: cue)) ?? [:]
         o["dir"] = .string("to_brain")
         return o
     }
 
-    private func echoOutbound(_ ev: OutboundEvent, lang: String? = nil) {
-        guard let d = try? JSONSerialization.jsonObject(with: Data(ev.jsonLine(lang: lang).utf8)) as? [String: Any] else { return }
+    private func echoOutbound(_ ev: OutboundEvent, lang: String? = nil, cue: CueMatch? = nil) {
+        guard let d = try? JSONSerialization.jsonObject(with: Data(ev.jsonLine(lang: lang, cue: cue).utf8)) as? [String: Any] else { return }
         var o = d
         o["dir"] = "to_brain"
         if options.format == .json || options.sink != nil { emitJSON(o) } else { emit(Self.textLine(o)) }
