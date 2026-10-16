@@ -375,3 +375,32 @@ def test_the_prompt_carries_the_sources_but_the_session_facts_are_labelled(tmp_p
     assert '<source id="S1" ref="file:dana_profile.md">' in user and '<source id="S2" ref="vault:Harbor Ledger.md">' in user
     assert "# session dana-interview" in user and "sample session fact" not in user
     assert M.SYSTEM.count("SRC: S") >= 1 and "(10 to 160 characters" in M.SYSTEM
+
+
+# ---------------------------------------------------------------- an extra source file in me.sources.json
+def test_an_extra_source_file_listed_in_me_sources_json_is_read_by_build_and_refresh(tmp_path):
+    prof, vault = setup(tmp_path)
+    extra = tmp_path / "extra_notes.txt"
+    extra.write_text("Dana also teaches a weekend workshop on reconciliation for new engineers.\n", encoding="utf-8")
+    sources = json.loads((prof / "me.sources.json").read_text(encoding="utf-8"))
+    # a plain file outside the vault, any extension, added at the end of the list: the next build reads it as the next S handle
+    sources.append({"id": "s5", "kind": "file", "path": str(extra), "label": "extra_notes.txt", "enabled": True})
+    (prof / "me.sources.json").write_text(json.dumps(sources), encoding="utf-8")
+
+    m1 = ScriptedModel(OUTPUT)
+    build(prof, vault, m1)
+    assert "weekend workshop on reconciliation" in m1.users[0] and 'ref="file:extra_notes.txt"' in m1.users[0]
+    assert json.loads((prof / "me.meta.json").read_text(encoding="utf-8"))["sources"]["s5"]
+
+    # refresh: a source added after the first build counts as a changed source, and its line is verified against it
+    later = tmp_path / "later.md"
+    later.write_text("# Later\nDana mentors two junior engineers at Larkspur Health.\n", encoding="utf-8")
+    sources.append({"id": "s6", "kind": "file", "path": str(later), "label": "later.md", "enabled": True})
+    (prof / "me.sources.json").write_text(json.dumps(sources), encoding="utf-8")
+    handle = len([s for s in sources if s["id"] != "s6"]) + 1          # S-number of the new file among the readable ones
+    line = f'[m204] Mentoring | Mentors two junior engineers | SRC: S{handle} "Dana mentors two junior engineers at Larkspur Health"'
+    grown = OUTPUT.replace("## SKILLS", line.replace("[m204] Mentoring | ", "[m204] Mentoring | volunteer | none | none | ") + "\n## SKILLS", 1)
+    m2 = ScriptedModel(grown)
+    r = build(prof, vault, m2, refresh=True)
+    assert not r.unchanged and "mentors two junior engineers" in m2.users[0].lower()
+    assert "m204" in lines_of(prof) and "later.md" not in " ".join(r.warnings)

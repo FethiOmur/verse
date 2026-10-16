@@ -11,6 +11,7 @@ import copy
 from dataclasses import dataclass, field
 
 from .follow import FollowParams
+from .own import OwnParams
 
 from ..prep.model import HAIKU, PREP_MODEL
 
@@ -82,6 +83,7 @@ class Config:
     follow_default: bool = False       # `start.follow` absent = off (Swift always sends it; its setting defaults to on)
     follow_langs: tuple[str, ...] = ("en",)   # tuned on English only; other languages keep the card as it is
     follow: FollowParams = field(default_factory=FollowParams)
+    own: OwnParams = field(default_factory=OwnParams)     # room route: the owner's own voice told by text (runtime/own.py)
     follow_tick_s: float = 0.1         # timer resolution of the machine (pauses, embed timeouts, the 4 s end)
     # F2 incremental summary (lowest priority: never competes with S/F/D)
     summary_every_turns: int = 6        # finalized turns (both speakers) between rolling passes
@@ -121,6 +123,7 @@ class Config:
     me_retrieval_final_wait_s: float = 0.150   # D waits this long for the final-text retrieval; F never waits
     me_files_max_chars: int = 4800     # FROM USER'S FILES in the tail: about 1,200 tokens
     room_min_words: int = 6            # room route: an automatic card needs a question cue and this many words
+    room_probe_min_words: int = 8      # room route: a statement of at least this many words gets the (silent unless it is a question) statement probe
     unprepared_statement_min_words: int = 4   # unprepared: a statement shorter than this gets no probe
     card_now_match_edit: int = 6       # the real turn that follows a card-now answer within this edit distance gets no second card
     local_me_chars: int = 3000         # G1 fallback: WHO I AM + NUMBERS + PROJECTS of the me layer next to a pack...

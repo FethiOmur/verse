@@ -129,6 +129,18 @@ SYSTEMS_ME = {"S": SYSTEM_FAST_ME, "F": SYSTEM_FAST_ME, "C": SYSTEM_FAST_ME, "D"
 SYSTEMS_UNPREPARED = {"S": SYSTEM_FAST + _UNPREPARED_RULES, "F": SYSTEM_FAST + _UNPREPARED_RULES,
                       "C": SYSTEM_FAST + _UNPREPARED_RULES, "D": SYSTEM_DEEP + _UNPREPARED_RULES}
 
+# the owner's own notes lead the ABOUT OWNER block under this heading (runtime/me.py puts them there). A session whose block has it
+# gets one more rule in the system prompt; a block without it (no notes) keeps the system text it always had.
+PRIORITIES_HEADING = "PRIORITIES (follow these when choosing what to mention)"
+
+_PRIORITY_RULES = """
+
+The part of ABOUT OWNER headed PRIORITIES holds the owner's own notes on what to lead with. Follow them whenever you choose \
+which project, job or example to mention. For a question about himself, his background or his experience, lead with what \
+PRIORITIES name; without a hint there, prefer the PROJECTS lines (his recent work) to the oldest EXPERIENCE line."""
+
+SYSTEMS_ME_PRIORITIES = {k: v + _PRIORITY_RULES for k, v in SYSTEMS_ME.items()}
+
 ABOUT_HEADER = ("ABOUT OWNER (his permanent profile; cite a line as me:<id>, for example me:m412. The MEETING PACK wins "
                 "when it disagrees with this)")
 
@@ -186,7 +198,8 @@ def system_blocks(route: str, about: str | None = None, unprepared: bool = False
     """The frozen system prompt. With `about` (the me layer on) the text names ABOUT OWNER and a second block carries it,
     with breakpoint 0. Without it and with a real pack, the result is what it always was."""
     if about is not None:
-        return [{"type": "text", "text": SYSTEMS_ME[route]},
+        systems = SYSTEMS_ME_PRIORITIES if PRIORITIES_HEADING in about else SYSTEMS_ME
+        return [{"type": "text", "text": systems[route]},
                 {"type": "text", "text": about, "cache_control": dict(EPHEMERAL)}]
     if unprepared:
         return [{"type": "text", "text": SYSTEMS_UNPREPARED[route]}]
@@ -230,9 +243,26 @@ def card_now_tail(text: str, lang: str, final: bool, files: str = "") -> str:
 STATEMENT_SAY_WORDS = 12
 
 
-def statement_tail(text: str, lang: str, files: str = "") -> str:
+ROOM_STATEMENT_CHECK = (
+    "STATEMENT CHECK (ROOM MICROPHONE). The turn below comes from the one microphone of a room: it hears the other person, "
+    "Alex himself (for example reading an answer card aloud) and anybody else. The answer format above does not apply "
+    "until you have decided what the turn is. Write as the first line either KIND: question or KIND: statement.\n"
+    "KIND: question only when the words ask or invite OWNER to explain, describe, justify or tell something, even "
+    "indirectly and without a question mark (\"I'm interested in why you ...\", \"I would like to hear how ...\", "
+    "\"tell me about ...\", \"walk me through ...\", \"help me understand ...\"). Then continue with the normal answer "
+    "lines: SAY, two \"- \" lines, BANK.\n"
+    "KIND: statement for everything else: small talk, a greeting, a remark, an announcement, thanks, a setup that only "
+    "leads into a question not asked yet (\"one of the big decisions is which school to attend\"), and the owner's own "
+    "sentences (an answer, a card read aloud). Then write the single word NONE: nothing is shown for a statement.\n")
+
+
+def statement_tail(text: str, lang: str, files: str = "", room: bool = False) -> str:
     """F call for a turn Swift classified as a statement. The instructions live in the tail (never cached), so the
-    system prompt and the cached prefix stay byte-identical to the question path."""
+    system prompt and the cached prefix stay byte-identical to the question path. `room`: the room route's one microphone
+    (the speaker is not known); a statement then gets no acknowledgement, only a question for Alex gets a card."""
+    if room:
+        return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}{ROOM_STATEMENT_CHECK}"
+                f"CURRENT TURN (finished): {' '.join(text.split())}")
     return (
         f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}"
         "STATEMENT CHECK. The turn below is probably not a question. The answer format above does not apply until "

@@ -23,33 +23,32 @@ def route(b, name, **extra):
     return b.handle({"type": "control", "action": "route", "route": name, **extra})
 
 
-def test_route_control_turns_follow_off_in_the_room_and_back_on_in_the_meeting(tmp_path):
+def test_route_control_keeps_follow_in_the_room_and_the_meeting(tmp_path):
+    """The room route has no `me` channel, but the brain tells the owner's reading of the card by text (own.py) and feeds follow mode
+    with it, so the follow machine stays on across the swap and a repeated route changes nothing."""
     async def go():
         b, t, em, _ = make(tmp_path, embedder=False)
         await start(b, session_dir(tmp_path), follow=True)
         assert b.follow_on and b.follow is not None
         machine = b.follow
-        await route(b, "room", room_auto="questions", follow=True)           # the setting says follow; the room has no `me`
-        assert b.route_kind == "room" and not b.follow_on and b.follow is None
+        await route(b, "room", room_auto="questions", follow=True)
+        assert b.route_kind == "room" and b.follow_on and b.follow is machine
         await route(b, "room")                                                # repeating the route changes nothing
-        assert not b.follow_on
+        assert b.follow is machine
         await route(b, "meeting", follow=True)
-        assert b.route_kind == "meeting" and b.follow_on and b.follow is not None and b.follow is not machine
-        again = b.follow
-        await route(b, "meeting")                                             # no change: the running machine is kept
-        assert b.follow is again
+        assert b.route_kind == "meeting" and b.follow_on and b.follow is machine
         return b, em
 
     b, em = run(go())
     assert [e["route"] for e in em.of("metric", stage="route_change")] == ["room", "meeting"]
     states = [(e["on"], e["requested"]) for e in em.of("metric", stage="follow_state")]
-    assert states == [(True, True), (False, True), (True, True)]
+    assert states == [(True, True)]
 
 
-def test_a_call_that_began_in_the_room_gets_follow_when_it_moves_to_the_meeting(tmp_path):
+def test_follow_off_in_the_setting_stays_off_in_the_room_and_a_swap_can_turn_it_on(tmp_path):
     async def go():
         b, t, em, _ = make(tmp_path, embedder=False)
-        await start(b, session_dir(tmp_path), mode="unprepared", route="room", follow=False)    # Swift sends follow && !room
+        await start(b, session_dir(tmp_path), mode="unprepared", route="room", follow=False)
         assert not b.follow_on
         await route(b, "meeting", follow=True)
         return b
@@ -62,7 +61,7 @@ def test_route_control_without_follow_keeps_what_start_asked_for(tmp_path):
         b, t, em, _ = make(tmp_path, embedder=False)
         await start(b, session_dir(tmp_path), follow=True)
         await route(b, "room")
-        assert not b.follow_on
+        assert b.follow_on
         await route(b, "meeting")                                             # `_follow_want` is still True from start
         return b
 

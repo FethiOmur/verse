@@ -30,7 +30,7 @@ from typing import Callable
 from ..prep.sources import numbers_in
 from ..prep.voice import load_voice
 from .embed import PREFIX, EmbedPath, EmbedUnavailable, Embedder, unit
-from .prompt import pack_has_style_guide, render_about_block
+from .prompt import PRIORITIES_HEADING, pack_has_style_guide, render_about_block
 
 log = logging.getLogger("verse.runtime.me")
 
@@ -64,11 +64,38 @@ class MeLayer:
     emb_path: Path | None = None
 
     def about_block(self, pack: str) -> str:
-        """ABOUT OWNER. The STYLE GUIDE (voice.md) goes in only when the pack has none."""
-        return render_about_block(self.core, None if pack_has_style_guide(pack) else self.voice)
+        """ABOUT OWNER. His notes (MY NOTES) lead the block under PRIORITIES; without notes the core is used as it is. The
+        STYLE GUIDE (voice.md) goes in only when the pack has none."""
+        return render_about_block(priorities_first(self.core), None if pack_has_style_guide(pack) else self.voice)
 
     def info(self) -> dict:
         return {"tokens": self.tokens, "built_at": self.built_at}
+
+
+_NOTES_HEADING = "owner's notes"
+
+
+def priorities_first(core: str) -> str:
+    """`me.md` with the lines of its `## MY NOTES` section moved to the front, under the PRIORITIES heading, and the
+    section itself taken out (each note appears once). A pure function of `core`: the same text gives the same bytes. A core
+    whose notes section is missing or empty comes back untouched, so a profile without notes renders exactly as before."""
+    notes: list[str] = []
+    rest: list[str] = []
+    in_notes = False
+    for ln in core.splitlines():
+        s = ln.strip()
+        if s.startswith("## "):
+            in_notes = s[3:].strip().casefold() == _NOTES_HEADING
+            if in_notes:
+                continue
+        if in_notes:
+            if s:
+                notes.append(s)
+            continue
+        rest.append(ln)
+    if not notes:
+        return core
+    return PRIORITIES_HEADING + "\n" + "\n".join(notes) + "\n\n" + "\n".join(rest).strip() + "\n"
 
 
 def _read_jsonl(p: Path | None) -> list[dict]:
