@@ -11,6 +11,12 @@ file exists; --voice-profile PATH points at another file, --no-voice builds the 
 that already exist (old pack kept as <pack>.bak-before-voice-v1):
   python -m verse_brain.prep voice --apply SESSION_DIR [--apply SESSION_DIR...] [--voice-profile PATH]
 
+The me layer (anytime calls, A1): the owner's permanent profile, built from his sources and carried by every session.
+  python -m verse_brain.prep me build|refresh|show [--fake] [--budget-usd 0.5]
+writes ~/Library/Application Support/Verse/profile/{me.md, me.meta.json, me.sources.json, me.facts.jsonl, me.library.jsonl,
+me.library.emb}; stdout is the profile dir, the token count and the cost go to stderr. `refresh` rebuilds only when a source
+changed and keeps his edits. See prep/me.py.
+
 Teleprompter script (T3): python -m verse_brain.prep script --topic T --seconds 60 --use recording|talk [--json] [--fake]
 writes a script (pages split by a line `---`, optional [cues]) in the voice of the profile; see prep/script.py.
 
@@ -71,6 +77,9 @@ def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if args and args[0] == "voice":
         return _voice_main(args[1:])
+    if args and args[0] == "me":
+        from .me import me_main
+        return me_main(args[1:])
     if args and args[0] == "script":
         from .script import script_main
         return script_main(args[1:])

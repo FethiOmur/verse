@@ -1,0 +1,3 @@
+{"id": "m401", "kind": "number", "text": "Harbor Ledger processed about 41,000 payments a month.", "value": "41000", "sources": [{"kind": "file", "ref": "file:dana_profile.md#L13", "quote": "It processed about 41,000 payments a month"}]}
+{"id": "m402", "kind": "number", "text": "Harbor Ledger cut the month-end close from 6 days to 2 days.", "value": "2", "sources": [{"kind": "file", "ref": "file:dana_profile.md#L13", "quote": "cut the month-end close from 6 days to 2 days"}]}
+{"id": "m403", "kind": "number", "text": "Trailhead reached 12,000 monthly users.", "value": "12000", "sources": [{"kind": "file", "ref": "file:dana_profile.md#L16", "quote": "It reached 12,000 monthly users"}]}

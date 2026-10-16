@@ -3,11 +3,19 @@ append-only blocks (breakpoint 2 on a turn, moved forward only every `BP2_EVERY`
 
 Everything before the tail is a pure function of (system, pack, finalized turns), so successive requests share
 their prefix byte for byte. The tail (question, shown opener, bank candidate, language) is never cached.
+
+Anytime calls (docs/specs/2026-10-16-verse-anytime-calls-design.md 2.2): with the me layer on, the system array gets a
+second block, ABOUT OWNER (`me.md`, plus the STYLE GUIDE when the pack has none), carrying breakpoint 0. The system
+text of that session also names ABOUT OWNER as grounding and says the meeting pack wins on conflict. An unprepared call
+has an empty pack: its pack block is the fixed line `(none: unprepared call)`. Retrieved chunks of his files go into
+the uncached tail as FROM USER'S FILES. With the me layer off and a real pack, every byte is what it was before.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from ..prep.voice import VOICE_HEADING, render_voice_section
 
 BP2_EVERY = 4
 EPHEMERAL = {"type": "ephemeral"}
@@ -81,7 +89,51 @@ the pack."""
 
 SYSTEMS = {"S": SYSTEM_FAST, "F": SYSTEM_FAST, "C": SYSTEM_FAST, "D": SYSTEM_DEEP}   # C shares F's system prompt: one cache entry
 
-SPEAKER_LABEL = {"remote": "Other side", "me": "Alex"}
+NO_PACK_LINE = "(none: unprepared call)"
+
+# The me layer changes two rules of the base prompts (where numbers may come from, how D cites) and adds the conflict rule.
+# Done by exact replacement, so an edit of the base text that breaks a rule fails at import, not silently in a call.
+_ME_RULES = """
+
+ABOUT OWNER is the second block of this system prompt: his permanent profile (experience, projects, skills, numbers, \
+stories, what he is looking for), one line per item with an id like [m412]. It grounds your answers like the meeting \
+pack does. When ABOUT OWNER and the MEETING PACK disagree, the MEETING PACK wins: it was built and checked for this \
+meeting. When the MEETING PACK is the line "(none: unprepared call)", nothing was prepared for this call: answer from \
+ABOUT OWNER, from FROM USER'S FILES (excerpts of his own notes, shown before the current question when there are \
+any) and from the transcript, and write BANK: none. Never invent a fact about Alex that none of them states."""
+
+_UNPREPARED_RULES = """
+
+When the MEETING PACK is the line "(none: unprepared call)", nothing was prepared for this call: answer from the \
+transcript and write BANK: none. Never invent a fact about Alex."""
+
+
+def _swap(text: str, old: str, new: str) -> str:
+    assert text.count(old) == 1, old
+    return text.replace(old, new)
+
+
+SYSTEM_FAST_ME = _swap(
+    SYSTEM_FAST,
+    "- Use numbers, dates and names only when they appear in the meeting pack. Never invent them.",
+    "- Use numbers, dates and names only when they appear in the meeting pack, in ABOUT OWNER or in FROM THE OWNER'S "
+    "FILES. Never invent them.") + _ME_RULES
+SYSTEM_DEEP_ME = _swap(
+    SYSTEM_DEEP,
+    "- Use numbers, dates and names only when they appear in the meeting pack, and cite where they come from. If the "
+    "pack does not support a claim, leave it out.",
+    "- Use numbers, dates and names only when they appear in the meeting pack, in ABOUT OWNER or in FROM USER'S FILES, "
+    "and cite where they come from (a pack id like f010 or b003, me:m412 for ABOUT OWNER, lib:<id> for FROM THE OWNER'S "
+    "FILES). If none of them supports a claim, leave it out.") + _ME_RULES
+SYSTEMS_ME = {"S": SYSTEM_FAST_ME, "F": SYSTEM_FAST_ME, "C": SYSTEM_FAST_ME, "D": SYSTEM_DEEP_ME}
+SYSTEMS_UNPREPARED = {"S": SYSTEM_FAST + _UNPREPARED_RULES, "F": SYSTEM_FAST + _UNPREPARED_RULES,
+                      "C": SYSTEM_FAST + _UNPREPARED_RULES, "D": SYSTEM_DEEP + _UNPREPARED_RULES}
+
+ABOUT_HEADER = ("ABOUT OWNER (his permanent profile; cite a line as me:<id>, for example me:m412. The MEETING PACK wins "
+                "when it disagrees with this)")
+
+
+SPEAKER_LABEL = {"remote": "Other side", "me": "Alex", "room": "Room"}
 PACK_HEADER = "MEETING PACK\n\n"
 TRANSCRIPT_HEADER = "\n## TRANSCRIPT SO FAR (finalized turns follow, one block each)\n"
 
@@ -104,6 +156,8 @@ def bp2_index(n_turns: int, every: int = BP2_EVERY) -> int | None:
 
 
 def build_messages(pack: str, turns: list[Turn], tail: str) -> list[dict]:
+    if not pack.strip():     # an unprepared call: a fixed line, so the block is the same bytes in every session
+        pack = NO_PACK_LINE
     content: list[dict] = [{"type": "text", "text": PACK_HEADER + pack + TRANSCRIPT_HEADER, "cache_control": dict(EPHEMERAL)}]
     bp2 = bp2_index(len(turns))
     for i, t in enumerate(turns):
@@ -115,26 +169,72 @@ def build_messages(pack: str, turns: list[Turn], tail: str) -> list[dict]:
     return [{"role": "user", "content": content}]
 
 
-def system_blocks(route: str) -> list[dict]:
+def render_about_block(core: str, voice: str | None = None) -> str:
+    """The ABOUT OWNER system block: `me.md` as is, then the STYLE GUIDE when the caller passes the voice profile (only
+    when the pack has none). A pure function of its inputs: the same files give the same bytes in every session."""
+    text = ABOUT_HEADER + "\n\n" + core.strip() + "\n"
+    if voice:
+        text += "\n" + render_voice_section(voice, "meeting")
+    return text
+
+
+def pack_has_style_guide(pack: str) -> bool:
+    return VOICE_HEADING in pack
+
+
+def system_blocks(route: str, about: str | None = None, unprepared: bool = False) -> list[dict]:
+    """The frozen system prompt. With `about` (the me layer on) the text names ABOUT OWNER and a second block carries it,
+    with breakpoint 0. Without it and with a real pack, the result is what it always was."""
+    if about is not None:
+        return [{"type": "text", "text": SYSTEMS_ME[route]},
+                {"type": "text", "text": about, "cache_control": dict(EPHEMERAL)}]
+    if unprepared:
+        return [{"type": "text", "text": SYSTEMS_UNPREPARED[route]}]
     return [{"type": "text", "text": SYSTEMS[route]}]
 
 
 LANG_NAME = {"en": "English", "it": "Italian", "tr": "Turkish"}
 
 
-def fast_tail(question: str, lang: str, final: bool) -> str:
+FILES_HEADER = "FROM USER'S FILES (excerpts of his own notes; cite a chunk as lib:<id>):"
+
+
+def files_block(chunks: list[tuple[str, str, str]]) -> str:
+    """Retrieved chunks of his files for the uncached tail: (chunk id, source, text) each. Empty for no chunks."""
+    if not chunks:
+        return ""
+    return "\n".join([FILES_HEADER, *(f"[lib:{cid}] ({src}) {' '.join(text.split())}" for cid, src, text in chunks)])
+
+
+def _files(files: str) -> str:
+    return files + "\n" if files else ""
+
+
+def fast_tail(question: str, lang: str, final: bool, files: str = "") -> str:
     state = "finished" if final else "still being spoken, may be cut off"
-    return f"Language: {LANG_NAME.get(lang, lang)}\nCURRENT QUESTION ({state}): {' '.join(question.split())}"
+    return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}"
+            f"CURRENT QUESTION ({state}): {' '.join(question.split())}")
+
+
+def card_now_tail(text: str, lang: str, final: bool, files: str = "") -> str:
+    """F call for the card-now key: he asks for a card for what the other side said last, question or not. The gates (cue,
+    kind, addressee) are skipped, so the instruction says so; the answer format of the system prompt stays."""
+    state = "finished" if final else "still being spoken, may be cut off"
+    return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}"
+            "CARD NOW. Alex pressed the card key: he wants something to say to the words below at once, even when they "
+            "are not phrased as a question. If they are a remark or a request, give him what he can say next. The answer "
+            "format above applies: SAY, two \"- \" lines, BANK.\n"
+            f"CURRENT QUESTION ({state}): {' '.join(text.split())}")
 
 
 STATEMENT_SAY_WORDS = 12
 
 
-def statement_tail(text: str, lang: str) -> str:
+def statement_tail(text: str, lang: str, files: str = "") -> str:
     """F call for a turn Swift classified as a statement. The instructions live in the tail (never cached), so the
     system prompt and the cached prefix stay byte-identical to the question path."""
     return (
-        f"Language: {LANG_NAME.get(lang, lang)}\n"
+        f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}"
         "STATEMENT CHECK. The turn below is probably not a question. The answer format above does not apply until "
         "you have decided what the turn is. Write as the first line either KIND: question or KIND: statement.\n"
         "KIND: question when the speaker asks or invites Alex to explain, describe or tell something, even without "
@@ -148,7 +248,7 @@ def statement_tail(text: str, lang: str) -> str:
 
 
 def follow_tail(question: str, lang: str, his_words: str, card: list[str], said: list[str], now_card: list[str] | None,
-                reason: str) -> str:
+                reason: str, me_on: bool = False) -> str:
     """C call (follow my answer). Alex is answering in his own direction; write the card he needs next. The instructions
     live in the tail (never cached), so the system prompt and the cached prefix stay byte-identical to F's.
 
@@ -180,16 +280,24 @@ def follow_tail(question: str, lang: str, his_words: str, card: list[str], said:
         lines += ["THE FOLLOW CARD ON HIS SCREEN NOW (it is replaced by yours: new SAY sentence, new points, nothing from it):",
                   *now_card]
     lines.append("Reason for this card: " + ("he went off the card" if reason == "diverged" else "he has said more since the last follow card"))
-    return "\n".join(lines)
+    text = "\n".join(lines)
+    if me_on:    # the me layer is grounding too (system prompt): the sentences about the pack name it as well
+        text = text.replace("the meeting pack has nothing grounded for his topic", "the meeting pack and ABOUT OWNER have nothing grounded for his topic")
+        text = text.replace("must come from the meeting pack (bank, facts, evidence)", "must come from the meeting pack (bank, facts, evidence), ABOUT OWNER or FROM USER'S FILES")
+        text = text.replace("When the pack has nothing for his topic", "When none of them has anything for his topic")
+        text = text.replace("a point the pack cannot support", "a point they cannot support")
+    return text
 
 
-def deep_tail(question: str, lang: str, final: bool, shown_opener: str | None, bank: dict | None) -> str:
+def deep_tail(question: str, lang: str, final: bool, shown_opener: str | None, bank: dict | None, files: str = "") -> str:
     state = "finished" if final else "still being spoken, may be cut off"
     lines = [f"Language: {LANG_NAME.get(lang, lang)}",
              f"OPENER ALREADY SHOWN: {shown_opener if shown_opener else '(none)'}"]
     if bank:
         refs = ", ".join(sorted({s.get('ref', '') for s in bank.get('sources', []) if s.get('ref')}))
         lines.append(f"PREPARED DEEP ANSWER [{bank['id']}] (sources: {refs}): {' '.join(str(bank.get('deep', '')).split())}")
+    if files:
+        lines.append(files)
     lines.append(f"CURRENT QUESTION ({state}): {' '.join(question.split())}")
     return "\n".join(lines)
 
@@ -217,8 +325,8 @@ def final_tail(lang: str, draft: list[str]) -> str:
 WARMUP_TAIL = "warmup"
 
 
-def build_request(route: str, params: dict, pack: str, turns: list[Turn], tail: str) -> dict:
+def build_request(route: str, params: dict, pack: str, turns: list[Turn], tail: str, about: str | None = None) -> dict:
     req = dict(params)
-    req["system"] = system_blocks(route)
+    req["system"] = system_blocks(route, about, unprepared=not pack.strip())
     req["messages"] = build_messages(pack, turns, tail)
     return req

@@ -14,6 +14,14 @@ from pathlib import Path
 from typing import IO, Callable
 
 IN_TYPES = {"start", "partial", "turn", "bank_hit", "control"}
+# Anytime calls (docs/specs/2026-10-16-verse-anytime-calls-design.md section 3), additive. Swift -> brain: `start` gains `mode`
+# ("prepared"|"unprepared"), `route` ("meeting"|"phone"|"room"), `me` ({core,library,facts} paths, or null) and `room_auto`
+# ("questions"|"off"); `partial`/`turn` gain an optional `lang` and may carry `speaker:"room"`; `control` gains
+# `card_now` and `lang` (with `lang`). Brain -> Swift: `notice{kind:"me_conflicts",items}` and `notice{kind:"me_missing"}`,
+# `status ready` gains `me:{tokens,built_at}|null`, metric stages `me_retrieval` and `card_now`.
+LANGS = {"en", "it", "tr"}
+REMOTE_SPEAKERS = ("remote", "room")     # the room route's one mic is treated like the remote channel
+NOTICE_KINDS = {"me_conflicts", "me_missing"}
 # Interview simulation (plan S2, Shared contracts), additive: Swift -> brain `sim_start{session_dir,mode,voice}`,
 # `answer{q_id,text,t_start,t_end,words,fillers}`, `control{action: skip|repeat|end}`, `spoken{id}`. The first
 # message of a process decides its mode (runtime/__main__.py); the meeting Brain ignores the sim types.
@@ -60,6 +68,10 @@ class Emitter:
         assert state in STATUS_STATES, state
         self.emit({"type": "status", "state": state, "message": message, **extra})
 
+    def notice(self, kind: str, **extra) -> None:
+        assert kind in NOTICE_KINDS, kind
+        self.emit({"type": "notice", "kind": kind, **extra})
+
     def metric(self, turn_id: str, stage: str, t: float | None = None, **extra) -> None:
         self.emit({"type": "metric", "turn_id": turn_id, "stage": stage, "t": time.time() if t is None else t, **extra})
 
@@ -77,6 +89,12 @@ class ListEmitter(Emitter):
 
     def of(self, type_: str, **match) -> list[dict]:
         return [e for e in self.events if e["type"] == type_ and all(e.get(k) == v for k, v in match.items())]
+
+
+def msg_lang(msg: dict) -> str | None:
+    """The optional `lang` of a partial or turn: "en" | "it" | "tr", or None (use the session's)."""
+    v = msg.get("lang")
+    return v if isinstance(v, str) and v in LANGS else None
 
 
 def turn_kind(msg: dict) -> str | None:

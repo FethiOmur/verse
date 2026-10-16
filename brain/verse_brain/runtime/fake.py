@@ -146,6 +146,9 @@ FOLLOW_CANNED = ("SAY: And that is where I keep the model on a short leash.\n"
                  "- Fields below 0.8 confidence go to a human operator.\n- That was about 7 percent of invoices.")
 
 
+CARD_NOW_CANNED = "SAY: Here is what I can say right now.\n- First point.\n- Second point.\nBANK: none"
+
+
 def default_responder(info: CallInfo) -> Script:
     if "FOLLOW MY ANSWER" in info.tail:
         return lines_script(FOLLOW_CANNED)
@@ -155,6 +158,8 @@ def default_responder(info: CallInfo) -> Script:
         return lines_script(FINAL_CANNED)
     if "STATEMENT CHECK" in info.tail:
         return lines_script("KIND: statement\nSAY: Thanks, noted.")
+    if "CARD NOW." in info.tail and info.route != "D":
+        return lines_script(CARD_NOW_CANNED)
     if info.route == "D":
         return lines_script("OPENER_OK\n- A detail point from the pack (prep:L1)\n- Another detail (f001)")
     return lines_script("SAY: Sure, here is the short answer.\n- First point.\n- Second point.\nBANK: none")

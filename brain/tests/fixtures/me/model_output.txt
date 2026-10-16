@@ -1,0 +1,27 @@
+## WHO I AM
+[m001] Backend and machine-learning engineer in Lisbon with six years in production systems. | SRC: S1 "backend and machine-learning engineer based in Lisbon with six years in production systems"
+[m002] Won a national engineering award in 2020. | SRC: S1 "Dana won the national engineering award in 2020 for her work"
+## EXPERIENCE
+[m101] 2019-2022 | Backend engineer | Northwind Freight | Built the payment and invoicing services of a freight marketplace. | SRC: S1 "2019-2022: Backend engineer at Northwind Freight. Built the payment and invoicing services"
+[m102] 2022-now | Machine-learning engineer | Larkspur Health | Owns the claims-triage model and its serving stack. | SRC: S1 "2022-now: Machine-learning engineer at Larkspur Health. Owns the claims-triage model"
+## PROJECTS
+[m201] Harbor Ledger | Payments reconciliation service | designed and led it | Python, PostgreSQL, Kafka | about 41,000 payments a month; close from 6 days to 2 days | SRC: S1 "processed about 41,000 payments a month and cut the month-end close from 6 days to 2 days"
+[m202] Trailhead | Hiking route recommendation app | built it alone | Python, FastAPI, PostGIS | 12,000 monthly users | SRC: S1 "It reached 12,000 monthly users"
+[m203] Atlas | Internal search tool | maintainer | Rust | 52,000 queries a day | SRC: S1 "Dana built a search tool called Atlas that served 25,000 queries a day"
+## SKILLS
+[m301] Python | Harbor Ledger, Trailhead and the claims-triage model | SRC: S1 "Stack: Python, PostgreSQL, Kafka"
+[m302] FastAPI | Trailhead | SRC: S3 "Python, FastAPI and PostGIS on a single small server"
+[m303] Kafka | Harbor Ledger event bus | SRC: S9 "Stack: Python, PostgreSQL, Kafka"
+## NUMBERS
+[m401] number | Harbor Ledger processed about 41,000 payments a month. | 41000 | SRC: S1 "processed about 41,000 payments a month"
+[m402] number | Harbor Ledger cut the month-end close from 6 days to 2 days. | 2 | SRC: S1 "cut the month-end close from 6 days to 2 days"
+[m403] number | Trailhead reached 12,000 monthly users. | 12000 | SRC: S1 "It reached 12,000 monthly users"
+[m404] date | Dana is available from January 2027. | 2027-01 | SRC: S1 "available from January 2027"
+[m405] number | Harbor Ledger exact-match rate was 97 percent. | 97 | SRC: S2 "measured 97 percent exact matches on a frozen set of 500 payments"
+[m406] number | Trailhead costs about 60 euros a month. | 60 | SRC: S3 "Costs about 40 euros a month."
+## STORIES
+[m501] Double-posted payments | A nightly job posted 300 payments twice. Dana found the missing idempotency key within an hour, shipped a replay-safe fix the same day and added a reconciliation check. | SRC: S1 "posted 300 payments twice. Dana found the missing idempotency key within one hour"
+[m502] Matching without references | Bank lines had no reference text, so Dana built a scoring step and measured 97 percent exact matches on 500 payments. | SRC: S2 "Dana built a scoring step for it and measured 97 percent exact matches on a frozen set of 500 payments"
+## LOOKING FOR
+[m601] Senior machine-learning engineer role in Lisbon or remote in Europe, available from January 2027. | SRC: S1 "senior machine-learning engineer role in Lisbon or remote in Europe, available from January 2027"
+## MY NOTES
