@@ -109,6 +109,19 @@ class Config:
     # statement/fragment whose cue never showed). A single evaluation is enough there (the consecutive-partials gate
     # exists against premature locks on short prefixes; a closed turn has no prefix). The hit goes through `_late_hit`.
     embed_final_pass: bool = True
+    # The me layer (docs/specs/2026-10-16-verse-anytime-calls-design.md 2.2): retrieval of chunks of his files for a remote turn
+    # (same partials as the bank matcher, on the same embedding thread), and the unprepared / room / card-now rules.
+    me_retrieval_floor: float = 0.80   # cosine floor of a chunk (start value; the evidence is in tests/test_runtime_me.py)
+    me_retrieval_k: int = 3            # chunks per turn in an unprepared call
+    me_retrieval_k_prepared: int = 2   # ...and in a prepared one (the pack carries most of it)
+    me_retrieval_min_words: int = 5    # words in the partial (the bank matcher's gate)
+    me_retrieval_final_wait_s: float = 0.150   # D waits this long for the final-text retrieval; F never waits
+    me_files_max_chars: int = 4800     # FROM USER'S FILES in the tail: about 1,200 tokens
+    room_min_words: int = 6            # room route: an automatic card needs a question cue and this many words
+    unprepared_statement_min_words: int = 4   # unprepared: a statement shorter than this gets no probe
+    card_now_match_edit: int = 6       # the real turn that follows a card-now answer within this edit distance gets no second card
+    local_me_chars: int = 3000         # G1 fallback: WHO I AM + NUMBERS + PROJECTS of the me layer next to a pack...
+    local_pack_chars_with_me: int = 6500   # ...and the pack's share of the 9,500 chars then
     # G1 local degraded-mode fallback (Gemma 4 E4B, LiteRT-LM, in process). The API stays primary; Gemma answers only
     # while the API is offline, rate-limited or out of credit. Values and their reasons: docs/licences.md (model terms)
     # and the G1 notes in runtime/local_llm.py.

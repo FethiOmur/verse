@@ -25,6 +25,14 @@ Output contract towards Swift (in addition to the plan's event list):
   `covered{turn_id,card_id,point}`; the original card's id is `orig-<turn_id>`. After a follow card, refreshes come at his
   sentence ends only. `start.follow` turns it on (Swift sends it; its setting defaults to on; absent means off); it is English only until the thresholds are tuned for
   other languages. C never changes the S/F/D flow: a failed or dropped C leaves the original card on screen.
+- Anytime calls (docs/specs/2026-10-16-verse-anytime-calls-design.md; runtime/me.py is the me layer). `start.me` names the
+  permanent profile: its text goes into the cached ABOUT OWNER system block, its NUMBERS are compared with the pack's FACTS
+  (`notice me_conflicts`), and chunks of his files are retrieved for remote turns on the embedding thread into the uncached
+  tail (F never waits for them; D waits a few ms for the final-text retrieval). `start.mode:"unprepared"` runs on an empty
+  pack: no bank, remote statements of >= 4 words go to the statement probe. `speaker:"room"` is the room route's one mic: it
+  is treated like `remote`, the addressee is always unknown, and an automatic card needs a question cue and >= 6 words
+  (`start.room_auto:"off"` leaves only card-now). `control card_now` answers the latest remote/room turn at once on turn
+  id `now-<n>`, past the cue, kind and addressee gates. `control lang` changes the session language from then on.
 """
 
 from __future__ import annotations
@@ -43,9 +51,10 @@ from ..prep.model import Usage, spend_usd
 from .embed import PREFIX, Embedder, EmbedPath, EmbedUnavailable, Job, Result
 from .follow import (Covered, Diverged, Ended, FollowMachine, NeedEmbed, Refresh, clean_line, score_matrix)
 from .lines import LineAssembler
-from .prompt import (STATEMENT_SAY_WORDS, WARMUP_TAIL, Turn, build_request, deep_tail, fast_tail, final_tail,
-                     follow_tail, rolling_tail, statement_tail)
-from .protocol import Emitter, Session, load_session, turn_kind
+from .me import LibraryPath, MeLayer, conflicts as me_conflicts, load_me, pack_snippet_refs, select_hits
+from .prompt import (STATEMENT_SAY_WORDS, WARMUP_TAIL, Turn, build_request, card_now_tail, deep_tail, fast_tail,
+                     files_block, final_tail, follow_tail, rolling_tail, statement_tail)
+from .protocol import LANGS, REMOTE_SPEAKERS, Emitter, Session, load_session, msg_lang, turn_kind
 from .ratelimit import ModelLimiter
 from .settings import HAIKU, MODEL_ROUTE, SONNET, Config, route_params
 from .summary import Running, parse_lines, render_markdown
@@ -286,6 +295,7 @@ class Call:
             if not self.first_text_seen:
                 self.first_text_seen = True
                 self._stage("first_delta")
+                self.brain.on_first_text(self)
             self.lines.feed(ev.text)
         elif ev.kind == "stop":
             self.usage.update(ev.usage)
@@ -360,6 +370,16 @@ class TurnState:
     embed_count: int = 0
     embed_sent: str | None = None
     embed_final_queued: bool = False    # the final-text pass was queued for this turn (at most once)
+    # anytime calls
+    lang: str | None = None             # `lang` of the turn's messages (None = the session's)
+    room: bool = False                  # the room route's mic (speaker "room"): remote pipeline, no addressee
+    me_hits: list = field(default_factory=list)           # the newest retrieval of the me library for this turn (Hit)
+    me_final: asyncio.Event | None = None                  # set when the final-text retrieval has come back
+    card_now: bool = False              # answered on request (control card_now): the cue / kind / addressee gates were skipped
+    card_now_t0: float = 0.0            # time.time() of the key press
+    card_now_partial: bool = False      # card-now answered a partial that was still being spoken
+    answered_by: str | None = None      # id of the card-now turn that already answered this (still open) turn
+    answered_text: str = ""
 
 
 def _follow_safe(fn):
@@ -394,6 +414,17 @@ class Brain:
                                    lambda tid, stage, **kw: self.emitter.metric(tid, stage, **kw))
         self.session: Session | None = None
         self.lang = "en"
+        # anytime calls
+        self.mode = "prepared"                   # "unprepared": an empty pack, no bank
+        self.route_kind = "meeting"              # "meeting" | "phone" | "room"
+        self.room_auto = "questions"             # room route: automatic cards for questions only, or "off"
+        self.me: MeLayer | None = None
+        self.about: str | None = None            # the ABOUT OWNER system block (None: the layer is off)
+        self.lib: LibraryPath | None = None
+        self._bank_embed = False                 # the bank matcher is on for this session's language
+        self._snippet_refs: set[str] = set()
+        self._now_seq = count(1)
+        self._follow_want = False
         self.turns: list[Turn] = []
         self.ts: dict[str, TurnState] = {}
         self.active_remote: str | None = None
@@ -463,6 +494,16 @@ class Brain:
                 if not c.done.is_set():
                     c.discard()
 
+    @property
+    def unprepared(self) -> bool:
+        return self.mode == "unprepared" or self.session is None or not self.session.pack.strip()
+
+    def _lang(self, st: TurnState) -> str:
+        return st.lang or self.lang
+
+    def _ready_extra(self) -> dict:
+        return {"me": self.me.info() if self.me is not None else None}
+
     # ------------------------------------------------------------------ dispatch
     async def handle(self, msg: dict) -> None:
         t = msg.get("type")
@@ -480,12 +521,16 @@ class Brain:
                 await self.stop()
             elif a == "summarize":
                 self._spawn(self.summarize())
+            elif a == "card_now":
+                self._card_now()
+            elif a == "lang":
+                self._set_lang(msg.get("lang"))
 
     # ------------------------------------------------------------------ start / warm transport
     def _prefix_request(self, route: str, max_tokens: int | None, tail: str, turns: list[Turn] | None = None) -> dict:
         assert self.session is not None
         return build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack,
-                             list(self.turns if turns is None else turns), tail)
+                             list(self.turns if turns is None else turns), tail, self.about)
 
     async def _warm(self, model: str, kind: str, lane: int = 0) -> None:
         route = MODEL_ROUTE[model]
@@ -506,8 +551,18 @@ class Brain:
             self._status("error", f"cannot read session folder: {type(e).__name__}")
             return
         self.lang = msg.get("lang", "en")
-        if self.embed is not None and self.lang in self.config.embed_langs:
-            self.embed.start(self.session.bank, self.lang)   # on the embedding thread, while the pre-warm runs
+        self.mode = "unprepared" if msg.get("mode") == "unprepared" else "prepared"
+        self.route_kind = msg["route"] if msg.get("route") in ("meeting", "phone", "room") else "meeting"
+        self.room_auto = "off" if msg.get("room_auto") == "off" else "questions"
+        self._snippet_refs = pack_snippet_refs(self.session.pack)
+        self._load_me(msg.get("me"))
+        self._bank_embed = self.lang in self.config.embed_langs
+        if self.embed is not None and (self._bank_embed or self.lib is not None):
+            # on the embedding thread, while the pre-warm runs; the library alone starts it with an empty bank
+            self.embed.start(self.session.bank if self._bank_embed else {}, self.lang)
+        if self.lib is not None:
+            self.lib.start()
+        self._follow_want = bool(msg.get("follow", self.config.follow_default))
         self._follow_start(msg)
         self._status("warming", f"pre-warming {HAIKU} and {SONNET}")
         try:
@@ -542,10 +597,150 @@ class Brain:
         except TransportError as e:
             self._status("error", f"pre-warm failed: {e}")
         else:
-            self._status("ready", f"warm; spend so far ${self.spend:.4f}")
+            self._status("ready", f"warm; spend so far ${self.spend:.4f}", **self._ready_extra())
         if self.start_background:
             self.bg.append(self._spawn(self._ping_loop()))
             self.bg.append(self._spawn(self._keepalive_loop()))
+
+    def _load_me(self, spec: object) -> None:
+        """`start.me`: the permanent profile. Absent or null: today's behaviour. Named but unreadable: a `me_missing` notice and
+        the session runs without it."""
+        self.me = self.about = self.lib = None
+        if spec is None:
+            return
+        assert self.session is not None
+        layer = load_me(spec)
+        if layer is None:
+            self.emitter.notice("me_missing")
+            return
+        self.me = layer
+        self.about = layer.about_block(self.session.pack)
+        items = me_conflicts(layer.facts, self.session.pack)
+        if items:
+            self.emitter.notice("me_conflicts", items=items)
+        if layer.chunks and self.embed is not None:
+            cfg = self.config
+            self.lib = LibraryPath(layer, self.embed, self._spawn, cfg.embed_model, self._on_lib_result,
+                                   lambda tid, stage, **kw: self.emitter.metric(tid, stage, **kw),
+                                   floor=cfg.me_retrieval_floor, k=cfg.me_retrieval_k)
+
+    def _set_lang(self, lang: object) -> None:
+        """`control lang`: the session language from now on (Swift restarts its engines). The bank matcher and follow mode
+        follow the language: they are on only where their thresholds were tuned."""
+        if not isinstance(lang, str) or lang not in LANGS or lang == self.lang:
+            return
+        self.lang = lang
+        self.emitter.metric("", "lang_change", lang=lang)
+        want = lang in self.config.embed_langs
+        if self.embed is not None and self.session is not None:
+            if want:
+                self._bank_embed = True
+                self.embed.start(self.session.bank, lang)     # the index is built from the phrases of this language
+            else:
+                self._bank_embed = False
+        if self.session is not None:
+            self._follow_start({"follow": self._follow_want})
+
+    def _card_now(self) -> None:
+        """`control card_now`: answer the latest remote/room turn now. The open partial if there is one, else the last final.
+        The cue, kind and addressee gates are skipped; the card is a normal F (+ D) answer on a turn id `now-<n>`."""
+        t0 = time.time()
+        if self.session is None or self.halted:
+            return
+        src: TurnState | None = None
+        text, final = "", True
+        open_st = self.ts.get(self.active_remote) if self.active_remote else None
+        if open_st is not None and not open_st.finished and open_st.partial.strip():
+            src, text, final = open_st, open_st.partial, False
+        else:
+            last = next((t for t in reversed(self.turns) if t.speaker in REMOTE_SPEAKERS and t.text.strip()), None)
+            if last is not None:
+                text = last.text
+                src = self.ts.get(last.turn_id)
+        if not text.strip():
+            self._status("ready", "card now: nothing has been said by the other side yet", **self._ready_extra())
+            self.emitter.metric("", "card_now_empty")
+            return
+        nid = f"now-{next(self._now_seq)}"
+        st = self._ts(nid)
+        st.finished, st.finished_at, st.final_text = True, time.monotonic(), text
+        st.kind, st.addressee, st.card_now, st.card_now_t0 = "question", "me", True, t0
+        st.card_now_partial = not final
+        st.lang = src.lang if src is not None else None
+        st.turns_before = list(self.turns)
+        if src is not None:
+            st.me_hits = list(src.me_hits)
+        if not final and src is not None:
+            # the open turn is answered now: drop its speculation; its endpoint will not answer a second time
+            for c in src.s_calls:
+                c.discard()
+            if src.d_call:
+                src.d_call.discard()
+            if src.d_timer is not None and not src.d_timer.done():
+                src.d_timer.cancel()
+            src.answered_by, src.answered_text = nid, text
+        self.latest_remote_turn = nid
+        self.emitter.metric(nid, "card_now_request", partial=not final, words=len(tokens(text)), hits=len(st.me_hits),
+                            source=src.turn_id if src is not None else None)
+        self._lib_final(st)
+        self._endpoint(st)
+
+    def on_first_text(self, call: Call) -> None:
+        if call.tier != "F" or not call.turn_id.startswith("now-"):
+            return
+        st = self.ts.get(call.turn_id)
+        if st is not None and st.card_now_t0:
+            t0, st.card_now_t0 = st.card_now_t0, 0.0
+            self.emitter.metric(call.turn_id, "card_now", ms=round((time.time() - t0) * 1000, 1), id=call.id)
+
+    # ------------------------------------------------------------------ the me library (retrieval for a remote turn)
+    def _lib_partial(self, st: TurnState) -> None:
+        if self.lib is None or not st.cue or len(tokens(st.partial)) < self.config.me_retrieval_min_words:
+            return
+        self.lib.submit(st.turn_id, st.partial)
+
+    def _lib_final(self, st: TurnState) -> None:
+        """One retrieval on the final text. F does not wait for it (it uses the hits of the partials); D waits briefly."""
+        if self.lib is None or st.me_final is not None or len(tokens(st.final_text)) < self.config.me_retrieval_min_words:
+            return
+        if self.lib.submit(st.turn_id, st.final_text, final=True):
+            st.me_final = asyncio.Event()
+
+    def _on_lib_result(self, job, hits: list, ms: float, wait_ms: float) -> None:
+        self.emitter.metric(job.turn_id, "me_retrieval", ms=round(ms, 2), wait_ms=round(wait_ms, 2), hits=len(hits),
+                            top=round(hits[0].score, 4) if hits else None, ids=[h.chunk.id for h in hits],
+                            final=job.final, words=len(tokens(job.text)))
+        st = self.ts.get(job.turn_id)
+        if st is None:
+            return
+        if job.final or st.me_final is None or not st.me_final.is_set():
+            st.me_hits = hits
+        if job.final and st.me_final is not None:
+            st.me_final.set()
+
+    async def _lib_wait_final(self, st: TurnState) -> None:
+        ev = st.me_final
+        if ev is None or ev.is_set() or self.lib is None:
+            return
+        t0 = time.monotonic()
+        try:
+            await asyncio.wait_for(ev.wait(), self.config.me_retrieval_final_wait_s)
+        except asyncio.TimeoutError:
+            pass
+        self.emitter.metric(st.turn_id, "me_final_wait", ms=round((time.monotonic() - t0) * 1000, 1), got=ev.is_set())
+
+    def _files(self, st: TurnState) -> str:
+        """FROM USER'S FILES for a tail: the turn's hits, without the chunks the pack already carries as a snippet."""
+        if self.lib is None or not st.me_hits:
+            return ""
+        cfg = self.config
+        limit = cfg.me_retrieval_k if self.unprepared else cfg.me_retrieval_k_prepared
+        sel = select_hits(st.me_hits, self._snippet_refs, limit, cfg.me_files_max_chars)
+        return files_block([(h.chunk.id, h.chunk.source, h.chunk.text) for h in sel])
+
+    def _room_ok(self, st: TurnState, n_words: int) -> bool:
+        """Room route, before D: an automatic card needs a question cue and enough words."""
+        return self.room_auto != "off" and st.cue and n_words >= self.config.room_min_words
 
     async def _ping_one(self, model: str, lane: int) -> None:
         r = await self.transport.ping(model, lane)
@@ -568,7 +763,7 @@ class Brain:
                 continue
             if self.offline:
                 self.offline = False
-                self._status("ready", "back online")
+                self._status("ready", "back online", **self._ready_extra())
                 self._retry_pending()
 
     async def _keepalive_loop(self) -> None:
@@ -593,9 +788,9 @@ class Brain:
             return None
         route = {"R": "S", "A": "D"}.get(tier, tier)   # summaries ride the S/F and D tuples (and their caches)
         max_tokens = {"R": self.config.summary_max_tokens, "A": self.config.final_max_tokens}.get(tier)
-        req = build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack, turns, tail)
+        req = build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack, turns, tail, self.about)
         model = req["model"]
-        est_in = sum(len(b.get("text", "")) for b in req["messages"][0]["content"]) // 4
+        est_in = (sum(len(b.get("text", "")) for b in req["messages"][0]["content"]) + len(self.about or "")) // 4
         if not self.limiters[model].try_acquire(est_in, req["max_tokens"]):
             self.emitter.metric(turn_id, "dropped_rate_bucket", tier=tier)
             if tier in ("D", "A"):
@@ -727,7 +922,7 @@ class Brain:
         if msg.get("speaker") == "me":
             self._follow_me(msg, final=False)
             return
-        if msg.get("speaker") != "remote" or self.session is None:
+        if msg.get("speaker") not in REMOTE_SPEAKERS or self.session is None:
             return
         tid = msg["turn_id"]
         if self.active_remote and self.active_remote != tid:
@@ -746,6 +941,8 @@ class Brain:
         text = msg.get("text", "")
         now = time.monotonic()
         st.cue = bool(msg.get("cue"))
+        st.room = st.room or msg.get("speaker") == "room"
+        st.lang = msg_lang(msg) or st.lang
         if text != st.partial:
             st.partial = text
             st.partial_changed = now
@@ -754,11 +951,14 @@ class Brain:
             st.d_timer = self._spawn(self._d_stable_check(tid, now))
         self._maybe_fire_s(st, now)
         self._embed_partial(st)
+        self._lib_partial(st)
 
     def _maybe_fire_s(self, st: TurnState, now: float) -> None:
         cfg = self.config
         words = tokens(st.partial)
         if not st.cue or len(words) < cfg.s_min_new_words:
+            return
+        if st.room and not self._room_ok(st, len(words)):
             return
         if st.last_fire_text is not None:
             if edit_distance(tokens(st.last_fire_text), words) < cfg.s_min_new_words:
@@ -769,7 +969,8 @@ class Brain:
             return
         if len(st.s_calls) >= cfg.s_max_per_turn:
             return
-        call = self._launch("S", st.turn_id, st.partial, fast_tail(st.partial, self.lang, final=False),
+        call = self._launch("S", st.turn_id, st.partial,
+                            fast_tail(st.partial, self._lang(st), final=False, files=self._files(st)),
                             list(self.turns), buffered=True)
         if call is not None:
             st.s_calls.append(call)
@@ -804,11 +1005,13 @@ class Brain:
             return
         if not (st.cue or st.bank_hit is not None) or self._strong_bank(st):
             return
+        if st.room and not self._room_ok(st, len(tokens(st.partial))):
+            return
         st.d_call = self._fire_d(st, st.partial, final=False, buffered=True)
 
     def _fire_d(self, st: TurnState, text: str, *, final: bool, buffered: bool, opener: str | None = None) -> Call | None:
         shown = opener if opener is not None else self._shown_opener_guess(st)
-        tail = deep_tail(text, self.lang, final, shown, self._bank_rec(st))
+        tail = deep_tail(text, self._lang(st), final, shown, self._bank_rec(st), self._files(st))
         turns = st.turns_before if st.finished else list(self.turns)
         return self._launch("D", st.turn_id, text, tail, turns, buffered=buffered)
 
@@ -816,8 +1019,8 @@ class Brain:
     def _embed_partial(self, st: TurnState) -> None:
         """Queue the partial for the embedding thread when the cheap gates pass. Never blocks the loop."""
         e = self.embed
-        if e is None or e.state not in ("ready", "loading"):
-            return
+        if e is None or not self._bank_embed or self.session is None or not self.session.bank or e.state not in ("ready", "loading"):
+            return                                         # no bank (an unprepared call): the matcher is idle
         if st.bank_hit is not None and st.bank_hit.via != "embed":   # Swift's n-gram already hit this turn
             return
         if not st.cue or len(tokens(st.partial)) < self.config.embed_min_words:
@@ -833,7 +1036,8 @@ class Brain:
         comes back through `_on_embed_result`, and a statement/fragment turn is then answered through `_late_hit`
         (once; an acknowledgement already on screen or an escalated probe stand, a newer turn or the window ends it)."""
         e = self.embed
-        if e is None or not self.config.embed_final_pass or e.state not in ("ready", "loading"):
+        if (e is None or not self._bank_embed or self.session is None or not self.session.bank
+                or not self.config.embed_final_pass or e.state not in ("ready", "loading")):
             return
         if st.embed_final_queued or st.bank_hit is not None or st.addressee == "other":
             return
@@ -980,7 +1184,7 @@ class Brain:
         speaker = msg.get("speaker", "remote")
         text = msg.get("text", "")
         self.emitter.metric(tid, "turn_recv", speaker=speaker, t_audio_end=msg.get("t_audio_end"))
-        if speaker != "remote":
+        if speaker not in REMOTE_SPEAKERS:
             self.turns.append(Turn(tid, speaker, text))
             self._follow_me(msg, final=True)
             return
@@ -991,7 +1195,9 @@ class Brain:
         st.finished = True
         st.finished_at = time.monotonic()
         st.final_text = text
-        st.addressee = msg.get("addressee", "unknown")
+        st.room = st.room or speaker == "room"
+        st.lang = msg_lang(msg) or st.lang
+        st.addressee = "unknown" if st.room else msg.get("addressee", "unknown")
         st.kind = turn_kind(msg)
         if st.kind == "fragment" and st.bank_hit is not None:
             st.kind = "question"           # it matched a prepared question: answer it, don't drop it as a fragment
@@ -1010,7 +1216,25 @@ class Brain:
                 st.d_call.discard()
             self.emitter.metric(tid, "for_others")
             return
+        if st.answered_by is not None and edit_distance(tokens(st.answered_text), tokens(text)) <= self.config.card_now_match_edit:
+            # card-now answered this turn while it was still open and nothing new was said since: no second card
+            self.latest_remote_turn = st.answered_by
+            self.emitter.metric(tid, "card_now_covers_turn", by=st.answered_by)
+            return
+        if st.room:
+            # room route (before diarization): one mic, no addressee; only a question with a cue gets a card by itself
+            cue = (st.kind == "question") if st.kind is not None else bool(msg.get("cue", st.cue))
+            st.cue = cue
+            if self.room_auto == "off" or not cue or len(tokens(text)) < self.config.room_min_words:
+                for c in st.s_calls:
+                    c.discard()
+                if st.d_call:
+                    st.d_call.discard()
+                self.emitter.metric(tid, "room_skipped", cue=cue, words=len(tokens(text)), room_auto=self.room_auto)
+                return
+            st.kind = "question"
         self._embed_final(st)
+        self._lib_final(st)
         if st.kind == "fragment":
             # a cut-off clause: nothing is fired or shown; speculation that started on its partials is closed
             for c in st.s_calls:
@@ -1054,8 +1278,9 @@ class Brain:
             chosen.release()
             self._maybe_verdict(st)
         else:
-            st.fast = self._launch("F", st.turn_id, st.final_text, fast_tail(st.final_text, self.lang, final=True),
-                                   st.turns_before, buffered=False)
+            tail = (card_now_tail(st.final_text, self._lang(st), not st.card_now_partial, self._files(st)) if st.card_now
+                    else fast_tail(st.final_text, self._lang(st), final=True, files=self._files(st)))
+            st.fast = self._launch("F", st.turn_id, st.final_text, tail, st.turns_before, buffered=False)
         self._deciding += 1
         self._spawn(self._decide_d_tracked(st))
 
@@ -1068,7 +1293,10 @@ class Brain:
         if st.d_call is not None:
             st.d_call.discard()
             st.d_call = None
-        st.fast = self._launch("F", st.turn_id, st.final_text, statement_tail(st.final_text, self.lang),
+        if self.unprepared and len(tokens(st.final_text)) < self.config.unprepared_statement_min_words:
+            self.emitter.metric(st.turn_id, "statement_skipped", words=len(tokens(st.final_text)))
+            return
+        st.fast = self._launch("F", st.turn_id, st.final_text, statement_tail(st.final_text, self._lang(st), self._files(st)),
                                st.turns_before, buffered=False, probe=True)
         self.emitter.metric(st.turn_id, "statement_probe", launched=st.fast is not None)
         if st.fast is None:
@@ -1126,14 +1354,15 @@ class Brain:
         opener = st.fast.say_line if st.fast is not None else None
         if opener is None and st.fast is not None and st.fast.tier == "S":
             opener = self._shown_opener_guess(st)
-        st.d_call = self._fire_d(st, st.final_text, final=True, buffered=False, opener=opener)
+        await self._lib_wait_final(st)      # <= me_retrieval_final_wait_s; F never waits
+        st.d_call = self._fire_d(st, st.final_text, final=not st.card_now_partial, buffered=False, opener=opener)
 
     # ------------------------------------------------------------------ follow my answer (tier C)
     @_follow_safe
     def _follow_start(self, msg: dict) -> None:
         cfg = self.config
         want = bool(msg.get("follow", cfg.follow_default))
-        self.follow_on = want and self.lang in cfg.follow_langs
+        self.follow_on = want and self.lang in cfg.follow_langs and self.route_kind != "room"   # no `me` channel in the room route
         self.emitter.metric("", "follow_state", on=self.follow_on, requested=want, lang=self.lang)
         if not self.follow_on or self.session is None:
             self.follow = None

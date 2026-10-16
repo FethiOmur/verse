@@ -1,0 +1,2 @@
+{"id": "f001", "kind": "number", "text": "Harbor Ledger cut the month-end close from 6 days to 2 days.", "value": "2", "sources": [{"kind": "prep", "ref": "prep:L10", "quote": "cut the month-end close from 6 days to 2 days"}]}
+{"id": "f002", "kind": "name", "text": "Larkspur Health is Dana's current employer.", "value": "Larkspur Health", "sources": [{"kind": "prep", "ref": "prep:L4", "quote": "Machine-learning engineer at Larkspur Health"}]}

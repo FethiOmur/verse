@@ -54,7 +54,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Callable, Iterator, Protocol
 
-from .prompt import PACK_HEADER, TRANSCRIPT_HEADER, WARMUP_TAIL
+from .prompt import NO_PACK_LINE, PACK_HEADER, TRANSCRIPT_HEADER, WARMUP_TAIL
 from .settings import Config
 from .transport import TransportError
 
@@ -114,18 +114,20 @@ class Parts:
     pack: str
     turns: list[str]
     tail: str
+    me: str = ""      # the ABOUT OWNER block (the second system block of a session with the me layer), "" without
 
 
 def split_request(request: dict) -> Parts:
-    """The Anthropic request of runtime/prompt.py back into system, pack, turn blocks and tail."""
-    system = "".join(b.get("text", "") for b in request.get("system", []))
+    """The Anthropic request of runtime/prompt.py back into system, ABOUT OWNER, pack, turn blocks and tail."""
+    sys_blocks = [b.get("text", "") for b in request.get("system", [])]
+    system, me = ("".join(sys_blocks), "") if len(sys_blocks) < 2 else (sys_blocks[0], "".join(sys_blocks[1:]))
     blocks = [b.get("text", "") for b in request["messages"][0]["content"]]
     head, turns, tail = blocks[0], blocks[1:-1], blocks[-1]
     if head.startswith(PACK_HEADER):
         head = head[len(PACK_HEADER):]
     if head.endswith(TRANSCRIPT_HEADER):
         head = head[:-len(TRANSCRIPT_HEADER)]
-    return Parts(system, head, turns, tail)
+    return Parts(system, head, turns, tail, me)
 
 
 # ---------------------------------------------------------------------------------------------------- pack trimming
@@ -229,6 +231,41 @@ def retrieve(entries: list[BankEntry], question: str, k: int) -> list[BankEntry]
     return [e for _, e in scored[:k]]
 
 
+ME_WITH_PACK = ("WHO I AM", "NUMBERS", "PROJECTS")                 # what stays of the me layer next to a pack
+ME_TRIM_ORDER = ("STORIES", "SKILLS", "PROJECTS", "EXPERIENCE")    # unprepared: the build's trim order (tail first)
+
+
+def _sec_name(heading: str) -> str:
+    return heading[3:].split(" (")[0].strip().upper() if heading.startswith("## ") else ""
+
+
+def trim_me(block: str, max_chars: int, with_pack: bool) -> str:
+    """The ABOUT OWNER block cut for Gemma (spec 2.2, local fallback). Next to a pack: only WHO I AM + NUMBERS + PROJECTS, in
+    `max_chars`. Unprepared: the whole core in `max_chars` by the build's trim order (STORIES, SKILLS, PROJECTS, EXPERIENCE
+    tails); the STYLE GUIDE section, when there is one, stays whole and does not count."""
+    secs = split_sections(block)
+    style = [i for i, (h, _) in enumerate(secs) if _sec_name(h) == "STYLE GUIDE"]
+    if with_pack:
+        keep = [i for i, (h, _) in enumerate(secs) if h == "" or _sec_name(h) in ME_WITH_PACK]
+        order = ("PROJECTS", "NUMBERS", "WHO I AM")
+    else:
+        keep = list(range(len(secs)))
+        order = ME_TRIM_ORDER
+    texts = {i: secs[i][1] for i in keep}
+    counted = [i for i in keep if i not in style]
+    total = sum(len(texts[i]) + 1 for i in counted)
+    for name in order:
+        for i in counted:
+            over = total - max_chars
+            if over <= 0:
+                break
+            if _sec_name(secs[i][0]) == name:
+                new = _shrink_lines(texts[i], max(len(texts[i]) - over, 80))
+                total -= len(texts[i]) - len(new)
+                texts[i] = new
+    return "\n".join(texts[i] for i in keep)
+
+
 # ---------------------------------------------------------------------------------------------------- backend glue
 class Conv(Protocol):
     def send(self, text: str) -> Iterator[str]: ...
@@ -329,6 +366,11 @@ class LiteRtBackend:
             eng.__exit__(None, None, None)
 
 
+def _key(parts: Parts) -> str:
+    """Identity of a conversation's frozen part: the same system, ABOUT OWNER and pack mean the same KV prefix."""
+    return hashlib.sha1((parts.system + "\x00" + parts.pack + (("\x00" + parts.me) if parts.me else "")).encode()).hexdigest()
+
+
 def available(cfg: Config) -> tuple[bool, str]:
     """Cheap check (no load): is there a chance Gemma can run here?"""
     path = os.path.expanduser(cfg.local_model)
@@ -419,6 +461,12 @@ class LocalGemma:
         """A fresh conversation for `parts`: (ctx, first message without the tail, tail-independent extras source)."""
         cfg = self.cfg
         pack_chars = cfg.local_pack_chars
+        me_chars, with_pack = 0, True
+        if parts.me:       # the me layer: next to a pack it gets a small share, in an unprepared call it is the prefix
+            with_pack = parts.pack.strip() != NO_PACK_LINE
+            me_chars = cfg.local_me_chars if with_pack else cfg.local_pack_chars
+            if with_pack:
+                pack_chars = cfg.local_pack_chars_with_me
         full = parts.turns
         n_keep = min(len(full), cfg.local_max_turns)
         for _ in range(8):
@@ -431,17 +479,21 @@ class LocalGemma:
                 chars += len(b)
             kept.reverse()
             pack, dropped = trim_pack(parts.pack, pack_chars)
-            head = PACK_HEADER + pack + TRANSCRIPT_HEADER
+            me_text = trim_me(parts.me, me_chars, with_pack) if parts.me else ""
+            head = (me_text + "\n\n" if me_text else "") + PACK_HEADER + pack + TRANSCRIPT_HEADER
             body = "\n".join([head, *kept])
             n = await self._run(self.backend.count_tokens, parts.system + body)
-            if n <= cfg.local_ctx - CTX_HEADROOM_TOKENS or (pack_chars <= 3000 and n_keep <= 2):
+            if n <= cfg.local_ctx - CTX_HEADROOM_TOKENS or (pack_chars <= 3000 and n_keep <= 2 and (with_pack or me_chars <= 3000)):
                 break
             pack_chars = max(pack_chars - 1500, 3000)
+            if parts.me and not with_pack:
+                me_chars = max(me_chars - 1500, 3000)
             n_keep = max(n_keep - 2, 2)
         conv = await self._run(self.backend.new_conv, parts.system)
-        key = hashlib.sha1((parts.system + "\x00" + parts.pack).encode()).hexdigest()
+        key = _key(parts)
         ctx = _Ctx(key, conv, len(full) - len(kept), list(kept), dropped)
-        self.metric("local_build", prompt_tokens=n, pack_chars=len(pack), dropped_bank=len(dropped), turns=len(kept))
+        self.metric("local_build", prompt_tokens=n, pack_chars=len(pack), me_chars=len(me_text), dropped_bank=len(dropped),
+                    turns=len(kept))
         return ctx, body, key
 
     def _extras(self, ctx: _Ctx, tail: str) -> str:
@@ -456,7 +508,7 @@ class LocalGemma:
         c = self._ctx
         if c is None or not c.alive or c.tokens > self.cfg.local_recycle_tokens:
             return False
-        key = hashlib.sha1((parts.system + "\x00" + parts.pack).encode()).hexdigest()
+        key = _key(parts)
         end = c.base + len(c.sent)
         return c.key == key and len(parts.turns) >= end and parts.turns[c.base:end] == c.sent
 
