@@ -2,10 +2,11 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Settings for meeting detection and the summary-to-vault question. One section, referenced from `SettingsView` by one line.
+/// Settings for meeting detection and the summary-to-vault question: the Meetings group of the Settings page.
 struct SettingsMeetingSection: View {
     @ObservedObject var meeting: MeetingCoordinator
     @ObservedObject private var settings: MeetingSettings
+    @Environment(\.homeInk) private var ink
 
     init(meeting: MeetingCoordinator) {
         self.meeting = meeting
@@ -13,32 +14,29 @@ struct SettingsMeetingSection: View {
     }
 
     var body: some View {
-        Section {
-            Toggle("Follow my answer", isOn: $settings.followMyAnswer)
-            Text("When you leave the card and talk about something else, Verse updates it to continue your line and strikes through the points you make. Takes effect at the next Start.")
-                .font(.caption).foregroundStyle(.secondary)
-            Toggle("Offer to start when a meeting is detected", isOn: $settings.detectMeetings)
-            Toggle("Use my calendar", isOn: Binding(
+        HomeGroup {
+            HomeToggleRow("Follow my answer when I change the subject",
+                          detail: "When you leave the card and talk about something else, Verse updates it to continue your line and strikes through the points you make. Takes effect at the next Start.",
+                          isOn: $settings.followMyAnswer)
+            HomeRowDivider()
+            HomeToggleRow("Offer to start when a meeting is detected", isOn: $settings.detectMeetings)
+            HomeRowDivider()
+            HomeToggleRow("Use my calendar", detail: meeting.calendarStatus, isOn: Binding(
                 get: { settings.useCalendar },
                 set: { on in
                     if on { Task { await meeting.requestCalendarAccess() } } else { settings.useCalendar = false }
                 }))
             .disabled(!settings.detectMeetings)
-            Text(meeting.calendarStatus).font(.caption).foregroundStyle(.secondary)
-            Toggle("After a meeting, offer to save the summary to the vault", isOn: $settings.offerSummaryToVault)
-            LabeledContent("Vault") {
-                HStack {
-                    TextField("", text: $settings.vaultPath, prompt: Text(MeetingSettings.defaultVaultPath))
-                        .textFieldStyle(.roundedBorder)
-                    Button("Choose…", action: chooseVault)
-                }
+            HomeRowDivider()
+            HomeToggleRow("After a meeting, offer to save the summary to the vault", isOn: $settings.offerSummaryToVault)
+            HomeRowDivider()
+            HomeRow("Vault") {
+                HomeValueField(MeetingSettings.defaultVaultPath, text: $settings.vaultPath)
+                HomeSecondaryButton("Choose…", action: chooseVault)
             }
             .disabled(!settings.offerSummaryToVault)
-        } header: {
-            Text("Meetings")
-        } footer: {
-            Text("Detection only reads which meeting app (Comet, Brave, Chrome, Safari, Arc, Zoom, Teams) has its microphone on; no audio. Nothing starts without your click. A summary is written only after you press Save, as a new note in 000-Inbox/Verse of the vault.")
         }
+        HomeFootnote("Detection only reads which meeting app (Comet, Brave, Chrome, Safari, Arc, Zoom, Teams) has its microphone on; no audio. Nothing starts without your click. A summary is written only after you press Save, as a new note in 000-Inbox/Verse of the vault.")
     }
 
     private func chooseVault() {

@@ -16,39 +16,26 @@ struct VerseApp: App {
         }
         .menuBarExtraStyle(.menu)
 
-        Window("Verse Settings", id: "settings") {
-            SettingsView(settings: delegate.settings, controller: delegate.controller, simSettings: delegate.simSettings)
+        // One home window replaces the settings, script editor, conversation, practice and report windows.
+        Window("Verse", id: HomeRouter.windowID) {
+            HomeRoot(context: delegate.home)
         }
-        .windowResizability(.contentSize)
-        .defaultLaunchBehavior(.suppressed)
-
-        // T-UI: the teleprompter's script editor.
-        Window("Teleprompter Scripts", id: "script-editor") {
-            ScriptEditorView(controller: delegate.controller)
-        }
-        .defaultLaunchBehavior(.suppressed)
-
-        // P2: prep from a conversation.
-        Window("New Session from a Conversation", id: ConversationWindow.id) {
-            ConversationSetupView(model: delegate.conversation)
-        }
-        .windowResizability(.contentSize)
-        .defaultLaunchBehavior(.suppressed)
-
-        // S4: the practice-interview setup window.
-        Window("Practice Interview", id: "sim-setup") {
-            SimSetupView(sim: delegate.sim, meeting: delegate.controller)
-        }
-        .windowResizability(.contentSize)
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 1100, height: 680)
         .defaultLaunchBehavior(.suppressed)
     }
 }
 
 struct MenuBarLabel: View {
     @ObservedObject var controller: VerseController
+    @Environment(\.openWindow) private var openWindow
     var body: some View {
         Image(systemName: controller.running ? "waveform.circle.fill" : "waveform.circle")
             .accessibilityLabel("Verse")
+            // The label is always alive: it hands the scene's openWindow to the router, so code outside a view (the
+            // practice report, the launch options) can open the home window.
+            .onAppear { HomeRouter.shared.register(openWindow: openWindow) }
     }
 }
 
@@ -60,6 +47,8 @@ struct VerseMenu: View {
 
     var body: some View {
         Text(controller.statusLine)
+        Divider()
+        Button("Open Verse") { HomeRouter.shared.show(HomeRouter.shared.page, openWindow: openWindow) }
         Divider()
         if controller.running {
             Button("Stop") { Task { await controller.stop() } }
@@ -91,8 +80,7 @@ struct VerseMenu: View {
             Button("End practice interview") { sim.endInterview() }
         } else {
             Button("Practice interview…") {
-                NSApp.activate()
-                openWindow(id: "sim-setup")
+                HomeRouter.shared.show(.practice, openWindow: openWindow)
             }
             .disabled(controller.running)
         }
@@ -103,8 +91,7 @@ struct VerseMenu: View {
         ConversationMenuBlock()
         Divider()
         Button("Settings…") {
-            NSApp.activate()
-            openWindow(id: "settings")
+            HomeRouter.shared.show(.settings, openWindow: openWindow)
         }
         .keyboardShortcut(",")
         Button("Quit Verse") { NSApp.terminate(nil) }
@@ -119,7 +106,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var controller = VerseController(settings: settings)
     lazy var sim = SimController(settings: settings, simSettings: simSettings, meeting: controller)
     lazy var conversation = ConversationController(settings: settings, meeting: controller)
+    lazy var home = HomeContext(settings: settings, controller: controller, simSettings: simSettings, sim: sim, conversation: conversation)
     private var quitting = false
+    private var testWindow: NSWindow?
     private var signalSources: [DispatchSourceSignal] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -133,6 +122,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             signalSources.append(src)
         }
         let launch = controller.launch
+        // `--render-home DIR`: renders every home page (light and dark, plus the accessibility variants) and quits.
+        let args = CommandLine.arguments
+        if let i = args.firstIndex(of: "--render-home"), i + 1 < args.count {
+            let dir = args[i + 1]
+            // Optional page names after the folder limit the render (`--render-home DIR practice settings`).
+            let only = args.dropFirst(i + 2).prefix { !$0.hasPrefix("--") }.compactMap(HomePage.init(rawValue:))
+            Task { @MainActor in
+                do {
+                    let paths = try await HomeRender.renderAll(to: URL(fileURLWithPath: (dir as NSString).expandingTildeInPath),
+                                                               pages: only.isEmpty ? nil : Array(only))
+                    for p in paths { print(p.path) }
+                } catch {
+                    FileHandle.standardError.write(Data("render failed: \(error)\n".utf8))
+                }
+                Self.terminateSoon()
+            }
+            return
+        }
+        // `--open-home [page]`: opens the home window at launch (testing).
+        if let i = args.firstIndex(of: "--open-home") {
+            let page = (i + 1 < args.count ? HomePage(rawValue: args[i + 1]) : nil) ?? .prepare
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1))
+                if ProcessInfo.processInfo.environment["VERSE_HOME_NOACTIVATE"] != nil {
+                    // Testing without taking the keyboard focus: the same HomeRoot in a plain window, ordered front only.
+                    HomeRouter.shared.page = page
+                    let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1100, height: 680),
+                                     styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                                     backing: .buffered, defer: false)
+                    w.title = "Verse"
+                    w.isReleasedWhenClosed = false
+                    w.contentView = NSHostingView(rootView: HomeRoot(context: home))
+                    w.setFrameOrigin(NSPoint(x: 206, y: 120))
+                    w.orderFrontRegardless()
+                    testWindow = w
+                } else {
+                    HomeRouter.shared.show(page)
+                }
+            }
+        }
         if let dir = launch.renderScreensDir {
             Task { @MainActor in
                 do {
