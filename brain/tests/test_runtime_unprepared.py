@@ -184,7 +184,7 @@ def test_room_turn_without_a_cue_fires_nothing_but_stays_in_the_transcript(tmp_p
     async def go(**turn_kw):
         b, t, em, _ = make(tmp_path, embedder=False)
         await start(b, session_dir(tmp_path), me=me_spec(), **room())
-        await turn(b, "q1", "we were talking about the budget", speaker="room", addressee="other", **turn_kw)
+        await turn(b, "q1", "we talked about budgets", speaker="room", addressee="other", **turn_kw)
         await settle(b)
         n_first = len(t.calls)
         await turn(b, "q2", "how did you handle the reconciliation of late payments", speaker="room", kind="question")
@@ -195,7 +195,7 @@ def test_room_turn_without_a_cue_fires_nothing_but_stays_in_the_transcript(tmp_p
     assert n_first == 0 and em.of("metric", stage="room_skipped")[0]["cue"] is False
     f = f_calls(t)
     assert len(f) == 1 and "Language: English" in f[0].tail                    # the second turn: a cue and 9 words
-    assert "[Room] we were talking about the budget" in blocks_text(f[0].request)
+    assert "[Room] we talked about budgets" in blocks_text(f[0].request)
     assert [x.speaker for x in b.turns] == ["room", "room"]
     # no kind and no cue from the partials: the same
     b, t, em, n_first = run(go())
