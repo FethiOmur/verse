@@ -64,6 +64,20 @@ final class RoomRouteTests: XCTestCase {
         XCTAssertEqual(out.turns.first?.speaker, .room, "still sent, so card-now can answer it")
     }
 
+    /// The live test's second question arrived over three turns; with the indirect cues the last one is a question the
+    /// brain answers by itself, and the two that only set it up stay statements (the brain's silent probe decides on them).
+    func testAnIndirectQuestionSplitOverThreeTurnsFiresOnTheLastOne() async {
+        let setup1 = await hear("One of the big decisions you have made is which university or college to attend", engine())
+        XCTAssertEqual(kinds(setup1), [.statement])
+        XCTAssertEqual(partialCues(setup1).last, false)
+        let setup2 = await hear("And an equally big if not bigger one is what your major will be", engine())
+        XCTAssertEqual(kinds(setup2), [.statement])
+        let ask = await hear("I'm interested in why you chose this school and in particular why you chose accounting as a major", engine())
+        XCTAssertEqual(kinds(ask), [.question])
+        XCTAssertEqual(partialCues(ask).last, true)
+        XCTAssertEqual(ask.turns.first?.speaker, .room)
+    }
+
     func testAutoOffMakesEveryTurnAFragment() async {
         let out = await hear("Can you walk me through how you built the routing service", engine(.off))
         XCTAssertEqual(kinds(out), [.fragment])

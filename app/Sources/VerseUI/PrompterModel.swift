@@ -228,8 +228,9 @@ public final class PrompterModel: ObservableObject {
     // MARK: meeting cards (T4)
 
     /// A meeting run starts. Returns the tap the runner feeds with every transcript event.
-    public func meetingStarted() -> MeetingMicTap {
+    public func meetingStarted(room: Bool = false) -> MeetingMicTap {
         let tap = MeetingMicTap()
+        cardReading.roomRoute = room
         meetingTap = tap
         cardReading.connect(tap)
         cardReading.setSay(nil)
@@ -238,6 +239,9 @@ public final class PrompterModel: ObservableObject {
         dismissedTurn = nil
         return tap
     }
+
+    /// The call's audio route changed in place: the card's reading follows the room route's microphone or not.
+    public func meetingRoute(room: Bool) { cardReading.roomRoute = room }
 
     /// The meeting run ended: the mic stream is gone, so a card being read is closed.
     public func meetingEnded() {

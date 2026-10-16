@@ -144,8 +144,9 @@ public struct RunOptions: Sendable {
     public var fakeBrain = false
     public var budgetUSD: Double?
     public var turn = TurnConfig()
-    /// "Follow my answer": the brain gets `follow:true` in `start` and the owner's own partials (speaker `me`). Never in the
-    /// room route: there is no `me` channel to follow.
+    /// "Follow my answer": the brain gets `follow:true` in `start` and the owner's own partials (speaker `me`). The room route has
+    /// no `me` channel, so Swift sends no `me` partials there; the brain tells his words by text (the card's own words) and
+    /// feeds them to follow mode itself.
     public var follow = false
     /// Anytime calls (spec 2.1, 3). `mode` and `route` go to the brain in `start` only when they are not today's
     /// (prepared, meeting). `.room` makes the microphone the only audio: its turns are `room` turns, with no `me` channel.
@@ -711,7 +712,7 @@ public final class VerseRunner: @unchecked Sendable {
     func startCommand() -> BrainCommand {
         let (route, lang) = state.withLock { ($0.route, $0.lang) }
         let room = route == .room
-        return .start(sessionDir: options.sessionDir.path, lang: lang, follow: options.follow && !room,
+        return .start(sessionDir: options.sessionDir.path, lang: lang, follow: options.follow,
                       mode: options.mode == .prepared ? nil : options.mode, route: route == .meeting ? nil : route,
                       me: options.me, roomAuto: room ? options.roomAuto : nil)
     }

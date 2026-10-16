@@ -81,4 +81,77 @@ struct CardReadingTests {
         model.meetingEnded()
         UserDefaults.standard.removePersistentDomain(forName: "dev.fethiverse.verse.cardreading")
     }
+
+    // MARK: room route (one microphone, its events arrive as `remote`)
+
+    private let roomSay = "I chose this school for its co-op program, and I chose accounting because I like turning messy payment data into a clear story."
+
+    @Test
+    func inTheRoomRouteTheMicrophonesRemoteEventsMoveTheCard() {
+        let reading = CardReading(clock: ManualPrompterClock())
+        reading.roomRoute = true
+        reading.setSay(roomSay)
+        reading.ingest(micEvent("i chose this school for its co-op program", channel: .remote))
+        #expect(reading.spoken(for: roomSay) == 8)
+        reading.ingest(micEvent("i chose this school for its co-op program and i chose accounting because i like", channel: .remote))
+        #expect(reading.spoken(for: roomSay) >= 14)
+    }
+
+    @Test
+    func theInterviewersSpeechRarelyMovesIt() {
+        let reading = CardReading(clock: ManualPrompterClock())
+        reading.roomRoute = true
+        reading.setSay(roomSay)
+        let interviewer = [
+            "one of the big decisions you have made is which university or college to attend",
+            "and an equally big if not bigger one is what your major will be",
+            "i am interested in why you chose this school and in particular why you chose accounting as a major",   // shares a few words
+            "so why did you choose accounting as a major in the end",
+            "and what did you do on the co-op placement with the finance team",
+        ]
+        for text in interviewer {
+            reading.ingest(micEvent(text, channel: .remote, final: true))
+        }
+        #expect(reading.spoken(for: roomSay) == 0, "spoken \(reading.spoken(for: roomSay)) of \(roomSay.split(separator: " ").count)")
+        // and when he then reads the card, the count moves from where it was: nothing the interviewer said was held against it
+        reading.ingest(micEvent("i chose this school for its co-op program and i chose accounting", channel: .remote))
+        #expect(reading.spoken(for: roomSay) == 12)
+    }
+
+    /// The measure behind it, on its own: reading with slips passes, a sentence that restates the SAY in order does not.
+    @Test
+    func theRoomGateTellsReadingFromAQuestionThatSharesWords() {
+        #expect(RoomReading.reads("i chose this school for its coop program and chose accounting because i like turning messy payment data in a clear story", say: roomSay))
+        #expect(RoomReading.reads("so why did you ask that i chose this school for its co-op program and i chose accounting", say: roomSay), "the tail is what counts")
+        #expect(!RoomReading.reads("i am interested in why you chose this school and in particular why you chose accounting as a major", say: roomSay))
+        #expect(RoomReading.reads("so you chose this school for the co-op program", say: roomSay), "an interviewer quoting the card's words is read as reading: the limit of a text-only rule")
+        #expect(!RoomReading.reads("chose this school", say: roomSay), "fewer than four words prove nothing")
+        #expect(RoomReading.aligned(["a", "b", "c"], ["a", "b", "c", "d"]) == 3)
+        #expect(RoomReading.aligned(["c", "b", "a"], ["a", "b", "c"]) == 1)
+        #expect(RoomReading.aligned(["a", "f"], ["a", "b", "c", "d", "e", "f"]) == 1, "four skipped words start a new path")
+    }
+
+    @Test
+    func outsideTheRoomTheRemoteChannelNeverCounts() {
+        let reading = CardReading(clock: ManualPrompterClock())
+        reading.setSay(roomSay)
+        reading.ingest(micEvent("i chose this school for its co-op program and i chose accounting", channel: .remote))
+        #expect(reading.spoken(for: roomSay) == 0)
+    }
+
+    @Test
+    func theMeetingTapGivesTheCardEveryEventButThePrompterOnlyHisOwn() async {
+        let tap = MeetingMicTap()
+        let reading = CardReading(clock: ManualPrompterClock())
+        reading.roomRoute = true
+        reading.setSay(roomSay)
+        reading.connect(tap)
+        let prompterStream = tap.stream()
+        tap.ingest(micEvent("i chose this school for its co-op program", channel: .remote))
+        #expect(await waitUntil { reading.spoken(for: roomSay) == 8 })
+        tap.ingest(micEvent("my own words on the prompter", channel: .me))
+        var prompterSaw: [String] = []
+        for await e in prompterStream { prompterSaw.append(e.text); tap.finish() }
+        #expect(prompterSaw == ["my own words on the prompter"], "the prompter never sees the room route's remote events: \(prompterSaw)")
+    }
 }

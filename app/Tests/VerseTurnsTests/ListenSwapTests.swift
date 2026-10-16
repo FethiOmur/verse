@@ -383,10 +383,10 @@ final class ListenSwapTests: XCTestCase {
         XCTAssertEqual(o.rig.built, [.init(lang: "en", room: true, channel: .remote),
                                      .init(lang: "en", room: false, channel: .remote), .init(lang: "en", room: false, channel: .me)])
         XCTAssertTrue(o.tapped.contains { $0.channel == .me }, "the owner's own channel is open after the swap")
-        // The brain was told: route changed, follow mode went from off (room) to on.
+        // The brain was told: route changed; follow mode is on in the room too (the brain tells his words by text), so no change.
         XCTAssertEqual(o.brainMetrics("route_change").map { $0[string: "route"] }, ["meeting"])
         let follow = o.brainMetrics("follow_state").map { $0[bool: "on"] }
-        XCTAssertEqual(follow, [false, true], "follow: off in the room, on in the meeting")
+        XCTAssertEqual(follow, [true], "follow stays on across the swap: the room route feeds it with his words told by text (no change, one state)")
         // Before: room speaker, never `me`. After: remote and me, and the owner's own partials (follow my answer) flow.
         let speakers = o.turns.compactMap { $0[string: "speaker"] }
         XCTAssertEqual(speakers, ["room", "room", "remote", "me"], "\(o.turns.map { "\($0[string: "turn_id"] ?? "") \($0[string: "speaker"] ?? ""): \($0[string: "text"] ?? "")" })")
@@ -406,7 +406,7 @@ final class ListenSwapTests: XCTestCase {
         XCTAssertEqual(o.rig.built, [.init(lang: "en", room: false, channel: .remote), .init(lang: "en", room: false, channel: .me),
                                      .init(lang: "en", room: true, channel: .remote)])
         XCTAssertEqual(o.brainMetrics("route_change").map { $0[string: "route"] }, ["room"])
-        XCTAssertEqual(o.brainMetrics("follow_state").map { $0[bool: "on"] }, [true, false])
+        XCTAssertEqual(o.brainMetrics("follow_state").map { $0[bool: "on"] }, [true], "follow stays on in the room")
         let swapAt = try XCTUnwrap(o.events.firstIndex { if case .metric(let m) = $0 { return m[string: "stage"] == "listen_swap" }; return false })
         let after = o.events[swapAt...].compactMap { e -> [String: JSONValue]? in if case .outbound(let b) = e { return b }; return nil }
         XCTAssertFalse(after.isEmpty)

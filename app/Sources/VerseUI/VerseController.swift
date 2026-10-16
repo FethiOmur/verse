@@ -172,7 +172,7 @@ public final class VerseController: ObservableObject {
                                   meProfile: URL = MeProfilePaths.defaultDirectory) -> RunOptions {
         var o = RunOptions(sessionDir: dir)
         o.micWithFile = micWithFile
-        o.follow = follow && route != .room
+        o.follow = follow     // the room route follows by text too (brain: runtime/own.py); Swift emits no `me` partials there
         o.mode = mode
         o.route = route
         o.roomAuto = settings.roomAuto
@@ -272,7 +272,7 @@ public final class VerseController: ObservableObject {
             // One FIFO hop to the main thread keeps the runner's order.
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.handle(e) } }
         }
-        let micTap = prompter.meetingStarted()
+        let micTap = prompter.meetingStarted(room: route == .room)
         o.transcriptTap = { micTap.ingest($0) }
         let r = VerseRunner(options: o, log: { [weak self] line in
             // Brain and runner logs go to ~/Library/Logs/Verse/verse.log; they never contain the key or audio.
@@ -416,6 +416,7 @@ public final class VerseController: ObservableObject {
         }
         self.route = route
         callLanguage = lang
+        prompter.meetingRoute(room: route == .room)
         overlay.listeningChanged(route: route, lang: lang, app: route == .meeting ? Self.meetingAppName() : nil)
     }
 

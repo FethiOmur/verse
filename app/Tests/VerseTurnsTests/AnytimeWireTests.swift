@@ -114,9 +114,9 @@ final class AnytimeWireTests: XCTestCase {
         o.roomAuto = .off
         o.lang = "it"
         XCTAssertEqual(VerseRunner(options: o).startCommand(),
-                       .start(sessionDir: "/tmp/s", lang: "it", follow: false, mode: .unprepared, route: .room,
+                       .start(sessionDir: "/tmp/s", lang: "it", follow: true, mode: .unprepared, route: .room,
                               me: MeProfilePaths(core: "a", library: "b", facts: "c"), roomAuto: .off),
-                       "no follow in the room route (there is no me channel), room_auto only there")
+                       "follow goes to the brain in the room route too (it tells his words by text), room_auto only there")
 
         o.route = .meeting
         o.mode = .prepared

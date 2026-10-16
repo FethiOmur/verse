@@ -37,8 +37,39 @@ public enum Cues {
     private static let enLeaders: Set<String> = ["and", "so", "but", "okay", "ok", "well", "alright", "then", "now", "also", "yeah",
                                                  "um", "uh", "right", "great", "thanks", "thank", "sure", "good", "oh", "hey", "hi",
                                                  "hello", "perfect", "nice", "cool"]
-    private static let itCue: Set<String> = ["come", "perché", "perche", "quando", "dove", "quale", "quali", "può", "potrebbe"]
-    private static let trCue: Set<String> = ["mı", "mi", "mu", "mü", "nasıl", "neden", "hangi"]
+    private static let itCue: Set<String> = ["come", "perché", "perche", "quando", "dove", "quale", "quali", "chi", "cosa", "quanto",
+                                              "quanti", "può", "puoi", "potrebbe", "potresti", "raccontami", "parlami", "sapresti",
+                                              "spiegami", "dimmi"]
+    /// Italian phrases (two or three words) that ask without a question word ("mi racconti", "vorrei sapere").
+    private static let itPhrases: [[String]] = [["che", "cosa"], ["mi", "racconti"], ["mi", "parli"], ["mi", "spieghi"], ["secondo", "te"],
+                                                ["vorrei", "sapere"], ["vorrei", "capire"], ["vorrei", "sentire"],
+                                                ["mi", "piacerebbe", "sapere"], ["mi", "piacerebbe", "capire"], ["mi", "piacerebbe", "sentire"],
+                                                ["sono", "curioso"], ["sono", "curiosa"]]
+    /// The Turkish question particle with its person ending attached ("mısınız", "miyim"): one token in the recognizer's output.
+    private static let trParticle: Set<String> = ["mı", "mi", "mu", "mü", "mısın", "misin", "musun", "müsün", "mısınız", "misiniz",
+                                                  "musunuz", "müsünüz", "mıyım", "miyim", "muyum", "müyüm", "mıyız", "miyiz", "muyuz", "müyüz"]
+    private static let trCue: Set<String> = trParticle.union(["ne", "nasıl", "neden", "niye", "nerede", "nereden", "hangi", "kim", "kaç", "acaba"])
+    private static let trPhrases: [[String]] = [["ne", "zaman"], ["merak", "ediyorum"], ["bilmek", "istiyorum"], ["bilmek", "isterim"],
+                                                ["duymak", "isterim"], ["öğrenmek", "isterim"], ["öğrenmek", "istiyorum"]]
+
+    private static func containsPhrase(_ t: [String], _ phrases: [[String]]) -> Bool {
+        phrases.contains { p in
+            guard t.count >= p.count else { return false }
+            return (0...(t.count - p.count)).contains { i in Array(t[i..<(i + p.count)]) == p }
+        }
+    }
+
+    /// Objects of "interested in ...", words after "curious ..." / "I wonder ...": the embedded asks of an interviewer who
+    /// does not phrase a question ("I'm interested in why you chose this school").
+    private static let enInterestedObjects: Set<String> = ["hearing", "knowing", "learning", "understanding", "seeing", "your", "how", "why",
+                                                           "what", "which", "who", "when", "where", "whether"]
+    private static let enCuriousNext: Set<String> = enWh.union(["about", "if", "whether", "to"])
+    private static let enWonderNext: Set<String> = enWh.union(["if", "whether"])
+    private static let enWantVerbs: Set<String> = ["know", "hear", "understand", "learn", "ask", "explore", "discuss", "dig"]
+    /// "I want to know", "I love to hear" ... and with "would" / "'d" ("I'd like to know"); a bare "I like to know" is a remark.
+    private static let enWantSubjects: Set<String> = ["i", "we", "i'd", "we'd", "would", "id"]
+    private static let enWouldSubjects: Set<String> = ["i'd", "we'd", "would", "id"]
+    private static let enWhatMade: Set<String> = ["made", "makes", "drew", "led", "brought", "drove", "got", "inspired", "attracted"]
 
     /// True when the text carries a question signal. Hesitation-only tails never set it.
     public static func hasCue(_ text: String, lang: String = "en") -> Bool {
@@ -46,10 +77,8 @@ public enum Cues {
         guard let last = w.last, !isHesitation(last.text, lang: lang) else { return false }
         let t = w.map(\.text)
         switch lang {
-        case "it": return t.contains { itCue.contains($0) }
-        case "tr":
-            if t.contains(where: { trCue.contains($0) }) { return true }
-            return zip(t, t.dropFirst()).contains { $0 == "ne" && $1 == "zaman" }
+        case "it": return t.contains { itCue.contains($0) } || containsPhrase(t, itPhrases)
+        case "tr": return t.contains { trCue.contains($0) } || containsPhrase(t, trPhrases)
         default: return englishCue(w)
         }
     }
@@ -73,7 +102,21 @@ public enum Cues {
             if i + 1 < n {
                 if enAux.contains(t[i]) && (t[i + 1] == "you" || t[i + 1] == "your") { return true }
                 if (t[i] == "tell" || t[i] == "talk") && (t[i + 1] == "me" || t[i + 1] == "us") { return true }
-                if (t[i] == "walk" || t[i] == "take") && i + 2 < n && (t[i + 1] == "me" || t[i + 1] == "us") && t[i + 2] == "through" { return true }
+                if (t[i] == "walk" || t[i] == "take" || t[i] == "talk") && i + 2 < n && (t[i + 1] == "me" || t[i + 1] == "us") && t[i + 2] == "through" { return true }
+                // Embedded and indirect asks: "I'm interested in why ...", "I'm curious how ...", "I wonder what ...",
+                // "help me understand ...", "talk to me about ...", "what made you ...", "let me ask you ...".
+                if t[i] == "interested" && t[i + 1] == "in" && i + 2 < n && enInterestedObjects.contains(t[i + 2]) { return true }
+                if t[i] == "curious" && enCuriousNext.contains(t[i + 1]) { return true }
+                if t[i] == "wonder" && enWonderNext.contains(t[i + 1]) { return true }
+                if t[i] == "help" && (t[i + 1] == "me" || t[i + 1] == "us") && i + 2 < n && t[i + 2] == "understand" { return true }
+                if t[i] == "talk" && t[i + 1] == "to" && i + 3 < n && (t[i + 2] == "me" || t[i + 2] == "us") && t[i + 3] == "about" { return true }
+                if t[i] == "what" && enWhatMade.contains(t[i + 1]) && i + 2 < n && t[i + 2] == "you" { return true }
+                if t[i] == "ask" && (t[i + 1] == "you" || t[i + 1] == "me") && i > 0 && (t[i - 1] == "me" || t[i - 1] == "to" || t[i - 1] == "like") { return true }
+                // "I'd like to know / I would love to hear / I want to understand ..."
+                if (t[i] == "like" || t[i] == "love" || t[i] == "want") && t[i + 1] == "to" && i + 2 < n && i > 0
+                    && (t[i] == "like" ? enWouldSubjects : enWantSubjects).contains(t[i - 1]) && enWantVerbs.contains(t[i + 2]) { return true }
+                if t[i] == "like" && t[i + 1] == "you" && i + 3 < n && t[i + 2] == "to" && i > 0 && enWouldSubjects.contains(t[i - 1])
+                    && (enImperative.contains(t[i + 3]) || t[i + 3] == "walk") { return true }
             }
         }
         return false

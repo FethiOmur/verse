@@ -68,7 +68,7 @@ final class SettingsAnytimeTests: XCTestCase {
         XCTAssertEqual(o.mode, .unprepared)
         XCTAssertEqual(o.route, .room)
         XCTAssertEqual(o.lang, "it")
-        XCTAssertFalse(o.follow, "no follow in the room route")
+        XCTAssertTrue(o.follow, "the room route follows too: the brain tells his words by text")
         XCTAssertEqual(o.roomAuto, .questions)
         XCTAssertEqual(o.me?.core, profile.appendingPathComponent("me.md").path)
         XCTAssertEqual(o.me?.library, profile.appendingPathComponent("me.library.jsonl").path)
