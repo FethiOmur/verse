@@ -20,6 +20,8 @@ enum VT {
         static let secondary = Color.white.opacity(0.80)
         static let tertiary = Color.white.opacity(0.56)
         static let quaternary = Color.white.opacity(0.36)
+        /// The heard question on the prompter-style card: a neutral cool grey, dimmer than the unspoken SAY words.
+        static let question = Color(red: 0.76, green: 0.80, blue: 0.87).opacity(0.62)
         static let fill = Color.white.opacity(0.11)
         static let fillStrong = Color.white.opacity(0.17)
     }
@@ -32,6 +34,10 @@ enum VT {
         static let wing = SwiftUI.Font.system(size: 11.5, weight: .medium)
         static let meta = SwiftUI.Font.system(size: 12, weight: .medium)
         static let prompterCurrent = SwiftUI.Font.system(size: 30, weight: .semibold)
+        /// Prompter current line scaled by the text-size setting (S/M/L/XL = 0.86/1/1.14/1.27 of the SAY size).
+        static func prompterCurrent(_ s: CGFloat) -> SwiftUI.Font { .system(size: (30 * s).rounded(), weight: .semibold) }
+        /// Line above the prompter-style SAY: heard question or "Following you".
+        static let cardLead = SwiftUI.Font.system(size: 13, weight: .medium)
         static let prompterOther = SwiftUI.Font.system(size: 26, weight: .medium)
         // Window
         static let largeTitle = SwiftUI.Font.system(size: 26, weight: .bold)

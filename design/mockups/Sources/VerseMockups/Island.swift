@@ -162,6 +162,8 @@ struct Points: View {
     var items: [String]
     var struck: Set<Int> = []
     var scale: CGFloat = 1
+    /// Left inset: 15 clears the SAY bar; the prompter-style card has no bar and uses 0.
+    var leading: CGFloat = 15
     @Environment(\.islandContrast) private var contrast
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -179,7 +181,36 @@ struct Points: View {
                 }
             }
         }
-        .padding(.leading, 15)
+        .padding(.leading, leading)
+    }
+}
+
+/// Prompter-style SAY block (cards P1-P3): the teleprompter's "current line" type, wrapped over as many lines as
+/// the text needs. Spoken words 100 % white, unspoken 55 %, no colour, no bar.
+struct PrompterSay: View {
+    var spoken: String
+    var rest: String
+    var scale: CGFloat = 1
+    var body: some View {
+        (Text(spoken).foregroundStyle(Color.white) + Text(rest).foregroundStyle(Color.white.opacity(0.55)))
+            .font(VT.Font.prompterCurrent(scale))
+            .tracking(-0.4)
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// The line above the prompter-style SAY: the heard question (or the "Following you" mark). One line, tail-truncated.
+struct CardLead: View {
+    var text: String
+    var symbol: String? = nil
+    var body: some View {
+        HStack(spacing: 6) {
+            if let symbol { Image(systemName: symbol) }
+            Text(text).lineLimit(1).truncationMode(.tail)
+        }
+        .font(VT.Font.cardLead)
+        .foregroundStyle(VT.Island.question)
     }
 }
 
@@ -228,6 +259,10 @@ enum IslandState: String, CaseIterable {
     case practiceNote = "island-6b-practice-coach-note"
     case prompter = "island-7-teleprompter"
     case status = "island-8-status-credit"
+    // Prompter-style answer card (mockup round 2026-10-16b)
+    case promptFresh = "island-P1-answer-prompter-style"
+    case promptReading = "island-P2-answer-mid-reading"
+    case promptFollowing = "island-P3-following-prompter-style"
     // Accessibility variants of the answer card
     case answerMinVeil = "island-a1-answer-veil-35"
     case answerReduceTransparency = "island-a2-answer-reduce-transparency"
@@ -244,6 +279,7 @@ enum IslandState: String, CaseIterable {
 
     static let cardWidth: CGFloat = 600
     var isCapsule: Bool { self == .idle || self == .listening || self == .practice }
+    var isPrompterCard: Bool { self == .promptFresh || self == .promptReading || self == .promptFollowing }
 
     var size: CGSize {
         switch self {
@@ -254,6 +290,7 @@ enum IslandState: String, CaseIterable {
         case .hearing: CGSize(width: Self.cardWidth, height: 96)
         case .answer, .answerMinVeil, .answerReduceTransparency, .answerIncreaseContrast: CGSize(width: Self.cardWidth, height: 268)
         case .following: CGSize(width: Self.cardWidth, height: 262)
+        case .promptFresh, .promptReading, .promptFollowing: CGSize(width: Self.cardWidth, height: 0)   // height follows the content
         case .practiceNote: CGSize(width: 520, height: 150)
         case .prompter: CGSize(width: 640, height: 214)
         case .status: CGSize(width: 480, height: 104)
@@ -277,6 +314,31 @@ struct IslandView: View {
             GeometryReader { g in IslandSurface(size: g.size, a11y: state.a11y) }
         }
         .environment(\.islandContrast, state.a11y.increaseContrast)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { h in
+            if state.isPrompterCard { print("  height \(state.rawValue): \(h) pt") }
+        }
+    }
+
+    /// The answer card in teleprompter typography. `spokenWords` of the SAY line are already said.
+    @ViewBuilder private func promptAnswerBody(spokenWords: Int, struck: Set<Int>) -> some View {
+        let say = "In Lantern, bad invoices never blocked the pipeline — they went to a review queue."
+        let words = say.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
+        let spoken = words.prefix(spokenWords).map { $0 + " " }.joined()
+        let rest = words.dropFirst(spokenWords).joined(separator: " ")
+        VStack(alignment: .leading, spacing: 0) {
+            CardLead(text: "“Can you walk me through how Lantern handled bad invoices?”")
+            PrompterSay(spoken: spoken, rest: rest).padding(.top, 8)
+            Points(items: ["Schema-validated extraction, one retry on a failed field",
+                           "Low-confidence fields went to an operator, not the ERP",
+                           "Manual entry fell from 11 minutes to 2 per invoice"], struck: struck, leading: 0)
+                .padding(.top, 14)
+            HStack(spacing: 6) {
+                FactChip(text: "38,000 invoices / month", source: "prep note")
+                FactChip(text: "Lantern", source: "glossary")
+            }
+            .padding(.top, 12)
+        }
+        .padding(.horizontal, VT.Radius.islandShoulder + 22).padding(.top, 12)
     }
 
     @ViewBuilder private func band(width: CGFloat) -> some View {
@@ -291,8 +353,10 @@ struct IslandView: View {
             Wings(width: width, inset: width > 420 ? 22 : 12) { LiveDot(); LevelBars(levels: [0.7, 1, 0.5]) } right: { Text("for you").foregroundStyle(VT.Island.secondary) }
         case .answer, .answerMinVeil, .answerReduceTransparency, .answerIncreaseContrast:
             Wings(width: width, inset: width > 420 ? 22 : 12) { LiveDot() } right: { Text("for you").foregroundStyle(VT.Island.secondary) }
-        case .following:
+        case .following, .promptFollowing:
             Wings(width: width, inset: width > 420 ? 22 : 12) { LiveDot(); LevelBars(levels: [0.3, 0.55, 0.4]) } right: { Text("your answer").foregroundStyle(VT.Island.secondary) }
+        case .promptFresh, .promptReading:
+            Wings(width: width, inset: width > 420 ? 22 : 12) { LiveDot() } right: { Text("for you").foregroundStyle(VT.Island.secondary) }
         case .practice, .practiceNote:
             Wings(width: width, inset: width > 420 ? 22 : 12) {
                 Text("Q3 of 8").foregroundStyle(VT.Island.secondary)
@@ -357,6 +421,21 @@ struct IslandView: View {
                     .padding(.top, 4)
             }
             .padding(.horizontal, VT.Radius.islandShoulder + 22).padding(.top, 10)
+        case .promptFresh:
+            promptAnswerBody(spokenWords: 0, struck: [])
+        case .promptReading:
+            promptAnswerBody(spokenWords: 6, struck: [0])
+        case .promptFollowing:
+            VStack(alignment: .leading, spacing: 0) {
+                CardLead(text: "Following you", symbol: "arrow.turn.down.right")
+                PrompterSay(spoken: "And on the route optimiser ", rest: "I built the first pilot on my own, in six weeks.")
+                    .padding(.top, 8)
+                Points(items: ["12 depots in the pilot, ETA drift down by a third",
+                               "I wrote the re-plan loop that runs every 90 seconds",
+                               "Dispatchers kept an override on every route"], struck: [0], leading: 0)
+                    .padding(.top, 14)
+            }
+            .padding(.horizontal, VT.Radius.islandShoulder + 22).padding(.top, 12)
         case .practiceNote:
             VStack(alignment: .leading, spacing: 8) {
                 Text("Coach").font(VT.Font.meta).foregroundStyle(VT.Island.tertiary)
