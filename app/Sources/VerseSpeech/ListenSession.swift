@@ -77,10 +77,11 @@ public actor ListenSession {
         let perms = environment.permissions
         var remoteSource = try environment.makeRemoteSource(config)
         var micSource = try environment.makeMicSource(config)
-        if config.isLive, remoteSource != nil, perms.status(.audioCapture) == .denied {
+        if config.remoteIsTap, remoteSource != nil, perms.status(.audioCapture) == .denied {
             throw ListenError.permissionDenied(.audioCapture)
         }
-        if config.usesRealMic, micSource != nil {
+        // The room route's microphone is the remote source; every other route's is the `me` source.
+        if config.usesRealMic, micSource != nil || (config.micAsRemote && remoteSource != nil) {
             var s = perms.status(.microphone)
             if s == .notDetermined { s = await perms.request(.microphone) }
             if s == .denied { throw ListenError.permissionDenied(.microphone) }
@@ -112,6 +113,7 @@ public actor ListenSession {
         let gate = config.bleedGate
         let counters = self.counters
         let remoteEnvelope = built[.remote]?.envelope
+        let roomRoute = config.micAsRemote
 
         for (channel, p) in built {
             let micEnvelope = p.envelope
@@ -147,7 +149,7 @@ public actor ListenSession {
                 try? await Task.sleep(for: .milliseconds(250))
                 if Task.isCancelled { break }
                 for p in pipelinesList where p.checkHealth(now: clock.now()) == .dead {
-                    let kind: PermissionKind = p.channel == .remote ? .audioCapture : .microphone
+                    let kind: PermissionKind = p.channel == .remote && !roomRoute ? .audioCapture : .microphone
                     issueCont.yield(perms.status(kind) == .denied ? .permissionDenied(kind) : .deadStream(p.channel))
                 }
             }

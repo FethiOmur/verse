@@ -92,6 +92,15 @@ public struct TurnConfig: Sendable {
     public var emitMePartials: Bool
     public var mePartialMinWords: Int
     public var mePartialSettleMs: Int
+    /// Room route (anytime calls, phase A): the microphone is the only channel and arrives as `remote`. Its turns and
+    /// partials go to the brain with speaker `room`, the addressee is always `unknown` (nobody can be told from the room),
+    /// and no turn is treated as following the owner's own speech.
+    public var roomMode: Bool
+    /// Room route: with `.questions` a turn is a question for the brain only when it carries a question cue and has at least
+    /// `roomMinWords` words, so a room full of talk does not fill the island with cards (⌥⌘↩ answers anything). With `.off`
+    /// no room turn is a question; the card-now hot key is the only way to a card.
+    public var roomAuto: RoomAuto
+    public var roomMinWords: Int
 
     public init(ownerName: String = "Alex", ownerAliases: [String] = [], otherNames: [String] = [],
                 cueEndpointMs: Int = 300, plainEndpointMs: Int = 600, meEndpointMs: Int = 1200,
@@ -104,7 +113,11 @@ public struct TurnConfig: Sendable {
                 topicCooldownSeconds: Double = 12, topicSameIDSeconds: Double = 300, topicLabelMax: Int = 60,
                 topicEnabled: Bool = true,
                 echoGuardEnabled: Bool = true, echoWindowSeconds: Double = 1.5, echoSimilarity: Double = 0.6, echoMinWords: Int = 2, meCloseHoldMs: Int = 1200, echoHoldSimilarity: Double = 0.4,
-                emitMePartials: Bool = false, mePartialMinWords: Int = 3, mePartialSettleMs: Int = 800) {
+                emitMePartials: Bool = false, mePartialMinWords: Int = 3, mePartialSettleMs: Int = 800,
+                roomMode: Bool = false, roomAuto: RoomAuto = .questions, roomMinWords: Int = 6) {
+        self.roomMode = roomMode
+        self.roomAuto = roomAuto
+        self.roomMinWords = roomMinWords
         self.emitMePartials = emitMePartials
         self.mePartialMinWords = mePartialMinWords
         self.mePartialSettleMs = mePartialSettleMs
@@ -443,7 +456,8 @@ public actor TurnEngine {
         var out: [Timed] = []
         turn.cue = Cues.hasCue(turn.text, lang: lang)
         remote = turn
-        out.append(Timed(at: now, event: .partial(turnID: turn.id, speaker: .remote, text: turn.text, cue: turn.cue, tAudioEnd: e.audioEnd)))
+        out.append(Timed(at: now, event: .partial(turnID: turn.id, speaker: remoteSpeaker, text: turn.text,
+                                                  cue: turn.cue && roomAutoAllows(turn.text), tAudioEnd: e.audioEnd)))
         // Fact chips: once per fact per turn.
         for c in facts.chips(in: turn.text) where !turn.chipIDs.contains(c.id) {
             turn.chipIDs.insert(c.id)
@@ -512,8 +526,38 @@ public actor TurnEngine {
         // level window is the uncertainty of `lastActive`.
         var audioEnd = turn.audioEnd
         if byQuiet, levelsSeen, lastActive.isFinite, lastActive >= turn.startedAt - 3 { audioEnd = max(audioEnd, lastActive - 0.05) }
-        return [Timed(at: t, event: .turn(turnID: turn.id, speaker: .remote, text: turn.text, addressee: who, tAudioEnd: audioEnd,
-                                          kind: Cues.kind(of: turn.text, lang: config.lang, minWords: config.minTurnWords, terms: terms)))]
+        return [Timed(at: t, event: .turn(turnID: turn.id, speaker: remoteSpeaker, text: turn.text, addressee: who, tAudioEnd: audioEnd,
+                                          kind: remoteKind(turn)))]
+    }
+
+    // MARK: room route
+
+    /// The label the remote pipeline's turns carry: `room` when the microphone is the only channel.
+    private var remoteSpeaker: Speaker { config.roomMode ? .room : .remote }
+
+    /// May this text start a card by itself in the room route? Always true outside it. With `roomAuto == .questions`:
+    /// a question cue and enough words; with `.off`: never.
+    private func roomAutoAllows(_ text: String) -> Bool {
+        guard config.roomMode else { return true }
+        switch config.roomAuto {
+        case .off: return false
+        case .questions:
+            return Cues.hasCue(text, lang: config.lang) && Text.tokens(text, lang: config.lang).count >= config.roomMinWords
+        }
+    }
+
+    /// The kind a closed remote turn is sent with. In the room route a question that fails the cue gate is demoted, so the
+    /// brain fires nothing for it by itself: to a statement in `questions` mode (the brain skips its probe there), to a
+    /// fragment when automatic cards are off.
+    private func remoteKind(_ turn: Turn) -> TurnKind {
+        let kind = Cues.kind(of: turn.text, lang: config.lang, minWords: config.minTurnWords, terms: terms)
+        guard config.roomMode else { return kind }
+        switch config.roomAuto {
+        case .off: return .fragment
+        case .questions:
+            if kind == .question, !roomAutoAllows(turn.text) { return .statement }
+            return kind
+        }
     }
 
     // MARK: me channel
@@ -592,6 +636,7 @@ public actor TurnEngine {
     // MARK: addressee
 
     private func classify(_ turn: Turn) -> Addressee {
+        if config.roomMode { return .unknown }
         let lang = config.lang
         let toks = Text.foldedTokens(turn.text)
         func names(_ n: String) -> Bool { FactIndex.contains(toks, Text.foldedTokens(n)) }
