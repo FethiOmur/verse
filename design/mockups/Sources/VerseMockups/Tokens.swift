@@ -4,12 +4,15 @@ import SwiftUI
 /// values mirror it so the renders show exactly what the spec says.
 enum VT {
     // MARK: Colour
-    /// The one accent: Verse mint. Live dot, SAY marker, primary action. Nothing else is coloured.
-    static let mint = Color(red: 0.42, green: 0.90, blue: 0.70)          // #6BE6B3
-    /// Mint for text and glyphs on light surfaces (4.6:1 on white).
-    static let mintDeep = Color(red: 0.05, green: 0.50, blue: 0.34)      // #0D8057
-    /// Label colour on a mint fill.
-    static let onMint = Color(red: 0.02, green: 0.17, blue: 0.11)        // #052B1C
+    /// The one accent. Default is Verse mint; `VERSE_ACCENT=lime-a|lime-b|lime-c` swaps in a lime candidate for the
+    /// accent-colour study (the default output is unchanged when the variable is unset).
+    static let accent = Accent.named(ProcessInfo.processInfo.environment["VERSE_ACCENT"])
+    /// Live dot, SAY marker, primary action, toggle and slider fill. Nothing else is coloured.
+    static var mint: Color { accent.fill }
+    /// Accent for text and glyphs on light surfaces (>= 4.5:1 on white).
+    static var mintDeep: Color { accent.deep }
+    /// Label colour on an accent fill.
+    static var onMint: Color { accent.on }
     /// Status colours, only for status (credit, permission, error), never decoration.
     static let amber = Color(red: 1.00, green: 0.71, blue: 0.28)         // #FFB547
     static let coral = Color(red: 1.00, green: 0.42, blue: 0.37)         // #FF6B5E
@@ -81,4 +84,28 @@ struct A11y {
     var reduceTransparency = false
     var increaseContrast = false
     var islandVeil: Double = VT.islandVeilDefault
+}
+
+/// An accent colour set: fill, deep (text on light) and the label colour that sits on the fill.
+struct Accent: Sendable {
+    var fill: Color, deep: Color, on: Color
+
+    static let mint = Accent(fill: Color(red: 0.42, green: 0.90, blue: 0.70),     // #6BE6B3
+                             deep: Color(red: 0.05, green: 0.50, blue: 0.34),     // #0D8057
+                             on: Color(red: 0.02, green: 0.17, blue: 0.11))       // #052B1C
+    /// A: brighter key lime.
+    static let limeA = Accent(fill: Color(hex: 0xBEDC4C), deep: Color(hex: 0x5A6D0B), on: Color(hex: 0x1D2806))
+    /// B: true lime.
+    static let limeB = Accent(fill: Color(hex: 0x9ED13A), deep: Color(hex: 0x477A0C), on: Color(hex: 0x13220A))
+    /// C: deeper, olive-leaning lime.
+    static let limeC = Accent(fill: Color(hex: 0xA0B33A), deep: Color(hex: 0x5F6E0F), on: Color(hex: 0x1B2006))
+
+    static func named(_ name: String?) -> Accent {
+        switch name {
+        case "lime-a": .limeA
+        case "lime-b": .limeB
+        case "lime-c": .limeC
+        default: .mint
+        }
+    }
 }
