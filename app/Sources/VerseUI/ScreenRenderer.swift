@@ -27,6 +27,8 @@ public enum ScreenRenderer {
         var a11y: IslandA11y?
         /// The practice states as the bare capsule (spec 3.2, state 6).
         var practiceCapsule = false
+        /// The pointer is over the island (the control rows show). Renders show the at-rest state; the hover ones are named `-hover`.
+        var hover = false
         public init(name: String, state: OverlayState, width: Double = 600, prompter: PrompterModel? = nil) {
             self.name = name
             self.state = state
@@ -201,6 +203,8 @@ public enum ScreenRenderer {
             shot("island-6b-practice-coach-note", i6b),
             shot("island-7-teleprompter", idle, prompter: page7),
             shot("island-8-status-credit", i8),
+            shot("island-6b-practice-coach-note-hover", i6b) { $0.hover = true },
+            shot("island-7-teleprompter-hover", idle, prompter: page7) { $0.hover = true },
             shot("island-a1-answer-veil-35", i4) { $0.islandOpacity = 0.35 },
             shot("island-a2-answer-reduce-transparency", i4) { $0.a11y = IslandA11y(reduceTransparency: true) },
             shot("island-a3-answer-increase-contrast", i4) { $0.a11y = IslandA11y(increaseContrast: true) },
@@ -282,7 +286,7 @@ public enum ScreenRenderer {
                     let suffix = scales.count > 1 ? "-\(sc.rawValue)" : ""
                     let url = dir.appendingPathComponent("\(shot.name)-\(b.rawValue)\(suffix).png")
                     try await render(shot.state, settings: settings, backdrop: b, prompter: shot.prompter, a11y: shot.a11y,
-                                     practiceCapsule: shot.practiceCapsule, to: url)
+                                     practiceCapsule: shot.practiceCapsule, hover: shot.hover, to: url)
                     out.append(url)
                 }
             }
@@ -291,7 +295,7 @@ public enum ScreenRenderer {
     }
 
     static func render(_ state: OverlayState, settings: AppSettings, backdrop: Backdrop, prompter: PrompterModel? = nil,
-                              a11y: IslandA11y? = nil, practiceCapsule: Bool = false, to url: URL) async throws {
+                              a11y: IslandA11y? = nil, practiceCapsule: Bool = false, hover: Bool = false, to url: URL) async throws {
         let model = OverlayModel()
         model.show(state)
         let metrics = NotchMetrics.macBookPro
@@ -308,6 +312,7 @@ public enum ScreenRenderer {
             OverlayView(model: model, settings: settings, prompter: prompter ?? PrompterModel(), metrics: metrics,
                         forcePracticeCapsule: practiceCapsule)
                 .environment(\.islandA11yOverride, a11y ?? IslandA11y())
+                .environment(\.islandHoverOverride, hover)
         }
         .frame(width: canvas.width, height: canvas.height, alignment: .top)
         .clipped()

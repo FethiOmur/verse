@@ -177,6 +177,7 @@ public struct OverlayView: View {
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.colorSchemeContrast) private var systemContrast
     @Environment(\.islandA11yOverride) private var a11yOverride
+    @Environment(\.islandHoverOverride) private var hoverOverride
 
     @State private var dragStart: (width: Double, height: Double)?
     /// The size the glass shows now; it follows `target` with the morph.
@@ -185,6 +186,8 @@ public struct OverlayView: View {
     @State private var target: CGSize = .zero
     /// Reduce Motion: the surface fades in at its new size instead of morphing.
     @State private var fade = 1.0
+    /// The pointer is over the island: the control rows show.
+    @State private var hovering = false
 
     public init(model: OverlayModel, settings: AppSettings, prompter: PrompterModel = PrompterModel(), metrics: NotchMetrics,
                 onOpenSettings: @escaping (String) -> Void = { _ in }, onRetry: @escaping () -> Void = {},
@@ -262,6 +265,9 @@ public struct OverlayView: View {
             bodyView
         }
         .frame(width: width, alignment: .top)
+        .contentShape(HangingNotchShape())
+        .onHover { hovering = $0 }
+        .environment(\.islandHover, hoverOverride ?? hovering)
     }
 
     @ViewBuilder private var bodyView: some View {

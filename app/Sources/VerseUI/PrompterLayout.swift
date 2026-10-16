@@ -139,6 +139,11 @@ public enum PrompterGeometry {
 enum PrompterTextMeasure {
     static func font(size: CGFloat) -> NSFont { NSFont.systemFont(ofSize: size, weight: .semibold) }
 
+    /// The font's own width of a space, so words set one by one sit exactly like a plain `Text` of the whole line.
+    static func spaceWidth(size: CGFloat, weight: NSFont.Weight) -> CGFloat {
+        NSAttributedString(string: " ", attributes: [.font: NSFont.systemFont(ofSize: size, weight: weight)]).size().width
+    }
+
     static func widths(of words: [String], fontSize: CGFloat) -> [CGFloat] {
         let attributes: [NSAttributedString.Key: Any] = [.font: font(size: fontSize)]
         // One point of slack: the SwiftUI text must never be a hair wider than the slot it was measured for.

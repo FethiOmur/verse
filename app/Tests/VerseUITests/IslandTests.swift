@@ -182,6 +182,14 @@ final class IslandTests: XCTestCase {
         XCTAssertEqual(PrompterIslandType.current(fontSize: 26, scale: 28.0 / 22), 38)
     }
 
+    func testPrompterWordsSitOneNaturalSpaceApart() {
+        // The gap between words is the font's own space (about a quarter em), not the old 0.3 em slot.
+        let space = PrompterTextMeasure.spaceWidth(size: 30, weight: .semibold)
+        XCTAssertGreaterThan(space, 5)
+        XCTAssertLessThan(space, 9, "narrower than the old 0.3 em (9 pt at 30)")
+        XCTAssertLessThan(PrompterTextMeasure.spaceWidth(size: 26, weight: .medium), space)
+    }
+
     func testStatusSentenceSplitsIntoHeadlineAndLine() {
         let (h, l) = StatusPanelView.split("Max API credit used up until 1 December. Verse keeps transcribing locally.")
         XCTAssertEqual(h, "Max API credit used up until 1 December.")

@@ -15,16 +15,49 @@ struct IslandA11y: Equatable {
 
 private struct IslandA11yOverrideKey: EnvironmentKey { static let defaultValue: IslandA11y? = nil }
 private struct IslandContrastKey: EnvironmentKey { static let defaultValue = false }
+private struct IslandHoverKey: EnvironmentKey { static let defaultValue = false }
+private struct IslandHoverOverrideKey: EnvironmentKey { static let defaultValue: Bool? = nil }
 
 extension EnvironmentValues {
     var islandA11yOverride: IslandA11y? {
         get { self[IslandA11yOverrideKey.self] }
         set { self[IslandA11yOverrideKey.self] = newValue }
     }
+    /// Renderer only: forces the hover state.
+    var islandHoverOverride: Bool? {
+        get { self[IslandHoverOverrideKey.self] }
+        set { self[IslandHoverOverrideKey.self] = newValue }
+    }
+    /// The pointer is over the island: the control rows (prompter, practice) and the resize grip show.
+    var islandHover: Bool {
+        get { self[IslandHoverKey.self] }
+        set { self[IslandHoverKey.self] = newValue }
+    }
     /// Increase Contrast: points to 100 % white, wings to 85 %, chips get a border.
     var islandContrast: Bool {
         get { self[IslandContrastKey.self] }
         set { self[IslandContrastKey.self] = newValue }
+    }
+}
+
+/// A control row that shows only while the pointer is over the island: fades in over 120 ms, takes no clicks while
+/// hidden, and sits in an overlay at the bottom of the card, so the island looks the same at rest and does not change
+/// size when the pointer arrives.
+struct HoverControls<Content: View>: View {
+    @Environment(\.islandHover) private var hover
+    var horizontalInset: CGFloat
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .padding(.horizontal, 6)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(Color.black.opacity(0.6)))
+            .padding(.horizontal, horizontalInset)
+            .padding(.bottom, 8)
+            .opacity(hover ? 1 : 0)
+            .animation(.easeInOut(duration: 0.12), value: hover)
+            .allowsHitTesting(hover)
     }
 }
 

@@ -26,7 +26,8 @@ struct PrompterWordView: View {
     var style: PrompterWordStyle
     var line: PrompterStyle.Line
     var font: Font
-    var fontSize: CGFloat
+    /// The font's own space width: half of it each side, so the gap between words is exactly one space.
+    var space: CGFloat
     var onTap: () -> Void
 
     var body: some View {
@@ -35,7 +36,7 @@ struct PrompterWordView: View {
             .foregroundStyle(PrompterStyle.color(for: word, style: style, line: line))
             .lineLimit(1)
             .fixedSize()
-            .padding(.horizontal, PrompterGeometry.spaceWidth(fontSize: fontSize) / 2)
+            .padding(.horizontal, space / 2)
             .contentShape(Rectangle())
             .onTapGesture(perform: onTap)
     }
@@ -54,32 +55,31 @@ struct PrompterTextView: View {
         let words = model.page.words
         // Lines break as if every word were in the current line (the largest type), so no line is ever too wide.
         let layout = PrompterLayout.make(wordWidths: PrompterTextMeasure.widths(of: words.map(\.text), fontSize: current),
-                                         spaceWidth: PrompterGeometry.spaceWidth(fontSize: current), maxWidth: textWidth)
+                                         spaceWidth: PrompterTextMeasure.spaceWidth(size: current, weight: .semibold), maxWidth: textWidth)
         let ranges = model.wordRanges
         let window = PrompterLineWindow(currentLine: layout.line(ofWordPosition: Double(ranges.read.count)), lineCount: layout.lines.count)
         VStack(alignment: .leading, spacing: 8) {
-            row(window.previous, role: .previous, layout: layout, ranges: ranges, words: words, size: other,
-                font: .system(size: other, weight: .medium))
-            row(window.current, role: .current, layout: layout, ranges: ranges, words: words, size: current,
-                font: .system(size: current, weight: .semibold))
-            row(window.next, role: .next, layout: layout, ranges: ranges, words: words, size: other,
-                font: .system(size: other, weight: .medium))
+            row(window.previous, role: .previous, layout: layout, ranges: ranges, words: words, size: other, weight: .medium)
+            row(window.current, role: .current, layout: layout, ranges: ranges, words: words, size: current, weight: .semibold)
+            row(window.next, role: .next, layout: layout, ranges: ranges, words: words, size: other, weight: .medium)
         }
         .frame(width: textWidth, alignment: .leading)
     }
 
     @ViewBuilder private func row(_ index: Int?, role: PrompterStyle.Line, layout: PrompterLayout, ranges: PrompterWordRanges,
-                                  words: [PromptWord], size: CGFloat, font: Font) -> some View {
+                                  words: [PromptWord], size: CGFloat, weight: Font.Weight) -> some View {
         let height = (size * 1.2).rounded()
+        let font = Font.system(size: size, weight: weight)
+        let space = PrompterTextMeasure.spaceWidth(size: size, weight: weight == .semibold ? .semibold : .medium)
         if let index, layout.lines.indices.contains(index) {
             HStack(spacing: 0) {
                 ForEach(layout.lines[index], id: \.self) { wordIndex in
-                    PrompterWordView(word: words[wordIndex], style: ranges.style(ofWord: wordIndex), line: role, font: font, fontSize: size) {
+                    PrompterWordView(word: words[wordIndex], style: ranges.style(ofWord: wordIndex), line: role, font: font, space: space) {
                         Task { @MainActor in await model.jump(toWord: wordIndex) }
                     }
                 }
             }
-            .padding(.leading, -PrompterGeometry.spaceWidth(fontSize: size) / 2)
+            .padding(.leading, -space / 2)
             .tracking(role == .current ? -0.4 : 0)
             .frame(width: textWidth, height: height, alignment: .leading)
         } else {
@@ -132,10 +132,11 @@ struct PrompterPanelView: View {
                     .padding(.top, 6)
                     .accessibilityIdentifier("verse.prompter.hint")
             }
-            controls
-                .padding(.horizontal, VT.islandCardInset - 6)   // the buttons' own 6 pt inner margin lines up with the text
-                .padding(.top, 10)
-                .padding(.bottom, 20)
+            Color.clear.frame(height: 20)
+        }
+        .overlay(alignment: .bottom) {
+            // The controls show while the pointer is over the island; the keyboard shortcuts work regardless.
+            HoverControls(horizontalInset: VT.islandCardInset - 12) { controls }
         }
         .frame(width: width)
         .transaction { $0.animation = nil }

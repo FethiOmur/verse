@@ -78,7 +78,22 @@ struct SimPanelView: View {
                 }
             }
 
-            HStack(spacing: 6) {
+        }
+        .padding(.horizontal, VT.islandCardInset)
+        .padding(.top, 10)
+        .padding(.bottom, 20)
+        // Room for the controls under the first line even when there is little to say.
+        .frame(maxWidth: .infinity, minHeight: 76, alignment: .topLeading)
+        .overlay(alignment: .bottom) {
+            // Shown while the pointer is over the island (⌥Space and the other shortcuts work regardless).
+            HoverControls(horizontalInset: VT.islandCardInset - 12) { controls }
+        }
+        .transaction { $0.animation = nil }
+        .accessibilityIdentifier("verse.sim")
+    }
+
+    private var controls: some View {
+        HStack(spacing: 6) {
                 Button("Done  ⌥Space") { onAction(.doneAnswering) }
                     .buttonStyle(OverlayButtonStyle(prominent: sim.listening))
                     .disabled(!sim.listening)
@@ -99,14 +114,7 @@ struct SimPanelView: View {
                 Button("End") { onAction(.end) }
                     .buttonStyle(OverlayButtonStyle(prominent: false))
             }
-            .disabled(sim.closing)
-        }
-        .padding(.horizontal, VT.islandCardInset)
-        .padding(.top, 10)
-        .padding(.bottom, 20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .transaction { $0.animation = nil }
-        .accessibilityIdentifier("verse.sim")
+        .disabled(sim.closing)
     }
 
     /// Coach lines come as "- text"; the panel draws its own layout.
