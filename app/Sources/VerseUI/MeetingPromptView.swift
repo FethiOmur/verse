@@ -1,52 +1,58 @@
 import SwiftUI
 
-/// The prompt under the notch: a title, one or two lines of detail and the buttons. Same footing as the start-up
-/// panel (it replaces it before a session and after one); nothing here animates.
+/// The prompt under the notch (spec 3.2, state 0): a small meta line, the meeting title, one line of what Start will
+/// use, and the two buttons: neutral "Not now" and the mint primary. Nothing here animates.
 struct MeetingPromptView: View {
     var prompt: MeetingPrompt
-    var scale: CGFloat
     var onAction: (PromptAction) -> Void
 
+    private var eyebrow: String? { prompt.eyebrow }
+    private var headline: String { prompt.headline ?? prompt.title }
+    private var detail: String? { prompt.detailLine ?? (prompt.subtitle.isEmpty ? nil : prompt.subtitle) }
+
+    /// The quiet button of a start prompt reads "Not now" (the model keeps "Dismiss" for its own callers).
+    private var dismissText: String? { prompt.dismissLabel.map { $0 == "Dismiss" ? "Not now" : $0 } }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10 * scale) {
-            HStack(alignment: .top, spacing: 12 * scale) {
-                Group {
-                    if prompt.busy {
-                        ProgressView().controlSize(.small).tint(.white)
-                    } else {
-                        Circle().fill(OverlayStyle.accent).frame(width: 10 * scale, height: 10 * scale)
+        VStack(alignment: .leading, spacing: 4) {
+            if let eyebrow {
+                Text(eyebrow).font(VT.Font.meta).foregroundStyle(VT.Island.tertiary).lineLimit(1)
+            }
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(headline)
+                        .font(.system(size: 17, weight: .semibold))
+                        .tracking(-0.2)
+                        .foregroundStyle(VT.Island.primary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let detail {
+                        HStack(spacing: 6) {
+                            if prompt.busy { ProgressView().controlSize(.small).tint(.white).scaleEffect(0.7).frame(width: 12, height: 12) }
+                            Text(detail)
+                                .font(VT.Font.meta)
+                                .foregroundStyle(VT.Island.tertiary)
+                                .lineLimit(3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
-                .frame(width: 18 * scale, height: 18 * scale)
-                VStack(alignment: .leading, spacing: 3 * scale) {
-                    Text(prompt.title)
-                        .font(.system(size: (16 * scale).rounded(), weight: .semibold))
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                    Text(prompt.subtitle)
-                        .font(.system(size: (13 * scale).rounded()))
-                        .foregroundStyle(.white.opacity(0.72))
-                        .lineLimit(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-            }
-            HStack(spacing: 8) {
-                Button(prompt.acceptLabel) { onAction(.accept) }
-                    .buttonStyle(OverlayButtonStyle(prominent: true, scale: scale))
-                    .disabled(prompt.busy)
-                    .accessibilityIdentifier("verse.prompt.accept")
-                if let d = prompt.dismissLabel {
+                Spacer(minLength: 8)
+                if let d = dismissText {
                     Button(d) { onAction(.dismiss) }
-                        .buttonStyle(OverlayButtonStyle(prominent: false, scale: scale))
+                        .buttonStyle(OverlayButtonStyle(prominent: false))
+                        .disabled(prompt.busy)
                         .accessibilityIdentifier("verse.prompt.dismiss")
                 }
+                Button(prompt.acceptLabel) { onAction(.accept) }
+                    .buttonStyle(OverlayButtonStyle(prominent: true))
+                    .disabled(prompt.busy)
+                    .accessibilityIdentifier("verse.prompt.accept")
             }
-            .padding(.leading, 30 * scale)
         }
-        .padding(.horizontal, 18 * scale)
-        .padding(.top, 12 * scale)
-        .padding(.bottom, 16 * scale)
+        .padding(.horizontal, VT.islandCardInset)
+        .padding(.top, 10)
+        .padding(.bottom, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("verse.prompt")

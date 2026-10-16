@@ -247,10 +247,10 @@ final class SimOverlayTests: XCTestCase {
             var st = base
             st.sim = s
             let view = VStack(spacing: 0) {
-                CapsuleView(state: st, metrics: .macBookPro)
+                CapsuleView(state: st, metrics: .macBookPro, width: 520)
                 SimPanelView(sim: s, scale: 1, onAction: { _ in })
             }
-            .frame(width: 560)
+            .frame(width: 520)
             .background(Color(red: 0.06, green: 0.06, blue: 0.07))
             .environment(\.colorScheme, .dark)
             let r = ImageRenderer(content: view)

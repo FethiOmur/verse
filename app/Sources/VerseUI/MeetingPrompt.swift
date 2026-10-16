@@ -31,8 +31,18 @@ public struct MeetingPrompt: Equatable, Sendable {
     public var dismissLabel: String?
     /// Work in progress after the accept button ("Preparing from the invite…"): both buttons wait.
     public var busy: Bool
+    /// The island's layout of a start prompt (UI redesign spec 3.2, state 0): a small meta line ("Comet is using the
+    /// microphone"), the meeting title, and one line of what Start will use. nil: the island shows `title` and
+    /// `subtitle` as they are.
+    public var eyebrow: String?
+    public var headline: String?
+    public var detailLine: String?
 
-    public init(kind: Kind, title: String, subtitle: String, acceptLabel: String, dismissLabel: String? = nil, busy: Bool = false) {
+    public init(kind: Kind, title: String, subtitle: String, acceptLabel: String, dismissLabel: String? = nil, busy: Bool = false,
+                eyebrow: String? = nil, headline: String? = nil, detailLine: String? = nil) {
+        self.eyebrow = eyebrow
+        self.headline = headline
+        self.detailLine = detailLine
         self.kind = kind
         self.title = title
         self.subtitle = subtitle
@@ -54,18 +64,35 @@ public struct MeetingPrompt: Equatable, Sendable {
     }
 
     /// "Meeting detected · Start Verse?" with the calendar event and the session it will use underneath.
-    public static func detected(appName: String, eventTitle: String?, plan: SessionPlan) -> MeetingPrompt {
+    public static func detected(appName: String, eventTitle: String?, plan: SessionPlan, questionCount: Int? = nil) -> MeetingPrompt {
         MeetingPrompt(kind: .detected, title: "Meeting detected · Start Verse?",
                       subtitle: subtitle(app: appName, eventTitle: eventTitle, plan: plan),
-                      acceptLabel: "Start", dismissLabel: "Dismiss")
+                      acceptLabel: "Start", dismissLabel: "Dismiss",
+                      eyebrow: "\(appName) is using the microphone", headline: eventTitle ?? "Meeting detected",
+                      detailLine: detailLine(plan: plan, questionCount: questionCount))
     }
 
     /// The same question ahead of a meeting that has not begun: ready before he joins.
-    public static func upcoming(eventTitle: String, minutes: Int, plan: SessionPlan) -> MeetingPrompt {
+    public static func upcoming(eventTitle: String, minutes: Int, plan: SessionPlan, questionCount: Int? = nil) -> MeetingPrompt {
         let when = minutes <= 0 ? "Meeting now" : "Meeting in \(minutes) min"
         return MeetingPrompt(kind: .upcoming, title: "\(when) · Start Verse?",
                              subtitle: subtitle(app: nil, eventTitle: eventTitle, plan: plan),
-                             acceptLabel: "Start", dismissLabel: "Dismiss")
+                             acceptLabel: "Start", dismissLabel: "Dismiss",
+                             eyebrow: when, headline: eventTitle, detailLine: detailLine(plan: plan, questionCount: questionCount))
+    }
+
+    /// "Prepared · 14 questions" (or the session's name when the count is not known), "Prepares a session from the invite".
+    private static func detailLine(plan: SessionPlan, questionCount: Int?) -> String {
+        func prepared(_ name: String) -> String {
+            if let n = questionCount { return "Prepared · \(n) question\(n == 1 ? "" : "s")" }
+            return "Prepared · \(name)"
+        }
+        switch plan {
+        case .prepared(let name): return prepared(name)
+        case .fromInvite: return "Prepares a session from the invite"
+        case .selected(let name?): return prepared(name)
+        case .selected(nil): return "No session prepared yet"
+        }
     }
 
     private static func subtitle(app: String?, eventTitle: String?, plan: SessionPlan) -> String {

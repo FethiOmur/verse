@@ -7,8 +7,8 @@ import SwiftUI
 public enum HangingNotchMetrics {
     /// Concave shoulders where the shape meets the screen's top edge. The straight sides sit this far inside the
     /// shape's rect on each side.
-    public static let topShoulderRadius: CGFloat = 14
-    public static let bottomCornerRadius: CGFloat = 20
+    public static let topShoulderRadius: CGFloat = VT.Radius.islandShoulder
+    public static let bottomCornerRadius: CGFloat = VT.Radius.islandBottom
 }
 
 /// Path of the top-attached notch silhouette: the top edge flares into the screen edge with concave shoulders, then

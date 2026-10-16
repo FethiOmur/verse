@@ -76,7 +76,14 @@ final class ListeningLevelTests: XCTestCase {
         XCTAssertNil(m.state.startup)
         let before = m.state
         m.apply(level(-20))
-        XCTAssertEqual(m.state, before)
+        // Only the island's level bars move (spec 3.2); the card, the start-up panel and the activity stay.
+        var expected = before
+        expected.remoteBars = m.state.remoteBars
+        expected.meBars = m.state.meBars
+        expected.remoteSpeaking = m.state.remoteSpeaking
+        XCTAssertEqual(m.state, expected)
+        XCTAssertNil(m.state.startup)
+        XCTAssertEqual(m.state.card, before.card)
     }
 
     func testThresholdIsConfigurable() {

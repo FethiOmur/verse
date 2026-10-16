@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// The practice-interview panel under the capsule (S4): what the interviewer said (always in text mode, as a caption
-/// when the toggle is on), what Verse hears, the coach note, the AI-voice note, and the controls. Same glass, type and
-/// single accent as the meeting card; text is never animated.
+/// The practice-interview panel under the band (spec 3.2, states 6 and 6b): what the interviewer said (always in text
+/// mode, as a caption when the toggle is on), what Verse hears, the coach note, the AI-voice note, and the controls.
+/// Same surface, type and single accent as the meeting card; text is never animated.
 struct SimPanelView: View {
     var sim: SimOverlay
     var scale: CGFloat
@@ -19,34 +19,34 @@ struct SimPanelView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: size(10)) {
-            HStack(spacing: size(8)) {
-                Text(stateLine)
-                    .font(.system(size: size(12), weight: .medium))
-                    .foregroundStyle(.white.opacity(0.62))
+        VStack(alignment: .leading, spacing: 10) {
+            // A coach note says it all; the state line comes back with the next question.
+            if sim.coach.isEmpty || sim.showsAIDisclosure || sim.voiceFellBack {
+            HStack(spacing: 8) {
+                if sim.coach.isEmpty { Text(stateLine).font(VT.Font.meta).foregroundStyle(VT.Island.tertiary) }
                 Spacer(minLength: 0)
                 if sim.showsAIDisclosure {
                     Label("AI-generated voice", systemImage: "waveform")
-                        .font(.system(size: size(11), weight: .medium))
-                        .foregroundStyle(.white.opacity(0.72))
-                        .padding(.horizontal, size(7))
-                        .padding(.vertical, size(2))
-                        .background(Capsule().fill(.white.opacity(0.11)))
+                        .font(VT.Font.caption)
+                        .foregroundStyle(VT.Island.secondary)
+                        .padding(.horizontal, 7)
+                        .frame(height: 20)
+                        .background(VT.Island.fill, in: RoundedRectangle(cornerRadius: VT.Radius.chip, style: .continuous))
                         .accessibilityIdentifier("verse.sim.aiVoice")
                 }
                 if sim.voiceFellBack {
-                    Text("Apple voice used")
-                        .font(.system(size: size(11), weight: .medium))
-                        .foregroundStyle(.white.opacity(0.62))
+                    Text("Apple voice used").font(VT.Font.caption).foregroundStyle(VT.Island.tertiary)
                 }
+            }
             }
 
             if sim.showsLine {
-                HStack(alignment: .top, spacing: size(11)) {
-                    Capsule().fill(OverlayStyle.accent).frame(width: 3).padding(.vertical, size(3))
+                HStack(alignment: .top, spacing: 12) {
+                    Capsule().fill(VT.mint).frame(width: 3).padding(.vertical, 4)
                     Text(sim.line)
-                        .font(.system(size: size(sim.textMode ? 19 : 15), weight: sim.textMode ? .semibold : .medium))
-                        .foregroundStyle(.white)
+                        .font(sim.textMode ? VT.Font.say(scale) : .system(size: size(15), weight: .medium))
+                        .tracking(sim.textMode ? VT.Font.sayTracking : 0)
+                        .foregroundStyle(VT.Island.primary)
                         .lineLimit(sim.textMode ? nil : 2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -56,56 +56,60 @@ struct SimPanelView: View {
             if sim.listening, !sim.answer.isEmpty {
                 Text(sim.answer)
                     .font(.system(size: size(13)))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(VT.Island.tertiary)
                     .lineLimit(2)
                     .truncationMode(.head)
-                    .padding(.leading, size(14))
+                    .padding(.leading, 15)
             }
 
             if !sim.coach.isEmpty {
-                VStack(alignment: .leading, spacing: size(6)) {
-                    HStack(spacing: size(8)) {
-                        Rectangle().fill(.white.opacity(0.16)).frame(width: size(14), height: 0.5)
-                        Text("Coach").font(.system(size: size(11), weight: .medium)).foregroundStyle(.white.opacity(0.5))
-                        Rectangle().fill(.white.opacity(0.16)).frame(height: 0.5)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Coach").font(VT.Font.meta).foregroundStyle(VT.Island.tertiary)
+                    ForEach(Array(sim.coach.map(Self.unbullet).enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .font(.system(size: size(16), weight: .medium))
+                            .foregroundStyle(VT.Island.primary)
+                            .lineSpacing(2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(.leading, size(14))
-                    PointList(points: sim.coach.map(Self.unbullet), scale: scale, opacity: 0.86)
+                    if !sim.listening {
+                        Text("⌥Space for the next question").font(VT.Font.meta).foregroundStyle(VT.Island.quaternary)
+                    }
                 }
             }
 
-            HStack(spacing: size(6)) {
+            HStack(spacing: 6) {
                 Button("Done  ⌥Space") { onAction(.doneAnswering) }
-                    .buttonStyle(OverlayButtonStyle(prominent: sim.listening, scale: scale))
+                    .buttonStyle(OverlayButtonStyle(prominent: sim.listening))
                     .disabled(!sim.listening)
                     .opacity(sim.listening ? 1 : 0.45)
                 Button("Repeat") { onAction(.repeat) }
-                    .buttonStyle(OverlayButtonStyle(prominent: false, scale: scale))
+                    .buttonStyle(OverlayButtonStyle(prominent: false))
                 Button("Skip") { onAction(.skip) }
-                    .buttonStyle(OverlayButtonStyle(prominent: false, scale: scale))
+                    .buttonStyle(OverlayButtonStyle(prominent: false))
                 Spacer(minLength: 0)
                 if !sim.textMode {
                     Button(action: { onAction(.toggleCaption) }) {
                         Image(systemName: sim.showCaption ? "captions.bubble.fill" : "captions.bubble")
                     }
-                    .buttonStyle(OverlayButtonStyle(prominent: false, scale: scale))
+                    .buttonStyle(OverlayButtonStyle(prominent: false))
                     .help(sim.showCaption ? "Hide the caption" : "Show the interviewer's line")
                     .accessibilityLabel("Caption")
                 }
                 Button("End") { onAction(.end) }
-                    .buttonStyle(OverlayButtonStyle(prominent: false, scale: scale))
+                    .buttonStyle(OverlayButtonStyle(prominent: false))
             }
             .disabled(sim.closing)
         }
-        .padding(.horizontal, size(18))
-        .padding(.top, size(12))
-        .padding(.bottom, size(14))
+        .padding(.horizontal, VT.islandCardInset)
+        .padding(.top, 10)
+        .padding(.bottom, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .transaction { $0.animation = nil }
         .accessibilityIdentifier("verse.sim")
     }
 
-    /// Coach lines come as "- text"; the list draws its own dots.
+    /// Coach lines come as "- text"; the panel draws its own layout.
     static func unbullet(_ s: String) -> String {
         let t = s.trimmingCharacters(in: .whitespaces)
         guard let f = t.first, f == "-" || f == "•" || f == "*" else { return t }
@@ -113,16 +117,15 @@ struct SimPanelView: View {
     }
 }
 
-/// The elapsed time in the capsule's left wing.
+/// The elapsed time in the band's left wing (it takes the wing's colour).
 struct SimTimer: View {
     var start: Date
 
     var body: some View {
         TimelineView(.periodic(from: start, by: 1)) { ctx in
-            Text(SimOverlay.elapsed(from: start, now: ctx.date))
+            let s = max(0, Int(ctx.date.timeIntervalSince(start)))
+            Text(String(format: "%02d:%02d", s / 60, s % 60))
                 .monospacedDigit()
         }
-        .font(.system(size: 11.5, weight: .medium))
-        .foregroundStyle(.white.opacity(0.82))
     }
 }
