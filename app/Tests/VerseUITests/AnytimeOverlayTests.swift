@@ -239,7 +239,8 @@ final class AnytimeOverlayTests: XCTestCase {
         XCTAssertEqual(StartRoutes.label(.room), "Room")
         XCTAssertEqual(StartRoutes.label(.phone), "Phone")
         XCTAssertEqual(StartRoutes.label(.meeting), "Meeting")
-        XCTAssertEqual(AppSettings.callLanguages, ["en", "it", "tr"])
+        XCTAssertEqual(AppSettings.callLanguages, ["auto", "en", "it", "tr"])
+        XCTAssertEqual(AppSettings.pinnableLanguages, ["en", "it", "tr"])
     }
 
     // MARK: hot key hand-over

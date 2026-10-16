@@ -169,6 +169,15 @@ public actor TurnEngine {
     public struct Timed: Sendable, Equatable {
         public var at: TimeInterval
         public var event: OutboundEvent
+        /// The language of the text of a `partial` or `turn` ("en" | "it" | "tr"): the text's own when the language
+        /// recognizer is confident (>= 0.8), else the engine's. Sent to the brain as `lang`, which answers in it.
+        public var lang: String? = nil
+    }
+
+    /// The language of one turn's text (spec 2.5, per-turn `lang`). In AUTO the speech engine can lag behind the language that is
+    /// being spoken by a few seconds; the cue lists, the addressee forms and the brain's answer follow the words, not the engine.
+    func turnLang(_ text: String) -> String {
+        LanguageID.turnLang(text, engineLang: config.lang)
     }
 
     private struct Segment {
@@ -372,7 +381,7 @@ public actor TurnEngine {
             return []
         }
         mePartialSent = m.text
-        return [Timed(at: now, event: .partial(turnID: m.id, speaker: .me, text: m.text, cue: false, tAudioEnd: m.audioEnd))]
+        return [Timed(at: now, event: .partial(turnID: m.id, speaker: .me, text: m.text, cue: false, tAudioEnd: m.audioEnd), lang: turnLang(m.text))]
     }
 
     /// End of stream: closes whatever is open now.
@@ -477,16 +486,16 @@ public actor TurnEngine {
     }
 
     private func applyRemote(_ turn: inout Turn, start: Double, end: Double, body: String, e: TranscriptEvent) -> [Timed] {
-        let lang = config.lang
         let changed = Self.apply(&turn, start: start, end: end, text: body, isFinal: e.isFinal, now: now)
         turn.lastResult = max(turn.lastResult, e.emittedAt)
         remote = turn
         guard changed || !e.isFinal else { return [] }
         var out: [Timed] = []
+        let lang = turnLang(turn.text)
         turn.cue = Cues.hasCue(turn.text, lang: lang)
         remote = turn
         out.append(Timed(at: now, event: .partial(turnID: turn.id, speaker: remoteSpeaker, text: turn.text,
-                                                  cue: turn.cue && roomAutoAllows(turn.text), tAudioEnd: e.audioEnd)))
+                                                  cue: turn.cue && roomAutoAllows(turn.text, lang: lang), tAudioEnd: e.audioEnd), lang: lang))
         // Fact chips: once per fact per turn.
         for c in facts.chips(in: turn.text) where !turn.chipIDs.contains(c.id) {
             turn.chipIDs.insert(c.id)
@@ -550,13 +559,14 @@ public actor TurnEngine {
         // Nothing but fillers: not worth a model call.
         if tokens.isEmpty || Cues.isOnlyHesitation(turn.text, lang: config.lang) { return [] }
         remoteSinceMe += 1
-        let who = classify(turn)
+        let turnLanguage = turnLang(turn.text)
+        let who = classify(turn, lang: turnLanguage)
         // The recognizer's range ends at its last token, up to half a second before the sound ended. Half the 100 ms
         // level window is the uncertainty of `lastActive`.
         var audioEnd = turn.audioEnd
         if byQuiet, levelsSeen, lastActive.isFinite, lastActive >= turn.startedAt - 3 { audioEnd = max(audioEnd, lastActive - 0.05) }
         return [Timed(at: t, event: .turn(turnID: turn.id, speaker: remoteSpeaker, text: turn.text, addressee: who, tAudioEnd: audioEnd,
-                                          kind: remoteKind(turn)))]
+                                          kind: remoteKind(turn, lang: turnLanguage)), lang: turnLanguage)]
     }
 
     // MARK: room route
@@ -566,25 +576,25 @@ public actor TurnEngine {
 
     /// May this text start a card by itself in the room route? Always true outside it. With `roomAuto == .questions`:
     /// a question cue and enough words; with `.off`: never.
-    private func roomAutoAllows(_ text: String) -> Bool {
+    private func roomAutoAllows(_ text: String, lang: String) -> Bool {
         guard config.roomMode else { return true }
         switch config.roomAuto {
         case .off: return false
         case .questions:
-            return Cues.hasCue(text, lang: config.lang) && Text.tokens(text, lang: config.lang).count >= config.roomMinWords
+            return Cues.hasCue(text, lang: lang) && Text.tokens(text, lang: config.lang).count >= config.roomMinWords
         }
     }
 
     /// The kind a closed remote turn is sent with. In the room route a question that fails the cue gate is demoted, so the
     /// brain fires nothing for it by itself: to a statement in `questions` mode (the brain skips its probe there), to a
     /// fragment when automatic cards are off.
-    private func remoteKind(_ turn: Turn) -> TurnKind {
-        let kind = Cues.kind(of: turn.text, lang: config.lang, minWords: config.minTurnWords, terms: terms)
+    private func remoteKind(_ turn: Turn, lang: String) -> TurnKind {
+        let kind = Cues.kind(of: turn.text, lang: lang, minWords: config.minTurnWords, terms: terms)
         guard config.roomMode else { return kind }
         switch config.roomAuto {
         case .off: return .fragment
         case .questions:
-            if kind == .question, !roomAutoAllows(turn.text) { return .statement }
+            if kind == .question, !roomAutoAllows(turn.text, lang: lang) { return .statement }
             return kind
         }
     }
@@ -658,15 +668,15 @@ public actor TurnEngine {
         lastMeEnd = turn.lastChange
         remoteSinceMe = 0
         guard !Text.tokens(turn.text, lang: config.lang).isEmpty else { return [] }
+        let lang = turnLang(turn.text)
         return [Timed(at: t, event: .turn(turnID: turn.id, speaker: .me, text: turn.text, addressee: .unknown, tAudioEnd: turn.audioEnd,
-                                          kind: Cues.kind(of: turn.text, lang: config.lang, minWords: config.minTurnWords, terms: terms)))]
+                                          kind: Cues.kind(of: turn.text, lang: lang, minWords: config.minTurnWords, terms: terms)), lang: lang)]
     }
 
     // MARK: addressee
 
-    private func classify(_ turn: Turn) -> Addressee {
+    private func classify(_ turn: Turn, lang: String) -> Addressee {
         if config.roomMode { return .unknown }
-        let lang = config.lang
         let toks = Text.foldedTokens(turn.text)
         func names(_ n: String) -> Bool { FactIndex.contains(toks, Text.foldedTokens(n)) }
         if ([config.ownerName] + config.ownerAliases).contains(where: { !$0.isEmpty && names($0) }) { return .me }

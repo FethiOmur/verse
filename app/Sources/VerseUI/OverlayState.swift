@@ -201,14 +201,18 @@ public struct StartupPanel: Equatable, Sendable {
     public var route: AudioRoute?
     /// The session language, for the start card's language chips.
     public var lang = "en"
+    /// The interim AUTO language mode is on: `lang` is then the language it picked.
+    public var autoLang = false
 
-    public init(phase: Phase, session: String, app: String?, transcribing: Bool = false, route: AudioRoute? = nil, lang: String = "en") {
+    public init(phase: Phase, session: String, app: String?, transcribing: Bool = false, route: AudioRoute? = nil, lang: String = "en",
+                autoLang: Bool = false) {
         self.phase = phase
         self.session = session
         self.app = app
         self.transcribing = transcribing
         self.route = route
         self.lang = lang
+        self.autoLang = autoLang
     }
 
     /// The start card of an anytime session (route and language chips) rather than the plain start-up panel.
@@ -431,24 +435,25 @@ public struct OverlayReducer: Sendable {
     /// Marks the start of a session (Start pressed): the capsule shows warming until the brain is ready, and the
     /// start-up panel stays open until the first card or until the user collapses it.
     public mutating func sessionStarting(lang: String, session: String = "", app: String? = nil, route: AudioRoute? = nil,
-                                         unprepared: Bool = false) {
+                                         unprepared: Bool = false, auto: Bool = false) {
         reset(lang: lang)
         state.running = true
         state.activity = .warming
         state.route = route
         state.unprepared = unprepared
         state.startup = StartupPanel(phase: .starting(step: "Starting the brain and loading models"), session: session, app: app,
-                                     route: route, lang: lang)
+                                     route: route, lang: lang, autoLang: auto)
     }
 
     /// A mid-call route or language switch: the labels follow, nothing else moves. The open card, the topic chips and what the
     /// reducer remembers of the turns belong to the call, which goes on.
-    public mutating func listeningChanged(route: AudioRoute, lang: String, app: String?) {
+    public mutating func listeningChanged(route: AudioRoute, lang: String, app: String?, auto: Bool? = nil) {
         state.route = route
         state.lang = lang
         guard state.startup != nil else { return }
         state.startup?.route = route
         state.startup?.lang = lang
+        if let auto { state.startup?.autoLang = auto }
         state.startup?.app = app
     }
 

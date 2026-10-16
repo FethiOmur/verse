@@ -38,15 +38,16 @@ public final class OverlayModel: ObservableObject {
         publish()
     }
 
-    public func sessionStarting(lang: String, session: String = "", app: String? = nil, route: AudioRoute? = nil, unprepared: Bool = false) {
-        reducer.sessionStarting(lang: lang, session: session, app: app, route: route, unprepared: unprepared)
+    public func sessionStarting(lang: String, session: String = "", app: String? = nil, route: AudioRoute? = nil, unprepared: Bool = false,
+                                auto: Bool = false) {
+        reducer.sessionStarting(lang: lang, session: session, app: app, route: route, unprepared: unprepared, auto: auto)
         publish()
     }
 
     /// The running call now listens on another route and/or in another language (the listen pipeline was swapped in place).
     /// Only the labels move: the card, the topics, the transcript state and the clock are the call's, untouched.
-    public func listeningChanged(route: AudioRoute, lang: String, app: String? = nil) {
-        reducer.listeningChanged(route: route, lang: lang, app: app)
+    public func listeningChanged(route: AudioRoute, lang: String, app: String? = nil, auto: Bool? = nil) {
+        reducer.listeningChanged(route: route, lang: lang, app: app, auto: auto)
         publish()
     }
 

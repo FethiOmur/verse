@@ -144,7 +144,7 @@ public actor ListenSession {
                 try await p.start(clock: clock) { r, origin in
                     let event = TranscriptEvent(channel: channel, text: r.text, isFinal: r.isFinal,
                                                 audioStart: origin + r.start, audioEnd: origin + r.end,
-                                                emittedAt: clock.now(), lang: lang)
+                                                emittedAt: clock.now(), lang: lang, confidence: r.confidence)
                     if channel == .me, let remoteEnvelope,
                        let f = gate.features(mic: micEnvelope, remote: remoteEnvelope, start: event.audioStart, end: event.audioEnd) {
                         let verdict = gate.verdict(f)
@@ -186,8 +186,30 @@ public actor ListenSession {
         return stream
     }
 
+    /// Starts (or, with nil, stops) the shadow recognizer of the remote channel: a lightweight recognizer for a candidate
+    /// language on the same audio, whose finals go to `config.onResult` (interim AUTO language, spec 2.5). The room route's
+    /// microphone is the remote channel, so it is shadowed too. Safe to call at any time after `start()`.
+    public func setShadow(_ shadow: ShadowConfig?) async {
+        guard let p = pipelines[.remote] else { return }
+        if let old = p.takeShadow() { await old.stop() }
+        guard let shadow else { return }
+        let base = config, env = environment
+        p.setShadow(ShadowRecognizer(channel: .remote, config: shadow, makeEngine: { lang in
+            var c = base
+            c.lang = lang
+            c.engineKind = EngineFactory.defaultKind(for: lang)    // the Apple engine: no model load, no extra GB
+            return try env.makeEngine(c)
+        }))
+    }
+
+    /// The main recognizer's text looks like `lang`: the shadow recognizer looks at it next.
+    public func preferShadow(_ lang: String) {
+        pipelines[.remote]?.shadowRecognizer()?.prefer(lang)
+    }
+
     /// Stops capture, flushes the recognizers (pending finals are still delivered), then ends the event stream.
     public func stop() async {
+        await setShadow(nil)
         for p in pipelines.values { p.stopSource() }
         await lifecycle?.value
         watchdog?.cancel()

@@ -176,11 +176,23 @@ public struct RunOptions: Sendable {
     /// parity (two separate runs differ in timing-dependent lines such as hedges).
     public var mirrorOutput: FileHandle?
     /// When set, every finalized turn (both speakers) is appended here as one JSON line
-    /// `{turn_id, speaker, text, addressee, kind, t_audio_end}` and flushed. Text only, never audio.
+    /// `{turn_id, speaker, text, addressee, kind, t_audio_end, lang}` and flushed. Text only, never audio.
     public var transcriptURL: URL?
     /// How long after it was sent a question still counts as "being answered" when the brain crashes (it is re-sent
     /// to the restarted brain).
     public var resendWindowSeconds = 20.0
+    /// Interim AUTO language (spec 2.5): `lang` is only where the call starts. A shadow recognizer listens in another language
+    /// on the same audio, and when two finals in a row (or 6 s of speech) are judged another language the listen pipeline is
+    /// swapped in place to it. Off (the default): the language is the one given, changed only by `switchListening`.
+    public var autoLanguage = false
+    public var autoConfig = AutoLangConfig()
+    /// AUTO runs a shadow recognizer for a candidate language on the same audio. Off (tests): the text of the main recognizer
+    /// alone is judged.
+    public var autoShadow = true
+    /// Seconds a shadow candidate listens before the next one takes over.
+    public var shadowSlotSeconds = 12.0
+    /// Called after AUTO switched the call to a language (never for a switch asked for with `switchListening`).
+    public var onAutoLanguage: (@Sendable (String) -> Void)?
 
     public static let defaultLiveSeconds = 60.0
 
@@ -197,6 +209,8 @@ public final class VerseRunner: @unchecked Sendable {
     /// names the listen pipeline whose stream finished.
     private enum Input: Sendable {
         case event(TranscriptEvent)
+        /// A result of the shadow recognizer (times already moved by the leg's offset).
+        case shadow(ShadowResult)
         case tick(TimeInterval, Double?)
         case ended(Int)
     }
@@ -268,6 +282,8 @@ public final class VerseRunner: @unchecked Sendable {
         var restarts = 0
         var lastQuestion: (event: OutboundEvent, sent: Date)?
         var pendingQuestion: OutboundEvent?
+        /// The `lang` each question was sent with, for a re-send to a restarted brain.
+        var questionLang: [String: String] = [:]
         var brainFailed = false
         /// The turn engine of the running session, for the brain's paraphrase hits (`noteBrainBankHit`).
         var engine: TurnEngine?
@@ -283,6 +299,12 @@ public final class VerseRunner: @unchecked Sendable {
         var limitReached = false
         var listenFailed = false
         var swaps = 0
+        // interim AUTO language
+        var autoLang = false
+        /// An automatic switch is under way (the detector already counts the new language as current).
+        var autoSwitching = false
+        /// How the last automatic switch ended, for the loop to pick up: the language it went to, and whether it was applied.
+        var autoOutcome: (lang: String, applied: Bool)?
     }
 
     private let transcript = OSAllocatedUnfairLock<FileHandle?>(initialState: nil)
@@ -296,6 +318,7 @@ public final class VerseRunner: @unchecked Sendable {
         var initial = State()
         initial.route = options.route
         initial.lang = options.lang
+        initial.autoLang = options.autoLanguage
         state = OSAllocatedUnfairLock(initialState: initial)
     }
 
@@ -440,6 +463,21 @@ public final class VerseRunner: @unchecked Sendable {
         let (inputs, cont) = AsyncStream.makeStream(of: Input.self, bufferingPolicy: .unbounded)
         var leg = startLeg(Leg(gen: 0, session: session, offset: 0, route: o.route), stream: stream, into: cont)
         var legs: [Leg] = [leg]
+        // Interim AUTO language: the detector lives in this loop; the shadow recognizer's results come in as `.shadow` inputs.
+        var detector = AutoLanguageDetector(current: o.lang, auto: o.autoLanguage, config: o.autoConfig)
+        detector.shadowActive = o.autoLanguage && o.autoShadow
+        func shadowConfig(offset: TimeInterval) -> ShadowConfig {
+            var c = ShadowConfig(candidates: detector.shadowOrder(), onResult: { r in
+                var r = r
+                r.start += offset
+                r.end += offset
+                cont.yield(.shadow(r))
+            })
+            c.slotSeconds = o.shadowSlotSeconds
+            c.log = { [weak self] in self?.log($0) }
+            return c
+        }
+        if o.autoLanguage && o.autoShadow { await session.setShadow(shadowConfig(offset: 0)) }
         let timer = Task { [weak self] in
             var isLive = false
             if case .live = source { isLive = true }
@@ -487,6 +525,7 @@ public final class VerseRunner: @unchecked Sendable {
             let startedWall = Date().timeIntervalSince1970
             leg = startLeg(Leg(gen: old.gen + 1, session: p.next, offset: offset, route: p.route), stream: next, into: cont)
             legs.append(leg)
+            if detector.auto && o.autoShadow { await p.next.setShadow(shadowConfig(offset: offset)) }
             let ended = state.withLock { s -> Bool in
                 s.session = p.next
                 s.swaps += 1
@@ -500,9 +539,21 @@ public final class VerseRunner: @unchecked Sendable {
             return true
         }
 
+        var autoPrevSwitch: TimeInterval?
         loop: for await input in inputs {
             switch input {
+            case .shadow(let r):
+                if r.isFinal {
+                    detector.note(LangFinal(channel: r.channel, lang: r.lang, text: r.text, start: r.start, end: r.end,
+                                            confidence: r.confidence, shadow: true))
+                    if o.trace { log(String(format: "trace shadow %@ t=%.2f-%.2f conf=%@ %@", r.lang, r.start, r.end, r.confidence.map { String(format: "%.2f", $0) } ?? "-", r.text)) }
+                }
             case .event(let e):
+                if e.isFinal, detector.auto,
+                   let hint = detector.note(LangFinal(channel: e.channel, lang: e.lang, text: e.text, start: e.audioStart, end: e.audioEnd,
+                                                      confidence: e.confidence)) {
+                    await leg.session.preferShadow(hint)
+                }
                 o.transcriptTap?(e)
                 if o.trace { log(String(format: "trace event %@ t=%.2f audio=%.2f-%.2f final=%@ %@", e.channel.rawValue, e.emittedAt, e.audioStart, e.audioEnd, e.isFinal ? "y" : "n", e.text)) }
                 dispatch(await engine.ingestTimed(e))
@@ -512,6 +563,38 @@ public final class VerseRunner: @unchecked Sendable {
                               "source": "verse-run"])
                 }
             case .tick(let t, let db):
+                // Interim AUTO language: follow the pin/auto setting and the language the call is in, then judge what is due.
+                let (wantAuto, nowLang, switching, outcome) = state.withLock { s -> (Bool, String, Bool, (lang: String, applied: Bool)?) in
+                    let r = (s.autoLang, s.lang, s.autoSwitching, s.autoOutcome)
+                    s.autoOutcome = nil
+                    return r
+                }
+                if let outcome, !outcome.applied, detector.current == outcome.lang {
+                    detector.revert(to: nowLang, lastSwitchAt: autoPrevSwitch)
+                }
+                if wantAuto != detector.auto {
+                    detector.setAuto(wantAuto)
+                    detector.shadowActive = wantAuto && o.autoShadow
+                    if o.autoShadow { await leg.session.setShadow(wantAuto ? shadowConfig(offset: leg.offset) : nil) }
+                } else if !switching, nowLang != detector.current {
+                    detector.setCurrent(nowLang, at: t)           // a chip pinned another language, or a manual switch landed
+                    if detector.auto && o.autoShadow { await leg.session.setShadow(shadowConfig(offset: leg.offset)) }
+                }
+                if detector.auto, !switching {
+                    let before = detector.lastSwitchAt
+                    if let d = detector.advance(to: t) {
+                        autoPrevSwitch = before
+                        emitJSON(["type": "metric", "turn_id": "", "stage": "lang_auto", "from": d.from, "to": d.to, "finals": d.finals,
+                                  "speech_s": Text.ms(d.seconds), "channel": d.channel.rawValue, "t": Text.ms(t), "source": "verse-run"])
+                        state.withLock { $0.autoSwitching = true }
+                        Task { [weak self] in
+                            guard let self else { return }
+                            let ok = await self.switchListening(lang: d.to)
+                            self.state.withLock { s in s.autoSwitching = false; s.autoOutcome = (d.to, ok) }
+                            if ok { o.onAutoLanguage?(d.to) }
+                        }
+                    }
+                }
                 if o.trace, Int(t * 100) % 10 == 0 { log(String(format: "trace level t=%.2f %@", t, db.map { String(format: "%.1f dBFS", $0) } ?? "silent")) }
                 dispatch(await engine.noteRemoteLevel(db, at: t))
             case .ended(let gen):
@@ -721,6 +804,10 @@ public final class VerseRunner: @unchecked Sendable {
     /// when no brain is running.
     public func cardNow() { sendControl(.cardNow) }
 
+    /// Turns the interim AUTO language mode on or off while the call runs. Off pins the current language (the controller pins
+    /// the one a chip names with `switchListening` right after).
+    public func setAutoLanguage(_ on: Bool) { state.withLock { $0.autoLang = on } }
+
     /// The session language from now on. The listen engines restart on the Swift side (the controller); this only tells the
     /// brain which language the cards come in.
     public func setLanguage(_ lang: String) { sendControl(.setLanguage(lang)) }
@@ -800,9 +887,10 @@ public final class VerseRunner: @unchecked Sendable {
         }
         if let resend, let b {
             log("re-sending \(resend.turnID) to the restarted brain")
-            b.send(resend.jsonLine())
+            let lang = state.withLock { $0.questionLang[resend.turnID] }
+            b.send(resend.jsonLine(lang: lang))
             state.withLock { s in s.lastQuestion = (resend, Date()); s.lastTurnSent = Date() }
-            if options.echoOutbound { echoOutbound(resend) } else { emitSinkOnly(.outbound(outboundObject(resend))) }
+            if options.echoOutbound { echoOutbound(resend, lang: lang) } else { emitSinkOnly(.outbound(outboundObject(resend, lang: lang))) }
         }
     }
 
@@ -852,10 +940,11 @@ public final class VerseRunner: @unchecked Sendable {
         }
     }
 
-    private func appendTranscript(_ ev: OutboundEvent) {
+    private func appendTranscript(_ ev: OutboundEvent, lang: String? = nil) {
         guard case .turn(let id, let speaker, let text, let addressee, let audioEnd, let kind) = ev else { return }
-        let obj: [String: Any] = ["turn_id": id, "speaker": speaker.rawValue, "text": text, "addressee": addressee.rawValue,
+        var obj: [String: Any] = ["turn_id": id, "speaker": speaker.rawValue, "text": text, "addressee": addressee.rawValue,
                                   "kind": kind.rawValue, "t_audio_end": Text.ms(audioEnd)]
+        if let lang { obj["lang"] = lang }
         guard let d = try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys, .withoutEscapingSlashes]) else { return }
         transcript.withLockUnchecked { h in
             guard let h else { return }
@@ -874,24 +963,24 @@ public final class VerseRunner: @unchecked Sendable {
     private func dispatch(_ timed: [TurnEngine.Timed]) {
         for t in timed {
             let ev = t.event
-            if case .turn = ev { appendTranscript(ev) }
+            if case .turn = ev { appendTranscript(ev, lang: t.lang) }
             if ev.isForBrain {
                 let question = isAnswerableQuestion(ev)
                 let target: BrainProcess? = state.withLock { s in
                     switch s.phase {
                     case .running, .starting:
-                        if question { s.lastQuestion = (ev, Date()) }
+                        if question { s.lastQuestion = (ev, Date()); s.questionLang[ev.turnID] = t.lang }
                         return s.brain
                     case .restarting:
-                        if question { s.pendingQuestion = ev }
+                        if question { s.pendingQuestion = ev; s.questionLang[ev.turnID] = t.lang }
                         return nil
                     case .failed:
                         return nil
                     }
                 }
                 guard let target else { continue }   // dropped while the brain restarts (the latest question is kept)
-                target.send(ev.jsonLine())
-                if options.echoOutbound { echoOutbound(ev) } else { emitSinkOnly(.outbound(outboundObject(ev))) }
+                target.send(ev.jsonLine(lang: t.lang))
+                if options.echoOutbound { echoOutbound(ev, lang: t.lang) } else { emitSinkOnly(.outbound(outboundObject(ev, lang: t.lang))) }
             } else if case .chip = ev {
                 if let d = try? JSONSerialization.jsonObject(with: Data(ev.jsonLine().utf8)) as? [String: Any] { emitJSON(d) }
             }
@@ -910,14 +999,14 @@ public final class VerseRunner: @unchecked Sendable {
         }
     }
 
-    private func outboundObject(_ ev: OutboundEvent) -> [String: JSONValue] {
-        var o = JSONValue.decodeObject(ev.jsonLine()) ?? [:]
+    private func outboundObject(_ ev: OutboundEvent, lang: String? = nil) -> [String: JSONValue] {
+        var o = JSONValue.decodeObject(ev.jsonLine(lang: lang)) ?? [:]
         o["dir"] = .string("to_brain")
         return o
     }
 
-    private func echoOutbound(_ ev: OutboundEvent) {
-        guard let d = try? JSONSerialization.jsonObject(with: Data(ev.jsonLine().utf8)) as? [String: Any] else { return }
+    private func echoOutbound(_ ev: OutboundEvent, lang: String? = nil) {
+        guard let d = try? JSONSerialization.jsonObject(with: Data(ev.jsonLine(lang: lang).utf8)) as? [String: Any] else { return }
         var o = d
         o["dir"] = "to_brain"
         if options.format == .json || options.sink != nil { emitJSON(o) } else { emit(Self.textLine(o)) }

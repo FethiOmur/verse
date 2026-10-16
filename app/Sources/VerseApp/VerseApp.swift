@@ -77,8 +77,9 @@ struct VerseMenu: View {
         .disabled(controller.stopping)
         Menu("Language") {
             Picker("Language", selection: Binding(
-                get: { controller.running ? controller.callLanguage : settings.defaultCallLanguage },
+                get: { controller.running ? (controller.autoLanguage ? AppSettings.autoLanguage : controller.callLanguage) : settings.defaultCallLanguage },
                 set: { controller.chooseLanguage($0) })) {
+                Text(controller.running && controller.autoLanguage ? "Auto · \(controller.callLanguage.uppercased())" : "Auto").tag(AppSettings.autoLanguage)
                 Text("English").tag("en")
                 Text("Italian").tag("it")
                 Text("Turkish").tag("tr")

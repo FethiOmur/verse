@@ -86,11 +86,13 @@ final class ReconfigureTests: XCTestCase {
         XCTAssertEqual(back.turns.map(\.speaker), [.room])
     }
 
-    /// The language decides which words are a question.
+    /// The language decides which words are a question. Since interim AUTO (spec 2.5) it is the language of the turn's own text
+    /// when that is confident, and the engine's otherwise: Italian words in an English session are an Italian question even
+    /// before the engine switches (`AutoLanguageTurnTests` covers the short-text fallback to the setting).
     func testTheLanguageSettingFollowsTheReconfigure() async {
         let e = engine()
         let en = await say(e, "come hai costruito il servizio di instradamento", at: 5)
-        XCTAssertEqual(en.turnKinds, [.statement], "no English cue in it")
+        XCTAssertEqual(en.turnKinds, [.question], "the words are Italian: the turn's own language decides, as AUTO needs")
         await e.reconfigure(lang: "it")
         let it = await say(e, "come hai costruito il servizio di instradamento", at: 15, lang: "it")
         XCTAssertEqual(it.turnKinds, [.question], "\"come\" is an Italian cue")

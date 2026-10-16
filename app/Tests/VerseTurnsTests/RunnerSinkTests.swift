@@ -197,7 +197,7 @@ final class RunnerSinkTests: XCTestCase {
         let speakers = Set(objs.compactMap { $0[string: "speaker"] })
         XCTAssertEqual(speakers, ["remote", "me"], "both speakers: \(lines)")
         for obj in objs {
-            XCTAssertEqual(Set(obj.keys), ["turn_id", "speaker", "text", "addressee", "kind", "t_audio_end"])
+            XCTAssertEqual(Set(obj.keys), ["turn_id", "speaker", "text", "addressee", "kind", "t_audio_end", "lang"])
         }
         XCTAssertTrue(objs.contains { ($0[string: "text"] ?? "").lowercased().contains("background") })
         let after = Set(try FileManager.default.contentsOfDirectory(atPath: session.dir.path))

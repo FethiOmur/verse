@@ -72,8 +72,11 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
     case chip(turnID: String, kind: String, text: String, sourceRef: String, factID: String)
 
     private enum Key: String, CodingKey {
-        case type, turn_id, speaker, text, cue, t_audio_end, addressee, bank_id, score, kind, source_ref, fact_id
+        case type, turn_id, speaker, text, cue, t_audio_end, addressee, bank_id, score, kind, source_ref, fact_id, lang
     }
+
+    /// `JSONEncoder.userInfo` key: the language tag a `partial` or `turn` line carries (spec 2.5, per-turn `lang`).
+    static let langInfoKey = CodingUserInfoKey(rawValue: "verse.lang")!
 
     public var turnID: String {
         switch self {
@@ -106,6 +109,7 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
             try c.encode(text, forKey: .text)
             try c.encode(cue, forKey: .cue)
             try c.encode(Text.ms(t), forKey: .t_audio_end)
+            try encodeLang(&c, encoder)
         case .turn(let id, let speaker, let text, let addressee, let t, let kind):
             try c.encode(id, forKey: .turn_id)
             try c.encode(speaker, forKey: .speaker)
@@ -113,6 +117,7 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
             try c.encode(addressee, forKey: .addressee)
             try c.encode(Text.ms(t), forKey: .t_audio_end)
             try c.encode(kind, forKey: .kind)
+            try encodeLang(&c, encoder)
         case .bankHit(let id, let bank, let score):
             try c.encode(id, forKey: .turn_id)
             try c.encode(bank, forKey: .bank_id)
@@ -124,6 +129,10 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
             try c.encode(ref, forKey: .source_ref)
             try c.encode(factID, forKey: .fact_id)
         }
+    }
+
+    private func encodeLang(_ c: inout KeyedEncodingContainer<Key>, _ encoder: Encoder) throws {
+        if let lang = encoder.userInfo[Self.langInfoKey] as? String { try c.encode(lang, forKey: .lang) }
     }
 
     public init(from decoder: Decoder) throws {
@@ -163,6 +172,16 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
     /// One compact JSON object, no trailing newline.
     public func jsonLine() -> String {
         String(decoding: (try? Self.encoder.encode(self)) ?? Data("{}".utf8), as: UTF8.self)
+    }
+
+    /// The same line with `"lang"` ("en" | "it" | "tr") on a `partial` or `turn`: the language of that turn's text, which the brain
+    /// answers in. nil leaves the line as `jsonLine()` makes it.
+    public func jsonLine(lang: String?) -> String {
+        guard let lang else { return jsonLine() }
+        let e = JSONEncoder()
+        e.outputFormatting = [.withoutEscapingSlashes]
+        e.userInfo[Self.langInfoKey] = lang
+        return String(decoding: (try? e.encode(self)) ?? Data("{}".utf8), as: UTF8.self)
     }
 }
 

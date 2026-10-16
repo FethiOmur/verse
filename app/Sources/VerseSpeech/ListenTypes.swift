@@ -13,9 +13,11 @@ public struct TranscriptEvent: Sendable, Codable, Equatable {
     public var audioEnd: TimeInterval
     public var emittedAt: TimeInterval
     public var lang: String
+    /// The engine's mean confidence for a final result, where it reports one.
+    public var confidence: Double?
 
     public init(channel: Channel, text: String, isFinal: Bool, audioStart: TimeInterval, audioEnd: TimeInterval,
-                emittedAt: TimeInterval, lang: String) {
+                emittedAt: TimeInterval, lang: String, confidence: Double? = nil) {
         self.channel = channel
         self.text = text
         self.isFinal = isFinal
@@ -23,6 +25,7 @@ public struct TranscriptEvent: Sendable, Codable, Equatable {
         self.audioEnd = audioEnd
         self.emittedAt = emittedAt
         self.lang = lang
+        self.confidence = confidence
     }
 }
 

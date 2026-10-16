@@ -24,6 +24,13 @@ final class ChannelPipeline: @unchecked Sendable {
     /// Chunks received so far (for the `--levels` readout).
     var chunksReceived: Int { lock.withLockUnchecked { chunkCount } }
     private var ended = false
+    private var shadow: ShadowRecognizer?
+
+    /// Interim AUTO language: a recognizer for a candidate language that gets the same samples as the main one.
+    func setShadow(_ s: ShadowRecognizer?) { lock.withLockUnchecked { shadow = s } }
+    func takeShadow() -> ShadowRecognizer? { lock.withLockUnchecked { let s = shadow; shadow = nil; return s } }
+    func shadowRecognizer() -> ShadowRecognizer? { currentShadow() }
+    private func currentShadow() -> ShadowRecognizer? { lock.withLockUnchecked { shadow } }
 
     /// Without a chunk for this long, the pipeline feeds silence itself.
     static let pumpAfter: TimeInterval = 0.15
@@ -70,8 +77,9 @@ final class ChannelPipeline: @unchecked Sendable {
             var converter: AVAudioConverter?
             var rate: Double = 0
             var fedUntil: TimeInterval?        // session time up to which samples went to the recognizer
-            func feed(_ samples: [Float]) {
+            func feed(_ samples: [Float], endTime: TimeInterval) {
                 guard !samples.isEmpty else { return }
+                self?.currentShadow()?.feed(samples, rate: rate, endTime: endTime)
                 do {
                     if let buf = try ChannelPipeline.convert(samples, sampleRate: rate, to: format, with: converter) {
                         inputCont.yield(AnalyzerInput(buffer: buf))
@@ -88,7 +96,7 @@ final class ChannelPipeline: @unchecked Sendable {
                     let until = now - pumpAfter / 2
                     let n = Int((until - f) * rate)
                     if n > 0 {
-                        feed([Float](repeating: 0, count: n))
+                        feed([Float](repeating: 0, count: n), endTime: f + Double(n) / rate)
                         fedUntil = f + Double(n) / rate
                     }
                 case .audio(let chunk):
@@ -115,7 +123,7 @@ final class ChannelPipeline: @unchecked Sendable {
                             samples.removeFirst(drop)
                         }
                     }
-                    feed(samples)
+                    feed(samples, endTime: chunk.endTime)
                     fedUntil = max(fedUntil ?? chunk.endTime, chunk.endTime)
                 }
             }

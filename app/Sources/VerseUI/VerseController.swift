@@ -52,7 +52,10 @@ public final class VerseController: ObservableObject {
     @Published public private(set) var route: AudioRoute = .meeting
     @Published public private(set) var sessionMode: SessionMode = .prepared
     /// The language the running session listens in.
+    /// The language the recognizers run in now ("en", "it" or "tr"; with `autoLanguage`, the one AUTO picked).
     @Published public private(set) var callLanguage = "en"
+    /// The interim AUTO language mode is on for the running call (spec 2.5): the call follows the spoken language.
+    @Published public private(set) var autoLanguage = false
     /// ⌥⌘V was pressed once while a session runs: the island shows "Press ⌥⌘V again to stop" for `StopConfirm.window`.
     @Published public private(set) var stopArmed = false
     /// False when ⌥⌘V is taken by another app.
@@ -261,11 +264,18 @@ public final class VerseController: ObservableObject {
 
     /// `anytimeStart`: the session came from Start now (or a route/language change of one), so the island shows the start
     /// card with its route and language chips.
-    private func launchSession(name: String, mode: SessionMode, route: AudioRoute, lang: String, anytimeStart: Bool = false) {
+    private func launchSession(name: String, mode: SessionMode, route: AudioRoute, lang requested: String, anytimeStart: Bool = false) {
         let dir = SessionCatalog.url(name, root: sessionsRoot)
+        // "auto" starts in English (the fastest engine) and lets the call's own speech pick the language.
+        let auto = requested == AppSettings.autoLanguage
+        let lang = auto ? "en" : requested
         var o = Self.runOptions(sessionDir: dir, settings: settings, fakeBrain: fakeBrain, testFile: testFile,
                                 micWithFile: remoteFileOverride != nil, follow: meeting.settings.followMyAnswer,
                                 mode: mode, route: route, lang: lang)
+        o.autoLanguage = auto
+        o.onAutoLanguage = { [weak self] picked in
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.autoSwitched(to: picked) } }
+        }
         log("start session=\(name) lang=\(lang) mode=\(mode.rawValue) route=\(route.rawValue) me=\(o.me != nil) fake=\(fakeBrain) file=\(testFile ?? "-") live_seconds=\(o.seconds.map { String(Int($0)) } ?? "file")")
         lastLogLine = nil
         o.sink = { [weak self] e in
@@ -282,7 +292,7 @@ public final class VerseController: ObservableObject {
         overlay.bank = BankOpener.load(sessionDir: dir)
         overlay.config = settings.overlayConfig
         overlay.sessionStarting(lang: lang, session: name, app: route == .meeting ? Self.meetingAppName() : nil,
-                                route: anytimeStart ? route : nil, unprepared: mode == .unprepared)
+                                route: anytimeStart ? route : nil, unprepared: mode == .unprepared, auto: auto)
         overlay.startClock()
         runner = r
         runSessionDir = dir
@@ -292,6 +302,7 @@ public final class VerseController: ObservableObject {
         self.route = route
         sessionMode = mode
         callLanguage = lang
+        autoLanguage = auto
         meLayer = nil
         meConflicts = []
         meLayerMissing = false
@@ -379,13 +390,30 @@ public final class VerseController: ObservableObject {
 
     /// The Language submenu / the language chips: before a call it is the default call language; during one the call
     /// listens and answers in that language from now on (and the default stays what it was).
+    ///
+    /// "auto" turns the interim AUTO mode on (the call follows the spoken language); "en", "it" and "tr" pin that language and
+    /// turn AUTO off, so a pinned call never switches by itself.
     public func chooseLanguage(_ lang: String) {
         guard AppSettings.callLanguages.contains(lang) else { return }
-        if running {
-            Task { await switchListening(lang: lang) }
-        } else {
+        guard running else {
             settings.defaultCallLanguage = lang
+            return
         }
+        guard let r = runner, !stopping else { return }
+        let auto = lang == AppSettings.autoLanguage
+        r.setAutoLanguage(auto)
+        autoLanguage = auto
+        overlay.listeningChanged(route: route, lang: callLanguage, app: route == .meeting ? Self.meetingAppName() : nil, auto: auto)
+        log("language \(auto ? "auto" : "pinned " + lang)")
+        if !auto { Task { await switchListening(lang: lang) } }
+    }
+
+    /// AUTO swapped the recognizers to the language it heard: the labels follow (the runner already told the brain).
+    private func autoSwitched(to lang: String) {
+        guard running, autoLanguage else { return }
+        log("auto language → \(lang)")
+        callLanguage = lang
+        overlay.listeningChanged(route: route, lang: lang, app: route == .meeting ? Self.meetingAppName() : nil, auto: true)
     }
 
     private func startChip(_ action: StartChipAction) {
@@ -417,7 +445,7 @@ public final class VerseController: ObservableObject {
         self.route = route
         callLanguage = lang
         prompter.meetingRoute(room: route == .room)
-        overlay.listeningChanged(route: route, lang: lang, app: route == .meeting ? Self.meetingAppName() : nil)
+        overlay.listeningChanged(route: route, lang: lang, app: route == .meeting ? Self.meetingAppName() : nil, auto: autoLanguage)
     }
 
     /// ⌥⌘↩: answer the latest remote/room turn at once.

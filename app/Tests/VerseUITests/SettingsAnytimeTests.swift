@@ -11,7 +11,7 @@ final class SettingsAnytimeTests: XCTestCase {
     func testDefaults() {
         let s = AppSettings(defaults: defaults())
         XCTAssertTrue(s.useMeProfile, "Use my profile in every session: on")
-        XCTAssertEqual(s.defaultCallLanguage, "en")
+        XCTAssertEqual(s.defaultCallLanguage, "auto", "Default call language: Auto (interim AUTO, spec 2.1)")
         XCTAssertTrue(s.roomAutoCards)
         XCTAssertEqual(s.roomAuto, .questions)
     }
@@ -36,10 +36,10 @@ final class SettingsAnytimeTests: XCTestCase {
         XCTAssertEqual(third.roomAuto, .questions)
     }
 
-    func testAnUnknownStoredLanguageFallsBackToEnglish() {
+    func testAnUnknownStoredLanguageFallsBackToAuto() {
         let d = defaults()
         d.set("fr", forKey: "defaultCallLanguage")
-        XCTAssertEqual(AppSettings(defaults: d).defaultCallLanguage, "en")
+        XCTAssertEqual(AppSettings(defaults: d).defaultCallLanguage, "auto")
     }
 
     func testOtherSettingsAreUntouched() {

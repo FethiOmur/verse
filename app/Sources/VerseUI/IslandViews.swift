@@ -517,7 +517,7 @@ struct StartupPanelView: View {
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("verse.startup")
             if let route = panel.route {
-                StartCardChips(route: route, lang: panel.lang, onAction: onAction).padding(.top, 8)
+                StartCardChips(route: route, lang: panel.lang, auto: panel.autoLang, onAction: onAction).padding(.top, 8)
             }
         }
         .padding(.horizontal, VT.islandCardInset)
@@ -555,12 +555,18 @@ struct StartChip: View {
     }
 }
 
-/// Route and language of an anytime session: a click on the route chip changes the route, the language chips offer EN, IT
-/// and TR (an engine restart; the controller does it).
+/// Route and language of an anytime session: a click on the route chip changes the route, the language chips offer AUTO, EN,
+/// IT and TR (an in-place engine swap; the controller does it). A click on EN, IT or TR pins that language and turns AUTO off.
 struct StartCardChips: View {
     var route: AudioRoute
+    /// The language the recognizers run in now (with `auto`: the one AUTO picked).
     var lang: String
+    /// AUTO is on: the chip reads "AUTO · EN" and the language chips are not selected.
+    var auto = false
     var onAction: (StartChipAction) -> Void
+
+    /// The AUTO chip's text: "AUTO · EN" while on (the detected language), "AUTO" while off.
+    static func autoLabel(auto: Bool, lang: String) -> String { auto ? "AUTO · \(lang.uppercased())" : "AUTO" }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -570,10 +576,13 @@ struct StartCardChips: View {
             .accessibilityLabel("Route: \(StartRoutes.label(route))")
             .accessibilityHint("Changes where Verse listens")
             Rectangle().fill(Color.white.opacity(0.16)).frame(width: 0.5, height: 14).padding(.horizontal, 2)
-            ForEach(AppSettings.callLanguages, id: \.self) { code in
-                StartChip(label: code.uppercased(), selected: code == lang) { onAction(.setLanguage(code)) }
+            StartChip(label: Self.autoLabel(auto: auto, lang: lang), selected: auto) { onAction(.setLanguage(AppSettings.autoLanguage)) }
+                .accessibilityLabel(auto ? "Auto, \(StartRoutes.languageName(lang))" : "Auto")
+                .accessibilityAddTraits(auto ? .isSelected : [])
+            ForEach(AppSettings.pinnableLanguages, id: \.self) { code in
+                StartChip(label: code.uppercased(), selected: !auto && code == lang) { onAction(.setLanguage(code)) }
                     .accessibilityLabel(StartRoutes.languageName(code))
-                    .accessibilityAddTraits(code == lang ? .isSelected : [])
+                    .accessibilityAddTraits(!auto && code == lang ? .isSelected : [])
             }
         }
         .accessibilityElement(children: .contain)
@@ -605,6 +614,7 @@ enum StartRoutes {
 
     static func languageName(_ code: String) -> String {
         switch code {
+        case "auto": return "Auto"
         case "it": return "Italian"
         case "tr": return "Turkish"
         default: return "English"

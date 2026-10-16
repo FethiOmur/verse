@@ -120,11 +120,11 @@ final class AnytimeSessionsAndMenuTests: XCTestCase {
 
     func testTheLanguageChoiceBeforeAStartIsTheDefaultCallLanguage() {
         let c = controller()
-        XCTAssertEqual(c.settings.defaultCallLanguage, "en")
+        XCTAssertEqual(c.settings.defaultCallLanguage, "auto")
         c.chooseLanguage("tr")
         XCTAssertEqual(c.settings.defaultCallLanguage, "tr")
         c.chooseLanguage("fr")
-        XCTAssertEqual(c.settings.defaultCallLanguage, "tr", "only en, it and tr")
+        XCTAssertEqual(c.settings.defaultCallLanguage, "tr", "only auto, en, it and tr")
         c.chooseLanguage("it")
         XCTAssertEqual(c.settings.defaultCallLanguage, "it")
     }
@@ -134,6 +134,6 @@ final class AnytimeSessionsAndMenuTests: XCTestCase {
         await c.switchListening(route: .room, lang: "it")
         XCTAssertFalse(c.running)
         XCTAssertEqual(c.callLanguage, "en")
-        XCTAssertEqual(c.settings.defaultCallLanguage, "en", "a switch never rewrites the default")
+        XCTAssertEqual(c.settings.defaultCallLanguage, "auto", "a switch never rewrites the default")
     }
 }

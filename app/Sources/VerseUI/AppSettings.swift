@@ -51,7 +51,8 @@ public final class AppSettings: ObservableObject {
     /// Anytime calls (spec 2.2): the permanent "me" layer goes into every session. Off: `start.me` is null and the prompt
     /// prefix is what it was before the layer existed.
     @Published public var useMeProfile: Bool { didSet { defaults.set(useMeProfile, forKey: "useMeProfile") } }
-    /// The language a Start by hotkey, menu or island listens in (en, it or tr). Changed during a session from the island.
+    /// The language a Start by hotkey, menu or island listens in: "auto" (the default; the call switches between en, it and tr by
+    /// itself, spec 2.5 "interim AUTO"), or "en", "it", "tr" to pin one. Changed during a session from the island.
     @Published public var defaultCallLanguage: String { didSet { defaults.set(defaultCallLanguage, forKey: "defaultCallLanguage") } }
     /// Room route: cards for questions by themselves (on) or only on ⌥⌘↩ (off).
     @Published public var roomAutoCards: Bool { didSet { defaults.set(roomAutoCards, forKey: "roomAutoCards") } }
@@ -79,14 +80,19 @@ public final class AppSettings: ObservableObject {
         windowOpacity = (d.object(forKey: "windowOpacity") as? Double ?? 0.34).clamped(to: Self.windowOpacityRange)
         sessionName = d.string(forKey: "sessionName") ?? ""
         useMeProfile = d.object(forKey: "useMeProfile") as? Bool ?? true
-        let callLang = d.string(forKey: "defaultCallLanguage") ?? "en"
-        defaultCallLanguage = Self.callLanguages.contains(callLang) ? callLang : "en"
+        let callLang = d.string(forKey: "defaultCallLanguage") ?? Self.autoLanguage
+        defaultCallLanguage = Self.callLanguages.contains(callLang) ? callLang : Self.autoLanguage
         roomAutoCards = d.object(forKey: "roomAutoCards") as? Bool ?? true
         fakeBrain = d.bool(forKey: "fakeBrain")
         testAudioPath = d.string(forKey: "testAudioPath") ?? ""
     }
 
-    public static let callLanguages = ["en", "it", "tr"]
+    /// The value of "Default call language" that follows the spoken language.
+    public static let autoLanguage = "auto"
+    /// The languages a call can be pinned to.
+    public static let pinnableLanguages = ["en", "it", "tr"]
+    /// Every value of "Default call language", AUTO first.
+    public static let callLanguages = [autoLanguage] + pinnableLanguages
 
     /// The brain's `start.room_auto`.
     public var roomAuto: RoomAuto { roomAutoCards ? .questions : .off }

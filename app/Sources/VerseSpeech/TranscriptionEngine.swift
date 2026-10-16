@@ -10,12 +10,15 @@ public struct EngineResult: Sendable {
     public var isFinal: Bool
     public var start: TimeInterval
     public var end: TimeInterval
+    /// Mean per-word confidence (0...1) where the engine reports one (the Apple engines do); nil otherwise.
+    public var confidence: Double?
 
-    public init(text: String, isFinal: Bool, start: TimeInterval, end: TimeInterval) {
+    public init(text: String, isFinal: Bool, start: TimeInterval, end: TimeInterval, confidence: Double? = nil) {
         self.text = text
         self.isFinal = isFinal
         self.start = start
         self.end = end
+        self.confidence = confidence
     }
 }
 
@@ -133,7 +136,7 @@ final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
             }
             let m = SpeechTranscriber(locale: locale, transcriptionOptions: [],
                                       reportingOptions: [.volatileResults, .fastResults],
-                                      attributeOptions: [.audioTimeRange])
+                                      attributeOptions: [.audioTimeRange, .transcriptionConfidence])
             module = m
             startResults = { onResult in
                 Task { for try await r in m.results { onResult(Self.map(r.text, r.range, r.isFinal)) } }
@@ -145,7 +148,7 @@ final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
             }
             let m = DictationTranscriber(locale: locale, contentHints: [], transcriptionOptions: [.punctuation],
                                          reportingOptions: [.volatileResults, .frequentFinalization],
-                                         attributeOptions: [.audioTimeRange])
+                                         attributeOptions: [.audioTimeRange, .transcriptionConfidence])
             module = m
             startResults = { onResult in
                 Task { for try await r in m.results { onResult(Self.map(r.text, r.range, r.isFinal)) } }
@@ -166,9 +169,14 @@ final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
     }
 
     private static func map(_ text: AttributedString, _ range: CMTimeRange, _ isFinal: Bool) -> EngineResult {
-        EngineResult(text: String(text.characters), isFinal: isFinal,
-                     start: range.start.seconds.isFinite ? range.start.seconds : 0,
-                     end: range.end.seconds.isFinite ? range.end.seconds : 0)
+        var sum = 0.0, n = 0
+        for run in text.runs {
+            if let c = run[AttributeScopes.SpeechAttributes.ConfidenceAttribute.self] { sum += c; n += 1 }
+        }
+        return EngineResult(text: String(text.characters), isFinal: isFinal,
+                            start: range.start.seconds.isFinite ? range.start.seconds : 0,
+                            end: range.end.seconds.isFinite ? range.end.seconds : 0,
+                            confidence: n > 0 ? sum / Double(n) : nil)
     }
 
     func start(input: AsyncStream<AnalyzerInput>, onResult: @escaping @Sendable (EngineResult) -> Void) async throws {

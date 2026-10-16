@@ -11,9 +11,9 @@ func stderr(_ s: String) { FileHandle.standardError.write(Data((s + "\n").utf8))
 
 func usage() -> Never {
     stderr("""
-    usage: verse-run --session DIR --lang en|it|tr [--seconds N] [--file PATH] [options]
+    usage: verse-run --session DIR --lang auto|en|it|tr [--seconds N] [--file PATH] [options]
       --session DIR       a P1-1 session folder (pack.md, bank.jsonl, facts.jsonl, glossary.jsonl)
-      --lang L            meeting language (default en)
+      --lang L            meeting language (default en); auto starts in en and follows the spoken language (en, it, tr)
       --seconds N         stop listening after N s (live default 60; a file plays to its end)
       --file PATH         play an audio file as the remote channel instead of listening live
       --me-file PATH      play an audio file as the "me" channel (the microphone) next to --file, both at real-time
@@ -87,9 +87,10 @@ func parse(_ args: [String]) -> RunOptions {
         }
     }
     guard let session else { stderr("verse-run: --session is required"); usage() }
-    guard ["en", "it", "tr"].contains(lang) else { stderr("verse-run: --lang must be en, it or tr"); usage() }
+    guard ["auto", "en", "it", "tr"].contains(lang) else { stderr("verse-run: --lang must be auto, en, it or tr"); usage() }
     var opts = RunOptions(sessionDir: URL(fileURLWithPath: (session as NSString).expandingTildeInPath))
-    opts.lang = lang
+    opts.lang = lang == "auto" ? "en" : lang
+    opts.autoLanguage = lang == "auto"
     opts.seconds = seconds
     opts.file = file.map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath) }
     opts.micEnabled = mic
