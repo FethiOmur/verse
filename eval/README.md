@@ -39,3 +39,24 @@ python3 -m pytest tests -q
 
 `twotrack.py` renders `twotrack/<id>.json` with two `say` voices (offsets may be negative: overlaps and interruptions), `score_twotrack.py`
 counts answered questions, me turns and wrong triggers. Report: `docs/p1-replay-bleed-report.md`.
+
+## Follow my answer (t02, t03, t04)
+
+`docs/specs/2026-10-16-verse-follow-my-answer-design.md`; thresholds and their evidence: `docs/follow-tuning.md`; live card: `docs/follow-live-t03.md`.
+
+```
+cd eval; export VERSE_EVAL_OUT=/some/scratch
+python3 run_follow.py --fixture t02 --name t02_fake --brain-dir ../brain          # he reads / paraphrases the card: 0 follow cards, points struck
+python3 run_follow.py --fixture t03 --name t03_fake --brain-dir ../brain          # off the card, pack topic: a follow card
+python3 run_follow.py --fixture t04 --name t04_fake --brain-dir ../brain          # off the card, outside the pack
+python3 run_follow.py --fixture t03 --name t03_live --brain-dir ../brain --live --session <session with a STYLE GUIDE>   # real Haiku, spends (~$0.03)
+PYTHONPATH=../brain ../brain/.venv/bin/python tune_follow.py                       # the detector tuning (8 min)
+```
+
+`run_follow.py` feeds the Python brain directly (fake brain = canned transport answering from the pack's bank, with the embedding
+model; with `--no-embed` follow cannot diverge, it only strikes points: the embedder is required for a follow card). It exists because `verse-run` has no `--follow` yet and sends no `partial` for the owner's
+speech without it; the `say` voices only fix the true start and end of each utterance and the words are delivered like a streaming
+recognizer would (see the module docstring). `score_twotrack.py` adds, per labelled owner utterance, `follow_events`, `detection_ms`
+(first `follow` event after the first off-card word was spoken), `first_sentence_ms` (first complete SAY line of the follow card),
+the card's point count and the `covered` events. Detection and first-sentence times assume the audio clock starts at `session_t0.t`
+(exact for `run_follow.py`).

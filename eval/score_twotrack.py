@@ -65,6 +65,67 @@ def assemble_calls(events: list[tuple[float, dict]]) -> dict[str, dict]:
     return calls
 
 
+def lines_of(deltas: list[tuple[float, dict]]) -> list[tuple[float, str]]:
+    """(wall time of its last piece, text) of every complete line in a stream of delta pieces (`line_done` ends a line)."""
+    out, buf = [], ""
+    for w, o in deltas:
+        buf += o.get("text", "")
+        if o.get("line_done"):
+            out.append((w, buf.strip()))
+            buf = ""
+    return out
+
+
+def follow_stats(label: dict, events: list[tuple[float, dict]], meta: dict, origin_m: float, wall0: float) -> dict | None:
+    """Follow my answer: the follow cards the brain sent, per owner utterance that carries a `follow` label.
+
+    Times are wall-clock ms measured from the moment Alex *spoke* the first off-card word (`off_from_word`, spread evenly over
+    the utterance's true speech interval): `detection_ms` until the brain's first `follow` event, `first_sentence_ms` until the
+    first complete `SAY:` line of the follow card. `wall0` is the wall time of audio time 0 (`session_t0.t`; exact in
+    run_follow.py, an approximation for a verse-run replay)."""
+    follows = [(w, o) for w, o in events if o.get("type") == "follow"]
+    covered = [(w, o) for w, o in events if o.get("type") == "covered"]
+    c_deltas = [(w, o) for w, o in events if o.get("type") == "delta" and o.get("tier") == "C"]
+    labelled = [(i, u) for i, u in enumerate(label["utterances"]) if u.get("follow")]
+    if not follows and not labelled and not covered:
+        return None
+    tl = {t["index"]: t for t in meta["timeline"]}
+    metrics = {}
+    for _, o in events:
+        if o.get("type") == "metric" and o.get("stage") in ("follow_diverged", "follow_card", "follow_refresh"):
+            metrics.setdefault(o["stage"], []).append(o)
+    rows = []
+    for i, u in labelled:
+        t = tl[i]
+        a, b = wall0 + origin_m + t["t_start"], wall0 + origin_m + t["t_end"]
+        words = u["text"].split()
+        off_t = None
+        if u["follow"] == "diverge":
+            off_t = a + (b - a) * u["off_from_word"] / max(1, len(words))
+        win_end = b + 8.0
+        fl = [(w, o) for w, o in follows if a <= w <= win_end]
+        row = {"index": i, "label": u["follow"], "text": u["text"], "follow_events": len(fl),
+               "reasons": [o.get("reason") for _, o in fl]}
+        if off_t is not None and fl:
+            row["detection_ms"] = round((fl[0][0] - off_t) * 1000)
+            cid = fl[0][1].get("card_id")
+            card_lines = lines_of([(w, o) for w, o in c_deltas if o.get("card_id") == cid])
+            say = next((w for w, ln in card_lines if ln.startswith("SAY:")), None)
+            if say is not None:
+                row["first_sentence_ms"] = round((say - off_t) * 1000)
+            row["card_points"] = sum(1 for _, ln in card_lines if ln.startswith("- "))
+            row["card_text"] = "\n".join(ln for _, ln in card_lines)
+        row["ok"] = (len(fl) == 0) if u["follow"] == "none" else (len(fl) >= 1)
+        rows.append(row)
+    cov = [(o.get("card_id"), o.get("point")) for _, o in covered]
+    return {"follow_events": len(follows), "c_cards": len({o.get("card_id") for _, o in c_deltas}),
+            "covered_events": len(covered), "covered": cov, "rows": rows,
+            "unlabelled_follow_events": len(follows) - sum(r["follow_events"] for r in rows),
+            "brain_diverged_metrics": [{k: o.get(k) for k in ("reason", "unmatched", "embed", "margin", "ms", "ms_since_start")}
+                                       for o in metrics.get("follow_diverged", [])],
+            "brain_card_metrics": [{k: o.get(k) for k in ("first_sentence_ms", "since_decision_ms")} for o in metrics.get("follow_card", [])]}
+
+
 def score(label: dict, events: list[tuple[float, dict]], meta: dict, ack_text: str = ACK_DEFAULT,
           stderr_log: Path | None = None) -> dict:
     t0 = next((o for _, o in events if o.get("type") == "metric" and o.get("stage") == "session_t0"), None)
@@ -172,8 +233,11 @@ def score(label: dict, events: list[tuple[float, dict]], meta: dict, ack_text: s
             if any(min(ge, w["s_end"]) - max(gs, w["s_start"]) > 0 for w in me_wins):
                 real_dropped.append(g.get("text", ""))
     deferred = [o for _, o in events if o.get("type") == "metric" and o.get("stage") == "echo_gate_decision" and o.get("verdict") == "defer"]
+    t0_wall = float(t0.get("t", 0.0))
+    fol = follow_stats(label, events, meta, origin_m, t0_wall)
     return {
         "id": label["id"],
+        "follow": fol,
         "questions": {"n": len(a_rows), "answered_once": sum(r["verdict"] == "ok" for r in a_rows),
                       "missed": sum(r["verdict"] == "missed" for r in a_rows), "double": sum(r["verdict"] == "double" for r in a_rows)},
         "no_answer_labels": {"n": len(n_rows), "wrongly_answered": sum(r["verdict"] == "wrong" for r in n_rows)},
@@ -206,6 +270,16 @@ def table(res: dict) -> str:
         f"{res['echo_gate_deferred']}), text guard {res['echo_guard_dropped']}; me events that reached the engine "
         f"{res['me_events_reaching_engine']}; wrong triggers {res['wrong_trigger_count']}",
     ]
+    f = res.get("follow")
+    if f:
+        lines.append(f"  follow: {f['follow_events']} follow events, {f['c_cards']} follow cards, {f['covered_events']} points struck through, "
+                     f"{f['unlabelled_follow_events']} follow events outside a labelled utterance")
+        for r in f["rows"]:
+            tail = ""
+            if r["label"] == "diverge" and "detection_ms" in r:
+                tail = (f"  detection {r['detection_ms']} ms, first sentence {r.get('first_sentence_ms', 'n/a')} ms, "
+                        f"{r.get('card_points', 0)} points")
+            lines.append(f"    {'ok ' if r['ok'] else 'BAD'} u{r['index']} follow={r['label']}: {r['follow_events']} follow events{tail}")
     for w in res["wrong_triggers"]:
         lines.append(f"    ! {w['kind']}: {w.get('text') or w.get('turns') or w.get('label')}")
     return "\n".join(lines)

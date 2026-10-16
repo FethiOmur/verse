@@ -131,4 +131,9 @@ def render_markdown(r: Running, *, text: str, meta: dict, note: str | None) -> s
     section("Actions", r.actions)
     section("Open questions", r.open)
     section("Conflicts with the fact sheet", r.conflicts)
+    fol = meta.get("follow")
+    if fol is not None:
+        out += ["## Metrics", "",
+                f"- Follow my answer: {fol.get('diverged', 0)} divergences, {fol.get('refresh', 0)} refreshes, "
+                f"{fol.get('c_calls', 0)} follow calls (Haiku), {fol.get('covered', 0)} points struck through", ""]
     return "\n".join(out).rstrip() + "\n"

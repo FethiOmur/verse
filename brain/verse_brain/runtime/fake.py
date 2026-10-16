@@ -142,7 +142,13 @@ FINAL_CANNED = ("SUMMARY: The pilot starts with one depot in shadow mode; the bu
                 "CONFLICT: Said entry takes 3 minutes; the fact sheet says 2 minutes (f001)")
 
 
+FOLLOW_CANNED = ("SAY: And that is where I keep the model on a short leash.\n"
+                 "- Fields below 0.8 confidence go to a human operator.\n- That was about 7 percent of invoices.")
+
+
 def default_responder(info: CallInfo) -> Script:
+    if "FOLLOW MY ANSWER" in info.tail:
+        return lines_script(FOLLOW_CANNED)
     if info.tail.startswith("SUMMARIZE-INCREMENTAL"):
         return lines_script(ROLLING_CANNED)
     if info.tail.startswith("SUMMARIZE-FINAL"):
@@ -152,3 +158,39 @@ def default_responder(info: CallInfo) -> Script:
     if info.route == "D":
         return lines_script("OPENER_OK\n- A detail point from the pack (prep:L1)\n- Another detail (f001)")
     return lines_script("SAY: Sure, here is the short answer.\n- First point.\n- Second point.\nBANK: none")
+
+
+_BANK_ENTRY = re.compile(r"^\[(b\d+)\] Q \([a-z]+\): (.+)$")
+_QUESTION_TAIL = re.compile(r"CURRENT QUESTION \([^)]*\):\s*(.*)\Z", re.S)
+
+
+def _norm_q(q: str) -> str:
+    return " ".join(re.sub(r"[^\w\s]", " ", q.lower()).split())
+
+
+def bank_responder(info: CallInfo) -> Script:
+    """`--fake-bank`: S/F answer a question from the pack's ANSWER BANK the way Haiku is told to (the entry's opener and its
+    first two points, then `BANK: <id>`), so a replay with the canned transport shows a real card. Everything else is
+    `default_responder`. A question that matches no entry gets the generic canned answer."""
+    m = _QUESTION_TAIL.search(info.tail)
+    if info.route in ("S", "F") and m and not info.tail.startswith(("SUMMARIZE", "STATEMENT")) and "STATEMENT CHECK" not in info.tail:
+        want = _norm_q(m.group(1))
+        try:
+            pack = info.request["messages"][0]["content"][0]["text"]
+        except (KeyError, IndexError, TypeError):
+            pack = ""
+        lines = pack.splitlines()
+        for i, ln in enumerate(lines):
+            e = _BANK_ENTRY.match(ln)
+            if e and _norm_q(e.group(2)) == want:
+                say, pts = None, []
+                for body in lines[i + 1:]:
+                    if body.startswith("[b") or not body.strip():
+                        break
+                    if body.startswith("SAY:") and say is None:
+                        say = body
+                    elif body.startswith("- "):
+                        pts.append(body)
+                if say:
+                    return lines_script("\n".join([say, *pts[:2], f"BANK: {e.group(1)}"]))
+    return default_responder(info)

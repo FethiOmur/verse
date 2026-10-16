@@ -1,0 +1,33 @@
+{
+ "id": "t03",
+ "title": "Follow my answer: Alex leaves the card for another topic of the pack (accuracy and the evaluation set); a follow card must come",
+ "lang": "en",
+ "owner": "Alex",
+ "participants": [
+  "Ingrid"
+ ],
+ "voices": {
+  "Ingrid": "Kathy",
+  "Alex": "Mara"
+ },
+ "session": "sample-interview",
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "Can you tell me about yourself and your background?",
+   "offset_s": 0.8,
+   "expect": "answer",
+   "role": "question",
+   "bank_id": "b001"
+  },
+  {
+   "speaker": "Alex",
+   "text": "Sure, I'll give you the short version. What I'm happiest about is the accuracy of Lantern. On the held out set we got ninety six point four percent on totals, and the evaluation set was a frozen set of four hundred invoices.",
+   "offset_s": 1.2,
+   "expect": "me_turn",
+   "role": "starts on the card, then goes off it on a pack topic",
+   "follow": "diverge",
+   "off_from_word": 7
+  }
+ ]
+}

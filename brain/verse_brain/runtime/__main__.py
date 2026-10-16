@@ -6,7 +6,8 @@ meetings only.
 
 Reads Swift -> brain JSON lines on stdin, writes brain -> Swift JSON lines on stdout (flushed per line), logs to
 stderr. Exits on `{"type":"control","action":"stop"}` or stdin EOF. `--fake` uses the canned fake transport
-(no network, no key) for IPC tests; it also leaves the embedding matcher off. `--no-embed` turns the F3 paraphrase
+(no network, no key) for IPC tests; it also leaves the embedding matcher off (`--embed` loads it anyway and `--fake-bank`
+answers S/F from the pack's answer bank: both for replays). `--no-embed` turns the F3 paraphrase
 matcher (EmbeddingGemma, LiteRT-LM) off; without it the matcher loads at `start` and stays off by itself when
 `litert_lm` or the model is missing.
 
@@ -51,9 +52,9 @@ async def amain(args) -> int:
 
         sim_fault = simulated_fault(os.environ.get("VERSE_SIMULATE_API", ""))
     if args.fake:
-        from .fake import FakeTransport
+        from .fake import FakeTransport, bank_responder
 
-        transport = FakeTransport()
+        transport = FakeTransport(bank_responder if args.fake_bank else None)
     elif sim_fault is not None:   # live check of the local fallback: every API call fails, no key, no network
         from .fallback import FaultTransport
 
@@ -72,7 +73,7 @@ async def amain(args) -> int:
     cfg = Config(budget_usd=args.budget_usd, fallback_enabled=not args.no_fallback,
                  local_prewarm=args.local_prewarm or os.environ.get("VERSE_LOCAL_PREWARM") == "1")
     factory = None
-    if not (args.fake or args.no_embed):
+    if (args.embed or not args.fake) and not args.no_embed:
         from .embed import LiteRtEmbedder
 
         factory = lambda: LiteRtEmbedder(cfg.embed_model, cfg.embed_backend)  # noqa: E731
@@ -114,6 +115,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--budget-usd", type=float, default=None, help="optional hard spend cap for this process (default: none)")
     ap.add_argument("--fake", action="store_true", help="canned fake transport (tests); no embedding matcher")
     ap.add_argument("--no-embed", action="store_true", help="turn the F3 paraphrase matcher off")
+    ap.add_argument("--embed", action="store_true", help="with --fake: load the embedding model anyway (replays)")
+    ap.add_argument("--fake-bank", action="store_true", help="with --fake: S/F answer from the pack's answer bank (replays)")
     ap.add_argument("--no-fallback", action="store_true", help="never switch to local Gemma (G1 degraded mode)")
     ap.add_argument("--local-prewarm", action="store_true",
                     help="load Gemma and prime the pack at session start even when the API is healthy (also VERSE_LOCAL_PREWARM=1)")

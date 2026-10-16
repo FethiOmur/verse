@@ -720,7 +720,17 @@
    "run": "f3-embed",
    "what": "d12 attempt 1",
    "usd": 0.026218
+  },
+  {
+   "run": "t03_live",
+   "what": "run_follow t03 live (prompt v1)",
+   "usd": 0.02583
+  },
+  {
+   "run": "t03_live2",
+   "what": "run_follow t03 live (prompt v2)",
+   "usd": 0.02633
   }
  ],
- "total_usd": 0.518221
+ "total_usd": 0.811611
 }
