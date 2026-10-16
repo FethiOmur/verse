@@ -149,6 +149,12 @@ public struct OverlayState: Equatable, Sendable {
     /// A question under the notch with two buttons: "Meeting detected · Start Verse?" before a session, "Save summary to
     /// the vault?" after one. Set by `MeetingCoordinator`, never by runner events.
     public var meetingPrompt: MeetingPrompt?
+    /// Level bars on the island (UI redesign spec 3.2): the last three levels, 0...1, newest last, of the meeting's audio
+    /// (`remoteBars`) and of my microphone (`meBars`). About ten samples a second, so three bars are the last 300 ms.
+    public var remoteBars: [Double] = [0, 0, 0]
+    public var meBars: [Double] = [0, 0, 0]
+    /// The meeting's audio was audible within `audibleHold` seconds: the idle capsule widens to the listening one.
+    public var remoteSpeaking = false
 
     public init() {}
 
@@ -338,7 +344,7 @@ public struct OverlayReducer: Sendable {
         case .status(let st, let m): applyStatus(st, message: m)
         case .issue(let code, let m):
             if code == "permission_denied" { state.status = .permission(m.contains("microphone") ? "microphone" : "audioCapture") }
-        case .level(let remote, _): applyLevel(remoteDbfs: remote, now: now)
+        case .level(let remote, let me): applyLevel(remoteDbfs: remote, meDbfs: me, now: now)
         case .metric(let o):
             if o[string: "stage"] == "session_t0" {
                 state.running = true
@@ -353,6 +359,9 @@ public struct OverlayReducer: Sendable {
             state.startup = nil
             state.addresseeTag = nil
             state.tagDimmed = false
+            state.remoteSpeaking = false
+            state.remoteBars = [0, 0, 0]
+            state.meBars = [0, 0, 0]
             if code != 0, state.status == nil { state.status = .error("The session ended with an error.") }
             if code == 0, state.status == .restarting || state.status == .offline || state.status == .rateLimited { state.status = nil }
         }
@@ -360,6 +369,10 @@ public struct OverlayReducer: Sendable {
 
     /// Collapses a card that has had no new content for `cardTimeout`.
     public mutating func tick(now: TimeInterval) {
+        if state.remoteSpeaking, now - lastAudible >= config.audibleHold {
+            state.remoteSpeaking = false
+            state.remoteBars = [0, 0, 0]
+        }
         if state.card != nil, now - lastContent >= config.cardTimeout {
             state.card = nil
             if state.activity == .thinking { state.activity = .listening }
@@ -422,7 +435,15 @@ public struct OverlayReducer: Sendable {
     /// Raw level of the meeting's audio (about ten a second): the start-up panel says "Listening" while there is sound,
     /// within a poll or two of it starting, and "Ready" again after `audibleHold` without. The text signal
     /// (`transcribing`) is separate and arrives later.
-    private mutating func applyLevel(remoteDbfs: Double?, now: TimeInterval) {
+    private mutating func applyLevel(remoteDbfs: Double?, meDbfs: Double?, now: TimeInterval) {
+        state.remoteBars = Array((state.remoteBars + [Self.barLevel(remoteDbfs)]).suffix(3))
+        state.meBars = Array((state.meBars + [Self.barLevel(meDbfs)]).suffix(3))
+        if let db = remoteDbfs, db > config.audibleDbfs { lastAudible = now }
+        let speaking = now - lastAudible < config.audibleHold
+        if state.remoteSpeaking != speaking {
+            state.remoteSpeaking = speaking
+            if !speaking { state.remoteBars = [0, 0, 0] }
+        }
         guard case .some(let panel) = state.startup else { return }
         if case .starting = panel.phase { return }
         if let db = remoteDbfs, db > config.audibleDbfs {
@@ -432,6 +453,12 @@ public struct OverlayReducer: Sendable {
             state.startup?.phase = .ready
             state.startup?.transcribing = false
         }
+    }
+
+    /// -60 dBFS (and nil: no signal) is an empty bar, -20 dBFS and above a full one.
+    static func barLevel(_ dbfs: Double?) -> Double {
+        guard let db = dbfs else { return 0 }
+        return min(1, max(0, (db + 60) / 40))
     }
 
     private mutating func applyOutbound(_ o: [String: JSONValue], now: TimeInterval) {

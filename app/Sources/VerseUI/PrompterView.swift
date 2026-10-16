@@ -1,21 +1,22 @@
 import SwiftUI
 import VersePrompter
 
-/// Colours of the prompter text. Read text is dimmed; upcoming text is full colour; `[cues]` are amber.
+/// Colours of the prompter text (spec 2.2): in the current line the words already said are full white and the rest 55 %;
+/// the previous line is 28 %, the next 55 %. `[cues]` are amber.
 enum PrompterStyle {
-    static let read = Color.white.opacity(0.30)
-    static let upcoming = Color.white
     static let cue = Color(red: 1.0, green: 0.80, blue: 0.40)
-    static let readCue = Color(red: 1.0, green: 0.80, blue: 0.40).opacity(0.30)
     static let warning = Color(red: 1.0, green: 0.80, blue: 0.40)
 
-    static func color(for word: PromptWord, style: PrompterWordStyle) -> Color {
-        switch (word.isCue, style) {
-        case (false, .read): return read
-        case (false, _): return upcoming
-        case (true, .read): return readCue
-        case (true, _): return cue
+    enum Line { case previous, current, next }
+
+    static func color(for word: PromptWord, style: PrompterWordStyle, line: Line) -> Color {
+        let strength: Double
+        switch line {
+        case .previous: strength = 0.28
+        case .next: strength = 0.55
+        case .current: strength = style == .read ? 1.0 : 0.55
         }
+        return word.isCue ? cue.opacity(strength) : Color.white.opacity(strength)
     }
 }
 
@@ -23,60 +24,66 @@ enum PrompterStyle {
 struct PrompterWordView: View {
     var word: PromptWord
     var style: PrompterWordStyle
-    var fontSize: CGFloat
+    var line: PrompterStyle.Line
+    var font: Font
+    /// The font's own space width: half of it each side, so the gap between words is exactly one space.
+    var space: CGFloat
     var onTap: () -> Void
 
     var body: some View {
         Text(word.text)
-            .font(.system(size: fontSize, weight: .semibold))
-            .foregroundStyle(PrompterStyle.color(for: word, style: style))
+            .font(font)
+            .foregroundStyle(PrompterStyle.color(for: word, style: style, line: line))
             .lineLimit(1)
             .fixedSize()
-            .overlay(alignment: .bottom) {
-                if style == .current { Rectangle().fill(OverlayStyle.accent).frame(height: 2).offset(y: 3) }
-            }
-            .padding(.horizontal, PrompterGeometry.spaceWidth(fontSize: fontSize) / 2)
+            .padding(.horizontal, space / 2)
             .contentShape(Rectangle())
             .onTapGesture(perform: onTap)
     }
 }
 
-/// The text block: lines of words, the current line held on the eye line, the read lines dimmed above it. Scrolling
-/// is the block's offset only; no word fades or slides in.
+/// The three lines: previous, current, next. Nothing scrolls or fades: a new line is simply in place.
 struct PrompterTextView: View {
     @ObservedObject var model: PrompterModel
     var textWidth: CGFloat
-    var fontSize: CGFloat
+    var fontSize: Double
+    var scale: CGFloat
 
     var body: some View {
-        let layout = model.layout(maxWidth: textWidth)
-        let ranges = model.wordRanges
-        let lineHeight = PrompterGeometry.lineHeight(fontSize: fontSize)
-        let line = layout.line(ofWordPosition: Double(ranges.read.count))
+        let current = PrompterIslandType.current(fontSize: fontSize, scale: scale)
+        let other = PrompterIslandType.other(fontSize: fontSize, scale: scale)
         let words = model.page.words
-        VStack(spacing: 0) {
-            ForEach(Array(layout.lines.enumerated()), id: \.offset) { _, range in
-                HStack(spacing: 0) {
-                    ForEach(range, id: \.self) { index in
-                        PrompterWordView(word: words[index], style: ranges.style(ofWord: index), fontSize: fontSize) {
-                            Task { @MainActor in await model.jump(toWord: index) }
-                        }
+        // Lines break as if every word were in the current line (the largest type), so no line is ever too wide.
+        let layout = PrompterLayout.make(wordWidths: PrompterTextMeasure.widths(of: words.map(\.text), fontSize: current),
+                                         spaceWidth: PrompterTextMeasure.spaceWidth(size: current, weight: .semibold), maxWidth: textWidth)
+        let ranges = model.wordRanges
+        let window = PrompterLineWindow(currentLine: layout.line(ofWordPosition: Double(ranges.read.count)), lineCount: layout.lines.count)
+        VStack(alignment: .leading, spacing: 8) {
+            row(window.previous, role: .previous, layout: layout, ranges: ranges, words: words, size: other, weight: .medium)
+            row(window.current, role: .current, layout: layout, ranges: ranges, words: words, size: current, weight: .semibold)
+            row(window.next, role: .next, layout: layout, ranges: ranges, words: words, size: other, weight: .medium)
+        }
+        .frame(width: textWidth, alignment: .leading)
+    }
+
+    @ViewBuilder private func row(_ index: Int?, role: PrompterStyle.Line, layout: PrompterLayout, ranges: PrompterWordRanges,
+                                  words: [PromptWord], size: CGFloat, weight: Font.Weight) -> some View {
+        let height = (size * 1.2).rounded()
+        let font = Font.system(size: size, weight: weight)
+        let space = PrompterTextMeasure.spaceWidth(size: size, weight: weight == .semibold ? .semibold : .medium)
+        if let index, layout.lines.indices.contains(index) {
+            HStack(spacing: 0) {
+                ForEach(layout.lines[index], id: \.self) { wordIndex in
+                    PrompterWordView(word: words[wordIndex], style: ranges.style(ofWord: wordIndex), line: role, font: font, space: space) {
+                        Task { @MainActor in await model.jump(toWord: wordIndex) }
                     }
                 }
-                .frame(width: textWidth, height: lineHeight)
             }
-        }
-        .frame(width: textWidth, alignment: .top)
-        .offset(y: PrompterGeometry.offset(forLine: line, lineHeight: lineHeight))
-        .animation(.easeOut(duration: 0.16), value: line)
-        .frame(width: textWidth, height: PrompterGeometry.viewportHeight(lineHeight: lineHeight), alignment: .top)
-        .clipped()
-        .mask(alignment: .top) {
-            VStack(spacing: 0) {
-                LinearGradient(colors: [.clear, .black], startPoint: .top, endPoint: .bottom)
-                    .frame(height: PrompterGeometry.eyeLineY(lineHeight: lineHeight))
-                Rectangle()
-            }
+            .padding(.leading, -space / 2)
+            .tracking(role == .current ? -0.4 : 0)
+            .frame(width: textWidth, height: height, alignment: .leading)
+        } else {
+            Color.clear.frame(width: textWidth, height: height)
         }
     }
 }
@@ -89,10 +96,10 @@ struct PrompterIconButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.9))
-                .frame(width: 30, height: 28)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(.white.opacity(0.12)))
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(VT.Island.primary)
+                .frame(width: 30, height: 26)
+                .background(VT.Island.fill, in: RoundedRectangle(cornerRadius: VT.Radius.chip + 1, style: .continuous))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -101,33 +108,35 @@ struct PrompterIconButton: View {
     }
 }
 
-/// The prompter inside the hanging glass panel, under the capsule band: the text, a one-line notice, the controls.
-/// The glass itself is the panel's (`OverlayView` draws it); this view is only content on it.
+/// The prompter in the island (spec 3.2, state 7): three lines under the band, a one-line notice, the controls. The glass
+/// is the island's (`OverlayView` draws it); this view is only content on it.
 struct PrompterPanelView: View {
     @ObservedObject var model: PrompterModel
     @ObservedObject var settings: PrompterSettings
     var width: CGFloat
+    var scale: CGFloat = 1
 
-    private let sidePadding: CGFloat = 24
+    private var inset: CGFloat { VT.Radius.islandShoulder + 26 }
 
     var body: some View {
-        let fontSize = CGFloat(settings.fontSize)
         VStack(spacing: 0) {
-            PrompterTextView(model: model, textWidth: width - 2 * sidePadding, fontSize: fontSize)
+            PrompterTextView(model: model, textWidth: width - 2 * inset, fontSize: settings.fontSize, scale: scale)
                 .scaleEffect(x: settings.mirror ? -1 : 1, y: 1)
-                .padding(.horizontal, sidePadding)
+                .padding(.horizontal, inset)
+                .padding(.top, 14)
             if let hint = model.hint {
                 Text(hint.text)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(hint.isWarning ? PrompterStyle.warning : .white.opacity(0.6))
+                    .font(VT.Font.meta)
+                    .foregroundStyle(hint.isWarning ? PrompterStyle.warning : VT.Island.tertiary)
                     .lineLimit(1)
-                    .padding(.top, 2)
+                    .padding(.top, 6)
                     .accessibilityIdentifier("verse.prompter.hint")
             }
-            controls
-                .padding(.horizontal, 14)
-                .padding(.top, 8)
-                .padding(.bottom, 12)
+            Color.clear.frame(height: 20)
+        }
+        .overlay(alignment: .bottom) {
+            // The controls show while the pointer is over the island; the keyboard shortcuts work regardless.
+            HoverControls(horizontalInset: VT.islandCardInset - 12) { controls }
         }
         .frame(width: width)
         .transaction { $0.animation = nil }
@@ -142,20 +151,11 @@ struct PrompterPanelView: View {
             PrompterIconButton(symbol: state.isPaused || state.isDone ? "play.fill" : "pause.fill",
                                help: "Start / pause  \(PrompterCommand.toggle.shortcut)") { model.send(.toggle) }
             PrompterIconButton(symbol: "chevron.right", help: "Next page  \(PrompterCommand.nextPage.shortcut)") { model.send(.nextPage) }
-            Text("\(state.pageIndex + 1)/\(state.pageCount)")
-                .font(.system(size: 12, weight: .medium).monospacedDigit())
-                .foregroundStyle(.white.opacity(0.65))
-                .padding(.leading, 4)
-            Spacer(minLength: 8)
-            if state.isSpeaking { Circle().fill(OverlayStyle.accent).frame(width: 7, height: 7).accessibilityLabel("Hearing you") }
-            Text(state.mode.shortName)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.65))
             Spacer(minLength: 8)
             PrompterIconButton(symbol: "minus", help: "Slower  \(PrompterCommand.slower.shortcut)") { model.send(.slower) }
             Text("\(Int(state.wordsPerMinute.rounded())) wpm")
-                .font(.system(size: 12, weight: .medium).monospacedDigit())
-                .foregroundStyle(.white.opacity(state.mode == .wordTracking ? 0.4 : 0.8))
+                .font(VT.Font.meta.monospacedDigit())
+                .foregroundStyle(state.mode == .wordTracking ? VT.Island.quaternary : VT.Island.secondary)
                 .frame(minWidth: 52)
             PrompterIconButton(symbol: "plus", help: "Faster  \(PrompterCommand.faster.shortcut)") { model.send(.faster) }
             PrompterIconButton(symbol: "xmark", help: "Close the prompter  \(PrompterCommand.close.shortcut)") { model.send(.close) }
@@ -165,6 +165,15 @@ struct PrompterPanelView: View {
 }
 
 extension PrompterMode {
+    /// The word in the island's left wing.
+    var wingName: String {
+        switch self {
+        case .wordTracking: return "tracking"
+        case .voicePaced: return "voice"
+        case .classic: return "classic"
+        }
+    }
+
     var shortName: String {
         switch self {
         case .wordTracking: return "Tracking"

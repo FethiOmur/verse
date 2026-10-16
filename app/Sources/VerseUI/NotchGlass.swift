@@ -3,83 +3,111 @@ import AppKit
 import CoreGraphics
 import SwiftUI
 
-/// Tunables and pure math for the island's black-to-glass scrim: the band beside the camera stays pure black, so the
-/// hardware cutout never shows, and the surface below dissolves into smoked Liquid Glass.
+/// Tunables of the island's glass layer. The veil on top of it is `IslandVeil` (below).
 ///
-/// Verse keeps Moonglade's curve and lens values but a darker floor and more frost: Moonglade sits over the dark menu
-/// bar, Verse's card has to stay readable over a white page and over a busy video frame.
+/// Verse keeps Moonglade's lens values but sets the glass to the spec's Regular baseline (smoked dark Regular glass)
+/// instead of Moonglade's clear one: Moonglade sits over the dark menu bar, Verse's card has to stay readable over a white
+/// page and over a busy video frame. The face wash and the frost below were tuned against the approved mockups, which
+/// use SwiftUI's `glassEffect(.regular)` in dark appearance: with the veil on top, the island's pixels over a white page
+/// and over the call frame land within 1-3 of 255 of the mockup's (2026-10-16, `--render-screens`).
 public enum NotchGlassStyle {
-    /// Solid black below the band, so the capsule's dot and tag never sit over translucent glass.
-    public static let solidBandOverlap: CGFloat = 6
-    /// Unit-space Y of the elliptical gradient's centre (negative = above the notch): the iso-opacity bands become
-    /// arcs that dip lower mid-surface, the curved black cap of the Siri orb.
-    public static let scrimCenterY: Double = -0.70
-    /// Offset of the dissolve's virtual start from the band, as a fraction of the surface height (Moonglade value).
-    public static let scrimFadeStartFraction: Double = -0.24
-    /// Black left over the glass at the bottom. Moonglade uses 0.22 over the menu bar; Verse keeps white text >= 7:1
-    /// and the 0.55-white source labels near 4:1 over a white page (measured on the renders, 2026-10-14).
-    public static let tintOpacity: Double = 0.70
-    /// Glass blur radius. Moonglade: 1 (a whisper). Verse: 3, enough to soften a busy video frame's edges under text;
-    /// contrast hardly depends on it (the tint dominates), so it stays close to Moonglade's clear lensing.
-    public static let frostRadius: Double = 3
-    /// Forced onto the private glassBackground filter over the system clear baseline: no face wash, lensing boosted
-    /// past the stock clear style. Moonglade's hand-tuned values, kept as they are.
+    /// Glass blur radius. Moonglade: 1 (a whisper). Regular glass frosts what is behind it so text underneath is not
+    /// readable through the card; 14 matches the mockups.
+    public static let frostRadius: Double = 14
+    /// Forced onto the private glassBackground filter over the system clear baseline: the face wash back on, squeezing
+    /// what the glass samples into a dark band (black 0.06 ... white 0.36), as Regular glass does in a dark appearance;
+    /// lensing boosted past the stock style (Moonglade's values, kept).
     public static let glassFilterOverrides: [String: Double] = [
-        "inputFaceOpacity": 0,
+        "inputFaceOpacity": 1,
+        "inputFaceColorMatrixBlack": 0.06,
+        "inputFaceColorMatrixWhite": 0.36,
         "inputInnerRefractionAmount": -80,
         "inputInnerRefractionHeight": 26,
     ]
+}
 
+/// The island's veil (UI redesign spec 2.4, G1): pure black through the camera band, then a smootherstep down to the
+/// floor, the user's Island opacity, and a last strip that eases to 75 % of the floor so the lower rim reads as glass.
+/// Pure math, so the stops are testable without a window.
+public enum IslandVeil {
     public struct Stop: Equatable, Sendable {
         public let location: Double
         public let opacity: Double
     }
 
-    /// Unit-space stops for a surface of `height`: pure black through the band, then a smootherstep dissolve down to
-    /// the floor. Zero slope at both ends, so there is no seam. A surface no taller than the band is flat black.
-    public static func scrimStops(height: CGFloat, solidBandHeight: CGFloat, bottomOpacity: Double = tintOpacity,
-                                  fadeStartFraction: Double = scrimFadeStartFraction) -> [Stop] {
-        let h = max(height, 1)
-        let solid = max(solidBandHeight, 0)
-        guard solid < h else { return [Stop(location: 0, opacity: 1), Stop(location: 1, opacity: 1)] }
-        let offset = min(max(fadeStartFraction, -1), 0.9)
-        let startY = min(solid + h * CGFloat(offset), h - 1)
-        let fadeTopY = max(startY, 0)
-        var stops: [Stop] = []
-        if fadeTopY > 0 {
-            stops.append(Stop(location: 0, opacity: 1))
-            stops.append(Stop(location: Double(fadeTopY / h), opacity: 1))
+    /// Veil floor for the user's opacity. Reduce Transparency is solid; Increase Contrast keeps at least 92 %.
+    public static func floor(userOpacity: Double, reduceTransparency: Bool, increaseContrast: Bool) -> Double {
+        let user = min(max(userOpacity, 0.35), 1)   // AppSettings.islandOpacityRange
+        if reduceTransparency { return 1 }
+        return increaseContrast ? max(user, 0.92) : user
+    }
+
+    static func smootherstep(_ t: Double) -> Double { t * t * t * (t * (t * 6 - 15) + 10) }
+
+    /// Black-opacity stops over a surface `height` tall whose band is `bandHeight` (the notch height; the black runs 6 pt
+    /// past it). The dissolve reaches the floor at band + 34 % of the height (at most 78 %); the last
+    /// `VT.islandRimHeight` points ease to `rimFactor * floor`. A surface no taller than the band is flat black.
+    public static func stops(height: CGFloat, bandHeight: CGFloat, floor: Double, rimFactor: Double = 0.75) -> [Stop] {
+        let h = Double(max(height, 1))
+        let band = min((Double(bandHeight) + Double(VT.islandBandOverlap)) / h, 1)
+        guard band < 1 else { return [Stop(location: 0, opacity: 1), Stop(location: 1, opacity: 1)] }
+        var stops = [Stop(location: 0, opacity: 1), Stop(location: band, opacity: 1)]
+        let reach = max(band + 0.01, min(0.78, band + 0.34))
+        for i in 1...8 {
+            let t = Double(i) / 8
+            stops.append(Stop(location: band + (reach - band) * t, opacity: 1 - (1 - floor) * smootherstep(t)))
         }
-        let samples = 12
-        for i in (fadeTopY > 0 ? 1 : 0)...samples {
-            let frac = Double(i) / Double(samples)
-            let y = fadeTopY + CGFloat(frac) * (h - fadeTopY)
-            let t = Double((y - startY) / (h - startY))
-            let smooth = t * t * t * (t * (t * 6 - 15) + 10)
-            stops.append(Stop(location: Double(y / h), opacity: i == samples ? bottomOpacity : 1 - (1 - bottomOpacity) * smooth))
+        let rimStart = max(reach, 1 - Double(VT.islandRimHeight) / h)
+        let rim = floor * rimFactor
+        for i in 0...6 {
+            let t = Double(i) / 6
+            stops.append(Stop(location: rimStart + (1 - rimStart) * t, opacity: floor - (floor - rim) * smootherstep(t)))
         }
         return stops
     }
+
+    /// Reduce Transparency: the solid surface shows below the band; the black band blends into it over 10 pt.
+    public static func solidStops(height: CGFloat, bandHeight: CGFloat) -> [Stop] {
+        let h = Double(max(height, 1))
+        let band = min((Double(bandHeight) + Double(VT.islandBandOverlap)) / h, 1)
+        guard band < 1 else { return [Stop(location: 0, opacity: 1), Stop(location: 1, opacity: 1)] }
+        return [Stop(location: 0, opacity: 1), Stop(location: band, opacity: 1), Stop(location: min(1, band + 10 / h), opacity: 0), Stop(location: 1, opacity: 0)]
+    }
 }
 
-/// The SwiftUI half of the surface: the black scrim over the glass, in the island's silhouette.
-struct NotchGlassScrim: View {
-    /// Height of the strip that stays pure black (the notch band).
-    let bandHeight: CGFloat
+/// The SwiftUI half of the surface: the black veil over the glass, in the island's silhouette, and the rim.
+struct IslandVeilView: View {
+    var bandHeight: CGFloat
+    var floor: Double
+    var reduceTransparency: Bool
+    var increaseContrast: Bool
 
     var body: some View {
         GeometryReader { proxy in
-            HangingNotchShape().fill(gradient(height: max(proxy.size.height, 1)))
+            let size = proxy.size
+            let shape = HangingNotchShape()
+            ZStack {
+                if reduceTransparency {
+                    shape.fill(VT.islandSolid)
+                    shape.fill(gradient(IslandVeil.solidStops(height: size.height, bandHeight: bandHeight)))
+                } else {
+                    shape.fill(gradient(IslandVeil.stops(height: size.height, bandHeight: bandHeight, floor: floor)))
+                }
+                if increaseContrast {
+                    shape.stroke(Color.white.opacity(0.6), lineWidth: 1.5)
+                } else if !reduceTransparency, size.height > bandHeight + 8 {
+                    shape.stroke(LinearGradient(stops: [.init(color: .white.opacity(0), location: 0),
+                                                        .init(color: .white.opacity(0), location: min(0.99, Double((bandHeight + 10) / max(size.height, 1)))),
+                                                        .init(color: .white.opacity(0.20), location: 1)],
+                                                startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                }
+            }
         }
         .allowsHitTesting(false)
     }
 
-    private func gradient(height: CGFloat) -> EllipticalGradient {
-        let stops = NotchGlassStyle.scrimStops(height: height, solidBandHeight: bandHeight + NotchGlassStyle.solidBandOverlap)
-        let c = NotchGlassStyle.scrimCenterY
-        let reach = 1 - c
-        return EllipticalGradient(stops: stops.map { Gradient.Stop(color: .black.opacity($0.opacity), location: ($0.location - c) / reach) },
-                                  center: UnitPoint(x: 0.5, y: c), startRadiusFraction: 0, endRadiusFraction: reach)
+    private func gradient(_ stops: [IslandVeil.Stop]) -> LinearGradient {
+        LinearGradient(stops: stops.map { Gradient.Stop(color: .black.opacity($0.opacity), location: $0.location) }, startPoint: .top, endPoint: .bottom)
     }
 }
 

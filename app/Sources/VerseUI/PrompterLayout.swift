@@ -139,9 +139,41 @@ public enum PrompterGeometry {
 enum PrompterTextMeasure {
     static func font(size: CGFloat) -> NSFont { NSFont.systemFont(ofSize: size, weight: .semibold) }
 
+    /// The font's own width of a space, so words set one by one sit exactly like a plain `Text` of the whole line.
+    static func spaceWidth(size: CGFloat, weight: NSFont.Weight) -> CGFloat {
+        NSAttributedString(string: " ", attributes: [.font: NSFont.systemFont(ofSize: size, weight: weight)]).size().width
+    }
+
     static func widths(of words: [String], fontSize: CGFloat) -> [CGFloat] {
         let attributes: [NSAttributedString.Key: Any] = [.font: font(size: fontSize)]
         // One point of slack: the SwiftUI text must never be a hair wider than the slot it was measured for.
         return words.map { ceil(NSAttributedString(string: $0, attributes: attributes).size().width) + 1 }
     }
+}
+
+/// The three lines the island shows (spec 3.2, state 7): the line before the current one, the current line, the next.
+public struct PrompterLineWindow: Equatable, Sendable {
+    public var previous: Int?
+    public var current: Int
+    public var next: Int?
+
+    public init(previous: Int?, current: Int, next: Int?) {
+        self.previous = previous
+        self.current = current
+        self.next = next
+    }
+
+    public init(currentLine: Int, lineCount: Int) {
+        let last = max(0, lineCount - 1)
+        current = min(max(0, currentLine), last)
+        previous = current > 0 ? current - 1 : nil
+        next = current < last ? current + 1 : nil
+    }
+}
+
+/// Sizes of the island's prompter lines for a base font size (the Settings font size, 26 by default) and the text size
+/// factor: the current line is 30/26 of the base, the others the base.
+public enum PrompterIslandType {
+    public static func current(fontSize: Double, scale: CGFloat) -> CGFloat { (CGFloat(fontSize) * 30 / 26 * scale).rounded() }
+    public static func other(fontSize: Double, scale: CGFloat) -> CGFloat { (CGFloat(fontSize) * scale).rounded() }
 }

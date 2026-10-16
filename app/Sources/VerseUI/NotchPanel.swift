@@ -185,7 +185,7 @@ public final class NotchPanelController {
         contentSize.width = min(contentSize.width, f.width)
         contentSize.height = min(contentSize.height, f.height * 0.8)
         // Exactly the surface: no shadow, the glass rim lies inside the silhouette, and the top edge is the screen's.
-        let w = ceil(max(contentSize.width, metrics.capsuleWidth(wide: false) + 2 * HangingNotchMetrics.topShoulderRadius))
+        let w = ceil(max(contentSize.width, metrics.capsuleWidth(wide: false)))
         let h = ceil(max(contentSize.height, metrics.capsuleHeight))
         let frame = NSRect(x: (Self.notchCenterX(on: screen) - w / 2).rounded(), y: f.maxY - h, width: w, height: h)
         if panel.frame != frame { panel.setFrame(frame, display: true) }
@@ -211,6 +211,6 @@ public final class NotchPanelController {
         }
         // No notch: a notch-sized island at the top center, as tall as the menu bar.
         let menuBar = s.frame.maxY - s.visibleFrame.maxY
-        return NotchMetrics(notchWidth: 180, notchHeight: max(menuBar, 28), hasNotch: false)
+        return NotchMetrics(notchWidth: 186, notchHeight: max(menuBar, 28), hasNotch: false)
     }
 }

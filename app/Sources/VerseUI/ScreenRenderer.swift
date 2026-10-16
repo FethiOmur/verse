@@ -1,12 +1,14 @@
 import AppKit
 import ScreenCaptureKit
 import SwiftUI
+import VersePrompter
 
 /// Renders the overlay states to PNG for review (`Verse --render-screens DIR`).
 ///
 /// Liquid Glass is drawn by the window server, so `ImageRenderer` can't show it. Each shot is a borderless window placed
-/// almost entirely below the bottom edge of the screen and behind other windows (desktop level), holding a background (a white page or a busy dark video
-/// frame), a black stand-in for the notch and the real `OverlayView`. ScreenCaptureKit captures only that window
+/// almost entirely below the bottom edge of the screen and behind other windows (desktop level), holding the same scene
+/// the approved mockups use (wallpaper, menu bar, a document page or a video call, 1100 x 440 pt), a black stand-in for
+/// the notch and the real `OverlayView`. ScreenCaptureKit captures only that window
 /// (`SCShareableContent.currentProcess`: this process's own windows, no Screen Recording permission), then the window
 /// is closed at once. Nothing stays on screen.
 @MainActor
@@ -16,10 +18,18 @@ public enum ScreenRenderer {
     public struct Shot {
         public var name: String
         public var state: OverlayState
-        public var width: Double = 560
+        public var width: Double = 600
         /// T-UI: a teleprompter shown in the panel (see `PrompterModel.presentForPreview`).
         public var prompter: PrompterModel?
-        public init(name: String, state: OverlayState, width: Double = 560, prompter: PrompterModel? = nil) {
+        /// Island opacity (spec 2.4); nil: the default.
+        var islandOpacity: Double?
+        /// Reduce Transparency / Increase Contrast / Reduce Motion, forced (the renderer cannot flip the system's).
+        var a11y: IslandA11y?
+        /// The practice states as the bare capsule (spec 3.2, state 6).
+        var practiceCapsule = false
+        /// The pointer is over the island (the control rows show). Renders show the at-rest state; the hover ones are named `-hover`.
+        var hover = false
+        public init(name: String, state: OverlayState, width: Double = 600, prompter: PrompterModel? = nil) {
             self.name = name
             self.state = state
             self.width = width
@@ -27,7 +37,8 @@ public enum ScreenRenderer {
         }
     }
 
-    static let canvas = CGSize(width: 1180, height: 600)
+    /// The mockup scene's size (spec 7): wallpaper, menu bar, the app under the island and the notch.
+    static let canvas = CGSize(width: 1100, height: 440)
 
     public static func sampleShots() -> [Shot] {
         var idle = OverlayState()
@@ -53,6 +64,13 @@ public enum ScreenRenderer {
         var d = q
         d.card?.deepPoints = ["For credit data the decision stays in code; the model only extracts (prep)",
                               "Every retry is logged with the field and the reason, so the queue can be audited (f004)"]
+
+        // More deep points than the card has room for: the oldest drop until it fits under 420 pt.
+        var overflow = q
+        overflow.card?.deepPoints = ["For credit data the decision stays in code; the model only extracts (prep)",
+                                     "Every retry is logged with the field and the reason, so the queue can be audited (f004)",
+                                     "Operators saw the extractor's confidence next to each flagged field (prep:L14)",
+                                     "The review queue was cleared twice a day by one person, 40 invoices at a time (vault)"]
 
         var corrected = q
         corrected.card?.say = "Lantern didn't reject invoices; it flagged them and kept the rest of the batch moving."
@@ -124,7 +142,76 @@ public enum ScreenRenderer {
         var listeningHeard = idle
         listeningHeard.startup = StartupPanel(phase: .listening, session: "mara-northwindlabs", app: "Comet", transcribing: true)
 
-        return [
+        // The spec 3.2 states, with the content of the approved mockups (design/mockups Island.swift) so each render can
+        // be compared with `island-*` there.
+        let question = "Can you walk me through how Lantern handled bad invoices?"
+        var i0 = OverlayState()
+        i0.meetingPrompt = .detected(appName: "Comet", eventTitle: "Mara · Northwind Labs", plan: .prepared("mara-northwindlabs"), questionCount: 14)
+        let i1 = idle
+        var i2 = idle
+        i2.remoteSpeaking = true
+        i2.remoteBars = [0.45, 0.9, 0.6]
+        i2.addresseeTag = "Ingrid"
+        i2.tagDimmed = true
+        var i3 = idle
+        i3.addresseeTag = "for you"
+        i3.remoteSpeaking = true
+        i3.remoteBars = [0.7, 1, 0.5]
+        i3.card = OverlayCard(turnID: "r3", question: question)
+        var i4 = q
+        i4.card?.chips = [OverlayChip(text: "38,000 invoices / month", source: "prep note", kind: "number"),
+                          OverlayChip(text: "Lantern", source: "glossary", kind: "term")]
+        i4.card?.bullets = ["Schema-validated extraction, one retry on a failed field",
+                            "Low-confidence fields went to an operator, not the ERP",
+                            "Manual entry fell from 11 minutes to 2 per invoice"]
+        var i5 = followCovered
+        i5.meBars = [0.3, 0.55, 0.4]
+        i5.card?.chips = []
+        i5.card?.bullets = ["12 depots in the pilot, ETA drift down by a third",
+                            "I wrote the re-plan loop that runs every 90 seconds",
+                            "Dispatchers kept an override on every route"]
+        var sim6 = SimOverlay(startedAt: Date().addingTimeInterval(-252), voice: "text", showCaption: false)
+        sim6.qIndex = 3
+        sim6.qTotal = 8
+        sim6.listening = true
+        var i6 = idle
+        i6.sim = sim6
+        var sim6b = sim6
+        sim6b.listening = false
+        sim6b.coach = ["- Good structure. Lead with the result: “manual entry fell from 11 minutes to 2” before the how."]
+        var i6b = idle
+        i6b.sim = sim6b
+        var i8 = idle
+        i8.status = .creditExhausted("Max API credit is used up until 1 December. Verse keeps transcribing on this Mac; answers pause.")
+        let page7 = PrompterModel(settings: PrompterSettings(defaults: .init(suiteName: "dev.fethiverse.verse.render")!))
+        page7.presentForPreview(page: PromptPage(text: "Northwind Labs keeps shops on the first screen. I build the tools that turn that into a product your team can sell without me in the room."),
+                                state: { var st = PrompterState(); st.pageCount = 5; st.pageIndex = 1; st.wordCount = 28; st.wordPosition = 14.2
+                                    st.isPaused = false; st.isSpeaking = true; st.mode = .voicePaced; st.requestedMode = .voicePaced; return st }())
+        func shot(_ name: String, _ st: OverlayState, prompter: PrompterModel? = nil, _ tweak: (inout Shot) -> Void = { _ in }) -> Shot {
+            var sh = Shot(name: name, state: st, prompter: prompter)
+            tweak(&sh)
+            return sh
+        }
+        let islandShots: [Shot] = [
+            shot("island-0-meeting-detected", i0),
+            shot("island-1-idle", i1),
+            shot("island-2-listening", i2),
+            shot("island-3-hearing-question", i3),
+            shot("island-4-answer-card", i4),
+            shot("island-5-following-you", i5),
+            shot("island-6-practice-capsule", i6) { $0.practiceCapsule = true },
+            shot("island-6b-practice-coach-note", i6b),
+            shot("island-7-teleprompter", idle, prompter: page7),
+            shot("island-8-status-credit", i8),
+            shot("island-6b-practice-coach-note-hover", i6b) { $0.hover = true },
+            shot("island-7-teleprompter-hover", idle, prompter: page7) { $0.hover = true },
+            shot("island-a1-answer-veil-35", i4) { $0.islandOpacity = 0.35 },
+            shot("island-a2-answer-reduce-transparency", i4) { $0.a11y = IslandA11y(reduceTransparency: true) },
+            shot("island-a3-answer-increase-contrast", i4) { $0.a11y = IslandA11y(increaseContrast: true) },
+            shot("island-a4-answer-reduce-motion", i4) { $0.a11y = IslandA11y(reduceMotion: true) },
+        ]
+
+        return islandShots + [
             Shot(name: "prompter-reading", state: idle, prompter: reading.reading),
             Shot(name: "prompter-lost", state: idle, prompter: reading.lost),
             Shot(name: "prompter-fallback", state: idle, prompter: reading.fallback),
@@ -151,6 +238,7 @@ public enum ScreenRenderer {
             Shot(name: "topic-chips", state: topics),
             Shot(name: "permission-needed", state: perm),
             Shot(name: "capsule-offline", state: offline),
+            Shot(name: "card-deep-overflow", state: overflow, width: AppSettings.cardWidthRange.lowerBound),
             Shot(name: "card-min-width", state: d, width: AppSettings.cardWidthRange.lowerBound),
             Shot(name: "card-max-width", state: d, width: AppSettings.cardWidthRange.upperBound),
         ]
@@ -184,7 +272,9 @@ public enum ScreenRenderer {
         var out: [URL] = []
         let suite = "dev.fethiverse.verse.render"
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
-        for shot in shots {
+        // VERSE_RENDER_FILTER=island-4,island-7 keeps only shots whose name starts with one of those.
+        let only = (ProcessInfo.processInfo.environment["VERSE_RENDER_FILTER"] ?? "").split(separator: ",").map(String.init)
+        for shot in shots where only.isEmpty || only.contains(where: { shot.name.hasPrefix($0) }) {
             for b in Backdrop.allCases {
                 for sc in scales {
                     let d = UserDefaults(suiteName: suite)!
@@ -192,9 +282,11 @@ public enum ScreenRenderer {
                     let settings = AppSettings(defaults: d)
                     settings.cardWidth = shot.width
                     settings.textScale = sc
+                    if let o = shot.islandOpacity { settings.islandOpacity = o }
                     let suffix = scales.count > 1 ? "-\(sc.rawValue)" : ""
                     let url = dir.appendingPathComponent("\(shot.name)-\(b.rawValue)\(suffix).png")
-                    try await render(shot.state, settings: settings, backdrop: b, prompter: shot.prompter, to: url)
+                    try await render(shot.state, settings: settings, backdrop: b, prompter: shot.prompter, a11y: shot.a11y,
+                                     practiceCapsule: shot.practiceCapsule, hover: shot.hover, to: url)
                     out.append(url)
                 }
             }
@@ -202,17 +294,25 @@ public enum ScreenRenderer {
         return out
     }
 
-    public static func render(_ state: OverlayState, settings: AppSettings, backdrop: Backdrop, prompter: PrompterModel? = nil,
-                              to url: URL) async throws {
+    static func render(_ state: OverlayState, settings: AppSettings, backdrop: Backdrop, prompter: PrompterModel? = nil,
+                              a11y: IslandA11y? = nil, practiceCapsule: Bool = false, hover: Bool = false, to url: URL) async throws {
         let model = OverlayModel()
         model.show(state)
         let metrics = NotchMetrics.macBookPro
+        let wallpaper: MockWallpaper = backdrop == .white ? .light : .dark
         let scene = ZStack(alignment: .top) {
-            BackdropView(kind: backdrop)
+            MockWallpaperView(kind: wallpaper)
+            VStack(spacing: 0) {
+                MockMenuBar(kind: wallpaper)
+                MockAppUnderIsland(kind: wallpaper).padding(.horizontal, 36).padding(.top, 10)
+            }
             // The hardware notch stand-in.
             UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10, style: .continuous).fill(Color.black)
                 .frame(width: metrics.notchWidth, height: metrics.notchHeight)
-            OverlayView(model: model, settings: settings, prompter: prompter ?? PrompterModel(), metrics: metrics)
+            OverlayView(model: model, settings: settings, prompter: prompter ?? PrompterModel(), metrics: metrics,
+                        forcePracticeCapsule: practiceCapsule)
+                .environment(\.islandA11yOverride, a11y ?? IslandA11y())
+                .environment(\.islandHoverOverride, hover)
         }
         .frame(width: canvas.width, height: canvas.height, alignment: .top)
         .clipped()
@@ -222,6 +322,7 @@ public enum ScreenRenderer {
         window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)   // behind every app window
         window.collectionBehavior = [.ignoresCycle, .transient]
         window.hasShadow = false
+        window.appearance = NSAppearance(named: backdrop == .white ? .aqua : .darkAqua)
         window.contentView = NSHostingView(rootView: scene)
         // All but a 2-point strip below the bottom edge of the main screen: the window stays capturable (a window fully
         // off screen is not) but practically nothing of it shows on the display, and only for half a second.
@@ -254,71 +355,5 @@ public enum ScreenRenderer {
         let rep = NSBitmapImageRep(cgImage: image)
         guard let png = rep.representation(using: .png, properties: [:]) else { throw NSError(domain: "ScreenRenderer", code: 2) }
         try png.write(to: url)
-    }
-}
-
-/// Test backgrounds: a bright document page and a busy, dark video-call frame (drawn, no external images).
-struct BackdropView: View {
-    var kind: ScreenRenderer.Backdrop
-
-    var body: some View {
-        switch kind {
-        case .white: WhitePage()
-        case .dark: DarkCallFrame()
-        }
-    }
-}
-
-private struct WhitePage: View {
-    var body: some View {
-        ZStack(alignment: .topLeading) {
-            Color.white
-            VStack(alignment: .leading, spacing: 9) {
-                Spacer().frame(height: 46)
-                Text("Q3 delivery review").font(.system(size: 30, weight: .bold)).foregroundStyle(.black)
-                Text("Halden Logistics · Platform team").font(.system(size: 14)).foregroundStyle(.gray)
-                ForEach(0..<16, id: \.self) { i in
-                    Text(String(repeating: "Route planning latency and ETA drift across the Milan depots. ", count: 3))
-                        .font(.system(size: 15)).foregroundStyle(.black.opacity(i % 5 == 0 ? 0.95 : 0.8))
-                        .lineLimit(1)
-                }
-            }
-            .padding(.horizontal, 60)
-        }
-    }
-}
-
-private struct DarkCallFrame: View {
-    var body: some View {
-        ZStack {
-            Color(red: 0.07, green: 0.08, blue: 0.10)
-            HStack(spacing: 8) {
-                tile(bg: [Color(red: 0.55, green: 0.42, blue: 0.30), Color(red: 0.18, green: 0.14, blue: 0.12)], shirt: Color(red: 0.12, green: 0.30, blue: 0.62), skin: Color(red: 0.86, green: 0.67, blue: 0.53), name: "Ingrid Solberg")
-                tile(bg: [Color(red: 0.95, green: 0.93, blue: 0.88), Color(red: 0.32, green: 0.35, blue: 0.40)], shirt: Color(red: 0.75, green: 0.22, blue: 0.18), skin: Color(red: 0.62, green: 0.44, blue: 0.32), name: "Tomas Weir")
-            }
-            .padding(8)
-        }
-    }
-
-    private func tile(bg: [Color], shirt: Color, skin: Color, name: String) -> some View {
-        ZStack(alignment: .bottomLeading) {
-            LinearGradient(colors: bg, startPoint: .topLeading, endPoint: .bottomTrailing)
-            // a bright window and shelves behind the person
-            Rectangle().fill(Color.white.opacity(0.85)).frame(width: 150, height: 210).offset(x: 330, y: -250).blur(radius: 6)
-            ForEach(0..<5, id: \.self) { i in
-                Rectangle().fill([Color.orange, .yellow, .green, .pink, .cyan][i].opacity(0.75))
-                    .frame(width: 22, height: 70 + CGFloat(i * 9)).offset(x: 40 + CGFloat(i) * 26, y: -330 + CGFloat(i * 4))
-            }
-            VStack(spacing: -14) {
-                Circle().fill(skin).frame(width: 150, height: 170)
-                RoundedRectangle(cornerRadius: 90).fill(shirt).frame(width: 330, height: 230)
-            }
-            .offset(x: 120, y: 60)
-            Text(name).font(.system(size: 13, weight: .medium)).foregroundStyle(.white)
-                .padding(.horizontal, 8).padding(.vertical, 4)
-                .background(Color.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 6))
-                .padding(12)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }

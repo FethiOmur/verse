@@ -1,13 +1,11 @@
 import SwiftUI
 
-/// Visual constants of the overlay. One accent colour; everything else is white at different strengths on dark glass.
+/// Visual constants of the overlay that other files still name. The design lives in `VT` (DesignTokens.swift).
 public enum OverlayStyle {
-    /// The single accent: a calm mint, used for the live dot and the SAY marker only.
-    public static let accent = Color(red: 0.42, green: 0.90, blue: 0.70)
-    static let wing: CGFloat = 72
-    /// The morph between capsule and card (spec: <= 150 ms, no spring).
-    static let morphDuration: Double = 0.14
-    static let morph = Animation.easeOut(duration: morphDuration)
+    /// The single accent: a calm mint, used for the live dot, the SAY marker and the primary action.
+    public static let accent = VT.mint
+    /// The morph between island sizes (spec 3.3: ease-out 140 ms, no spring).
+    static let morph = VT.morph
 }
 
 /// Where the overlay sits: the notch (or a notch-sized spot on a screen without one).
@@ -27,373 +25,169 @@ public struct NotchMetrics: Equatable, Sendable {
 
     public var capsuleHeight: CGFloat { max(notchHeight, 28) }
 
-    public func capsuleWidth(wide: Bool) -> CGFloat { notchWidth + 2 * (wide ? OverlayStyle.wing + 64 : OverlayStyle.wing) }
+    /// Idle capsule 266 (40 pt of wing each side), practice capsule 442 (128 pt) on a 186 pt notch.
+    public func capsuleWidth(wide: Bool) -> CGFloat { notchWidth + 2 * (wide ? 128 : 40) }
+    /// Listening capsule: 354 pt on a 186 pt notch (84 pt of wing each side, room for the level bars and a name).
+    public var listeningWidth: CGFloat { notchWidth + 2 * 84 }
 }
 
-/// The live dot.
-struct StatusDot: View {
-    var activity: OverlayActivity
-    @State private var breathe = false
+/// What the practice states need to know about the teleprompter in the band.
+struct PrompterBandInfo: Equatable {
+    var speaking: Bool
+    var mode: String
+    var page: Int
+    var pages: Int
+}
+
+/// The band: the strip beside the camera. Wings only; text never enters the camera band.
+struct IslandBand: View {
+    var state: OverlayState
+    var kind: IslandKind
+    var metrics: NotchMetrics
+    var width: CGFloat
+    var prompter: PrompterBandInfo?
 
     var body: some View {
-        ZStack {
-            switch activity {
-            case .offline, .idle:
-                Circle().strokeBorder(Color.white.opacity(0.55), lineWidth: 1.4)
-            case .warming, .thinking:
-                Circle().fill(OverlayStyle.accent).opacity(breathe ? 1.0 : 0.35)
-            case .listening:
-                Circle().fill(OverlayStyle.accent)
+        Wings(width: width, notchWidth: metrics.notchWidth, height: metrics.capsuleHeight, inset: width > 420 ? 22 : 12) {
+            leftWing
+        } right: {
+            rightWing
+        }
+    }
+
+    private var busyDot: IslandDot.Kind {
+        switch state.activity {
+        case .warming, .thinking: return .waiting
+        default: return .live
+        }
+    }
+
+    @ViewBuilder private var leftWing: some View {
+        switch kind {
+        case .capsule:
+            if state.status != nil {
+                IslandDot(activity: state.status == .offline ? .offline : state.activity)
+            } else if state.remoteSpeaking {
+                IslandDot(.live)
+                LevelBars(levels: state.remoteBars)
+            } else if state.activity == .listening, state.addresseeTag == nil {
+                IslandDot(.idle)
+            } else {
+                IslandDot(activity: state.activity)
+            }
+        case .statusPanel(let s):
+            IslandDot(Self.statusDot(s))
+        case .prompt(let p):
+            IslandDot(p.busy ? .waiting : .idle)
+        case .sim(let sim):
+            Text(sim.qTotal > 0 ? "Q\(sim.qIndex) of \(sim.qTotal)" : "Practice").foregroundStyle(VT.Island.secondary)
+            SimTimer(start: sim.startedAt)
+        case .prompter:
+            IslandDot(prompter?.speaking == true ? .live : .idle)
+            Text(prompter?.mode ?? "")
+        case .startup(let p):
+            switch p.phase {
+            case .starting: IslandDot(.waiting)
+            case .ready: IslandDot(.idle)
+            case .listening: IslandDot(.live)
+            }
+        case .topics:
+            IslandDot(activity: state.activity)
+        case .card(let c):
+            IslandDot(busyDot)
+            if c.say == nil {
+                LevelBars(levels: state.remoteBars)
+            } else if c.following {
+                LevelBars(levels: state.meBars)
             }
         }
-        .frame(width: 8, height: 8)
-        .onAppear { breathe = true }
-        .animation(activity == .thinking || activity == .warming ? .easeInOut(duration: 0.9).repeatForever(autoreverses: true) : .default,
-                   value: breathe)
-        .accessibilityLabel(activity.rawValue)
+    }
+
+    @ViewBuilder private var rightWing: some View {
+        switch kind {
+        case .capsule:
+            if let s = state.status {
+                Text(s.shortTitle).foregroundStyle(VT.Island.secondary)
+            } else if let tag = state.addresseeTag {
+                Text(tag).foregroundStyle(state.tagDimmed ? VT.Island.tertiary : VT.Island.secondary)
+            }
+        case .statusPanel(let s):
+            Text(s.shortTitle)
+        case .prompt, .startup, .topics:
+            EmptyView()
+        case .sim(let sim):
+            if sim.closing {
+                Text("report").foregroundStyle(VT.Island.secondary)
+                IslandDot(.waiting)
+            } else if sim.listening || (!sim.coach.isEmpty && !sim.speaking) {
+                Text("your turn").foregroundStyle(VT.Island.secondary)
+                IslandDot(.live)
+            } else if sim.speaking {
+                Text("interviewer").foregroundStyle(VT.Island.secondary)
+                IslandDot(.idle)
+            } else {
+                Text("thinking").foregroundStyle(VT.Island.secondary)
+                IslandDot(.waiting)
+            }
+        case .prompter:
+            if let p = prompter { Text("\(p.page) / \(p.pages)").monospacedDigit() }
+        case .card(let c):
+            Text(c.following && c.say != nil ? "your answer" : (state.addresseeTag ?? "for you"))
+                .foregroundStyle(state.tagDimmed ? VT.Island.tertiary : VT.Island.secondary)
+        }
+    }
+
+    static func statusDot(_ s: OverlayStatus) -> IslandDot.Kind {
+        if case .error = s { return .coral }
+        return .amber
     }
 }
 
-/// The compact island: dot on the left wing, the tag (or a short status) on the right wing. Always the same width,
-/// so the notch stays centred in it; longer messages go to the panel under it.
+/// The compact band alone (the capsule states, and the band above a panel). `width` defaults to the capsule's.
 struct CapsuleView: View {
     var state: OverlayState
     var metrics: NotchMetrics
-
-    /// A practice interview widens the wings for `practice · Q3/8` and the timer.
-    private var wide: Bool { state.sim != nil }
-    private var wing: CGFloat { OverlayStyle.wing + (wide ? 64 : 0) }
+    var width: CGFloat?
 
     var body: some View {
-        HStack(spacing: 0) {
-            HStack(spacing: 8) {
-                StatusDot(activity: state.status == .offline ? .offline : state.activity)
-                if let sim = state.sim { SimTimer(start: sim.startedAt) }
-            }
-                .frame(width: wing, alignment: .leading)
-                .padding(.leading, 18)
-            Spacer(minLength: 0)
-            Group {
-                if let s = state.status {
-                    Text(s.shortTitle).foregroundStyle(.white)
-                } else {
-                    Text(state.capsuleTag).foregroundStyle(.white.opacity(state.tagDimmed ? 0.45 : 0.82))
-                }
-            }
-            .font(.system(size: 11.5, weight: .medium))
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
-            .frame(width: wing, alignment: .trailing)
-            .padding(.trailing, 18)
-        }
-        .frame(width: metrics.capsuleWidth(wide: wide), height: metrics.capsuleHeight)
-        .transaction { $0.animation = nil }
+        let kind = IslandKind.resolve(state, prompterOpen: false)
+        let w = width ?? IslandWidth.width(kind: kind, state: state, metrics: metrics, cardWidth: 600)
+        IslandBand(state: state, kind: kind, metrics: metrics, width: w, prompter: nil)
+            .transaction { $0.animation = nil }
     }
 }
 
-/// The question card: SAY line, points, fact chips, Sonnet's points.
-struct CardView: View {
-    var card: OverlayCard
-    var scale: CGFloat
-
-    private func size(_ s: CGFloat) -> CGFloat { (s * scale).rounded() }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: size(10)) {
-            if let say = card.say {
-                HStack(alignment: .top, spacing: size(11)) {
-                    Capsule().fill(OverlayStyle.accent).frame(width: 3)
-                        .padding(.vertical, size(3))
-                    VStack(alignment: .leading, spacing: size(4)) {
-                        if card.following {
-                            FollowMark(scale: scale)
-                        }
-                        Text(say)
-                            .font(.system(size: size(20), weight: .semibold))
-                            .tracking(-0.25)
-                            .foregroundStyle(.white)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if card.sayCorrected {
-                            Label("Corrected by Sonnet", systemImage: "arrow.uturn.backward")
-                                .font(.system(size: size(11), weight: .medium))
-                                .foregroundStyle(.white.opacity(0.6))
-                        }
-                    }
-                }
-                .fixedSize(horizontal: false, vertical: true)
-            } else {
-                Text("Listening to the question…")
-                    .font(.system(size: size(15), weight: .medium))
-                    .foregroundStyle(.white.opacity(0.55))
-            }
-            if !card.bullets.isEmpty {
-                PointList(points: card.bullets, scale: scale, opacity: 0.88, struck: card.struck)
-            }
-            if !card.chips.isEmpty {
-                ChipRow(chips: card.chips, scale: scale)
-            }
-            if !card.deepPoints.isEmpty {
-                SonnetDivider(scale: scale)
-                PointList(points: card.deepPoints, scale: scale, opacity: 0.78)
-            }
-        }
-        .padding(.horizontal, size(20))
-        .padding(.top, size(16))
-        .padding(.bottom, size(14))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .transaction { $0.animation = nil }
-    }
-}
-
-/// "following you": the card is the C tier's continuation of what Alex is saying, not the answer to the question.
-struct FollowMark: View {
-    var scale: CGFloat
-
-    var body: some View {
-        Label("following you", systemImage: "arrow.turn.down.right")
-            .font(.system(size: (11 * scale).rounded(), weight: .medium))
-            .foregroundStyle(.white.opacity(0.6))
-            .accessibilityIdentifier("verse.followMark")
-    }
-}
-
-struct PointList: View {
-    var points: [String]
-    var scale: CGFloat
-    var opacity: Double
-    /// Indices of points already said: struck through and dimmed (no animation, like all card text).
-    var struck: Set<Int> = []
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6 * scale) {
-            ForEach(Array(points.enumerated()), id: \.offset) { i, p in
-                let done = struck.contains(i)
-                HStack(alignment: .firstTextBaseline, spacing: 9 * scale) {
-                    Circle().fill(.white.opacity(done ? 0.25 : 0.5)).frame(width: 4 * scale, height: 4 * scale)
-                        .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 4.5 * scale }
-                    Text(p)
-                        .font(.system(size: (14 * scale).rounded()))
-                        .strikethrough(done, color: .white.opacity(0.7))
-                        .foregroundStyle(.white.opacity(done ? 0.45 : opacity))
-                        .lineSpacing(1.5)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel(done ? "\(p), said" : p)
-                }
-            }
-        }
-        .padding(.leading, 14 * scale)
-    }
-}
-
-struct ChipRow: View {
-    var chips: [OverlayChip]
-    var scale: CGFloat
-    var leading: CGFloat = 14
-
-    var body: some View {
-        FlowLayout(spacing: 6 * scale) {
-            ForEach(chips) { c in
-                HStack(spacing: 5 * scale) {
-                    Text(c.text).foregroundStyle(.white.opacity(0.92)).lineLimit(1).truncationMode(.tail)
-                    Text("·").foregroundStyle(.white.opacity(0.4))
-                    Text(c.source).foregroundStyle(.white.opacity(0.62)).lineLimit(1).fixedSize()
-                }
-                .font(.system(size: (12 * scale).rounded(), weight: .medium))
-                .padding(.horizontal, 8 * scale)
-                .padding(.vertical, 4 * scale)
-                .background(RoundedRectangle(cornerRadius: 7 * scale, style: .continuous).fill(.white.opacity(0.11)))
-                .overlay(RoundedRectangle(cornerRadius: 7 * scale, style: .continuous).strokeBorder(.white.opacity(0.08), lineWidth: 0.5))
-            }
-        }
-        .padding(.leading, leading * scale)
-    }
-}
-
-struct SonnetDivider: View {
-    var scale: CGFloat
-    var body: some View {
-        HStack(spacing: 8 * scale) {
-            Rectangle().fill(.white.opacity(0.16)).frame(width: 14 * scale, height: 0.5)
-            Text("Sonnet").font(.system(size: (11 * scale).rounded(), weight: .medium)).foregroundStyle(.white.opacity(0.5))
-            Rectangle().fill(.white.opacity(0.16)).frame(height: 0.5)
-        }
-        .padding(.leading, 14 * scale)
-        .padding(.top, 2 * scale)
-    }
-}
-
-/// A status that needs more than the capsule: permission (with a System Settings button), credit, error.
-struct StatusPanelView: View {
-    var status: OverlayStatus
-    var scale: CGFloat
-    var onOpenSettings: (String) -> Void
-    var onDismiss: () -> Void
-    /// Shown for errors when nothing is running.
-    var onRetry: (() -> Void)?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10 * scale) {
-            Text(status.title)
-                .font(.system(size: (16 * scale).rounded(), weight: .semibold))
-                .foregroundStyle(.white)
-            if let d = status.detail {
-                Text(d)
-                    .font(.system(size: (13 * scale).rounded()))
-                    .foregroundStyle(.white.opacity(0.78))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            HStack(spacing: 8) {
-                if case .permission(let kind) = status {
-                    Button("Open System Settings") { onOpenSettings(kind) }
-                        .buttonStyle(OverlayButtonStyle(prominent: true, scale: scale))
-                }
-                if let onRetry {
-                    Button("Retry", action: onRetry)
-                        .buttonStyle(OverlayButtonStyle(prominent: true, scale: scale))
-                }
-                Button("Dismiss", action: onDismiss)
-                    .buttonStyle(OverlayButtonStyle(prominent: false, scale: scale))
-            }
-        }
-        .padding(18 * scale)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// The start-up panel: Starting… (with the step) → Ready · session → Listening. Stays until the first card or a click
-/// on the capsule.
-struct StartupPanelView: View {
-    var panel: StartupPanel
-    var scale: CGFloat
-
-    private var starting: Bool { if case .starting = panel.phase { return true }; return false }
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 12 * scale) {
-            Group {
-                if starting {
-                    ProgressView().controlSize(.small).tint(.white)
-                } else {
-                    Circle().fill(Color.green).frame(width: 10 * scale, height: 10 * scale)
-                        .shadow(color: .green.opacity(0.6), radius: 4)
-                }
-            }
-            .frame(width: 18 * scale, height: 18 * scale)
-            VStack(alignment: .leading, spacing: 3 * scale) {
-                Text(panel.title)
-                    .font(.system(size: (16 * scale).rounded(), weight: .semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                Text(panel.subtitle)
-                    .font(.system(size: (13 * scale).rounded()))
-                    .foregroundStyle(.white.opacity(0.72))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 18 * scale)
-        .padding(.top, 12 * scale)
-        .padding(.bottom, 16 * scale)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("verse.startup")
-    }
-}
-
-/// Buttons on the dark glass: white label, quiet fill; the prominent one carries the accent.
-struct OverlayButtonStyle: ButtonStyle {
-    var prominent: Bool
-    var scale: CGFloat
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: (13 * scale).rounded(), weight: .semibold))
-            .foregroundStyle(prominent ? Color.black.opacity(0.88) : .white)
-            .padding(.horizontal, 12 * scale)
-            .padding(.vertical, 6 * scale)
-            .background(RoundedRectangle(cornerRadius: 9 * scale, style: .continuous)
-                .fill(prominent ? OverlayStyle.accent : Color.white.opacity(0.14)))
-            .opacity(configuration.isPressed ? 0.75 : 1)
-            .contentShape(Rectangle())
-    }
-}
-
-/// Lays chips out in rows.
-struct FlowLayout: Layout {
-    var spacing: CGFloat
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let maxW = proposal.width ?? .infinity
-        var x: CGFloat = 0, y: CGFloat = 0, rowH: CGFloat = 0, widest: CGFloat = 0
-        for s in subviews {
-            let sz = s.sizeThatFits(ProposedViewSize(width: maxW, height: nil))
-            let w = min(sz.width, maxW)
-            if x > 0, x + w > maxW { y += rowH + spacing; x = 0; rowH = 0 }
-            x += w + spacing
-            rowH = max(rowH, sz.height)
-            widest = max(widest, x - spacing)
-        }
-        return CGSize(width: min(widest, maxW), height: y + rowH)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX, y = bounds.minY, rowH: CGFloat = 0
-        for s in subviews {
-            let sz = s.sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
-            let w = min(sz.width, bounds.width)
-            if x > bounds.minX, x + w > bounds.maxX { y += rowH + spacing; x = bounds.minX; rowH = 0 }
-            s.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: w, height: sz.height))
-            x += w + spacing
-            rowH = max(rowH, sz.height)
-        }
-    }
-}
-
-/// The resize grip at the bottom of the card.
-struct ResizeGrip: View {
-    var onDrag: (CGSize) -> Void
-    var onEnd: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        Capsule()
-            .fill(.white.opacity(hovering ? 0.5 : 0.22))
-            .frame(width: 36, height: 4)
-            .frame(width: 120, height: 14)
-            .contentShape(Rectangle())
-            .onHover { h in
-                hovering = h
-                if h { NSCursor.resizeUpDown.push() } else { NSCursor.pop() }
-            }
-            .gesture(
-                DragGesture(minimumDistance: 1, coordinateSpace: .global)
-                    .onChanged { onDrag($0.translation) }
-                    .onEnded { _ in onEnd() }
-            )
-            .accessibilityLabel("Resize")
-    }
-}
-
-/// Everything under the notch, as one surface: the black band around the notch with the capsule's dot and tag, and
-/// the card, status message or topic row below it. The glass is a single hanging silhouette that grows out of the
-/// notch (Moonglade's shape and glass, see `HangingNotchGeometry` and `NotchGlass`); only that surface animates.
-/// Text is laid out at its final place and full opacity at once, never animated.
+/// Everything under the notch, as one surface: the black band around the notch with the wings, and the card, status
+/// message, prompt or teleprompter below it. The glass is a single hanging silhouette that grows out of the notch
+/// (Moonglade's shape and glass, see `HangingNotchGeometry` and `NotchGlass`, with the spec 2.4 veil on top); only that
+/// surface animates. Text is laid out at its final place and full opacity at once, never animated.
 public struct OverlayView: View {
     @ObservedObject var model: OverlayModel
     @ObservedObject var settings: AppSettings
-    /// T-UI: the teleprompter shown under the capsule while it is open.
+    /// T-UI: the teleprompter shown under the band while it is open.
     @ObservedObject var prompter: PrompterModel
     var metrics: NotchMetrics
     var onOpenSettings: (String) -> Void
     var onRetry: () -> Void
     var onSizeChange: (CGSize) -> Void
+    /// Renderer only: the practice states drawn as the bare capsule (spec 3.2, state 6).
+    var forcePracticeCapsule = false
+
+    @Environment(\.accessibilityReduceTransparency) private var systemReduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    @Environment(\.colorSchemeContrast) private var systemContrast
+    @Environment(\.islandA11yOverride) private var a11yOverride
+    @Environment(\.islandHoverOverride) private var hoverOverride
 
     @State private var dragStart: (width: Double, height: Double)?
     /// The size the glass shows now; it follows `target` with the morph.
     @State private var surface: CGSize = .zero
-    /// The content's own size plus the shoulders.
+    /// The content's own size.
     @State private var target: CGSize = .zero
+    /// Reduce Motion: the surface fades in at its new size instead of morphing.
+    @State private var fade = 1.0
+    /// The pointer is over the island: the control rows show.
+    @State private var hovering = false
 
     public init(model: OverlayModel, settings: AppSettings, prompter: PrompterModel = PrompterModel(), metrics: NotchMetrics,
                 onOpenSettings: @escaping (String) -> Void = { _ in }, onRetry: @escaping () -> Void = {},
@@ -407,109 +201,130 @@ public struct OverlayView: View {
         self.onSizeChange = onSizeChange
     }
 
+    init(model: OverlayModel, settings: AppSettings, prompter: PrompterModel, metrics: NotchMetrics, forcePracticeCapsule: Bool) {
+        self.init(model: model, settings: settings, prompter: prompter, metrics: metrics)
+        self.forcePracticeCapsule = forcePracticeCapsule
+    }
+
     private var state: OverlayState { model.state }
     private var scale: CGFloat { settings.textScale.factor }
-    private var showPanel: Bool { state.status?.needsPanel ?? false }
-    private var showStartup: Bool { state.card == nil && !showPanel && state.startup != nil }
-    private var showTopics: Bool { state.card == nil && !showPanel && !showStartup && !state.topics.isEmpty }
-    private static let shoulder = HangingNotchMetrics.topShoulderRadius
-    private var capsuleWidth: CGFloat { metrics.capsuleWidth(wide: false) }
+    private var kind: IslandKind { IslandKind.resolve(state, prompterOpen: prompter.isOpen) }
+    private var cardWidth: CGFloat { CGFloat(settings.cardWidth) }
+    private var width: CGFloat {
+        IslandWidth.width(kind: kind, state: state, metrics: metrics, cardWidth: cardWidth, forcePracticeCapsule: forcePracticeCapsule)
+    }
+    private var a11y: IslandA11y {
+        a11yOverride ?? IslandA11y(reduceTransparency: systemReduceTransparency, increaseContrast: systemContrast == .increased,
+                                   reduceMotion: systemReduceMotion)
+    }
+    /// A card never grows past 420 pt (spec 3.2); the user's height setting can only lower that.
+    private var maxIslandHeight: CGFloat { min(CGFloat(settings.cardMaxHeight), 420) }
 
-    /// The size the surface has before the first measurement: the compact capsule.
-    private var compactSize: CGSize { CGSize(width: capsuleWidth + 2 * Self.shoulder, height: metrics.capsuleHeight) }
+    /// The size the surface has before the first measurement: the idle capsule.
+    private var compactSize: CGSize { CGSize(width: metrics.capsuleWidth(wide: false), height: metrics.capsuleHeight) }
 
     public var body: some View {
         let shown = surface == .zero ? compactSize : surface
+        let a = a11y
         ZStack(alignment: .top) {
             ZStack {
-                NotchGlassBackdrop()
-                NotchGlassScrim(bandHeight: metrics.capsuleHeight)
+                if !a.reduceTransparency { NotchGlassBackdrop() }
+                IslandVeilView(bandHeight: metrics.capsuleHeight,
+                               floor: IslandVeil.floor(userOpacity: settings.islandOpacity, reduceTransparency: a.reduceTransparency,
+                                                       increaseContrast: a.increaseContrast),
+                               reduceTransparency: a.reduceTransparency, increaseContrast: a.increaseContrast)
             }
             .frame(width: shown.width, height: shown.height)
+            .opacity(a.reduceMotion ? fade : 1)
 
             content
-                .padding(.horizontal, Self.shoulder)
-                .fixedSize()
+                .fixedSize(horizontal: false, vertical: true)
                 .transaction { $0.animation = nil }
-                .onGeometryChange(for: CGSize.self, of: { $0.size }, action: { surfaceTargetChanged($0) })
+                .onGeometryChange(for: CGSize.self, of: { $0.size }, action: { surfaceTargetChanged($0, reduceMotion: a.reduceMotion) })
         }
         .frame(width: max(shown.width, target.width), height: max(shown.height, target.height), alignment: .top)
         .environment(\.colorScheme, .dark)
+        .environment(\.islandContrast, a.increaseContrast)
         .frame(maxWidth: .infinity, alignment: .top)
     }
 
-    /// The band (capsule row) and, under it, whatever is open. The band keeps the capsule's width and stays centred,
-    /// so the dot and the tag do not move when the surface grows.
+    private var prompterInfo: PrompterBandInfo {
+        let s = prompter.state
+        return PrompterBandInfo(speaking: s.isSpeaking, mode: s.mode.wingName, page: s.pageIndex + 1, pages: s.pageCount)
+    }
+
+    /// The band (wings) and, under it, whatever is open. The band keeps the camera gap at the island's centre, so the
+    /// dot and the tags do not move when the surface grows.
     private var content: some View {
         VStack(spacing: 0) {
-            CapsuleView(state: state, metrics: metrics)
+            IslandBand(state: state, kind: kind, metrics: metrics, width: width, prompter: prompterInfo)
                 .contentShape(Rectangle())
-                // Click the capsule: close the card (or the start-up panel). The panel never becomes key, so Esc
-                // can't reach it; the click is the dismiss.
+                // Click the band: close the card (or the start-up panel). The panel never becomes key, so Esc can't
+                // reach it; the click is the dismiss.
                 .onTapGesture { model.collapse() }
-            if showPanel, let s = state.status {
-                let canRetry: Bool = { if case .error = s { return !state.running && !state.practiceEnded }; return false }()
-                StatusPanelView(status: s, scale: scale, onOpenSettings: onOpenSettings, onDismiss: { model.dismissStatus() },
-                                onRetry: canRetry ? onRetry : nil)
-                    .frame(width: max(capsuleWidth, CGFloat(min(settings.cardWidth, 520))))
-            } else if let prompt = state.meetingPrompt {
-                // "Meeting detected · Start Verse?" / "Save summary to vault?": a question with two buttons.
-                MeetingPromptView(prompt: prompt, scale: scale, onAction: { model.promptAction($0) })
-                    .frame(width: max(capsuleWidth, CGFloat(min(settings.cardWidth, 460))))
-            } else if let sim = state.sim {
+            bodyView
+        }
+        .frame(width: width, alignment: .top)
+        .contentShape(HangingNotchShape())
+        .onHover { hovering = $0 }
+        .environment(\.islandHover, hoverOverride ?? hovering)
+    }
+
+    @ViewBuilder private var bodyView: some View {
+        switch kind {
+        case .capsule:
+            EmptyView()
+        case .statusPanel(let s):
+            let canRetry: Bool = { if case .error = s { return !state.running && !state.practiceEnded }; return false }()
+            StatusPanelView(status: s, onOpenSettings: onOpenSettings, onDismiss: { model.dismissStatus() }, onRetry: canRetry ? onRetry : nil)
+        case .prompt(let prompt):
+            // "Meeting detected · Start Verse?" / "Save summary to vault?": a question with two buttons.
+            MeetingPromptView(prompt: prompt, onAction: { model.promptAction($0) })
+        case .sim(let sim):
+            if !forcePracticeCapsule {
                 // Practice interview: the sim panel, and under it the hint card when hints are on.
                 VStack(spacing: 0) {
                     SimPanelView(sim: sim, scale: scale, onAction: { model.simAction($0) })
                     if let card = state.card {
-                        Rectangle().fill(.white.opacity(0.12)).frame(height: 0.5).padding(.horizontal, 18)
-                        ScrollView(.vertical, showsIndicators: false) {
-                            CardView(card: card, scale: scale)
-                        }
-                        .scrollBounceBehavior(.basedOnSize)
-                        .frame(maxHeight: CGFloat(settings.cardMaxHeight) * 0.6)
-                        .fixedSize(horizontal: false, vertical: true)
+                        Rectangle().fill(.white.opacity(0.12)).frame(height: 0.5).padding(.horizontal, VT.islandCardInset)
+                        CardView(card: card, scale: scale, maxHeight: max(maxIslandHeight * 0.6, 120))
                     }
                 }
-                .frame(width: max(CGFloat(settings.cardWidth), metrics.capsuleWidth(wide: true)))
-            } else if prompter.isOpen {
-                // The teleprompter takes the card's place (a status message or a practice interview still comes first).
-                PrompterPanelView(model: prompter, settings: prompter.settings, width: max(CGFloat(settings.cardWidth), capsuleWidth))
-            } else if showStartup, let p = state.startup {
-                StartupPanelView(panel: p, scale: scale)
-                    .frame(width: max(capsuleWidth, CGFloat(min(settings.cardWidth, 460))))
-            } else if showTopics {
-                ChipRow(chips: state.topics, scale: scale, leading: 0)
-                    .frame(maxWidth: CGFloat(settings.cardWidth) - 32)
-                    .fixedSize()
-                    .padding(.horizontal, 16)
-                    .padding(.top, 6)
-                    .padding(.bottom, 12)
-                    .contentShape(Rectangle())
-                    .onTapGesture { model.collapse() }   // a click on the row clears the topic hints
-                    .frame(minWidth: capsuleWidth)
-            } else if let card = state.card {
-                VStack(spacing: 0) {
-                    ScrollView(.vertical, showsIndicators: false) {
-                        CardView(card: card, scale: scale)
-                    }
-                    .scrollBounceBehavior(.basedOnSize)
-                    .frame(maxHeight: CGFloat(settings.cardMaxHeight))
-                    .fixedSize(horizontal: false, vertical: true)
-                    ResizeGrip(onDrag: resize, onEnd: { dragStart = nil })
-                        .padding(.bottom, 4)
-                }
-                .frame(width: CGFloat(settings.cardWidth))
             }
+        case .prompter:
+            // The teleprompter takes the card's place (a status message or a practice interview still comes first).
+            PrompterPanelView(model: prompter, settings: prompter.settings, width: width, scale: scale)
+        case .startup(let p):
+            StartupPanelView(panel: p)
+        case .topics:
+            ChipRow(chips: state.topics, scale: scale)
+                .padding(.horizontal, VT.islandCardInset)
+                .padding(.top, 8)
+                .padding(.bottom, 20)
+                .frame(width: width, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture { model.collapse() }   // a click on the row clears the topic hints
+        case .card(let card):
+            CardView(card: card, scale: scale, maxHeight: max(maxIslandHeight - metrics.capsuleHeight, 120))
+                .overlay(alignment: .bottom) {
+                    ResizeGrip(onDrag: resize, onEnd: { dragStart = nil })
+                }
         }
     }
 
-    private func surfaceTargetChanged(_ size: CGSize) {
+    private func surfaceTargetChanged(_ size: CGSize, reduceMotion: Bool) {
         target = size
         onSizeChange(size)
         if surface == .zero {
             surface = size
+        } else if reduceMotion {
+            // No size morph: the new size is in place at once and fades in over 150 ms.
+            var t = Transaction(animation: nil)
+            t.disablesAnimations = true
+            withTransaction(t) { surface = size; fade = 0.25 }
+            withAnimation(.easeInOut(duration: 0.15)) { fade = 1 }
         } else {
-            withAnimation(OverlayStyle.morph) { surface = size }
+            withAnimation(VT.morph) { surface = size }
         }
     }
 
