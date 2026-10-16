@@ -154,4 +154,87 @@ struct CardReadingTests {
         for await e in prompterStream { prompterSaw.append(e.text); tap.finish() }
         #expect(prompterSaw == ["my own words on the prompter"], "the prompter never sees the room route's remote events: \(prompterSaw)")
     }
+
+    // MARK: room route: the card read aloud in fragments (live Italian call, 16 Oct)
+
+    private let itSay = "Certo, sono una sviluppatrice backend con un forte focus sul prodotto. Ho trovato che la chiave sia la chiarezza degli obiettivi e il feedback frequente. Il mio ultimo progetto, Harbor Ledger, ha ridotto la chiusura mensile da sei giorni a due."
+    private let fragments = ["Certo, sono una sviluppa", "backend con un forte", "focus sul prodotto", "Ho trovato che la chiave", "sia la chiarezza degli obiettivi",
+                             "e il feedback frequente", "Il mio ultimo progetto Harbor", "Ledger ha ridotto la chiusura mensile da sei giorni a due"]
+
+    /// A fragment as the recognizer delivers it: partial, then final, each range with its own start time.
+    private func deliver(_ text: String, range: Int, to reading: CardReading) {
+        let words = text.split(separator: " ")
+        for k in stride(from: 2, to: words.count, by: 2) {
+            reading.ingest(roomEvent(words[0..<k].joined(separator: " "), start: Double(range), final: false))
+        }
+        reading.ingest(roomEvent(text, start: Double(range), final: true))
+    }
+
+    private func roomEvent(_ text: String, start: Double, final: Bool) -> TranscriptEvent {
+        TranscriptEvent(channel: .remote, text: text, isFinal: final, audioStart: start, audioEnd: start + 1, emittedAt: start, lang: "it")
+    }
+
+    @Test
+    func theCardReadInFragmentsOfTwoToSixWordsMovesTheCursorToTheEnd() {
+        let clock = ManualPrompterClock()
+        let reading = CardReading(clock: clock)
+        reading.roomRoute = true
+        reading.setSay(itSay)
+        var last = 0
+        for (i, frag) in fragments.enumerated() {
+            clock.set(Double(i) * 1.5)                         // a silence between two finals, well inside a reading session
+            deliver(frag, range: i, to: reading)
+            let now = reading.spoken(for: itSay)
+            if i < 6 { #expect(now > last, "fragment \(i) \(frag): \(last) -> \(now)") }
+            last = max(last, now)
+        }
+        let total = itSay.split(separator: " ").count
+        #expect(reading.spoken(for: itSay) >= total - 3, "spoken \(reading.spoken(for: itSay)) of \(total)")
+    }
+
+    @Test
+    func theWindowRuleAloneCouldNotMoveOnFragmentsOfThreeOrFourWords() {
+        #expect(!RoomReading.reads(fragments[2], say: itSay), "three words")       // fewer than four words prove nothing to the window rule
+    }
+
+    @Test
+    func aFragmentFromTheMiddleOfTheCardDoesNotStartAReadingAndAnInterviewerQuotingWordsDoesNotMoveIt() {
+        let clock = ManualPrompterClock()
+        let reading = CardReading(clock: clock)
+        reading.roomRoute = true
+        reading.setSay(itSay)
+        deliver("e che tipo di feedback ha ricevuto dagli utenti del prodotto", range: 0, to: reading)
+        #expect(reading.spoken(for: itSay) == 0)
+        deliver("la chiarezza degli obiettivi", range: 1, to: reading)       // on the card, but nobody is reading yet
+        #expect(reading.spoken(for: itSay) == 0)
+        deliver("Certo, sono una sviluppa", range: 2, to: reading)           // the start of the card: reading begins
+        #expect(reading.spoken(for: itSay) > 0)
+    }
+
+    @Test
+    func aReadingSessionEndsAfterFourSecondsOfNoReading() {
+        let clock = ManualPrompterClock()
+        let reading = CardReading(clock: clock)
+        reading.roomRoute = true
+        reading.setSay(itSay)
+        deliver(fragments[0], range: 0, to: reading)
+        clock.set(2.0)
+        deliver(fragments[1], range: 1, to: reading)
+        let before = reading.spoken(for: itSay)
+        clock.set(9.0)                                                        // 7 s of quiet: the session is over
+        deliver(fragments[2], range: 2, to: reading)
+        #expect(reading.spoken(for: itSay) == before)
+    }
+
+    @Test
+    func aNewSayResetsTheCursorAndTheSession() {
+        let clock = ManualPrompterClock()
+        var gate = RoomReadingGate()
+        let taken = gate.accepts(roomEvent(fragments[0], start: 0, final: true), say: itSay, now: 0)
+        #expect(taken)
+        #expect(gate.cursor > 0 && gate.sessionActive(at: 1))
+        gate.reset()
+        #expect(gate.cursor == 0 && !gate.sessionActive(at: 1))
+        _ = clock
+    }
 }

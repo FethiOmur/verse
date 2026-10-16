@@ -148,7 +148,9 @@ def test_the_reading_is_dropped_before_it_can_fire_a_card_even_with_a_question_c
 
     b, t, n = run(go())
     assert [c.route for c in t.calls[n:]] == [] or all(c.route not in ("F", "D") for c in t.calls[n:])
-    assert b.turns[-1].speaker == "me"
+    # his reading is `me`; "and I led the reconciliation work" is not on the card (4 trailing words), so the text is split there
+    assert [(x.turn_id, x.speaker) for x in b.turns[-2:]] == [("r2m", "me"), ("r2", "room")]
+    assert b.turns[-2].text.startswith("Harbor Ledger cut the month-end close")
 
 
 # ---------------------------------------------------------------- the statement probe in the room
@@ -163,8 +165,8 @@ def test_room_statements_of_eight_words_get_a_silent_probe_and_a_question_gets_i
     t, em = run(go("we have about forty minutes so let me explain"))                        # 9 words
     f = f_calls(t)
     assert len(f) == 1 and "STATEMENT CHECK (ROOM MICROPHONE)" in f[0].tail and em.of("delta") == []
-    t, em = run(go("thanks for coming in today and sitting"))                                 # 7 words: nothing at all
-    assert t.calls == [] and em.of("metric", stage="room_skipped")[0]["words"] == 7
+    t, em = run(go("thanks for coming in"))                                                    # 4 words (under the probe's 5): nothing at all
+    assert t.calls == [] and em.of("metric", stage="room_skipped")[0]["words"] == 4
     t, em = run(go("we have about forty minutes so let me explain", room_auto="off"))     # automatic cards off: not even a probe
     assert t.calls == []
     t, em = run(go("i would be glad to hear how you picked your first big project"))        # the probe says KIND: question

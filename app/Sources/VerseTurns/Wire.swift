@@ -72,11 +72,13 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
     case chip(turnID: String, kind: String, text: String, sourceRef: String, factID: String)
 
     private enum Key: String, CodingKey {
-        case type, turn_id, speaker, text, cue, t_audio_end, addressee, bank_id, score, kind, source_ref, fact_id, lang
+        case type, turn_id, speaker, text, cue, t_audio_end, addressee, bank_id, score, kind, source_ref, fact_id, lang, cue_why, cue_strong
     }
 
     /// `JSONEncoder.userInfo` key: the language tag a `partial` or `turn` line carries (spec 2.5, per-turn `lang`).
     static let langInfoKey = CodingUserInfoKey(rawValue: "verse.lang")!
+    /// `JSONEncoder.userInfo` key: what set the question cue of a `partial` or `turn` line (`cue_why`, `cue_strong`; room route).
+    static let cueInfoKey = CodingUserInfoKey(rawValue: "verse.cue")!
 
     public var turnID: String {
         switch self {
@@ -133,6 +135,10 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
 
     private func encodeLang(_ c: inout KeyedEncodingContainer<Key>, _ encoder: Encoder) throws {
         if let lang = encoder.userInfo[Self.langInfoKey] as? String { try c.encode(lang, forKey: .lang) }
+        if let cue = encoder.userInfo[Self.cueInfoKey] as? CueMatch {
+            try c.encode(cue.why, forKey: .cue_why)
+            try c.encode(cue.strong, forKey: .cue_strong)
+        }
     }
 
     public init(from decoder: Decoder) throws {
@@ -177,10 +183,18 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
     /// The same line with `"lang"` ("en" | "it" | "tr") on a `partial` or `turn`: the language of that turn's text, which the brain
     /// answers in. nil leaves the line as `jsonLine()` makes it.
     public func jsonLine(lang: String?) -> String {
-        guard let lang else { return jsonLine() }
+        jsonLine(lang: lang, cue: nil)
+    }
+
+    /// The same line with `"cue_why"` / `"cue_strong"` on a `partial` or `turn` whose text set a question cue: which words set it and
+    /// whether it is unambiguous. The brain's session event log records them, and its room-route card hold waits for a weak cue
+    /// while Alex reads the card on screen. nil leaves the line as `jsonLine(lang:)` makes it.
+    public func jsonLine(lang: String?, cue: CueMatch?) -> String {
+        guard lang != nil || cue != nil else { return jsonLine() }
         let e = JSONEncoder()
         e.outputFormatting = [.withoutEscapingSlashes]
-        e.userInfo[Self.langInfoKey] = lang
+        if let lang { e.userInfo[Self.langInfoKey] = lang }
+        if let cue { e.userInfo[Self.cueInfoKey] = cue }
         return String(decoding: (try? e.encode(self)) ?? Data("{}".utf8), as: UTF8.self)
     }
 }

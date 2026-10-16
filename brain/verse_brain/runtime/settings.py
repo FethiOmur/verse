@@ -123,7 +123,9 @@ class Config:
     me_retrieval_final_wait_s: float = 0.150   # D waits this long for the final-text retrieval; F never waits
     me_files_max_chars: int = 4800     # FROM USER'S FILES in the tail: about 1,200 tokens
     room_min_words: int = 6            # room route: an automatic card needs a question cue and this many words
-    room_probe_min_words: int = 8      # room route: a statement of at least this many words gets the (silent unless it is a question) statement probe
+    room_probe_min_words: int = 5      # room route: a statement of at least this many words gets the (silent unless it is a question) statement probe (was 8: Italian yes/no questions without a wh-word, "ha avuto esperienza con ...", are 5-7 words and went unanswered)
+    room_hold_s: float = 1.2           # room route: a card held back while he reads the one on screen fires after this long without reading
+    room_hold_score: float = 0.35      # ... a new card replaces the one he is reading at once only when its text's own-voice share is below this (and a strong cue or the probe says question for him)
     unprepared_statement_min_words: int = 4   # unprepared: a statement shorter than this gets no probe
     card_now_match_edit: int = 6       # the real turn that follows a card-now answer within this edit distance gets no second card
     local_me_chars: int = 3000         # G1 fallback: WHO I AM + NUMBERS + PROJECTS of the me layer next to a pack...

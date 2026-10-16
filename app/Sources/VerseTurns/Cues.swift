@@ -2,6 +2,16 @@ import Foundation
 
 /// Question cues and clause-completeness checks on volatile transcript text (plan P1-4).
 /// English is the tuned language; Italian and Turkish only use the simple cue lists from the plan.
+/// What set a question cue (`Cues.cueMatch`): the words, and whether the cue is unambiguous.
+public struct CueMatch: Equatable, Sendable {
+    public var why: String
+    public var strong: Bool
+    public init(why: String, strong: Bool) {
+        self.why = why
+        self.strong = strong
+    }
+}
+
 public enum Cues {
     // MARK: hesitation
 
@@ -37,9 +47,21 @@ public enum Cues {
     private static let enLeaders: Set<String> = ["and", "so", "but", "okay", "ok", "well", "alright", "then", "now", "also", "yeah",
                                                  "um", "uh", "right", "great", "thanks", "thank", "sure", "good", "oh", "hey", "hi",
                                                  "hello", "perfect", "nice", "cool"]
-    private static let itCue: Set<String> = ["come", "perché", "perche", "quando", "dove", "quale", "quali", "chi", "cosa", "quanto",
-                                              "quanti", "può", "puoi", "potrebbe", "potresti", "raccontami", "parlami", "sapresti",
-                                              "spiegami", "dimmi"]
+    /// Italian question words that are also ordinary words ("come" = as/like, "cosa" = thing, "perché" = because, "quando" = when,
+    /// "dove" = where, "quale", "chi", "quanto"). They ask only where a clause opens ("Come si descriverebbe", "E perché ha scelto",
+    /// "Con quale linguaggio", "A chi riporta"), never in the middle of one ("sviluppo mobile come questo", "una cosa che", "perché
+    /// mi piace"). Live Italian call, 16 Oct: a fragment of the card he read aloud ended in "... come questo", the cue fired and
+    /// the card he was reading was replaced.
+    private static let itOpening: Set<String> = ["come", "perché", "perche", "quando", "dove", "quale", "quali", "chi", "cosa", "quanto",
+                                                 "quanti", "quanta", "quante", "può", "puo", "puoi", "potrebbe", "potresti"]
+    /// Words that may sit in front of such a question word without changing where the clause "starts" ("e come", "con quale", "mi può").
+    private static let itLeaders: Set<String> = ["e", "ed", "ma", "poi", "allora", "ecco", "ok", "bene", "ottimo", "perfetto", "grazie",
+                                                 "fantastico", "senta", "scusi", "dunque", "quindi", "anche", "lei", "tu", "oh", "ah",
+                                                 "a", "in", "con", "per", "da", "di", "su", "tra", "fra", "mi", "dica", "dimmi"]
+    /// "come" followed by one of these is a question wherever it stands ("lei come ha affrontato", "come mai", "come funziona").
+    private static let itComeVerbs: Set<String> = ["si", "ha", "mai", "sta", "stai", "funziona"]
+    /// Imperatives that only ever ask: a question anywhere in the clause.
+    private static let itAsk: Set<String> = ["raccontami", "parlami", "sapresti", "spiegami", "dimmi"]
     /// Italian phrases (two or three words) that ask without a question word ("mi racconti", "vorrei sapere").
     private static let itPhrases: [[String]] = [["che", "cosa"], ["mi", "racconti"], ["mi", "parli"], ["mi", "spieghi"], ["secondo", "te"],
                                                 ["vorrei", "sapere"], ["vorrei", "capire"], ["vorrei", "sentire"],
@@ -48,16 +70,22 @@ public enum Cues {
     /// The Turkish question particle with its person ending attached ("mısınız", "miyim"): one token in the recognizer's output.
     private static let trParticle: Set<String> = ["mı", "mi", "mu", "mü", "mısın", "misin", "musun", "müsün", "mısınız", "misiniz",
                                                   "musunuz", "müsünüz", "mıyım", "miyim", "muyum", "müyüm", "mıyız", "miyiz", "muyuz", "müyüz"]
+    /// Turkish question words stand in front of the verb, not at the start of the clause ("Bu projeyi nasıl yaptınız"), so they keep
+    /// asking wherever they are; "ne" and "kim" are also in sentences that ask nothing, so like the other words here they are weak
+    /// cues (the card hold of the room route waits for them, the statement probe is the net).
     private static let trCue: Set<String> = trParticle.union(["ne", "nasıl", "neden", "niye", "nerede", "nereden", "hangi", "kim", "kaç", "acaba"])
+    private static let trStrong: Set<String> = trParticle.union(["acaba"])
     private static let trPhrases: [[String]] = [["ne", "zaman"], ["merak", "ediyorum"], ["bilmek", "istiyorum"], ["bilmek", "isterim"],
                                                 ["duymak", "isterim"], ["öğrenmek", "isterim"], ["öğrenmek", "istiyorum"]]
 
-    private static func containsPhrase(_ t: [String], _ phrases: [[String]]) -> Bool {
-        phrases.contains { p in
-            guard t.count >= p.count else { return false }
-            return (0...(t.count - p.count)).contains { i in Array(t[i..<(i + p.count)]) == p }
+    private static func firstPhrase(_ t: [String], _ phrases: [[String]]) -> String? {
+        for p in phrases where t.count >= p.count {
+            if (0...(t.count - p.count)).contains(where: { i in Array(t[i..<(i + p.count)]) == p }) { return p.joined(separator: " ") }
         }
+        return nil
     }
+
+    private static func containsPhrase(_ t: [String], _ phrases: [[String]]) -> Bool { firstPhrase(t, phrases) != nil }
 
     /// Objects of "interested in ...", words after "curious ..." / "I wonder ...": the embedded asks of an interviewer who
     /// does not phrase a question ("I'm interested in why you chose this school").
@@ -73,20 +101,46 @@ public enum Cues {
 
     /// True when the text carries a question signal. Hesitation-only tails never set it.
     public static func hasCue(_ text: String, lang: String = "en") -> Bool {
+        cueMatch(text, lang: lang) != nil
+    }
+
+    /// The question signal of a text and what it was: the words that set it (`why`, for the session event log and for the brain to
+    /// see whether the cue lies in the part of a text it splits off) and whether it is `strong`, an unambiguous multi-word or
+    /// otherwise distinctive cue. A weak cue (a bare question word that is also an ordinary word) still makes the turn a question,
+    /// but the room route's card hold waits with it while Alex is reading the card on screen.
+    public static func cueMatch(_ text: String, lang: String = "en") -> CueMatch? {
         let w = Text.words(text, lang: lang)
-        guard let last = w.last, !isHesitation(last.text, lang: lang) else { return false }
+        guard let last = w.last, !isHesitation(last.text, lang: lang) else { return nil }
         let t = w.map(\.text)
         switch lang {
-        case "it": return t.contains { itCue.contains($0) } || containsPhrase(t, itPhrases)
-        case "tr": return t.contains { trCue.contains($0) } || containsPhrase(t, trPhrases)
-        default: return englishCue(w)
+        case "it": return italianCue(w)
+        case "tr":
+            if let p = firstPhrase(t, trPhrases) { return CueMatch(why: p, strong: true) }
+            if let c = t.first(where: { trCue.contains($0) }) { return CueMatch(why: c, strong: trStrong.contains(c)) }
+            return nil
+        default: return englishCue(w).map { CueMatch(why: $0, strong: true) }
         }
     }
 
-    private static func englishCue(_ w: [Word]) -> Bool {
+    private static func italianCue(_ w: [Word]) -> CueMatch? {
+        let t = w.map(\.text)
+        if let p = firstPhrase(t, itPhrases) { return CueMatch(why: p, strong: true) }
+        if let c = t.first(where: { itAsk.contains($0) }) { return CueMatch(why: c, strong: true) }
+        // A question word asks where a clause opens: the start, after punctuation, or after a leader ("e come", "con quale").
+        var isStart = [Bool](repeating: false, count: t.count)
+        for i in t.indices { isStart[i] = i == 0 || w[i].afterBoundary || (itLeaders.contains(t[i - 1]) && isStart[i - 1]) }
+        for i in t.indices where itOpening.contains(t[i]) {
+            if t[i] == "come", i + 1 < t.count, itComeVerbs.contains(t[i + 1]) { return CueMatch(why: "come \(t[i + 1])", strong: true) }
+            if isStart[i] { return CueMatch(why: t[i], strong: false) }
+        }
+        return nil
+    }
+
+    /// Returns the word that set the cue, or nil.
+    private static func englishCue(_ w: [Word]) -> String? {
         let t = w.map(\.text)
         let n = t.count
-        guard n >= 2 else { return false }
+        guard n >= 2 else { return nil }
         // Clause starts: the beginning, after punctuation, or after leader words ("so what ...").
         var isStart = [Bool](repeating: false, count: n)
         for i in 0..<n {
@@ -94,32 +148,32 @@ public enum Cues {
         }
         for i in 0..<n {
             if isStart[i], i + 1 < n {
-                if enWh.contains(t[i]) || enAux.contains(t[i]) || enImperative.contains(t[i]) { return true }
+                if enWh.contains(t[i]) || enAux.contains(t[i]) || enImperative.contains(t[i]) { return t[i] }
                 // "Any questions?" / "Any questions for us" (no auxiliary in front).
-                if t[i] == "any" && t[i + 1].hasPrefix("question") { return true }
+                if t[i] == "any" && t[i + 1].hasPrefix("question") { return t[i] }
             }
             // Anywhere: "<aux> you", "tell me", "walk me through".
             if i + 1 < n {
-                if enAux.contains(t[i]) && (t[i + 1] == "you" || t[i + 1] == "your") { return true }
-                if (t[i] == "tell" || t[i] == "talk") && (t[i + 1] == "me" || t[i + 1] == "us") { return true }
-                if (t[i] == "walk" || t[i] == "take" || t[i] == "talk") && i + 2 < n && (t[i + 1] == "me" || t[i + 1] == "us") && t[i + 2] == "through" { return true }
+                if enAux.contains(t[i]) && (t[i + 1] == "you" || t[i + 1] == "your") { return t[i] }
+                if (t[i] == "tell" || t[i] == "talk") && (t[i + 1] == "me" || t[i + 1] == "us") { return t[i] }
+                if (t[i] == "walk" || t[i] == "take" || t[i] == "talk") && i + 2 < n && (t[i + 1] == "me" || t[i + 1] == "us") && t[i + 2] == "through" { return t[i] }
                 // Embedded and indirect asks: "I'm interested in why ...", "I'm curious how ...", "I wonder what ...",
                 // "help me understand ...", "talk to me about ...", "what made you ...", "let me ask you ...".
-                if t[i] == "interested" && t[i + 1] == "in" && i + 2 < n && enInterestedObjects.contains(t[i + 2]) { return true }
-                if t[i] == "curious" && enCuriousNext.contains(t[i + 1]) { return true }
-                if t[i] == "wonder" && enWonderNext.contains(t[i + 1]) { return true }
-                if t[i] == "help" && (t[i + 1] == "me" || t[i + 1] == "us") && i + 2 < n && t[i + 2] == "understand" { return true }
-                if t[i] == "talk" && t[i + 1] == "to" && i + 3 < n && (t[i + 2] == "me" || t[i + 2] == "us") && t[i + 3] == "about" { return true }
-                if t[i] == "what" && enWhatMade.contains(t[i + 1]) && i + 2 < n && t[i + 2] == "you" { return true }
-                if t[i] == "ask" && (t[i + 1] == "you" || t[i + 1] == "me") && i > 0 && (t[i - 1] == "me" || t[i - 1] == "to" || t[i - 1] == "like") { return true }
+                if t[i] == "interested" && t[i + 1] == "in" && i + 2 < n && enInterestedObjects.contains(t[i + 2]) { return t[i] }
+                if t[i] == "curious" && enCuriousNext.contains(t[i + 1]) { return t[i] }
+                if t[i] == "wonder" && enWonderNext.contains(t[i + 1]) { return t[i] }
+                if t[i] == "help" && (t[i + 1] == "me" || t[i + 1] == "us") && i + 2 < n && t[i + 2] == "understand" { return t[i] }
+                if t[i] == "talk" && t[i + 1] == "to" && i + 3 < n && (t[i + 2] == "me" || t[i + 2] == "us") && t[i + 3] == "about" { return t[i] }
+                if t[i] == "what" && enWhatMade.contains(t[i + 1]) && i + 2 < n && t[i + 2] == "you" { return t[i] }
+                if t[i] == "ask" && (t[i + 1] == "you" || t[i + 1] == "me") && i > 0 && (t[i - 1] == "me" || t[i - 1] == "to" || t[i - 1] == "like") { return t[i] }
                 // "I'd like to know / I would love to hear / I want to understand ..."
                 if (t[i] == "like" || t[i] == "love" || t[i] == "want") && t[i + 1] == "to" && i + 2 < n && i > 0
-                    && (t[i] == "like" ? enWouldSubjects : enWantSubjects).contains(t[i - 1]) && enWantVerbs.contains(t[i + 2]) { return true }
+                    && (t[i] == "like" ? enWouldSubjects : enWantSubjects).contains(t[i - 1]) && enWantVerbs.contains(t[i + 2]) { return t[i] }
                 if t[i] == "like" && t[i + 1] == "you" && i + 3 < n && t[i + 2] == "to" && i > 0 && enWouldSubjects.contains(t[i - 1])
-                    && (enImperative.contains(t[i + 3]) || t[i + 3] == "walk") { return true }
+                    && (enImperative.contains(t[i + 3]) || t[i + 3] == "walk") { return t[i] }
             }
         }
-        return false
+        return nil
     }
 
     // MARK: complete clause
