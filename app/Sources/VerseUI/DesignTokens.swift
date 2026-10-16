@@ -27,8 +27,8 @@ public enum VT {
         public static let secondary = Color.white.opacity(0.80)
         public static let tertiary = Color.white.opacity(0.56)
         public static let quaternary = Color.white.opacity(0.36)
-        /// The heard question on the answer card (and "Following you"): a neutral cool grey, dimmer than the unspoken SAY words.
-        public static let question = Color(red: 0.76, green: 0.80, blue: 0.87).opacity(0.62)
+        /// The heard question on the answer card (and "Following you"): the lime accent at 75 % (Alex 16 Oct; about 7:1 on the island glass).
+        public static let question = VT.mint.opacity(0.75)
         /// SAY words not yet said / already said on the prompter-style card.
         public static let sayUnspoken = Color.white.opacity(0.55)
         /// Increase Contrast: the unsaid words stay readable but still differ from the said ones.

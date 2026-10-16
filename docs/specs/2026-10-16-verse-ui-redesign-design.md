@@ -41,7 +41,7 @@ The values live in `design/mockups/Sources/VerseMockups/Tokens.swift`; implement
 | `amber` | `#FFB547` | Status only: credit, permission. |
 | `coral` | `#FF6B5E` | Status only: errors. |
 | Island text | white 100 / 80 / 56 / 36 % | SAY (said words) / points / meta / struck or hint. |
-| `Island.question` | `#C2CCDE` at 62 % | The heard question (or "Following you") above the SAY: a neutral cool grey, dimmer than the unspoken SAY words (55 % white) and cooler than the points. |
+| `Island.question` | `mint` (#BEDC4C) at 75 % | The heard question (or "Following you") above the SAY, in the accent at 75 % (Alex, 16 Oct; ≈ 7:1 on the island glass). 55 % was rejected: 4.3:1, under AA for 13 pt. |
 | SAY unspoken | white 55 % | Words of the SAY line he has not said yet. Increase Contrast: 78 %. |
 | Island fills | white 11 % (chips, secondary), 17 % (secondary button) | |
 | Window text | light: black 86 / 54 / 34 %; dark: white 92 / 58 / 36 % | primary / secondary / tertiary. |

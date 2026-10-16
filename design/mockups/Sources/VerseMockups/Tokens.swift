@@ -23,8 +23,15 @@ enum VT {
         static let secondary = Color.white.opacity(0.80)
         static let tertiary = Color.white.opacity(0.56)
         static let quaternary = Color.white.opacity(0.36)
-        /// The heard question on the prompter-style card: a neutral cool grey, dimmer than the unspoken SAY words.
-        static let question = Color(red: 0.76, green: 0.80, blue: 0.87).opacity(0.62)
+        /// The heard question on the prompter-style card: the accent at 75 % (Alex, 16 Oct).
+        /// `VERSE_QCOLOR=grey|lime55|lime75` renders the study; lime75 is the default.
+        static var question: Color {
+            switch ProcessInfo.processInfo.environment["VERSE_QCOLOR"] {
+            case "lime55": return VT.mint.opacity(0.55)
+            case "grey": return Color(red: 0.76, green: 0.80, blue: 0.87).opacity(0.62)
+            default: return VT.mint.opacity(0.75)
+            }
+        }
         static let fill = Color.white.opacity(0.11)
         static let fillStrong = Color.white.opacity(0.17)
     }
