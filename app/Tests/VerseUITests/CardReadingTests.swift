@@ -237,4 +237,50 @@ struct CardReadingTests {
         #expect(gate.cursor == 0 && !gate.sessionActive(at: 1))
         _ = clock
     }
+
+    // MARK: room route: cumulative partials of one range, 17 Oct (live English call: the highlight stopped mid-sentence)
+
+    private let enSay = "I am a data analyst who builds reporting tools for small logistics teams, most recently a dashboard called Pier Ledger."
+
+    @Test
+    func aRevisedPartialOfTheSameRangeKeepsMovingTheHighlight() {
+        let clock = ManualPrompterClock()
+        let reading = CardReading(clock: clock)
+        reading.roomRoute = true
+        reading.setSay(enSay)
+        // the recognizer revises the opening between two partials of ONE range (same start time): the second is not an extension of the first
+        reading.ingest(roomEvent("I am a data analyst who builds", start: 0, final: false))
+        let first = reading.spoken(for: enSay)
+        #expect(first >= 6, "spoken \(first)")
+        // 12 words, 8 of them on the line (0.67): under the start rule's 0.75 and the window rule's 0.7, and the cursor is already past
+        // where this text begins, so only "this range is already his" can take it
+        reading.ingest(roomEvent("well I'm a um data analyst you who builds reporting tools", start: 0, final: false))
+        #expect(reading.spoken(for: enSay) >= 9, "spoken \(reading.spoken(for: enSay))")
+        reading.ingest(roomEvent("well I'm a um data analyst you who builds reporting tools for small logistics teams", start: 0, final: true))
+        #expect(reading.spoken(for: enSay) >= 12, "spoken \(reading.spoken(for: enSay))")
+    }
+
+    @Test
+    func theGateStaysOnOnceTheRangeIsHisAndLetsGoBelowTheExitShare() {
+        var gate = RoomReadingGate()
+        let entered = gate.accepts(roomEvent("I am a data", start: 0, final: false), say: enSay, now: 0)
+        let stayed = gate.accepts(roomEvent("I am a data uh well analyst you know who builds", start: 0, final: false), say: enSay, now: 0.3)
+        #expect(entered)
+        #expect(stayed, "10 words, 7 on the line")
+        // the same range now carries somebody else's question: under 60 % of it is on the path
+        let left = gate.accepts(roomEvent("I am a data uh well analyst you know who builds and what did you do before that in your last role", start: 0, final: false), say: enSay, now: 0.6)
+        #expect(!left)
+    }
+
+    @Test
+    func aBankCardsOpenerIsTheSayLineAndFollowsFragments() {
+        let opener = "Sure, I'll give you the short version of my background."          // the P card: the bank entry's opener is the card's SAY
+        let reading = CardReading(clock: ManualPrompterClock())
+        reading.roomRoute = true
+        reading.setSay(opener)
+        reading.ingest(roomEvent("Sure I'll give you", start: 0, final: true))
+        #expect(reading.spoken(for: opener) >= 4)
+        reading.ingest(roomEvent("the short version of", start: 1, final: true))
+        #expect(reading.spoken(for: opener) >= 7)
+    }
 }

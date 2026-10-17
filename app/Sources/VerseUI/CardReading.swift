@@ -202,7 +202,9 @@ enum RoomReading {
 ///   three short words proves little, "sia la chiarezza" proves enough.
 ///
 /// The cumulative partials and the final of one recognizer range are all judged from the cursor the range started at, not from
-/// where its own earlier partials moved it. Reset with the SAY text.
+/// where its own earlier partials moved it. A range that has once been taken for his reading stays his while `exitShare` of its
+/// words lie on the path that began where his reading of the range began (a recognizer revises words between two partials; live
+/// English call, 17 Oct: the highlight stopped in the middle of a sentence). Reset with the SAY text.
 struct RoomReadingGate {
     static let sessionSeconds = 4.0
     static let startMin = 3
@@ -213,9 +215,15 @@ struct RoomReadingGate {
     static let continueShare = 0.6
     static let back = 2
     static let ahead = 4
+    static let exitShare = 0.6
+    static let stayMin = 3
+    /// Two partials are one range when their start times are this close, or they open with the same two words.
+    static let sameStart = 0.75
 
     private(set) var cursor = 0
     private var base = 0
+    /// Where on the SAY line the reading of the current range began; nil until the range has been taken for his.
+    private var entry: Int?
     private var lastRead: TimeInterval?
     private var lastWords: [String] = []
     private var lastFinal = true
@@ -233,21 +241,34 @@ struct RoomReadingGate {
     mutating func accepts(_ event: TranscriptEvent, say: String, now: TimeInterval) -> Bool {
         let words = RoomReading.words(event.text)
         let card = RoomReading.words(say)
-        let newRange = lastFinal || event.audioStart != lastStart || !words.starts(with: lastWords)
-        if newRange { base = cursor }
+        let sameRange = !lastFinal && (abs(event.audioStart - lastStart) < Self.sameStart || Self.sharedPrefix(words, lastWords) >= 2)
+        if !sameRange { base = cursor; entry = nil }
         lastWords = words
         lastFinal = event.isFinal
         lastStart = event.audioStart
         guard !words.isEmpty, !card.isEmpty else { return false }
+        if let e = entry {
+            // the range is already his: it stays his while enough of it lies on the path that began where it began
+            let path = Self.path(words, card, first: { $0 >= e - Self.back && $0 <= e + Self.ahead })
+            if path.count >= Self.stayMin, Double(path.count) / Double(words.count) >= Self.exitShare {
+                cursor = max(cursor, (path.last?.1 ?? 0) + 1)
+                lastRead = now
+                return true
+            }
+        }
         let tail = Array(words.suffix(RoomReading.window))
         var end: Int?
+        var firstCard: Int?
         if RoomReading.reads(event.text, say: say) {
-            end = RoomReading.path(tail, card, maxGap: RoomReading.maxGap, first: { _ in true }).last?.1
+            let p = RoomReading.path(tail, card, maxGap: RoomReading.maxGap, first: { _ in true })
+            end = p.last?.1
+            firstCard = p.first?.1
         }
         if end == nil {
             let path = Self.path(words, card, first: { $0 <= Self.startSlack })
             if path.count >= Self.startMin, Double(path.count) / Double(words.count) >= Self.startShare, Self.weight(path, words) >= 1 {
                 end = path.last?.1
+                firstCard = path.first?.1
             }
         }
         if end == nil, sessionActive(at: now) {
@@ -255,12 +276,20 @@ struct RoomReadingGate {
             let path = Self.path(words, card, first: { $0 >= lo && $0 <= hi })
             if Self.weight(path, words) >= Self.continueWeight, Double(path.count) / Double(words.count) >= Self.continueShare {
                 end = path.last?.1
+                firstCard = path.first?.1
             }
         }
         guard let end else { return false }
         cursor = max(cursor, end + 1)
         lastRead = now
+        if entry == nil { entry = firstCard }
         return true
+    }
+
+    private static func sharedPrefix(_ a: [String], _ b: [String]) -> Int {
+        var n = 0
+        while n < a.count, n < b.count, a[n] == b[n] { n += 1 }
+        return n
     }
 
     private static func weight(_ path: [(Int, Int)], _ words: [String]) -> Double {

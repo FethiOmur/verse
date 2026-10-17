@@ -11,7 +11,7 @@ two matched ones):
 
 * strict (the first rule, unchanged): at least `min_matched` content words matched and `enter` of the text's content words
   on the path (`stay` for a turn that already is `me`). A whole sentence of the card, read with ASR slips, passes.
-* start: a text that begins the card, at its first words or at the first point's: at least `start_min` words matched from
+* start: a text that begins a line of the card (the SAY line or any point, D's too): at least `start_min` words matched from
   the first `start_slack` words of the line, and `start_share` of the text's words on the path. This is how reading is entered
   when the recognizer delivers the card in fragments of two to six words (live Italian call, 16 Oct): no fragment holds five
   content words, so the strict rule never fired.
@@ -70,6 +70,11 @@ class OwnParams:
     cont_ahead: int = 4       # ... and at most this far after it (words dropped or misheard between two fragments)
     split_trail: int = 4      # words after the path that do not match, to split a text there
     split_trail_content: int = 2   # ... of which at least this many are content words (four filler words are not another speaker)
+    # one turn, many cumulative partials (live English call, 17 Oct): a turn once taken for his keeps its label while its share stays above `exit_share`
+    exit_share: float = 0.60  # a turn already `me` stays `me` while this share of its words lies on the card path that began where it began
+    stay_min: int = 3         # ... with at least this many words matched
+    speech_floor: float = 0.35  # a room text that scores at least this against the card is reading-like speech (it keeps a held card waiting)
+    own_drop: float = 0.50    # ... and at this score it is his: a held card for it is dropped, a statement probe is never asked about it
 
 
 # ---------------------------------------------------------------------------------------------------------------- words
@@ -206,6 +211,7 @@ class Cand:
     share: float
     end: int                  # index (in the text's tokens) of the last matched token; -1 when nothing matched
     cursor: int               # card position after the last matched card token
+    first: int = -1           # card position (token index) of the first matched card token; -1 when nothing matched
 
 
 @dataclass(frozen=True)
@@ -222,6 +228,14 @@ class Verdict:
     room_text: str = ""       # ... and the remainder that is not
 
 
+@dataclass
+class TurnTrack:
+    """What one turn (its cumulative partials and its final) needs between two judgements."""
+    base: dict[str, int]                  # the reading cursor when the turn was first judged: every partial and the final continue from here
+    me: bool = False                      # an earlier text of this turn was taken for his reading
+    entry: tuple[str, int] | None = None  # (card key, card position) where his reading of this turn began
+
+
 class OwnSpeech:
     """The lines of the card on screen, the reading cursor on it, and the match of a room text against them."""
 
@@ -232,17 +246,19 @@ class OwnSpeech:
         self.cards: dict[str, list[tuple[str, str]]] = {}      # card key -> [(kind, text)] in reading order
         self._toks: dict[tuple[str, str], tuple[list[Tok], list[int]]] = {}   # (card key, lang) -> tokens, line start indices
         self.cursor: dict[str, int] = {}                        # card key -> position after the last matched stretch
-        self._base: dict[str, dict[str, int]] = {}              # turn id -> the cursor when the turn was first judged (a turn's growing
-                                                                # partials all continue from there, not from where the partials moved it)
+        self._turns: dict[str, TurnTrack] = {}                  # turn id -> its anchor (a turn's growing partials all continue from the
+                                                                # cursor the turn started at, not from where the partials moved it)
         self.last_me: float | None = None                       # clock time of the last text taken for his
+        self.last_speech: float | None = None                   # clock time of the last room text that scored >= speech_floor on the card
 
     def clear(self) -> None:
         self.turn_id = None
         self.cards.clear()
         self._toks.clear()
         self.cursor.clear()
-        self._base.clear()
+        self._turns.clear()
         self.last_me = None
+        self.last_speech = None
 
     def add(self, turn_id: str, card_key: str, kind: str, text: str, *, new_say: bool = False) -> None:
         """A complete card line that the overlay shows. A new turn's first line starts a new card (and resets the reading cursor);
@@ -271,22 +287,35 @@ class OwnSpeech:
         return (self.clock() if now is None else now) - self.last_me <= self.p.session_s
 
     def quiet_for(self, now: float | None = None) -> float:
-        """Seconds since the last text taken for his (infinity when none)."""
-        if self.last_me is None:
+        """Seconds since the last text taken for his, or since the last room text that scored `speech_floor` on the card, whichever
+        is later (infinity when none). The second clock matters: a final that failed the rules (an ASR slip too many) is still
+        reading-like speech, and a held card must not fire in its first second."""
+        last = max((t for t in (self.last_me, self.last_speech) if t is not None), default=None)
+        if last is None:
             return float("inf")
-        return (self.clock() if now is None else now) - self.last_me
+        return (self.clock() if now is None else now) - last
+
+    def note_speech(self, text: str, lang: str = "en", now: float | None = None) -> float:
+        """A room text was heard while a card is on screen: its score on the card; at `speech_floor` or more it counts as speech
+        that keeps a held card waiting."""
+        sc = self.own_score(text, lang)
+        if sc >= self.p.speech_floor:
+            self.last_speech = self.clock() if now is None else now
+        return sc
+
+    def visible_lines(self) -> list[tuple[str, str]]:
+        """The lines of the card(s) on screen as (kind, text) in reading order."""
+        return [kv for lines in self.cards.values() for kv in lines]
 
     def _card(self, key: str, lang: str) -> tuple[list[Tok], list[int]]:
         got = self._toks.get((key, lang))
         if got is None:
             toks: list[Tok] = []
             starts: list[int] = []
-            seen_point = False
-            for kind, text in self.cards.get(key, []):
+            for _kind, text in self.cards.get(key, []):
                 part = tokenize(text, lang)
-                if part and (not toks or (kind == "point" and not seen_point)):
-                    starts.append(len(toks))
-                    seen_point = seen_point or kind == "point"
+                if part:
+                    starts.append(len(toks))      # every line of the card can be where a reading begins: the SAY line, each point (D's too)
                 toks += part
             got = self._toks[(key, lang)] = (toks, starts)
         return got
@@ -312,8 +341,18 @@ class OwnSpeech:
             return False, sc
         return sc.share >= (self.p.stay if already else self.p.enter), sc
 
+    def own_score(self, text: str, lang: str = "en") -> float:
+        """How much of this text lies on the visible card, in order (the strict share of its content words). A stretch of fewer
+        than `min_matched` words proves little (an interviewer quoting four words of the card in his follow-up question scores 0.8),
+        so its score never reaches `own_drop`."""
+        sc = self.score(text, lang)
+        if sc.matched >= self.p.min_matched:
+            return sc.share
+        return min(sc.share, self.p.own_drop - 0.01)
+
     # ---- the three rules over a token list
-    def _cands(self, toks: list[Tok], lang: str, already: bool, reading: bool, base: dict[str, int]) -> list[Cand]:
+    def _cands(self, toks: list[Tok], lang: str, already: bool, reading: bool, base: dict[str, int],
+               entry: tuple[str, int] | None = None) -> list[Cand]:
         p = self.p
         mine_idx = [i for i, t in enumerate(toks) if t.content]
         mine = [toks[i].stem for i in mine_idx]
@@ -335,7 +374,8 @@ class OwnSpeech:
             n = len(path)
             share = n / len(mine) if mine else 0.0
             ok = n >= p.min_matched and share >= (p.stay if already else p.enter)
-            offer(Cand("strict", ok, key, n, n, share, mine_idx[path[-1][0]] if path else -1, cidx[path[-1][1]] + 1 if path else 0))
+            offer(Cand("strict", ok, key, n, n, share, mine_idx[path[-1][0]] if path else -1, cidx[path[-1][1]] + 1 if path else 0,
+                       cidx[path[0][1]] if path else -1))
 
             # start and continue: every word counts (a fragment of 3 words has one or two content words at most)
             def all_cand(rule: str, first: Callable[[int], bool], need_matched: int, need_content: int, need_share: float) -> Cand:
@@ -344,22 +384,31 @@ class OwnSpeech:
                 cm = sum(1 for _, j in pth if ctoks[j].content)
                 sh = m / len(toks) if toks else 0.0
                 good = m >= need_matched and cm >= need_content and sh >= need_share
-                return Cand(rule, good, key, m, cm, sh, pth[-1][0] if pth else -1, pth[-1][1] + 1 if pth else 0)
+                return Cand(rule, good, key, m, cm, sh, pth[-1][0] if pth else -1, pth[-1][1] + 1 if pth else 0, pth[0][1] if pth else -1)
 
-            heads = {0, starts[1] if len(starts) > 1 else 0} if starts else {0}
+            heads = {0, *starts}
             offer(all_cand("start", lambda j: any(h <= j <= h + p.start_slack for h in heads), p.start_min, 1, p.start_share))
-            if reading and key in base:
-                cur = base[key]
+            if reading:
+                cur = base.get(key, 0)      # a card nobody has read yet continues from its start
                 offer(all_cand("continue", lambda j: cur - p.cont_back <= j <= cur + p.cont_ahead, 1, p.cont_min, p.cont_share))
+            if already and entry is not None and entry[0] == key:
+                # the turn is already his: its growing text stays his while `exit_share` of it lies on the path that began where
+                # his reading of this turn began (no session needed, no flicker from one partial to the next)
+                e = entry[1]
+                offer(all_cand("stay", lambda j: e - p.cont_back <= j <= e + p.cont_ahead, p.stay_min, 1, p.exit_share))
         return list(best.values())
 
-    def _note_me(self, c: Cand, now: float) -> None:
+    def _note_me(self, c: Cand, now: float, track: TurnTrack | None = None) -> None:
         self.last_me = now
         if c.key is not None:
             self.cursor[c.key] = max(self.cursor.get(c.key, 0), c.cursor)
+            if track is not None:
+                track.me = True
+                if track.entry is None and c.first >= 0:
+                    track.entry = (c.key, c.first)
 
     def judge(self, text: str, lang: str = "en", already: bool = False, now: float | None = None,
-              turn_id: str | None = None) -> Verdict:
+              turn_id: str | None = None, final: bool = False) -> Verdict:
         """Is this room text Alex reading his card? `me`, `room`, or `split` (a prefix of his reading, then another voice).
         `turn_id`: the partials and the final of one turn are judged from the cursor the turn started at."""
         now = self.clock() if now is None else now
@@ -370,27 +419,42 @@ class OwnSpeech:
             return Verdict("room", "empty")
         words = text.split()
         reading = self.reading_active(now)
-        base = dict(self.cursor) if turn_id is None else self._base.setdefault(turn_id, dict(self.cursor))
-        whole = self._cands(toks, lang, already, reading, base)
+        track = None
+        if turn_id is not None:
+            track = self._turns.get(turn_id)
+            if track is None:
+                track = self._turns[turn_id] = TurnTrack(dict(self.cursor))
+                for k in [k for k in self._turns if k != turn_id][:-31]:      # a call has a few hundred turns: keep the last 32
+                    del self._turns[k]
+        base = dict(self.cursor) if track is None else track.base
+        already = already or (track is not None and track.me)
+        entry = track.entry if track is not None else None
+        whole = self._cands(toks, lang, already, reading, base, entry)
         strict = next((c for c in whole if c.rule == "strict"), None)
         info = dict(share=strict.share if strict else 0.0, matched=strict.matched if strict else 0,
                     content=sum(1 for t in toks if t.content), card=strict.key if strict else None, reading=reading)
+        stay = next((c for c in whole if c.rule == "stay" and c.ok), None)
+        if stay is not None and not final:
+            # a partial of a turn that is already his: a dip in the middle of a turn is no split and no probe. Only the final
+            # may still cut the turn where the next speaker's question starts.
+            self._note_me(stay, now, track)
+            return Verdict("me", "stay", stay.share, stay.matched, info["content"], stay.key, reading, self.cursor.get(stay.key or ""))
         # a prefix on the card, then words that are not: the next speaker's question glued to the end of his reading
         for k in sorted({c.end for c in whole if c.end >= 0}, reverse=True):
             w = toks[k].word
             trail = [t for t in toks if t.word > w]
             if len(trail) < self.p.split_trail or sum(1 for t in trail if t.content) < self.p.split_trail_content:
                 continue
-            ok = [c for c in self._cands([t for t in toks if t.word <= w], lang, already, reading, base) if c.ok]
+            ok = [c for c in self._cands([t for t in toks if t.word <= w], lang, already, reading, base, entry) if c.ok and c.rule != "stay"]
             if ok:
                 c = max(ok, key=lambda x: x.matched)
-                self._note_me(c, now)
+                self._note_me(c, now, track)
                 return Verdict("split", c.rule, c.share, c.matched, sum(1 for t in toks if t.word <= w if t.content), c.key, reading,
                                self.cursor.get(c.key or ""), " ".join(words[:w + 1]), " ".join(words[w + 1:]))
         ok = [c for c in whole if c.ok]
         if ok:
             c = max(ok, key=lambda x: x.matched)
-            self._note_me(c, now)
+            self._note_me(c, now, track)
             return Verdict("me", c.rule, c.share, c.matched, info["content"], c.key, reading, self.cursor.get(c.key or ""))
         top = max(whole, key=lambda c: c.matched, default=None)
         if top is not None and top.rule != "strict":

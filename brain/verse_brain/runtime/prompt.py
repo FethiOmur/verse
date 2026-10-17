@@ -100,12 +100,16 @@ stories, what he is looking for), one line per item with an id like [m412]. It g
 pack does. When ABOUT OWNER and the MEETING PACK disagree, the MEETING PACK wins: it was built and checked for this \
 meeting. When the MEETING PACK is the line "(none: unprepared call)", nothing was prepared for this call: answer from \
 ABOUT OWNER, from FROM USER'S FILES (excerpts of his own notes, shown before the current question when there are \
-any) and from the transcript, and write BANK: none. Never invent a fact about Alex that none of them states."""
+any) and from the transcript, and write BANK: none. Never invent a fact about Alex that none of them states.
+
+No line may talk about the preparation or the grounding: never write "the pack", "the notes", "the profile", "the prep", "not stated" or "no stated reason", and never tell Alex what to do ("say what is true"). A line, a SAY line and a point alike, is something he can say aloud. When the grounding lacks something, write fewer points, or one short, true, general line in his own voice; never write a line about what is missing."""
 
 _UNPREPARED_RULES = """
 
 When the MEETING PACK is the line "(none: unprepared call)", nothing was prepared for this call: answer from the \
-transcript and write BANK: none. Never invent a fact about Alex."""
+transcript and write BANK: none. Never invent a fact about Alex.
+
+No line may talk about the preparation or the grounding: never write "the pack", "the notes", "the profile", "the prep", "not stated" or "no stated reason", and never tell Alex what to do ("say what is true"). A line, a SAY line and a point alike, is something he can say aloud. When the grounding lacks something, write fewer points, or one short, true, general line in his own voice; never write a line about what is missing."""
 
 
 def _swap(text: str, old: str, new: str) -> str:
@@ -264,12 +268,26 @@ ROOM_STATEMENT_CHECK = (
     "sentences (an answer, a card read aloud). Then write the single word NONE: nothing is shown for a statement.\n")
 
 
-def statement_tail(text: str, lang: str, files: str = "", room: bool = False) -> str:
+ROOM_CARD_RULE = (
+    "THE CARD ON HIS SCREEN RIGHT NOW (he may be reading it aloud; the microphone then hears his own voice):\n{card}\n"
+    "If the turn below repeats or continues these lines (even with a few words missing, added or misheard), it is the "
+    "candidate reading the card: KIND: statement, then NONE.\n")
+
+
+def room_card_block(card: list[tuple[str, str]] | None) -> str:
+    """The lines of the card on his screen (SAY and points) for the room probe."""
+    if not card:
+        return ""
+    body = "\n".join((f"SAY: {t}" if k == "say" else f"- {t}") for k, t in card)
+    return ROOM_CARD_RULE.format(card=body)
+
+
+def statement_tail(text: str, lang: str, files: str = "", room: bool = False, card: list[tuple[str, str]] | None = None) -> str:
     """F call for a turn Swift classified as a statement. The instructions live in the tail (never cached), so the
     system prompt and the cached prefix stay byte-identical to the question path. `room`: the room route's one microphone
     (the speaker is not known); a statement then gets no acknowledgement, only a question for Alex gets a card."""
     if room:
-        return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}{ROOM_STATEMENT_CHECK}"
+        return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}{ROOM_STATEMENT_CHECK}{room_card_block(card)}"
                 f"CURRENT TURN (finished): {' '.join(text.split())}")
     return (
         f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}"
@@ -306,7 +324,8 @@ def follow_tail(question: str, lang: str, his_words: str, card: list[str], said:
         "nothing for his topic, write the SAY line alone, with no invented fact. Never offer something he has already "
         "said, not even in other words: read WHAT OWNER HAS SAID SO FAR first and write only what is new. Start the SAY "
         "with the content, not with a reaction word (no \"Right\", \"Yes\", \"Exactly\", \"Well\"). Follow the "
-        "STYLE GUIDE for tone. No comment on the card, on the question or on him.",
+        "STYLE GUIDE for tone. No comment on the card, on the question or on him, and no line about the pack, the notes "
+        "or the profile or about what is missing from them.",
         f"CURRENT QUESTION (finished): {' '.join(question.split())}",
         f"WHAT OWNER HAS SAID SO FAR: {' '.join(his_words.split()) or '(nothing yet)'}",
         "THE CARD HE DID NOT FOLLOW:",

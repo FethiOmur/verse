@@ -180,7 +180,7 @@ class Call:
         self.bank_known = asyncio.Event()
         self.first_text_seen = False
         self.lines = LineAssembler(self._on_text, self._on_control, hold_first_line=(tier == "D" or probe),
-                                   on_sentinel=self._on_sentinel)
+                                   on_sentinel=self._on_sentinel, on_drop=self._on_drop)
         self.task: asyncio.Task | None = None
 
     # ---- output
@@ -278,6 +278,11 @@ class Call:
     def _on_sentinel(self, line: str) -> None:
         """A "nothing to say" line (NONE, SAY: NONE, N/A, SKIP ...): never shown, whatever tier wrote it."""
         self._stage("sentinel_dropped", line=line[:40])
+
+    def _on_drop(self, line: str) -> None:
+        """A point that talks about the pack, the notes or the profile: never shown, whatever tier wrote it."""
+        self._stage("point_dropped", line=line[:40])
+        self.brain._ev("point_dropped", turn=self.turn_id, tier=self.tier, id=self.id, why="meta", text=clip(line, CARD_CHARS))
 
     def _on_control(self, line: str) -> None:
         if line.startswith("KIND:"):
@@ -1153,6 +1158,7 @@ class Brain:
         self.emitter.emit({"type": "bank_hit", "turn_id": st.turn_id, "bank_id": bank_id, "score": round(score, 4),
                            "via": "embed"})
         self._follow_bank(st)
+        self._own_bank(st)
         self._maybe_verdict(st)
         self._late_hit(st)
 
@@ -1169,6 +1175,7 @@ class Brain:
         if self.embed is not None:
             self.embed.drop(st.turn_id)      # Swift's hit wins; no embedding for this turn from now on
         self._follow_bank(st)
+        self._own_bank(st)
         self._maybe_verdict(st)
         self._late_hit(st)
 
@@ -1318,10 +1325,13 @@ class Brain:
                          why=("room_auto_off" if self.room_auto == "off" else "no_cue_and_short" if not cue else "cue_but_short"))
                 return
             st.kind = "question" if asked else "statement"
-            hold = self._hold_reason(st, text, asked=asked, strong=msg.get("cue_strong", True) is not False)
-            self._ev("room_gate", turn=tid, decision=("cue" if asked else "probe"), words=n_words, hold=hold)
+            hold, score = self._hold_reason(st, text, asked=asked, strong=msg.get("cue_strong", True) is not False)
+            self._ev("room_gate", turn=tid, decision=("cue" if asked else "probe"), words=n_words, hold=hold, own=round(score, 2))
             if hold is not None:
-                self._hold(st, hold)
+                if score >= self.config.own.own_drop:
+                    self._hold_drop(st, hold, score)      # most of it is the card he is reading: it is not a new card to wait for
+                else:
+                    self._hold(st, hold)
                 return
         self._start_endpoint(st)
 
@@ -1347,29 +1357,42 @@ class Brain:
         self._endpoint(st)
 
     # ------------------------------------------------------------------ room route: a card is held while he reads the one on screen
-    def _hold_reason(self, st: TurnState, text: str, *, asked: bool, strong: bool) -> str | None:
-        """None: the card may fire now. Otherwise why it waits. While a reading session is active (he is reading the card on
-        screen aloud), a new automatic card does not replace it unless the text's own-voice share is below `room_hold_score`
-        and either a strong cue made it a question or the statement probe is going to decide (the probe shows a card only when
-        it says the words are a question for Alex). A weak cue ("quanto", a bare wh-word) or a text that shares a lot with the card
-        waits for the end of the reading."""
+    def _hold_reason(self, st: TurnState, text: str, *, asked: bool, strong: bool) -> tuple[str | None, float]:
+        """(why the card waits or None when it may fire now, the text's own score on the card on screen). While a reading session is
+        active (he is reading the card on screen aloud), a new automatic card does not replace it unless the text's own-voice score
+        is below `room_hold_score` and either a strong cue made it a question or the statement probe is going to decide (the probe
+        shows a card only when it says the words are a question for Alex). A weak cue ("quanto", a bare wh-word) or a text that
+        shares a lot with the card waits for the end of the reading."""
+        if not self._own.has_card():
+            return None, 0.0
+        score = max(self._own.own_score(text, lg) for lg in {self._lang(st), self.lang})
         if not self._own.reading_active():
-            return None
+            return None, score
         if self._own_turns.get(st.turn_id) == "split":
-            return "split_remainder"        # glued to his reading with no pause: he may still be reading, so wait for the quiet
-        share = max(self._own.score(text, lg).share for lg in {self._lang(st), self.lang})
-        if share >= self.config.room_hold_score:
-            return f"own_score {share:.2f}"
+            return "split_remainder", score     # glued to his reading with no pause: he may still be reading, so wait for the quiet
+        if score >= self.config.room_hold_score:
+            return f"own_score {score:.2f}", score
         if asked and not strong:
-            return "weak_cue"
-        return None
+            return "weak_cue", score
+        return None, score
+
+    def _hold_drop(self, st: TurnState, reason: str, score: float) -> None:
+        """A text that mostly repeats the card on screen is his reading: it never fires a card (card-now still can)."""
+        self.emitter.metric(st.turn_id, "room_held", reason=reason)
+        self._ev("card_held", turn=st.turn_id, reason=reason, text=clip(st.final_text))
+        for c in st.s_calls:
+            c.discard()
+        if st.d_call:
+            st.d_call.discard()
+        self.emitter.metric(st.turn_id, "room_held_dropped", reason="own_score")
+        self._ev("card_suppressed", turn=st.turn_id, reason="held_dropped:own_score", own=round(score, 2))
 
     def _hold(self, st: TurnState, reason: str) -> None:
         self._drop_held("superseded")
         self._held = st
         self.emitter.metric(st.turn_id, "room_held", reason=reason)
         self._ev("card_held", turn=st.turn_id, reason=reason, text=clip(st.final_text))
-        self._held_task = self._spawn(self._held_wait(st))
+        self._held_task = self._spawn(self._held_wait(st, self._clock()))
 
     def _drop_held(self, reason: str) -> None:
         st, self._held = self._held, None
@@ -1381,9 +1404,9 @@ class Brain:
         self.emitter.metric(st.turn_id, "room_held_dropped", reason=reason)
         self._ev("card_suppressed", turn=st.turn_id, reason=f"held_dropped:{reason}")
 
-    async def _held_wait(self, st: TurnState) -> None:
-        """Fire the held card once he has not read for `room_hold_s`."""
-        t0 = self._clock()
+    async def _held_wait(self, st: TurnState, t0: float) -> None:
+        """Fire the held card once there has been no reading-like speech for `room_hold_s` (the last text taken for his, or the last
+        room text that scored `own.speech_floor` on the card, whichever is later). `t0`: when it was held."""
         while self._held is st and not self.halted and not self.closing and not self.stopped.is_set():
             quiet = self._own.quiet_for()
             if quiet >= self.config.room_hold_s:
@@ -1441,12 +1464,20 @@ class Brain:
         if st.d_call is not None:
             st.d_call.discard()
             st.d_call = None
+        if st.room and self._own.has_card():
+            score = max(self._own.own_score(st.final_text, lg) for lg in {self._lang(st), self.lang})
+            if score >= self.config.own.own_drop:
+                # most of the text lies on the card he has on screen: he is reading it (or an ASR slip kept the rules from saying so)
+                self.emitter.metric(st.turn_id, "statement_skipped", words=len(tokens(st.final_text)), own=round(score, 2))
+                self._ev("card_suppressed", turn=st.turn_id, reason="probe_skipped_own_score", own=round(score, 2))
+                return
         if self.unprepared and len(tokens(st.final_text)) < self.config.unprepared_statement_min_words:
             self.emitter.metric(st.turn_id, "statement_skipped", words=len(tokens(st.final_text)))
             self._ev("card_suppressed", turn=st.turn_id, reason="statement_skipped", words=len(tokens(st.final_text)))
             return
         st.fast = self._launch("F", st.turn_id, st.final_text,
-                               statement_tail(st.final_text, self._lang(st), self._files(st), room=st.room),
+                               statement_tail(st.final_text, self._lang(st), self._files(st), room=st.room,
+                                      card=self._own.visible_lines() if st.room else None),
                                st.turns_before, buffered=False, probe=True, quiet=st.room)
         self.emitter.metric(st.turn_id, "statement_probe", launched=st.fast is not None)
         if st.fast is None:
@@ -1682,6 +1713,24 @@ class Brain:
         elif call.tier == "C":
             self._own.add(call.turn_id, call.id, kind, text)
 
+    def _own_bank(self, st: TurnState) -> None:
+        """A bank hit puts the bank entry's opener and points on the overlay (the P card) until the fast tier answers: they are
+        what he may read aloud, so the own-voice match learns them under the original card's key (F's SAY replaces them)."""
+        if self.session is None or st.bank_hit is None:
+            return
+        rec = self.session.bank.get(st.bank_hit.bank_id)
+        if rec is None or self._own_turns.get(st.turn_id) in ("me", "split"):
+            return
+        if self._own.turn_id == st.turn_id and self._own.cards.get("orig"):
+            return                      # the fast tier's card is already on screen
+        opener, points = rec.get("opener"), [str(p) for p in rec.get("points", [])]
+        if opener:
+            self._own.add(st.turn_id, "orig", "say", str(opener), new_say=True)
+        for pt in points:
+            self._own.add(st.turn_id, "orig", "point", pt)
+        if opener or points:
+            self._ev("own_card", turn=st.turn_id, source="bank", bank=st.bank_hit.bank_id, lines=(1 if opener else 0) + len(points))
+
     def _room_route(self, msg: dict, final: bool) -> tuple[dict | None, dict | None]:
         """A `room` partial or turn: (the part that is his, the part that stays in the room). While a card is on screen, a text whose
         words line up with it in order (runtime/own.py) is Alex reading the card, so it is relabelled `me`: it goes down the `me` path
@@ -1699,10 +1748,11 @@ class Brain:
         prev = self._own_turns.get(tid)
         langs = list(dict.fromkeys([msg_lang(msg) or self.lang, self.lang]))
         for lg in langs:
-            v = self._own.judge(text, lg, already=(prev or "room") != "room", turn_id=tid)
+            v = self._own.judge(text, lg, already=(prev or "room") != "room", turn_id=tid, final=final)
             if v.label != "room":
                 break
         self._own_turns[tid] = v.label
+        sc = self._own.note_speech(text, lg)
         own, was = v.label != "room", (prev or "room") != "room"
         cfg = self.config.own
         if own != was or (final and (own or v.matched >= cfg.min_matched)):
@@ -1710,7 +1760,7 @@ class Brain:
                                 final=final, card=v.card)
         if final or v.label != prev:
             self._ev("room_text", turn=tid, final=final, lang=lg, label=v.label, rule=v.rule, share=round(v.share, 3), matched=v.matched,
-                     content=v.content, card=v.card, reading=v.reading, cursor=v.cursor, words=len(text.split()), text=clip(text),
+                     content=v.content, card=v.card, reading=v.reading, cursor=v.cursor, own=round(sc, 2), words=len(text.split()), text=clip(text),
                      rest=clip(v.room_text) if v.label == "split" else None)
         if v.label == "room":
             return None, msg

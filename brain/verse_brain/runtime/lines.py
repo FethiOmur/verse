@@ -50,10 +50,31 @@ def could_become_sentinel(partial: str) -> bool:
     return bool(core) and any(w.startswith(core) for w in SENTINELS)
 
 
+# A point that talks about the preparation instead of being something Alex can say ("The pack has no stated reason for the
+# school. Say what is true ...", live English call, 17 Oct). It is never shown: the prompts forbid it and this is the net.
+_META = re.compile(
+    r"\b(?:the|this|these|that|your|his|my)\s+(?:meeting\s+)?(?:pack|notes|profile|prep|preparation|bank|grounding)\b"
+    r"|\bmeeting\s+pack\b|\b(?:no|not|isn'?t|aren'?t|wasn'?t)\s+(?:stated|specified|mentioned|provided|given)\b"
+    r"|\bnot\s+(?:in|on)\s+the\s+(?:pack|notes|profile)\b|\bsay\s+what\s+is\s+true\b|\bnothing\s+(?:in|from)\s+the\s+(?:pack|notes|profile)\b"
+    r"|\b(?:il|nel|dal|nelle|le)\s+(?:pacchetto|note|profilo)\b|\bnon\s+(?:è|e)\s+(?:indicat|specificat)\w*"
+    r"|\b(?:paket|notlar|profil)\w*\s+(?:de|da|te|ta)?\s*(?:belirtilmemi|yok)\w*",
+    re.IGNORECASE)
+
+
+def is_meta(line: str) -> bool:
+    """True when a card point talks about the pack, the notes or the profile, or tells Alex what to do, instead of giving him
+    something to say."""
+    return bool(_META.search(_after_marker(line)))
+
+
 class LineAssembler:
     def __init__(self, on_text: Callable[[str, bool, str], None], on_control: Callable[[str], None],
-                 hold_first_line: bool = False, on_sentinel: Callable[[str], None] | None = None) -> None:
-        """on_text(chunk, line_done, full_line_so_far); on_control(line); on_sentinel(line) for a dropped sentinel."""
+                 hold_first_line: bool = False, on_sentinel: Callable[[str], None] | None = None,
+                 on_drop: Callable[[str], None] | None = None) -> None:
+        """on_text(chunk, line_done, full_line_so_far); on_control(line); on_sentinel(line) for a dropped sentinel; `on_drop(line)`
+        for a point line that talks about the preparation (`is_meta`): a "- " line is held until it is complete when `on_drop` is set,
+        so that such a line can be dropped before anything of it is shown."""
+        self._on_drop = on_drop
         self._on_sentinel = on_sentinel
         self._on_text = on_text
         self._on_control = on_control
@@ -75,6 +96,8 @@ class LineAssembler:
             self._mode = "text"
 
     def _forward_partial(self) -> None:
+        if self._on_drop is not None and self._cur.lstrip().startswith("- "):
+            return                    # a point is shown whole, once it is known not to be about the preparation
         if self._mode == "text" and not self._hold and self._sent < len(self._cur) and not could_become_sentinel(self._cur):
             chunk = self._cur[self._sent:]
             self._sent = len(self._cur)
@@ -98,6 +121,9 @@ class LineAssembler:
             # first-line hold stays: the next line is the first one that counts.
             if self._on_sentinel is not None:
                 self._on_sentinel(line)
+            return
+        if self._on_drop is not None and line.startswith("- ") and is_meta(line):
+            self._on_drop(line)
             return
         if self._hold:
             # first line was not a control line: forward it whole after the hold is lifted
