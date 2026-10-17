@@ -22,6 +22,10 @@ struct SettingsMeetingSection: View {
                           detail: "Your experience, projects and numbers go into every call, prepared or not. Edit them on the Me page. Takes effect at the next Start.",
                           isOn: $app.useMeProfile)
             HomeRowDivider()
+            HomeToggleRow("Use my general prep in unprepared calls",
+                          detail: "Unprepared calls start with your standing answers",
+                          isOn: $app.useGeneralPrep)
+            HomeRowDivider()
             HomeRow("Default call language",
                     detail: "What ⌥⌘V and Start now listen in. Change it during a call from the island or the menu.") {
                 HomePopup(selection: $app.defaultCallLanguage,

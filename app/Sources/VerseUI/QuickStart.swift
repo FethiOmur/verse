@@ -83,14 +83,16 @@ public enum QuickStart {
     /// Decides route and session and, for an unprepared call, creates its folder. Nothing is prepared and nothing waits.
     public static func plan(now: Date, facts: RouteFacts, events: [MeetingEvent], remembered: [String: String],
                             sessions: [String], lang: String, root: URL = SessionCatalog.root,
-                            timeZone: TimeZone = .current, routeOverride: AudioRoute? = nil) throws -> Plan {
+                            timeZone: TimeZone = .current, routeOverride: AudioRoute? = nil,
+                            useGeneralPrep: Bool = false) throws -> Plan {
         // A route picked by hand (the menu's Route submenu) beats the automatic pick.
         let route = runnableRoute(routeOverride ?? pickRoute(facts))
         switch pickSession(now: now, events: events, remembered: remembered, sessions: sessions) {
         case .prepared(let name):
             return Plan(route: route, mode: .prepared, session: name, lang: lang)
         case .adhoc:
-            let name = try SessionCatalog.createAdhoc(now: now, route: route, lang: lang, root: root, timeZone: timeZone)
+            let name = try SessionCatalog.createAdhoc(now: now, route: route, lang: lang, root: root, timeZone: timeZone,
+                                                       useGeneralPrep: useGeneralPrep)
             return Plan(route: route, mode: .unprepared, session: name, lang: lang)
         }
     }
@@ -104,10 +106,13 @@ public struct AdhocMeta: Codable, Sendable, Equatable {
     public var mode = "unprepared"
     public var route: String
     public var lang: String
+    /// The standing prep this folder was seeded from (`general-core`), or nil for an empty pack.
+    public var base: String?
 
-    public init(route: AudioRoute, lang: String) {
+    public init(route: AudioRoute, lang: String, base: String? = nil) {
         self.route = route.rawValue
         self.lang = lang
+        self.base = base
     }
 
     /// The meta of an adhoc session folder, or nil for any other folder.
@@ -130,12 +135,12 @@ public extension SessionCatalog {
 
     static func isAdhoc(_ name: String) -> Bool { name.hasPrefix("adhoc-") }
 
-    /// Creates `sessions/adhoc-YYYYMMDD-HHMM-<route>/` with `meta.json` and an empty `pack.md` (the brain and the runner
+    /// Creates `sessions/adhoc-YYYYMMDD-HHMM-<route>/` with `meta.json` and an empty `pack.md`, or the general prep's files when `useGeneralPrep` (the brain and the runner
     /// need a pack file; an unprepared call has no content for it). A second call in the same minute gets `-2`, `-3`.
     /// Returns the folder name.
     @discardableResult
     static func createAdhoc(now: Date, route: AudioRoute, lang: String, root: URL = SessionCatalog.root,
-                            timeZone: TimeZone = .current) throws -> String {
+                            timeZone: TimeZone = .current, useGeneralPrep: Bool = false) throws -> String {
         let fm = FileManager.default
         try fm.createDirectory(at: root, withIntermediateDirectories: true)
         let base = adhocName(now: now, route: route, timeZone: timeZone)
@@ -148,8 +153,11 @@ public extension SessionCatalog {
         try fm.createDirectory(at: dir, withIntermediateDirectories: false)
         let enc = JSONEncoder()
         enc.outputFormatting = [.sortedKeys, .prettyPrinted]
-        try enc.encode(AdhocMeta(route: route, lang: lang)).write(to: dir.appendingPathComponent("meta.json"), options: .atomic)
-        try Data().write(to: dir.appendingPathComponent("pack.md"), options: .atomic)
+        // The standing general prep, when wanted and built: its files are copied in and the meta records the base.
+        let seeded = useGeneralPrep && GeneralPrep.seed(into: dir, root: root)
+        try enc.encode(AdhocMeta(route: route, lang: lang, base: seeded ? GeneralPrep.name : nil))
+            .write(to: dir.appendingPathComponent("meta.json"), options: .atomic)
+        if !seeded { try Data().write(to: dir.appendingPathComponent("pack.md"), options: .atomic) }
         return name
     }
 }

@@ -103,7 +103,8 @@ public final class HomeSessionsModel: ObservableObject {
 
     /// Newest first.
     public func reload() {
-        sessions = SessionCatalog.list(root: root).map { HomeSession.load(name: $0, root: root) }.sorted { $0.date > $1.date }
+        // The standing general prep is shown on the Me page, not as a session row.
+        sessions = SessionCatalog.list(root: root).filter { !GeneralPrep.isGeneral($0) }.map { HomeSession.load(name: $0, root: root) }.sorted { $0.date > $1.date }
     }
 
     public func session(named name: String?) -> HomeSession? {

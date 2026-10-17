@@ -51,6 +51,8 @@ public final class AppSettings: ObservableObject {
     /// Anytime calls (spec 2.2): the permanent "me" layer goes into every session. Off: `start.me` is null and the prompt
     /// prefix is what it was before the layer existed.
     @Published public var useMeProfile: Bool { didSet { defaults.set(useMeProfile, forKey: "useMeProfile") } }
+    /// Unprepared calls start from the standing general prep (`sessions/general-core`) when it is built.
+    @Published public var useGeneralPrep: Bool { didSet { defaults.set(useGeneralPrep, forKey: "useGeneralPrep") } }
     /// The language a Start by hotkey, menu or island listens in: "auto" (the default; the call switches between en, it and tr by
     /// itself, spec 2.5 "interim AUTO"), or "en", "it", "tr" to pin one. Changed during a session from the island.
     @Published public var defaultCallLanguage: String { didSet { defaults.set(defaultCallLanguage, forKey: "defaultCallLanguage") } }
@@ -80,6 +82,7 @@ public final class AppSettings: ObservableObject {
         windowOpacity = (d.object(forKey: "windowOpacity") as? Double ?? 0.34).clamped(to: Self.windowOpacityRange)
         sessionName = d.string(forKey: "sessionName") ?? ""
         useMeProfile = d.object(forKey: "useMeProfile") as? Bool ?? true
+        useGeneralPrep = d.object(forKey: "useGeneralPrep") as? Bool ?? true
         let callLang = d.string(forKey: "defaultCallLanguage") ?? Self.autoLanguage
         defaultCallLanguage = Self.callLanguages.contains(callLang) ? callLang : Self.autoLanguage
         roomAutoCards = d.object(forKey: "roomAutoCards") as? Bool ?? true

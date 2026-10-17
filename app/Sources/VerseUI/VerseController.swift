@@ -141,7 +141,8 @@ public final class VerseController: ObservableObject {
 
     public func refreshSessions() {
         // Unprepared (adhoc) folders are not sessions to pick: Start would run them as prepared ones.
-        sessions = SessionCatalog.list(root: sessionsRoot).filter { !SessionCatalog.isAdhoc($0) }
+        // The standing general prep is a source for unprepared calls, not a session to pick or map to an event.
+        sessions = SessionCatalog.list(root: sessionsRoot).filter { !SessionCatalog.isAdhoc($0) && !GeneralPrep.isGeneral($0) }
         if !sessions.contains(settings.sessionName) { settings.sessionName = sessions.first ?? "" }
     }
 
@@ -252,7 +253,7 @@ public final class VerseController: ObservableObject {
         do {
             let plan = try QuickStart.plan(now: now, facts: routeFacts(), events: events, remembered: eventSessions.load(),
                                            sessions: sessions, lang: settings.defaultCallLanguage, root: sessionsRoot,
-                                           routeOverride: routeChoice)
+                                           routeOverride: routeChoice, useGeneralPrep: settings.useGeneralPrep)
             routeChoice = nil
             refreshSessions()
             if plan.mode == .prepared { settings.sessionName = plan.session }

@@ -32,6 +32,11 @@ struct MePage: View {
 
             runStatus
 
+            HomeSectionHeader("General prep")
+            HomeGroup {
+                HomeRow("General prep", detail: GeneralPrep.status(root: controller.sessionsRoot)?.text() ?? "Not built yet") { EmptyView() }
+            }
+
             if model.showSourcesChanged {
                 HomeGroup {
                     HomeRow("Sources changed", detail: model.staleSources.joined(separator: ", ")) {
