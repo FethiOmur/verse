@@ -24,6 +24,8 @@ public struct HomeSession: Identifiable, Equatable, Sendable {
     public var unprepared = false
     /// "Phone", "Room" or "Meeting" for an adhoc session; nil for the others.
     public var routeLabel: String?
+    /// What the folder suggester reads (F3): company names, the source session of a practice run, FACTS names.
+    var folderSignals = FolderSignals()
 
     /// The second line of a Sessions row after the day: the route of an adhoc session, else the kind.
     public var kindText: String { routeLabel ?? kind.rawValue }
@@ -71,6 +73,7 @@ public struct HomeSession: Identifiable, Equatable, Sendable {
         let spend = SpendLedger.runs(sessionDir: dir).reduce(0) { $0 + $1.costUSD }
         var session = HomeSession(name: name, dir: dir, kind: kind, title: title(forFolder: name), date: date, summaryURL: summary,
                                   reportURL: report, transcriptURL: transcript, spend: spend)
+        session.folderSignals = FolderSuggester.signals(folderName: name, title: session.title, dir: dir)
         if kind == .call {
             session.unprepared = true
             // The route is in meta.json; a folder without one still carries it in its name (`adhoc-<stamp>-<route>`).
@@ -91,13 +94,47 @@ public struct HomeSession: Identifiable, Equatable, Sendable {
     }
 }
 
+/// How the list column groups its rows: by folder, or one flat list newest first.
+enum SessionsListMode: String, Equatable {
+    case folders, recent
+}
+
+/// One group of the list column: a folder, or the sessions that are in none.
+struct HomeSessionSection: Identifiable, Equatable {
+    /// The folder id, or `HomeSessionSection.noFolderID`.
+    var id: String
+    /// nil for "No folder".
+    var folder: SessionFolder?
+    /// Newest first.
+    var sessions: [HomeSession]
+
+    static let noFolderID = "_none"
+}
+
 @MainActor
 public final class HomeSessionsModel: ObservableObject {
     @Published public private(set) var sessions: [HomeSession] = []
+    @Published private(set) var storedMode: SessionsListMode?
+    @Published private(set) var collapsed: Set<String> = []
     public let root: URL
+    /// Which folder each session is in (`folders.json`); sessions themselves never move.
+    let folders: SessionFolderStore
+    private let defaults: UserDefaults
+    private var storeChange: AnyCancellable?
 
-    public init(root: URL = SessionCatalog.root) {
+    static let modeKey = "sessionsListMode"
+    static let collapsedKey = "sessionsCollapsedFolders"
+
+    /// `defaults` holds the list mode and the collapsed sections; nil is the app's own suite.
+    public init(root: URL = SessionCatalog.root, defaults: UserDefaults? = nil) {
         self.root = root
+        self.defaults = defaults ?? (Bundle.main.bundleIdentifier == AppSettings.suiteName ? UserDefaults.standard
+            : UserDefaults(suiteName: AppSettings.suiteName) ?? .standard)
+        folders = SessionFolderStore(root: root)
+        storedMode = self.defaults.string(forKey: Self.modeKey).flatMap(SessionsListMode.init(rawValue:))
+        collapsed = Set(self.defaults.stringArray(forKey: Self.collapsedKey) ?? [])
+        // The views watch the model; a folder change must repaint them.
+        storeChange = folders.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
         reload()
     }
 
@@ -105,11 +142,115 @@ public final class HomeSessionsModel: ObservableObject {
     public func reload() {
         // The standing general prep is shown on the Me page, not as a session row.
         sessions = SessionCatalog.list(root: root).filter { !GeneralPrep.isGeneral($0) }.map { HomeSession.load(name: $0, root: root) }.sorted { $0.date > $1.date }
+        autoAssignDerived()
     }
 
     public func session(named name: String?) -> HomeSession? {
         guard let name else { return nil }
         return sessions.first { $0.name == name }
+    }
+
+    // MARK: grouping
+
+    /// Folders when at least one folder exists and he did not pick Recent; Recent otherwise. The picker shows only once a
+    /// folder exists.
+    var mode: SessionsListMode {
+        folders.folders.isEmpty ? .recent : (storedMode ?? .folders)
+    }
+
+    func setMode(_ m: SessionsListMode) {
+        storedMode = m
+        defaults.set(m.rawValue, forKey: Self.modeKey)
+    }
+
+    func folder(of session: HomeSession) -> SessionFolder? { folders.folder(of: session.name) }
+
+    /// One section per folder (ordered by its newest session; empty folders after them, alphabetically), then "No folder"
+    /// when it has sessions. Rows are newest first.
+    var sections: [HomeSessionSection] {
+        var byFolder: [String: [HomeSession]] = [:]
+        var loose: [HomeSession] = []
+        for s in sessions {
+            if let f = folders.folder(of: s.name) { byFolder[f.id, default: []].append(s) } else { loose.append(s) }
+        }
+        let filled = folders.folders.filter { !(byFolder[$0.id] ?? []).isEmpty }
+            .sorted { (byFolder[$0.id]?.first?.date ?? .distantPast) > (byFolder[$1.id]?.first?.date ?? .distantPast) }
+        let empty = folders.folders.filter { (byFolder[$0.id] ?? []).isEmpty }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        var out = (filled + empty).map { HomeSessionSection(id: $0.id, folder: $0, sessions: byFolder[$0.id] ?? []) }
+        if !loose.isEmpty { out.append(HomeSessionSection(id: HomeSessionSection.noFolderID, folder: nil, sessions: loose)) }
+        return out
+    }
+
+    func isCollapsed(_ id: String) -> Bool { collapsed.contains(id) }
+
+    func toggleCollapsed(_ id: String) {
+        if collapsed.contains(id) { collapsed.remove(id) } else { collapsed.insert(id) }
+        persistCollapsed()
+    }
+
+    private func persistCollapsed() { defaults.set(collapsed.sorted(), forKey: Self.collapsedKey) }
+
+    // MARK: folder changes (each returns the reason it was refused, or nil)
+
+    /// Creates a folder; when `session` is given it goes in. Switches the list to Folders so the new folder shows.
+    @discardableResult
+    func createFolder(named name: String, filing session: String? = nil) -> FolderError? {
+        do {
+            let f = try folders.create(name: name)
+            if let session { try folders.move(session, to: f.id) }
+            setMode(.folders)
+            return nil
+        } catch { return error as? FolderError ?? .writeFailed }
+    }
+
+    func renameFolder(_ id: String, to name: String) -> FolderError? {
+        do { try folders.rename(id, to: name); return nil } catch { return error as? FolderError ?? .writeFailed }
+    }
+
+    /// Removes the folder only. Every session stays, under No folder.
+    func deleteFolder(_ id: String) {
+        try? folders.delete(id)
+        if collapsed.remove(id) != nil { persistCollapsed() }
+    }
+
+    func move(_ session: String, to folder: String?) {
+        guard self.session(named: session) != nil else { return }
+        try? folders.move(session, to: folder)
+    }
+
+    func sessionCount(in folder: String) -> Int { sessions.filter { folders.folder(of: $0.name)?.id == folder }.count }
+
+    // MARK: suggestions
+
+    /// The chip for a session that is in no folder (2.3).
+    func suggestion(for session: HomeSession) -> FolderSuggestion? {
+        guard folders.folder(of: session.name) == nil else { return nil }
+        return FolderSuggester.suggestion(for: session.folderSignals, folders: folders.folders,
+                                          dismissed: folders.file.dismissed[session.name] ?? [])
+    }
+
+    /// A click on the chip: files the session, creating the folder first when the suggestion is new.
+    func accept(_ suggestion: FolderSuggestion, for session: String) {
+        switch suggestion {
+        case .existing(let f): move(session, to: f.id)
+        case .new(let name): createFolder(named: name, filing: session)
+        }
+    }
+
+    func dismiss(_ suggestion: FolderSuggestion, for session: String) {
+        try? folders.dismissSuggestion(suggestion.name, for: session)
+    }
+
+    /// A practice run built from a session goes into that session's folder the first time it is listed without one.
+    private func autoAssignDerived() {
+        var pairs: [String: String] = [:]
+        for s in sessions where s.kind == .practice && folders.folder(of: s.name) == nil {
+            guard let id = FolderSuggester.autoAssignment(for: s.folderSignals, assigned: { folders.folder(of: $0)?.id }),
+                  let folder = folders.folders.first(where: { $0.id == id }), !folders.isDismissed(folder.name, for: s.name) else { continue }
+            pairs[s.name] = id
+        }
+        if !pairs.isEmpty { try? folders.autoAssign(pairs) }
     }
 }
 
