@@ -84,7 +84,7 @@ public struct ConversationSetupView: View {
             }
         }
         if let m = model.fetchMessage {
-            HomeNote(text: m).padding(.horizontal, 14).padding(.bottom, 10)
+            HomeNote(verbatim: m).padding(.horizontal, 14).padding(.bottom, 10)
         }
         if model.posting == nil, model.postingLink.trimmingCharacters(in: .whitespaces).isEmpty {
             HomeRowDivider()
@@ -104,7 +104,7 @@ public struct ConversationSetupView: View {
                     HomePrimaryButton("Prepare", hint: "⌘↩", shortcut: KeyboardShortcut(.return, modifiers: .command), action: model.prepare)
                         .disabled(!model.canPrepare)
                 }
-                if let e = model.error { HomeNote(text: e, isError: true) }
+                if let e = model.error { HomeNote(verbatim: e, isError: true) }
             case .preparing:
                 HStack(spacing: 10) {
                     ProgressView().controlSize(.small)
@@ -183,12 +183,12 @@ struct HomeUpNextGroup: View {
                 HomeRowDivider(inset: 54)
             }
             HomeRow("Session for Start", detail: meeting.sessions.isEmpty ? "No session prepared yet" : nil) {
-                HomePopup(selection: $settings.sessionName, options: meeting.sessions.map { HomeOption($0, $0) }, fallback: "None")
+                HomePopup(selection: $settings.sessionName, options: meeting.sessions.map { HomeOption(verbatim: $0, $0) }, fallback: "None")
                 .disabled(meeting.running || meeting.sessions.isEmpty)
             }
             if let m = upNext.message {
                 HomeRowDivider()
-                HomeNote(text: m, isError: true).padding(14)
+                HomeNote(verbatim: m, isError: true).padding(14)
             }
         }
         .task { await upNext.refresh() }

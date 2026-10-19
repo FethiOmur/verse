@@ -45,7 +45,7 @@ public struct SimSetupView: View {
                 HomeSecondaryButton("Fetch", symbol: "link", action: sim.fetchPosting)
                     .disabled(sim.fetching || sim.postingLink.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            if let m = sim.fetchMessage { HomeNote(text: m).padding(.horizontal, 14).padding(.bottom, 10) }
+            if let m = sim.fetchMessage { HomeNote(verbatim: m).padding(.horizontal, 14).padding(.bottom, 10) }
             if sim.posting == nil {
                 HomeRowDivider()
                 HomeRow("Posting text") {
@@ -135,7 +135,7 @@ public struct SimSetupView: View {
             }
             HomeRowDivider()
             HomeRow("Difficulty") {
-                HomeSegmented(SimSetup.Difficulty.allCases.map { ($0.rawValue.capitalized, $0) }, selection: $sim.setup.difficulty)
+                HomeSegmented(verbatim: SimSetup.Difficulty.allCases.map { ($0.rawValue.capitalized, $0) }, selection: $sim.setup.difficulty)
             }
             HomeRowDivider()
             HomeRow("Length") {
@@ -147,9 +147,9 @@ public struct SimSetupView: View {
                 HomeSegmented([("Coach after each answer", SimMode.coach), ("Report at the end", SimMode.realistic)], selection: $sim.setup.mode)
             }
             HomeRowDivider()
-            HomeRow("Interviewer voice", detail: voiceNote) {
+            HomeRow("Interviewer voice", verbatimDetail: voiceNote) {
                 HomePopup(selection: $sim.setup.voice, options: [VoiceKind.apple, .elevenlabs, .openai, .text].map { k in
-                    HomeOption(SimSettings.label(k) + (voiceKeys.isAvailable(k) ? "" : " · add a key in Settings"), k, enabled: voiceKeys.isAvailable(k))
+                    HomeOption(verbatim: SimSettings.label(k) + (voiceKeys.isAvailable(k) ? "" : " · add a key in Settings"), k, enabled: voiceKeys.isAvailable(k))
                 })
             }
             HomeRowDivider()
@@ -178,7 +178,7 @@ public struct SimSetupView: View {
                     HomePrimaryButton("Prepare interview", hint: "⌘↩", shortcut: KeyboardShortcut(.return, modifiers: .command), action: sim.prepare)
                         .disabled(!sim.canPrepare)
                 }
-                if let e = sim.prepError { HomeNote(text: e, isError: true) }
+                if let e = sim.prepError { HomeNote(verbatim: e, isError: true) }
             case .preparing:
                 HStack(spacing: 10) {
                     ProgressView().controlSize(.small)

@@ -24,7 +24,7 @@ struct HomeKeyRows: View {
     @Environment(\.homeInk) private var ink
 
     var body: some View {
-        HomeRow(name) {
+        HomeRow(verbatim: name) {
             if hasKey {
                 Text(last4.map { "Saved in Keychain · ends in \($0)" } ?? "Saved in Keychain").font(VT.Font.body).foregroundStyle(ink.secondary)
                 HomeSecondaryButton("Replace…") { editing = true }
@@ -53,7 +53,7 @@ struct HomeKeyRows: View {
         }
         if let message {
             HomeRowDivider()
-            HomeNote(text: message, isError: messageIsError).padding(14)
+            HomeNote(verbatim: message, isError: messageIsError).padding(14)
         }
     }
 
@@ -143,14 +143,14 @@ public struct SettingsView: View {
                 HomeSliderRow(label: "Window opacity", value: $settings.windowOpacity, range: AppSettings.windowOpacityRange,
                               step: 0.01, text: percent(settings.windowOpacity))
                 HomeRowDivider()
-                HomeRow("Text size") { HomeSegmented(TextScale.allCases.map { ($0.rawValue, $0) }, selection: $settings.textScale) }
+                HomeRow("Text size") { HomeSegmented(verbatim: TextScale.allCases.map { ($0.rawValue, $0) }, selection: $settings.textScale) }
                 HomeRowDivider()
                 HomeSliderRow(label: "Card width", value: $settings.cardWidth, range: AppSettings.cardWidthRange, step: 10,
                               text: "\(Int(settings.cardWidth)) pt")
                 HomeRowDivider()
                 HomeRow("Card closes after") {
                     HomePopup(selection: $settings.cardTimeout,
-                              options: [HomeOption("Never", 0.0)] + [30.0, 45.0, 60.0, 90.0, 120.0, 180.0].map { HomeOption("\(Int($0)) s", $0) })
+                              options: [HomeOption("Never", 0.0)] + [30.0, 45.0, 60.0, 90.0, 120.0, 180.0].map { HomeOption(verbatim: "\(Int($0)) s", $0) })
                 }
             }
             HomeFootnote("Reduce Transparency and Increase Contrast (System Settings › Accessibility › Display) override these.")
@@ -240,26 +240,26 @@ struct HomePracticeVoiceSection: View {
         HomeGroup {
             HomeRow("Interviewer voice") {
                 HomePopup(selection: $sim.voice, options: [VoiceKind.apple, .elevenlabs, .openai, .text].map { k in
-                    HomeOption(SimSettings.label(k) + (voiceKeys.isAvailable(k) ? "" : " · needs a key"), k.rawValue, enabled: voiceKeys.isAvailable(k))
+                    HomeOption(verbatim: SimSettings.label(k) + (voiceKeys.isAvailable(k) ? "" : " · needs a key"), k.rawValue, enabled: voiceKeys.isAvailable(k))
                 })
                 .id(keysChanged)
             }
             HomeRowDivider()
             HomeRow("Apple voice") {
-                HomePopup(selection: $sim.appleVoiceID, options: [HomeOption("Best installed", "")] + appleVoices.map { HomeOption("\($0.name) · \($0.detail)", $0.id) },
+                HomePopup(selection: $sim.appleVoiceID, options: [HomeOption("Best installed", "")] + appleVoices.map { HomeOption(verbatim: "\($0.name) · \($0.detail)", $0.id) },
                           fallback: "Saved voice")
             }
             HomeRowDivider()
             HomeRow("OpenAI voice") {
                 HomePopup(selection: $sim.openAIVoiceID,
-                          options: [HomeOption("Default (\(OpenAIVoice.defaultVoice.capitalized))", "")]
-                              + OpenAIVoice.availableVoices().map { HomeOption($0.detail.isEmpty ? $0.name : "\($0.name) · \($0.detail)", $0.id) },
+                          options: [HomeOption(verbatim: "Default (\(OpenAIVoice.defaultVoice.capitalized))", "")]
+                              + OpenAIVoice.availableVoices().map { HomeOption(verbatim: $0.detail.isEmpty ? $0.name : "\($0.name) · \($0.detail)", $0.id) },
                           fallback: "Saved voice")
             }
             HomeRowDivider()
-            HomeRow("ElevenLabs voice", detail: elevenMessage) {
+            HomeRow("ElevenLabs voice", verbatimDetail: elevenMessage) {
                 HomePopup(selection: $sim.elevenLabsVoiceID,
-                          options: [HomeOption("Default", "")] + elevenVoices.map { HomeOption($0.name, $0.id) }
+                          options: [HomeOption("Default", "")] + elevenVoices.map { HomeOption(verbatim: $0.name, $0.id) }
                               + (!sim.elevenLabsVoiceID.isEmpty && !elevenVoices.contains { $0.id == sim.elevenLabsVoiceID }
                                  ? [HomeOption("Saved voice", sim.elevenLabsVoiceID)] : []))
                 HomeSecondaryButton("Load my voices", action: loadEleven).disabled(!voiceKeys.isAvailable(.elevenlabs))
@@ -272,7 +272,7 @@ struct HomePracticeVoiceSection: View {
             voiceKey(.openai, name: "OpenAI key")
         }
         .onAppear { voiceKeys.refresh() }
-        HomeFootnote("Cloud voices are billed by ElevenLabs or OpenAI to your own key and are labelled “AI-generated voice” while they speak. "
+        HomeFootnote(verbatim: "Cloud voices are billed by ElevenLabs or OpenAI to your own key and are labelled “AI-generated voice” while they speak. "
                      + "Keys stay in the login Keychain. Better Apple voices: System Settings › Accessibility › Spoken Content › Manage Voices.")
     }
 

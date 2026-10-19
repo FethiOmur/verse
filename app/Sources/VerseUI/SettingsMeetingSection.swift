@@ -29,7 +29,7 @@ struct SettingsMeetingSection: View {
             HomeRow("Default call language",
                     detail: "What ⌥⌘V and Start now listen in. Change it during a call from the island or the menu.") {
                 HomePopup(selection: $app.defaultCallLanguage,
-                          options: AppSettings.callLanguages.map { HomeOption(StartRoutes.languageName($0), $0) })
+                          options: AppSettings.callLanguages.map { HomeOption(verbatim: StartRoutes.languageName($0), $0) })
             }
             HomeRowDivider()
             HomeToggleRow("Automatic cards in room mode",
@@ -42,7 +42,7 @@ struct SettingsMeetingSection: View {
             HomeRowDivider()
             HomeToggleRow("Offer to start when a meeting is detected", isOn: $settings.detectMeetings)
             HomeRowDivider()
-            HomeToggleRow("Use my calendar", detail: meeting.calendarStatus, isOn: Binding(
+            HomeToggleRow("Use my calendar", verbatimDetail: meeting.calendarStatus, isOn: Binding(
                 get: { settings.useCalendar },
                 set: { on in
                     if on { Task { await meeting.requestCalendarAccess() } } else { settings.useCalendar = false }
@@ -52,7 +52,7 @@ struct SettingsMeetingSection: View {
             HomeToggleRow("After a meeting, offer to save the summary to the vault", isOn: $settings.offerSummaryToVault)
             HomeRowDivider()
             HomeRow("Vault") {
-                HomeValueField(MeetingSettings.defaultVaultPath, text: $settings.vaultPath)
+                HomeValueField(verbatim: MeetingSettings.defaultVaultPath, text: $settings.vaultPath)
                 HomeSecondaryButton("Choose…", action: chooseVault)
             }
             .disabled(!settings.offerSummaryToVault)
