@@ -296,7 +296,7 @@ async def distill_async(source: str, model: PrepModel, *, budget_usd: float = 1.
         raise PrepError(f"the voice source is {len(source)} chars; the limit is {MAX_SOURCE_CHARS}")
     user = render_user(source)
     in_tokens = await model.count_request_tokens(SYSTEM, user)
-    pin, pout = PRICES[model.model]
+    pin, pout = PRICES[model.model][:2]
     max_tokens = min(MAX_OUTPUT_TOKENS, int((budget_usd - in_tokens * pin / 1e6) / (pout / 1e6)))
     if max_tokens < 4000:
         raise PrepError(f"budget ${budget_usd:.2f} leaves only {max_tokens} output tokens; raise it or shrink the source")

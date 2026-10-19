@@ -1,0 +1,9 @@
+{"type": "q", "id": "q1", "t": "2026-10-20T10:00:00Z", "text": "Old question before the reset", "model": "claude-sonnet-5-5"}
+{"type": "a", "id": "a1", "q": "q1", "t": "2026-10-20T10:00:04Z", "text": "Old answer [0:19]", "model": "claude-sonnet-5-5", "usage": {"input": 10, "output": 5, "cache_read": 0, "cache_write": 900}, "cost_usd": 0.0021, "cost_estimated": false, "ms_first_token": 1200, "ms_total": 2100, "citations": ["0:19"], "stop_reason": "end_turn", "context": "full"}
+{"type": "reset", "t": "2026-10-20T10:05:00Z"}
+{"type": "q", "id": "q2", "t": "2026-10-20T10:06:00Z", "text": "What did Mara ask about Harbor Ledger?", "model": "claude-sonnet-5-5"}
+{"type": "a", "id": "a2", "q": "q2", "t": "2026-10-20T10:06:05Z", "text": "She asked about your role and the hardest part [1:33] [2:30].", "model": "claude-sonnet-5-5", "usage": {"input": 20, "output": 30, "cache_read": 900, "cache_write": 0}, "cost_usd": 0.0011, "cost_estimated": false, "ms_first_token": 900, "ms_total": 2500, "citations": ["1:33", "2:30"], "stop_reason": "end_turn", "context": "full"}
+{"type": "q", "id": "q3", "t": "2026-10-20T10:07:00Z", "text": "This question failed", "model": "claude-sonnet-5-5"}
+{"type": "a_error", "id": "a3", "q": "q3", "t": "2026-10-20T10:07:02Z", "kind": "offline", "message": "APIConnectionError"}
+{"type": "q", "id": "q4", "t": "2026-10-20T10:08:00Z", "text": "When can Dana start?", "model": "claude-sonnet-5-5"}
+{"type": "a", "id": "a4", "q": "q4", "t": "2026-10-20T10:08:04Z", "text": "From January 2027 [12:22].", "model": "claude-sonnet-5-5", "usage": {"input": 15, "output": 12, "cache_read": 900, "cache_write": 0}, "cost_usd": 0.0008, "cost_estimated": false, "ms_first_token": 800, "ms_total": 1800, "citations": ["12:22"], "stop_reason": "end_turn", "context": "full"}

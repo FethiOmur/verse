@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from .follow import FollowParams
 from .own import OwnParams
 
-from ..prep.model import HAIKU, PREP_MODEL
+from ..prep.model import HAIKU, OPUS, PREP_MODEL
 
 SONNET = PREP_MODEL  # "claude-sonnet-5-5"
 
@@ -33,6 +33,27 @@ _ROUTES: dict[str, dict] = {
     "D": {"model": SONNET, "max_tokens": 600, "thinking": {"type": "between_tools"},
           "output_config": {"effort": "medium"}, "betas": [FALLBACK_BETA], "fallbacks": "default"},
 }
+
+# Ask this meeting (spec 2.2, runtime/ask.py): one tuple per picker choice, sent as is on every question. Haiku 5.5 allows
+# `thinking: disabled` at effort high or below and has no server-side fallback. Sonnet 5.5 leaves thinking to the default
+# (adaptive; `disabled` is a 400 there). Opus 5.5 rejects `disabled` too and defaults to effort medium, set explicitly here.
+# Sonnet and Opus opt into the server-side fallback like route D.
+ASK_ROUTES: dict[str, dict] = {
+    "haiku": {"model": HAIKU, "max_tokens": 1500, "thinking": {"type": "disabled"}, "output_config": {"effort": "medium"}},
+    "sonnet": {"model": SONNET, "max_tokens": 4000, "output_config": {"effort": "medium"},
+               "betas": [FALLBACK_BETA], "fallbacks": "default"},
+    "opus": {"model": OPUS, "max_tokens": 4000, "output_config": {"effort": "medium"},
+             "betas": [FALLBACK_BETA], "fallbacks": "default"},
+}
+ASK_CONTEXT_MAX_TOKENS = 180_000    # at or below: the whole transcript is cached (full mode); above: chunked mode
+ASK_EXCERPT_TOKENS = 60_000         # chunked mode: the excerpts of one question
+ASK_HISTORY_PAIRS = 12              # the last Q/A pairs after the last reset that are sent again
+
+
+def ask_params(model: str) -> dict:
+    """A fresh copy of the tuple of an Ask model ("haiku" | "sonnet" | "opus")."""
+    return copy.deepcopy(ASK_ROUTES[model])
+
 
 # Which tier's tuple each model uses for pre-warm / keep-alive / summarize.
 MODEL_ROUTE = {HAIKU: "S", SONNET: "D"}

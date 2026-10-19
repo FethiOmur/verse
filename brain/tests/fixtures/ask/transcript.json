@@ -1,0 +1,202 @@
+[
+ {
+  "stamp": "0:04",
+  "speaker": "Other",
+  "text": "Thanks for joining. I am Mara from Larkspur Health, I lead the claims platform team."
+ },
+ {
+  "stamp": "0:19",
+  "speaker": "Alex",
+  "text": "Happy to be here. I am Dana, I work on backend and machine learning systems."
+ },
+ {
+  "stamp": "0:41",
+  "speaker": "Other",
+  "text": "Could you start with a short summary of your background?"
+ },
+ {
+  "stamp": "0:55",
+  "speaker": "Alex",
+  "text": "Six years in production systems. First payments at Northwind Freight, then a claims-triage model at a health company."
+ },
+ {
+  "stamp": "1:33",
+  "speaker": "Other",
+  "text": "Tell me about Harbor Ledger. What was your role there?"
+ },
+ {
+  "stamp": "1:48",
+  "speaker": "Alex",
+  "text": "I designed it and led it. It reconciled about 41,000 payments a month and cut the month-end close from six days to two."
+ },
+ {
+  "stamp": "2:30",
+  "speaker": "Other",
+  "text": "What was the hardest part of that project?"
+ },
+ {
+  "stamp": "2:44",
+  "speaker": "Alex",
+  "text": "Duplicate postings. In March 2021 a nightly job posted 300 payments twice because an idempotency key was missing."
+ },
+ {
+  "stamp": "3:25",
+  "speaker": "Other",
+  "text": "How did you find it?"
+ },
+ {
+  "stamp": "3:36",
+  "speaker": "Alex",
+  "text": "A reconciliation alert fired at six in the morning. I traced it to the retry path within one hour."
+ },
+ {
+  "stamp": "4:20",
+  "speaker": "Other",
+  "text": "And what did you change afterwards?"
+ },
+ {
+  "stamp": "4:31",
+  "speaker": "Alex",
+  "text": "I wrote a replay-safe fix the same day and added a reconciliation check that has caught every duplicate since."
+ },
+ {
+  "stamp": "5:18",
+  "speaker": "Other",
+  "text": "Good. Let us talk about the team. How many people would you work with?"
+ },
+ {
+  "stamp": "5:30",
+  "speaker": "Alex",
+  "text": "I would like to understand that from you. What does the team look like today?"
+ },
+ {
+  "stamp": "6:02",
+  "speaker": "Other",
+  "text": "Seven engineers, two data scientists and one product manager. We are hiring two more."
+ },
+ {
+  "stamp": "6:40",
+  "speaker": "Alex",
+  "text": "That sounds like a good size. Who owns the serving stack?"
+ },
+ {
+  "stamp": "7:12",
+  "speaker": "Other",
+  "text": "The platform team owns serving. The data scientists own the models, and you would sit between them."
+ },
+ {
+  "stamp": "7:55",
+  "speaker": "Alex",
+  "text": "I have done that before at Northwind, between finance engineers and the payments team."
+ },
+ {
+  "stamp": "8:40",
+  "speaker": "Other",
+  "text": "What is your experience with Kafka?"
+ },
+ {
+  "stamp": "8:52",
+  "speaker": "Alex",
+  "text": "Three years. Harbor Ledger consumed payment events from Kafka and I tuned partitions and consumer lag alerts."
+ },
+ {
+  "stamp": "9:48",
+  "speaker": "Other",
+  "text": "Do you have experience with model monitoring?"
+ },
+ {
+  "stamp": "10:01",
+  "speaker": "Alex",
+  "text": "Some. I built drift checks for the claims-triage model, but I have not run a full monitoring platform."
+ },
+ {
+  "stamp": "10:58",
+  "speaker": "Other",
+  "text": "That is honest. We would need someone to grow into that."
+ },
+ {
+  "stamp": "11:15",
+  "speaker": "Alex",
+  "text": "I would be glad to. I say what I tested and what I did not test, so I would start with the gaps."
+ },
+ {
+  "stamp": "12:10",
+  "speaker": "Other",
+  "text": "Let us talk about timing. When could you start?"
+ },
+ {
+  "stamp": "12:22",
+  "speaker": "Alex",
+  "text": "From January 2027. I am finishing a project until the end of December."
+ },
+ {
+  "stamp": "13:05",
+  "speaker": "Other",
+  "text": "Remote or Lisbon?"
+ },
+ {
+  "stamp": "13:14",
+  "speaker": "Alex",
+  "text": "Either. Lisbon is my base, but remote in Europe works too."
+ },
+ {
+  "stamp": "14:00",
+  "speaker": "Other",
+  "text": "What salary range are you looking for?"
+ },
+ {
+  "stamp": "14:12",
+  "speaker": "Alex",
+  "text": "I would like to hear the range for this level first, then we can see if it fits."
+ },
+ {
+  "stamp": "15:20",
+  "speaker": "Other",
+  "text": "The range is between 85,000 and 100,000 euros gross per year."
+ },
+ {
+  "stamp": "15:41",
+  "speaker": "Alex",
+  "text": "That is inside what I had in mind. I will confirm after the next conversation."
+ },
+ {
+  "stamp": "16:30",
+  "speaker": "Other",
+  "text": "Next step is a technical interview with two of my engineers."
+ },
+ {
+  "stamp": "16:48",
+  "speaker": "Alex",
+  "text": "Great. Should I prepare anything specific?"
+ },
+ {
+  "stamp": "17:25",
+  "speaker": "Other",
+  "text": "A short design discussion about a batch scoring service. No homework."
+ },
+ {
+  "stamp": "17:50",
+  "speaker": "Alex",
+  "text": "Understood. I will send my availability by Friday."
+ },
+ {
+  "stamp": "18:40",
+  "speaker": "Other",
+  "text": "One more question. What do you do when a number in a report looks wrong?"
+ },
+ {
+  "stamp": "18:55",
+  "speaker": "Alex",
+  "text": "I check the source first, then the transformation, and I tell the reader what I could not verify."
+ },
+ {
+  "stamp": "19:48",
+  "speaker": "Other",
+  "text": "Thank you Dana. We will be in touch this week."
+ },
+ {
+  "stamp": "19:58",
+  "speaker": "Alex",
+  "text": "Thank you Mara. Talk soon."
+ }
+]

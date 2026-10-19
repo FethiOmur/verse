@@ -1,7 +1,8 @@
 """CLI: python -u -m verse_brain.runtime [--budget-usd N] [--fake] [--no-embed]
 
 One process serves one session, and its first message decides which: `start` runs the meeting runtime (engine.Brain),
-`sim_start` the interview simulation (sim.SimRuntime, plan S2). `--budget-usd` and the embedding matcher apply to
+`sim_start` the interview simulation (sim.SimRuntime, plan S2), `ask_start` the chat about one past session (ask.AskRuntime; its own
+Anthropic client, built from the Keychain key by ask.make_client). `--budget-usd` and the embedding matcher apply to
 meetings only.
 
 Reads Swift -> brain JSON lines on stdin, writes brain -> Swift JSON lines on stdout (flushed per line), logs to
@@ -29,6 +30,7 @@ import sys
 from .engine import Brain
 from .protocol import Emitter, parse_line
 from .settings import Config
+from .ask import AskRuntime
 from .sim import SimRuntime, sim_fake_responder
 
 
@@ -77,7 +79,7 @@ async def amain(args) -> int:
         from .embed import LiteRtEmbedder
 
         factory = lambda: LiteRtEmbedder(cfg.embed_model, cfg.embed_backend)  # noqa: E731
-    runtime: Brain | SimRuntime | None = None
+    runtime: Brain | SimRuntime | AskRuntime | None = None
     try:
         async for raw in _stdin_lines():
             try:
@@ -92,6 +94,15 @@ async def amain(args) -> int:
                     if args.fake:
                         transport.responder = sim_fake_responder
                     runtime = SimRuntime(transport, emitter)
+                elif msg.get("type") == "ask_start":
+                    from ..prep.keychain import KeychainError
+                    from .ask import make_client
+
+                    try:
+                        runtime = AskRuntime(make_client(fake=args.fake), emitter)
+                    except KeychainError as e:
+                        emitter.status("error", str(e))
+                        return 2
                 else:
                     brain_transport, brain_emitter = transport, emitter
                     if not args.fake and cfg.fallback_enabled:   # G1: Gemma as the degraded-mode brain (meetings only)

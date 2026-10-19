@@ -43,6 +43,17 @@ IN_TYPES |= SIM_IN_TYPES
 # `turn.kind` (Swift VerseTurns): optional, absent from older senders. Anything else is treated as absent.
 TURN_KINDS = {"question", "statement", "fragment"}
 STATUS_STATES = {"warming", "ready", "offline", "rate_limited", "credit_exhausted", "refusal", "error"}
+# Ask this meeting (docs/specs/2026-10-20-verse-five-features-design.md 3.2), additive. A process whose first message is `ask_start`
+# is the chat runtime of one past session (runtime/ask.py). Swift -> brain: `ask_start{session_dir,owner_name,title,date,me,transcript,
+# model}`, `ask{id,text,model}`, `control{action: cancel|stop|reset}`. Brain -> Swift: `status` (warming, ready with `context`),
+# `ask_delta{id,q,text}`, `ask_done{id,q,model,usage,cost_usd,ms_first_token,ms_total,citations,stop_reason,cost_estimated}`,
+# `ask_error{id,q,kind,message,retry_after}`. The meeting Brain ignores the ask types.
+ASK_IN_TYPES = {"ask_start", "ask"}
+ASK_OUT_TYPES = {"ask_delta", "ask_done", "ask_error"}
+ASK_CONTROL_ACTIONS = {"cancel", "stop", "reset"}
+ASK_MODELS = ("haiku", "sonnet", "opus")
+ASK_ERROR_KINDS = {"credit_exhausted", "offline", "rate_limited", "overloaded", "auth", "refusal", "bad_request", "error"}
+IN_TYPES |= ASK_IN_TYPES
 
 
 class Emitter:

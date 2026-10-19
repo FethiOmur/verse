@@ -12,10 +12,16 @@ from typing import Protocol
 
 PREP_MODEL = "claude-sonnet-5-5"
 HAIKU = "claude-haiku-5-5"
+OPUS = "claude-opus-5-5"
 MAX_OUTPUT_TOKENS = 64_000
 
-# $/MTok (input, output); cache write 5m = 1.25x input, cache read = 0.1x input.
-PRICES = {PREP_MODEL: (2.00, 10.00), HAIKU: (0.10, 0.50)}
+# $/MTok (input, output, cache read); cache write 5m = 1.25x input. Sonnet and Haiku cache reads are 0.1x input (as they
+# always were), Opus 5.5's is $0.20 (claude-api skill, cached 2026-10-06).
+PRICES = {PREP_MODEL: (2.00, 10.00, 0.20), HAIKU: (0.10, 0.50, 0.01), OPUS: (4.00, 20.00, 0.20)}
+# Haiku 5.5 prompts over 100k tokens (input + cache read + cache write) cost more. The 0.05 cache read and the 1.25x write
+# multiplier on this tier are derived, not stated by the skill: unconfirmed (docs/specs/2026-10-20-verse-five-features-design.md 3.4).
+HAIKU_LONG_PRICES = (0.50, 2.50, 0.05)
+HAIKU_LONG_PROMPT_TOKENS = 100_000
 
 
 class PrepError(RuntimeError):
@@ -41,8 +47,10 @@ class ModelOutput:
 
 
 def spend_usd(model: str, u: Usage) -> float:
-    pin, pout = PRICES[model]
-    return (u.input * pin + u.cache_write * pin * 1.25 + u.cache_read * pin * 0.10 + u.output * pout) / 1e6
+    pin, pout, pread = PRICES[model]
+    if model == HAIKU and u.input + u.cache_read + u.cache_write > HAIKU_LONG_PROMPT_TOKENS:
+        pin, pout, pread = HAIKU_LONG_PRICES
+    return (u.input * pin + u.cache_write * pin * 1.25 + u.cache_read * pread + u.output * pout) / 1e6
 
 
 class PrepModel(Protocol):

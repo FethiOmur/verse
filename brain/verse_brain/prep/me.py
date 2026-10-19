@@ -488,7 +488,7 @@ async def generate(model: PrepModel, docs: list[Doc], previous: str, reserved: l
     """One distillation call (a second only when nothing usable came back). -> (raw lines, summed usage, stats)."""
     user = render_user(docs, previous, reserved)
     in_tokens = await model.count_request_tokens(SYSTEM, user)
-    pin, pout = PRICES[model.model]
+    pin, pout = PRICES[model.model][:2]
     max_tokens = min(MAX_OUTPUT_TOKENS, int((budget_usd - in_tokens * pin / 1e6) / (pout / 1e6)))
     if max_tokens < 8000:
         raise MeError(f"budget ${budget_usd:.2f} leaves only {max_tokens} output tokens; raise --budget-usd or shrink the sources")
