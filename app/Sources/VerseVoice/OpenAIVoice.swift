@@ -77,6 +77,28 @@ public struct OpenAIVoice: VoiceEngine {
         }
     }
 
+    public func synthesize(_ sentence: String) async throws -> SynthesizedSpeech {
+        let parts = VoiceText.chunks(sentence, maxLength: Self.maxChars)
+        guard !parts.isEmpty else { return .live(sentence, engine: kind) }
+        guard let key = ElevenLabsVoice.usable(keyProvider()) else { log("openai: no key"); throw VoiceError.missingKey }
+        var clips: [Data] = []
+        for part in parts {
+            let request = try Self.request(key: key, model: model, voice: voiceID, instructions: instructions, text: part)
+            log("openai: synthesizing \(part.count) characters, voice \(voiceID), model \(model)")
+            clips.append(try await VoiceHTTP.fetchAudio(request, session: session, secret: key, name: "openai", log: log))
+        }
+        return SynthesizedSpeech(text: sentence, engine: kind, payload: .clips(clips, .wav))
+    }
+
+    public func play(_ speech: SynthesizedSpeech) async throws {
+        guard case .clips(let clips, let format) = speech.payload else { return try await speak(speech.text) }
+        let generation = gate.generation
+        for clip in clips {
+            if gate.generation != generation { return }
+            try await VoiceHTTP.play(clip, format: format, with: player)
+        }
+    }
+
     public func stop() async {
         gate.bump()
         await player.stop()

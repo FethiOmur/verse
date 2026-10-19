@@ -9,6 +9,41 @@ public protocol VoiceEngine: Sendable {
     /// `stop()` makes an in-flight `speak` return normally (it is not an error).
     func speak(_ sentence: String) async throws
     func stop() async
+    /// Prepares one sentence without playing it (cloud engines fetch the audio; local ones return `.live`).
+    /// The result lives in memory only. Throws VoiceError on failure.
+    func synthesize(_ sentence: String) async throws -> SynthesizedSpeech
+    /// Plays what `synthesize` returned; returns when playback ends. `stop()` makes it return normally.
+    func play(_ speech: SynthesizedSpeech) async throws
+}
+
+/// One sentence prepared by a `VoiceEngine`. Audio stays in memory; nothing here is ever written to disk.
+public struct SynthesizedSpeech: Sendable {
+    public enum Payload: Sendable {
+        /// Audio clips (one per request chunk) in `format`.
+        case clips([Data], AudioFormat)
+        /// Nothing to prepare: `play` speaks the text through the engine's own path (Apple voice, text-only).
+        case live
+    }
+    public let text: String
+    /// The engine that made it (a `FallbackVoice` uses this to route `play`).
+    public let engine: VoiceKind
+    public let payload: Payload
+    public init(text: String, engine: VoiceKind, payload: Payload) { self.text = text; self.engine = engine; self.payload = payload }
+    public static func live(_ text: String, engine: VoiceKind) -> SynthesizedSpeech {
+        SynthesizedSpeech(text: text, engine: engine, payload: .live)
+    }
+    /// Memory held by the audio (0 for `.live`).
+    public var byteCount: Int {
+        if case .clips(let parts, _) = payload { return parts.reduce(0) { $0 + $1.count } }
+        return 0
+    }
+}
+
+extension VoiceEngine {
+    /// Default: nothing to prepare.
+    public func synthesize(_ sentence: String) async throws -> SynthesizedSpeech { .live(sentence, engine: kind) }
+    /// Default: speak the text (right for `.live`; engines with clips override).
+    public func play(_ speech: SynthesizedSpeech) async throws { try await speak(speech.text) }
 }
 
 public enum VoiceError: Error, Sendable, Equatable, CustomStringConvertible {

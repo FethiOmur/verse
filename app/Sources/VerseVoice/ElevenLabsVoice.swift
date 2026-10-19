@@ -78,6 +78,30 @@ public struct ElevenLabsVoice: VoiceEngine {
         }
     }
 
+    public func synthesize(_ sentence: String) async throws -> SynthesizedSpeech {
+        let parts = VoiceText.chunks(sentence, maxLength: Self.maxChars)
+        guard !parts.isEmpty else { return .live(sentence, engine: kind) }
+        guard let key = Self.usable(keyProvider()) else { log("elevenlabs: no key"); throw VoiceError.missingKey }
+        let request0 = try Self.request(voiceID: voiceID, modelID: modelID, key: key, text: parts[0])
+        var clips: [Data] = []
+        for (i, part) in parts.enumerated() {
+            var request = request0
+            if i > 0 { request.httpBody = try Self.body(text: part, modelID: modelID) }
+            log("elevenlabs: synthesizing \(part.count) characters, voice \(voiceID), model \(modelID)")
+            clips.append(try await VoiceHTTP.fetchAudio(request, session: session, secret: key, name: "elevenlabs", log: log))
+        }
+        return SynthesizedSpeech(text: sentence, engine: kind, payload: .clips(clips, .mp3))
+    }
+
+    public func play(_ speech: SynthesizedSpeech) async throws {
+        guard case .clips(let clips, let format) = speech.payload else { return try await speak(speech.text) }
+        let generation = gate.generation
+        for clip in clips {
+            if gate.generation != generation { return }
+            try await VoiceHTTP.play(clip, format: format, with: player)
+        }
+    }
+
     public func stop() async {
         gate.bump()
         await player.stop()

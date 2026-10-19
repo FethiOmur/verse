@@ -97,6 +97,28 @@ final class EventLog: @unchecked Sendable {
     var answers: [(String, String)] { all.compactMap { if case .answerSent(let q, let t) = $0 { return (q, t) }; return nil } }
 }
 
+/// A cloud-like voice: synthesis takes `synth`, playback `play`; records synthesis calls and playback times.
+final class SlowSynthVoice: VoiceEngine, @unchecked Sendable {
+    let kind: VoiceKind = .openai
+    let synth: Duration, play: Duration
+    private let lock = OSAllocatedUnfairLock<(synth: [String], plays: [(String, Date, Date)])>(initialState: ([], []))
+    init(synth: Duration, play: Duration) { self.synth = synth; self.play = play }
+    var synthesized: [String] { lock.withLock { $0.synth } }
+    var plays: [(String, Date, Date)] { lock.withLock { $0.plays } }
+    func synthesize(_ sentence: String) async throws -> SynthesizedSpeech {
+        lock.withLock { $0.synth.append(sentence) }
+        try await Task.sleep(for: synth)
+        return SynthesizedSpeech(text: sentence, engine: kind, payload: .clips([Data(count: 100)], .wav))
+    }
+    func play(_ speech: SynthesizedSpeech) async throws {
+        let start = Date()
+        try await Task.sleep(for: play)
+        lock.withLock { $0.plays.append((speech.text, start, Date())) }
+    }
+    func speak(_ sentence: String) async throws { try await play(try await synthesize(sentence)) }
+    func stop() async {}
+}
+
 final class SimRunnerTests: XCTestCase {
     private var brain: FakeSimBrain!
     private var voice: FakeVoice!
@@ -376,3 +398,57 @@ final class SimRunnerTests: XCTestCase {
         XCTAssertEqual(SimText.wordCount("  two  words "), 2)
     }
 }
+
+extension SimRunnerTests {
+    func runPF(_ voice: SlowSynthVoice, _ body: (FakeSimBrain, SimRunner) async -> Void) async {
+        let brain = FakeSimBrain(), mic = FakeMic()
+        var cfg = SimRunner.Config()
+        cfg.tickInterval = 0.01
+        let runner = SimRunner(transport: brain, voice: voice, mic: mic, config: cfg, sink: { _ in })
+        await runner.start(sessionDir: URL(fileURLWithPath: "/tmp/sim-x"), mode: .coach, voice: .openai)
+        await body(brain, runner)
+        await runner.stop()
+    }
+
+    func untilSync(_ what: String, timeout: TimeInterval = 3, _ cond: @escaping @Sendable () -> Bool) async {
+        let end = Date().addingTimeInterval(timeout)
+        while Date() < end {
+            if cond() { return }
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+        XCTFail("timed out waiting for \(what)")
+    }
+
+    func testQueuedSentencesPlayBackToBack() async {
+        let voice = SlowSynthVoice(synth: .milliseconds(300), play: .milliseconds(100))
+        await runPF(voice) { brain, runner in
+            brain.say(["type": "say", "id": "l1", "text": "First sentence.", "final": false])
+            brain.say(["type": "say", "id": "l1", "text": "Second sentence.", "final": true])
+            await untilSync("both played") { voice.plays.count == 2 }
+            let p = voice.plays
+            XCTAssertEqual(p.map(\.0), ["First sentence.", "Second sentence."])
+            XCTAssertLessThan(p[1].1.timeIntervalSince(p[0].2), 0.05)
+            let gaps = await runner.ttsGaps
+            XCTAssertEqual(gaps.map(\.kind), [.line, .sentence])
+            XCTAssertLessThan(gaps[1].ms, 50)
+        }
+    }
+
+    func testSayPrefetchThenSaySynthesizesOnce() async {
+        let voice = SlowSynthVoice(synth: .milliseconds(50), play: .milliseconds(10))
+        await runPF(voice) { brain, runner in
+            brain.say(["type": "say_prefetch", "id": "l2", "q_id": "q2", "sentences": ["Thank you.", "Now, why this role?"]])
+            try? await Task.sleep(for: .milliseconds(150))   // the answer to the earlier question goes on meanwhile
+            XCTAssertEqual(Set(voice.synthesized), ["Thank you.", "Now, why this role?"])
+            XCTAssertTrue(voice.plays.isEmpty, "a prefetch never plays")
+            brain.say(["type": "say", "id": "l2", "text": "Thank you.", "final": false])
+            brain.say(["type": "say", "id": "l2", "text": "Now, why this role?", "final": true])
+            await untilSync("played") { voice.plays.count == 2 }
+            XCTAssertEqual(voice.synthesized.count, 2, "cache hits: no second synthesis")
+            let gaps = await runner.ttsGaps
+            XCTAssertTrue(gaps.allSatisfy(\.prefetched))
+            XCTAssertLessThan(gaps.first?.ms ?? 999, 50)
+        }
+    }
+}
+

@@ -50,6 +50,42 @@ public struct FallbackVoice: VoiceEngine {
         }
     }
 
+    /// Synthesis falls back to the fallback voice (Apple: `.live`) when the primary cannot prepare the sentence.
+    public func synthesize(_ sentence: String) async throws -> SynthesizedSpeech {
+        do {
+            return try await primary.synthesize(sentence)
+        } catch let e as CancellationError {
+            throw e
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+            noteFallback(error)
+            return try await fallback.synthesize(sentence)
+        }
+    }
+
+    /// Plays on the engine that made it; a primary that fails while playing hands the sentence to the fallback.
+    public func play(_ speech: SynthesizedSpeech) async throws {
+        if speech.engine != primary.kind {
+            try await fallback.play(speech)
+            return
+        }
+        do {
+            try await primary.play(speech)
+        } catch let e as CancellationError {
+            throw e
+        } catch {
+            if Task.isCancelled { throw CancellationError() }
+            noteFallback(error)
+            try await fallback.speak(speech.text)
+        }
+    }
+
+    private func noteFallback(_ error: any Error) {
+        let event = FallbackEvent(primary: primary.kind, error: .wrapping(error))
+        recorder.record(event)
+        onFallback?(event)
+    }
+
     public func stop() async {
         await primary.stop()
         await fallback.stop()

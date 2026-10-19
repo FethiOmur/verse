@@ -169,6 +169,8 @@ public actor SimRunner {
     private let mic: any SimMic
     private let config: Config
     private let sink: @Sendable (SimEvent) -> Void
+    /// Synthesized sentences held in memory only: every `say` / `say_prefetch` sentence starts synthesizing at once.
+    private let cache: PrefetchCache
 
     private var queue: [Sentence] = []
     private var playing = false
@@ -189,6 +191,24 @@ public actor SimRunner {
     /// Mic results dropped because the mic was closed or they were the interviewer's tail (tests, logs).
     public private(set) var droppedMicEvents = 0
 
+    /// One `tts_gap_ms` measurement.
+    public struct TTSGap: Sendable, Equatable {
+        public enum Kind: String, Sendable { case line, sentence }
+        public let lineID: String
+        public let kind: Kind
+        /// `line`: from the first `say` sentence of the line arriving to its audio starting (a prefetched question is
+        /// ready, so this is the wait after JUDGE). `sentence`: silence between the end of one sentence and the start
+        /// of the next within a line.
+        public let ms: Int
+        /// The sentence was already in the cache when its turn came.
+        public let prefetched: Bool
+    }
+    /// The measurements so far (also logged as `tts_gap_ms`).
+    public private(set) var ttsGaps: [TTSGap] = []
+    private var arrivedAt: [String: Date] = [:]
+    private var lastPlayEnd: (lineID: String, at: Date)?
+    private static let log = Logger(subsystem: "dev.fethiverse.verse", category: "sim")
+
     public init(transport: any SimBrainTransport, voice: any VoiceEngine, mic: any SimMic, config: Config = Config(),
                 sink: @escaping @Sendable (SimEvent) -> Void) {
         self.transport = transport
@@ -196,6 +216,7 @@ public actor SimRunner {
         self.mic = mic
         self.config = config
         self.sink = sink
+        self.cache = PrefetchCache(engine: voice)
     }
 
     // MARK: lifecycle
@@ -252,6 +273,7 @@ public actor SimRunner {
         for t in tasks { t.cancel() }
         tasks = []
         await voice.stop()
+        await cache.clear()       // the audio never outlives the interview
         await mic.stop()
         await transport.close()   // a no-op when the brain is already gone
         sink(.ended(code: code))
@@ -299,8 +321,16 @@ public actor SimRunner {
                 pendingListen = nil
             }
             sink(.say(lineID: id, text: text, final: final))
+            if arrivedAt[id] == nil { arrivedAt[id] = Date() }
+            await cache.prefetch(text)
             queue.append(Sentence(lineID: id, text: text, final: final))
             pump()
+        case "say_prefetch":
+            // The next question's line, ahead of time. Only synthesis is started here; the `say` lines that follow
+            // (same text) hit the cache. Nothing is shown or played.
+            for t in o["sentences"]?.array ?? [] {
+                if let text = t.string { await cache.prefetch(text) }
+            }
         case "listen":
             guard let q = o[string: "q_id"] else { return }
             pendingListen = q
@@ -330,10 +360,15 @@ public actor SimRunner {
         let s = queue.removeFirst()
         let gen = generation
         sink(.speaking(lineID: s.lineID))
-        let v = voice
+        let v = voice, cache = self.cache
         tasks.append(Task { [weak self] in
             do {
-                try await v.speak(s.text)
+                let hit = await cache.take(s.text)
+                let speech: SynthesizedSpeech
+                if let hit { speech = hit } else { speech = try await v.synthesize(s.text) }
+                guard await self?.isCurrent(gen) == true else { return }   // skipped or ended while it was being made
+                await self?.playStarted(s, prefetched: hit != nil)
+                try await v.play(speech)
             } catch is CancellationError {
             } catch {
                 // Only the fallback voice itself failed: the line is still shown, the interview goes on.
@@ -345,9 +380,28 @@ public actor SimRunner {
 
     private func emit(_ e: SimEvent) { sink(e) }
 
+    private func isCurrent(_ gen: Int) -> Bool { gen == generation && !finished }
+
+    /// Records the `tts_gap_ms` figures for the sentence that is about to play.
+    private func playStarted(_ s: Sentence, prefetched: Bool) {
+        let now = Date()
+        if let last = lastPlayEnd, last.lineID == s.lineID {
+            record(TTSGap(lineID: s.lineID, kind: .sentence, ms: Int(now.timeIntervalSince(last.at) * 1000), prefetched: prefetched))
+        } else if let at = arrivedAt[s.lineID] {
+            record(TTSGap(lineID: s.lineID, kind: .line, ms: Int(now.timeIntervalSince(at) * 1000), prefetched: prefetched))
+        }
+        lastPlayEnd = nil
+    }
+
+    private func record(_ g: TTSGap) {
+        ttsGaps.append(g)
+        Self.log.info("tts_gap_ms \(g.ms) kind=\(g.kind.rawValue, privacy: .public) line=\(g.lineID, privacy: .public) prefetched=\(g.prefetched)")
+    }
+
     private func played(_ s: Sentence, generation gen: Int) {
         guard gen == generation else { return }   // flushed by skip/end
         playing = false
+        lastPlayEnd = (s.lineID, Date())
         if s.final, !spokenSent.contains(s.lineID) {
             spokenSent.insert(s.lineID)
             send(["type": "spoken", "id": s.lineID])
