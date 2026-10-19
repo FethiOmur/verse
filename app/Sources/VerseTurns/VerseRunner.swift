@@ -176,7 +176,9 @@ public struct RunOptions: Sendable {
     /// parity (two separate runs differ in timing-dependent lines such as hedges).
     public var mirrorOutput: FileHandle?
     /// When set, every finalized turn (both speakers) is appended here as one JSON line
-    /// `{turn_id, speaker, text, addressee, kind, t_audio_end, lang}` and flushed. Text only, never audio.
+    /// `{turn_id, speaker, text, addressee, kind, t_audio_end, lang, run_start, t_wall}` and flushed. `run_start` is the run's
+    /// `wall0` (Unix seconds, 3 decimals) and `t_wall` = `wall0 + t_audio_end`, so the app can order several runs of one session
+    /// folder. Text only, never audio.
     public var transcriptURL: URL?
     /// How long after it was sent a question still counts as "being answered" when the brain crashes (it is re-sent
     /// to the restarted brain).
@@ -945,6 +947,11 @@ public final class VerseRunner: @unchecked Sendable {
         var obj: [String: Any] = ["turn_id": id, "speaker": speaker.rawValue, "text": text, "addressee": addressee.rawValue,
                                   "kind": kind.rawValue, "t_audio_end": Text.ms(audioEnd)]
         if let lang { obj["lang"] = lang }
+        let wall0 = state.withLock { $0.wall0 }
+        if wall0 > 0 {
+            obj["run_start"] = Text.ms(wall0)
+            obj["t_wall"] = Text.ms(wall0 + audioEnd)
+        }
         guard let d = try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys, .withoutEscapingSlashes]) else { return }
         transcript.withLockUnchecked { h in
             guard let h else { return }

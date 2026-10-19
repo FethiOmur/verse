@@ -4,7 +4,7 @@ A live call decides many things silently: whether a room text was Alex reading h
 question and why (a cue, the statement probe, nothing), which cards were shown and which were held or dropped. Before this log
 the session folder held only `transcript.jsonl` and `spend.json`, so a card that came at the wrong moment, or did not come, could
 not be explained afterwards. One JSON object per line, flushed per line, text only (the first 80 characters of a transcript text,
-the first 60 of a card line; never audio). The log is a diagnosis aid: a write that fails is ignored and never reaches the call.
+the first 60 of a card line, up to 240 of a finished card's lines in `card_done`; never audio). The log is a diagnosis aid: a write that fails is ignored and never reaches the call.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from pathlib import Path
 
 TEXT_CHARS = 80      # transcript text in a log line
 CARD_CHARS = 60      # card line in a log line
+CARD_FULL_CHARS = 240   # a line of the finished card (`card_done`): what the app's transcript shows under the row it answered
 
 
 def clip(text: object, n: int = TEXT_CHARS) -> str:
