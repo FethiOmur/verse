@@ -12,6 +12,8 @@ let meetInfoPlist = packageDir + "/Sources/verse-meet/Info.plist"
 
 let package = Package(
     name: "Verse",
+    // L0: the interface language catalog (Sources/VerseUI/Resources/Localizable.xcstrings) is English at the source.
+    defaultLocalization: "en",
     platforms: [.macOS("26.0")],
     products: [
         .library(name: "VerseAudio", targets: ["VerseAudio"]),
@@ -84,6 +86,8 @@ let package = Package(
             // T-UI: the teleprompter view, settings and editor use the VersePrompter core.
             // W2: VerseMeet for the "Meeting detected, start?" prompt and calendar-matched sessions.
             dependencies: ["VerseTurns", "VerseVoice", "VersePosting", "VersePrompter", "VerseSpeech", "VerseMeet"],
+            // L0: the String Catalog is compiled into Verse_VerseUI.bundle/<lang>.lproj/Localizable.strings.
+            resources: [.process("Resources")],
             swiftSettings: [.swiftLanguageMode(.v6)],
             linkerSettings: [.linkedFramework("ScreenCaptureKit"), .linkedFramework("WebKit"), .linkedFramework("Carbon")]
         ),

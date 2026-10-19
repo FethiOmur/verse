@@ -34,12 +34,12 @@ struct MePage: View {
 
             HomeSectionHeader("General prep")
             HomeGroup {
-                HomeRow("General prep", detail: GeneralPrep.status(root: controller.sessionsRoot)?.text() ?? "Not built yet") { EmptyView() }
+                HomeRow("General prep", verbatimDetail: GeneralPrep.status(root: controller.sessionsRoot)?.text() ?? "Not built yet") { EmptyView() }
             }
 
             if model.showSourcesChanged {
                 HomeGroup {
-                    HomeRow("Sources changed", detail: model.staleSources.joined(separator: ", ")) {
+                    HomeRow("Sources changed", verbatimDetail: model.staleSources.joined(separator: ", ")) {
                         HomeSecondaryButton("Refresh") { Task { await model.refresh() } }
                     }
                 }
@@ -53,11 +53,11 @@ struct MePage: View {
                     HomeSectionHeader("Conflicts")
                     conflictsGroup
                 }
-                if let editError { HomeNote(text: editError, isError: true).padding(.top, 8) }
+                if let editError { HomeNote(verbatim: editError, isError: true).padding(.top, 8) }
                 ForEach(MeSection.allCases, id: \.self) { section in
                     let lines = model.lines(section)
                     if !lines.isEmpty || section == .notes {
-                        HomeSectionHeader(section.title)
+                        HomeSectionHeader(verbatim: section.title)
                         sectionGroup(section, lines)
                     }
                 }
@@ -92,9 +92,9 @@ struct MePage: View {
             }
             .padding(.top, 14)
         case .failed(let m):
-            HomeNote(text: m, isError: true).padding(.top, 14)
+            HomeNote(verbatim: m, isError: true).padding(.top, 14)
         case .idle:
-            if let m = model.message { HomeNote(text: m).padding(.top, 14) }
+            if let m = model.message { HomeNote(verbatim: m).padding(.top, 14) }
         }
     }
 
@@ -102,8 +102,8 @@ struct MePage: View {
 
     private var profileGroup: some View {
         HomeGroup {
-            HomeRow(model.meta?.summary ?? "Built",
-                    detail: "Calls read it when they start, so an edit applies from the next session. The cap is 3,500 tokens.") { EmptyView() }
+            HomeRow(label: HomeText(verbatim: model.meta?.summary ?? "Built"),
+                    detail: HomeText("Calls read it when they start, so an edit applies from the next session. The cap is 3,500 tokens.")) { EmptyView() }
             HomeRowDivider()
             HomeRow(controller.running ? "In this session" : "In the last session") {
                 Text(sessionLayerText).font(VT.Font.body).foregroundStyle(ink.secondary)
@@ -137,7 +137,7 @@ struct MePage: View {
             HomeGroup {
                 ForEach(Array(controller.meConflicts.enumerated()), id: \.offset) { i, c in
                     if i > 0 { HomeRowDivider() }
-                    HomeRow(c.topic.isEmpty ? "A number differs" : c.topic,
+                    HomeRow(verbatim: c.topic.isEmpty ? "A number differs" : c.topic,
                             detail: "Your profile\(model.line(id: c.me).map { " says “" + $0.text + "”" } ?? "") (\(c.me)); the meeting pack (\(c.pack)) gives a different number. The pack wins in the call.") {
                         EmptyView()
                     }
@@ -247,7 +247,7 @@ struct MePage: View {
             HomeGroup {
                 ForEach(Array(model.sources.enumerated()), id: \.element.id) { i, source in
                     if i > 0 { HomeRowDivider() }
-                    HomeRow(source.label, detail: sourceDetail(source)) {
+                    HomeRow(verbatim: source.label, detail: sourceDetail(source)) {
                         HomeSwitch(isOn: Binding(get: { source.enabled }, set: { apply(model.setSource(source.id, enabled: $0)) }))
                             .disabled(model.isRunning)
                     }

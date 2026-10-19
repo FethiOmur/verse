@@ -10,8 +10,8 @@ public struct PrompterSettingsSection: View {
 
     public var body: some View {
         HomeGroup {
-            HomeRow("Mode", detail: settings.mode.explanation) {
-                HomePopup(selection: $settings.mode, options: PrompterMode.allCases.map { HomeOption($0.title, $0) })
+            HomeRow("Mode", verbatimDetail: settings.mode.explanation) {
+                HomePopup(selection: $settings.mode, options: PrompterMode.allCases.map { HomeOption(verbatim: $0.title, $0) })
             }
             HomeRowDivider()
             HomeRow("Speed") {
@@ -30,7 +30,7 @@ public struct PrompterSettingsSection: View {
             HomeRowDivider()
             HomeToggleRow("Read meeting cards on the prompter", isOn: $settings.followMeetingCards)
         }
-        HomeFootnote("Hiding asks macOS to leave the panel out of captures, only while the prompter is open. Some capture paths ignore it, so test it with your meeting app before relying on it. "
+        HomeFootnote(verbatim: "Hiding asks macOS to leave the panel out of captures, only while the prompter is open. Some capture paths ignore it, so test it with your meeting app before relying on it. "
                      + "Shortcuts while the prompter is open: " + PrompterCommand.allCases.map { "\($0.shortcut) \($0.title.lowercased())" }.joined(separator: ", ") + ".")
     }
 }

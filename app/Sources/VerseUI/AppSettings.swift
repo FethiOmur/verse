@@ -58,6 +58,14 @@ public final class AppSettings: ObservableObject {
     @Published public var defaultCallLanguage: String { didSet { defaults.set(defaultCallLanguage, forKey: "defaultCallLanguage") } }
     /// Room route: cards for questions by themselves (on) or only on ⌥⌘↩ (off).
     @Published public var roomAutoCards: Bool { didSet { defaults.set(roomAutoCards, forKey: "roomAutoCards") } }
+    /// The interface language (spec 2.5): `system` (the default, follows macOS), `en`, `it` or `tr`. Changing it repaints the open
+    /// windows at once through `L10nState`; call and answer languages are unaffected.
+    @Published public var interfaceLanguage: InterfaceLanguage {
+        didSet {
+            defaults.set(interfaceLanguage.rawValue, forKey: "interfaceLanguage")
+            L10nState.shared.apply(interfaceLanguage)
+        }
+    }
     /// Testing: canned brain replies (no network, no key).
     @Published public var fakeBrain: Bool { didSet { defaults.set(fakeBrain, forKey: "fakeBrain") } }
     /// Testing: play this audio file as the meeting instead of listening live. Empty: live.
@@ -86,6 +94,9 @@ public final class AppSettings: ObservableObject {
         let callLang = d.string(forKey: "defaultCallLanguage") ?? Self.autoLanguage
         defaultCallLanguage = Self.callLanguages.contains(callLang) ? callLang : Self.autoLanguage
         roomAutoCards = d.object(forKey: "roomAutoCards") as? Bool ?? true
+        let uiLanguage = InterfaceLanguage(rawValue: d.string(forKey: "interfaceLanguage") ?? "") ?? .system
+        interfaceLanguage = uiLanguage
+        L10nState.shared.apply(uiLanguage)
         fakeBrain = d.bool(forKey: "fakeBrain")
         testAudioPath = d.string(forKey: "testAudioPath") ?? ""
     }

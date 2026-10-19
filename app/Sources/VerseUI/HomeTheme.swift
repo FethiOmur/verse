@@ -25,6 +25,30 @@ struct HomeA11yOverride: Equatable, Sendable {
     var increaseContrast = false
 }
 
+// MARK: - Text that is either a catalog key or data
+
+/// A component's text: a `LocalizedStringKey` looked up in the module bundle (the language follows `\.locale`), or a string that is
+/// data and is shown as it is (session titles, file names, values the brain wrote). Components take a key by default and offer a
+/// `verbatim:` overload for data, so a dynamic `String` never reaches the catalog by accident.
+struct HomeText {
+    private enum Source {
+        case key(LocalizedStringKey)
+        case verbatim(String)
+    }
+
+    private var source: Source
+
+    init(_ key: LocalizedStringKey) { source = .key(key) }
+    init(verbatim string: String) { source = .verbatim(string) }
+
+    var text: Text {
+        switch source {
+        case .key(let key): Text(key, bundle: .module)
+        case .verbatim(let string): Text(verbatim: string)
+        }
+    }
+}
+
 // Tokens the shared file doesn't carry. Kept private to the home window.
 extension VT.Window {
     /// Segmented control: the selected segment.
@@ -44,14 +68,22 @@ struct HomePressStyle: ButtonStyle {
 
 /// The page's one primary action: mint fill, `onMint` label, 9 pt radius, 30 pt tall.
 struct HomePrimaryButton: View {
-    var title: String
+    var title: HomeText
+    /// A key hint such as "⌘↩": symbols, not words, so it is never looked up.
     var hint: String?
     var shortcut: KeyboardShortcut?
     var action: () -> Void
     @Environment(\.isEnabled) private var enabled
 
-    init(_ title: String, hint: String? = nil, shortcut: KeyboardShortcut? = nil, action: @escaping () -> Void) {
-        self.title = title
+    init(_ title: LocalizedStringKey, hint: String? = nil, shortcut: KeyboardShortcut? = nil, action: @escaping () -> Void) {
+        self.title = HomeText(title)
+        self.hint = hint
+        self.shortcut = shortcut
+        self.action = action
+    }
+
+    init(verbatim title: String, hint: String? = nil, shortcut: KeyboardShortcut? = nil, action: @escaping () -> Void) {
+        self.title = HomeText(verbatim: title)
         self.hint = hint
         self.shortcut = shortcut
         self.action = action
@@ -60,8 +92,8 @@ struct HomePrimaryButton: View {
     var body: some View {
         let button = Button(action: action) {
             HStack(spacing: 6) {
-                Text(title)
-                if let hint { Text(hint).opacity(0.55) }
+                title.text
+                if let hint { Text(verbatim: hint).opacity(0.55) }
             }
             .font(.system(size: 13, weight: .semibold)).foregroundStyle(VT.onMint)
             .padding(.horizontal, 14).frame(height: 30)
@@ -75,15 +107,22 @@ struct HomePrimaryButton: View {
 
 /// Neutral secondary action.
 struct HomeSecondaryButton: View {
-    var title: String
+    var title: HomeText
     var symbol: String?
     var destructive = false
     var action: () -> Void
     @Environment(\.homeInk) private var ink
     @Environment(\.isEnabled) private var enabled
 
-    init(_ title: String, symbol: String? = nil, destructive: Bool = false, action: @escaping () -> Void) {
-        self.title = title
+    init(_ title: LocalizedStringKey, symbol: String? = nil, destructive: Bool = false, action: @escaping () -> Void) {
+        self.title = HomeText(title)
+        self.symbol = symbol
+        self.destructive = destructive
+        self.action = action
+    }
+
+    init(verbatim title: String, symbol: String? = nil, destructive: Bool = false, action: @escaping () -> Void) {
+        self.title = HomeText(verbatim: title)
         self.symbol = symbol
         self.destructive = destructive
         self.action = action
@@ -93,7 +132,7 @@ struct HomeSecondaryButton: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 if let symbol { Image(systemName: symbol) }
-                Text(title)
+                title.text
             }
             .font(.system(size: 13, weight: .medium)).foregroundStyle(destructive ? VT.coral : ink.primary)
             .padding(.horizontal, 12).frame(height: 28)
@@ -139,22 +178,42 @@ struct HomeRowDivider: View {
 
 /// Label left, value or control right, 40 pt minimum.
 struct HomeRow<Trailing: View>: View {
-    var label: String
-    var detail: String?
+    var label: HomeText
+    var detail: HomeText?
     @ViewBuilder var trailing: Trailing
     @Environment(\.homeInk) private var ink
 
-    init(_ label: String, detail: String? = nil, @ViewBuilder trailing: () -> Trailing) {
+    init(_ label: LocalizedStringKey, detail: LocalizedStringKey? = nil, @ViewBuilder trailing: () -> Trailing) {
+        self.label = HomeText(label)
+        self.detail = detail.map { HomeText($0) }
+        self.trailing = trailing()
+    }
+
+    /// A label that is data, with data (or nothing) under it.
+    init(verbatim label: String, detail: String? = nil, @ViewBuilder trailing: () -> Trailing) {
+        self.label = HomeText(verbatim: label)
+        self.detail = detail.map { HomeText(verbatim: $0) }
+        self.trailing = trailing()
+    }
+
+    init(label: HomeText, detail: HomeText?, @ViewBuilder trailing: () -> Trailing) {
         self.label = label
         self.detail = detail
+        self.trailing = trailing()
+    }
+
+    /// A fixed label with a detail line that is data.
+    init(_ label: LocalizedStringKey, verbatimDetail detail: String?, @ViewBuilder trailing: () -> Trailing) {
+        self.label = HomeText(label)
+        self.detail = detail.map { HomeText(verbatim: $0) }
         self.trailing = trailing()
     }
 
     var body: some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(VT.Font.body).foregroundStyle(ink.primary)
-                if let detail { Text(detail).font(VT.Font.callout).foregroundStyle(ink.secondary).fixedSize(horizontal: false, vertical: true) }
+                label.text.font(VT.Font.body).foregroundStyle(ink.primary)
+                if let detail { detail.text.font(VT.Font.callout).foregroundStyle(ink.secondary).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 16)
             trailing
@@ -164,49 +223,56 @@ struct HomeRow<Trailing: View>: View {
 }
 
 extension HomeRow where Trailing == Text {
-    init(_ label: String, value: String) {
-        self.init(label) { Text(value) }
+    /// `value` is data (a count, a name, a formatted date), shown as it is.
+    init(_ label: LocalizedStringKey, value: String) {
+        self.init(label) { Text(verbatim: value) }
+    }
+
+    init(verbatim label: String, value: String) {
+        self.init(verbatim: label) { Text(verbatim: value) }
     }
 }
 
 struct HomeSectionHeader: View {
-    var text: String
+    var text: HomeText
     @Environment(\.homeInk) private var ink
-    init(_ text: String) { self.text = text }
+    init(_ text: LocalizedStringKey) { self.text = HomeText(text) }
+    init(verbatim text: String) { self.text = HomeText(verbatim: text) }
     var body: some View {
-        Text(text).font(.system(size: 12, weight: .semibold)).foregroundStyle(ink.secondary)
+        text.text.font(.system(size: 12, weight: .semibold)).foregroundStyle(ink.secondary)
             .padding(.leading, 4).padding(.top, 20).padding(.bottom, 7)
     }
 }
 
 /// A small note under a group.
 struct HomeFootnote: View {
-    var text: String
+    var text: HomeText
     @Environment(\.homeInk) private var ink
-    init(_ text: String) { self.text = text }
+    init(_ text: LocalizedStringKey) { self.text = HomeText(text) }
+    init(verbatim text: String) { self.text = HomeText(verbatim: text) }
     var body: some View {
-        Text(text).font(VT.Font.callout).foregroundStyle(ink.tertiary)
+        text.text.font(VT.Font.callout).foregroundStyle(ink.tertiary)
             .fixedSize(horizontal: false, vertical: true).padding(.leading, 4).padding(.top, 7)
     }
 }
 
 struct HomePageHeader<Actions: View>: View {
-    var title: String
-    var subtitle: String?
+    var title: HomeText
+    var subtitle: HomeText?
     @ViewBuilder var actions: Actions
     @Environment(\.homeInk) private var ink
 
-    init(_ title: String, subtitle: String? = nil, @ViewBuilder actions: () -> Actions) {
-        self.title = title
-        self.subtitle = subtitle
+    init(_ title: LocalizedStringKey, subtitle: LocalizedStringKey? = nil, @ViewBuilder actions: () -> Actions) {
+        self.title = HomeText(title)
+        self.subtitle = subtitle.map { HomeText($0) }
         self.actions = actions()
     }
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 5) {
-                Text(title).font(VT.Font.largeTitle).tracking(VT.Font.largeTitleTracking).foregroundStyle(ink.primary)
-                if let subtitle { Text(subtitle).font(VT.Font.body).foregroundStyle(ink.secondary) }
+                title.text.font(VT.Font.largeTitle).tracking(VT.Font.largeTitleTracking).foregroundStyle(ink.primary)
+                if let subtitle { subtitle.text.font(VT.Font.body).foregroundStyle(ink.secondary) }
             }
             Spacer()
             HStack(spacing: 8) { actions }
@@ -215,7 +281,7 @@ struct HomePageHeader<Actions: View>: View {
 }
 
 extension HomePageHeader where Actions == EmptyView {
-    init(_ title: String, subtitle: String? = nil) {
+    init(_ title: LocalizedStringKey, subtitle: LocalizedStringKey? = nil) {
         self.init(title, subtitle: subtitle) { EmptyView() }
     }
 }
@@ -224,12 +290,18 @@ extension HomePageHeader where Actions == EmptyView {
 
 /// The mockup's segmented control: neutral track, the selected segment lifted, no accent.
 struct HomeSegmented<T: Hashable>: View {
-    var items: [(label: String, value: T)]
+    var items: [(label: HomeText, value: T)]
     @Binding var selection: T
     @Environment(\.homeInk) private var ink
 
-    init(_ items: [(label: String, value: T)], selection: Binding<T>) {
-        self.items = items
+    init(_ items: [(label: LocalizedStringKey, value: T)], selection: Binding<T>) {
+        self.items = items.map { (HomeText($0.label), $0.value) }
+        _selection = selection
+    }
+
+    /// Labels that are data (enum raw values, names).
+    init(verbatim items: [(label: String, value: T)], selection: Binding<T>) {
+        self.items = items.map { (HomeText(verbatim: $0.label), $0.value) }
         _selection = selection
     }
 
@@ -238,7 +310,7 @@ struct HomeSegmented<T: Hashable>: View {
             ForEach(items.indices, id: \.self) { i in
                 let on = items[i].value == selection
                 Button { selection = items[i].value } label: {
-                    Text(items[i].label).font(.system(size: 12, weight: on ? .semibold : .medium))
+                    items[i].label.text.font(.system(size: 12, weight: on ? .semibold : .medium))
                         .foregroundStyle(on ? ink.primary : ink.secondary)
                         .padding(.horizontal, 11).frame(height: 24)
                         .background(on ? ink.segmentSelected : .clear, in: RoundedRectangle(cornerRadius: VT.Radius.chip, style: .continuous))
@@ -259,12 +331,19 @@ struct HomeSegmented<T: Hashable>: View {
 
 /// One choice in a popup.
 struct HomeOption<T: Hashable> {
-    var label: String
+    var label: HomeText
     var value: T
     var enabled = true
 
-    init(_ label: String, _ value: T, enabled: Bool = true) {
-        self.label = label
+    init(_ label: LocalizedStringKey, _ value: T, enabled: Bool = true) {
+        self.label = HomeText(label)
+        self.value = value
+        self.enabled = enabled
+    }
+
+    /// A label that is data (a voice name, a language name, a session).
+    init(verbatim label: String, _ value: T, enabled: Bool = true) {
+        self.label = HomeText(verbatim: label)
         self.value = value
         self.enabled = enabled
     }
@@ -275,24 +354,29 @@ struct HomePopup<T: Hashable>: View {
     @Binding var selection: T
     var options: [HomeOption<T>]
     /// Shown when `selection` is none of the options.
-    var fallback = ""
+    var fallback: HomeText = HomeText(verbatim: "")
     @Environment(\.homeInk) private var ink
 
-    init(selection: Binding<T>, options: [HomeOption<T>], fallback: String = "") {
+    init(selection: Binding<T>, options: [HomeOption<T>], fallback: LocalizedStringKey) {
         _selection = selection
         self.options = options
-        self.fallback = fallback
+        self.fallback = HomeText(fallback)
+    }
+
+    init(selection: Binding<T>, options: [HomeOption<T>]) {
+        _selection = selection
+        self.options = options
     }
 
     var body: some View {
         Menu {
             Picker("", selection: $selection) {
-                ForEach(options, id: \.value) { Text($0.label).tag($0.value).disabled(!$0.enabled) }
+                ForEach(options, id: \.value) { $0.label.text.tag($0.value).disabled(!$0.enabled) }
             }
             .pickerStyle(.inline).labelsHidden()
         } label: {
             HStack(spacing: 5) {
-                Text(options.first { $0.value == selection }?.label ?? fallback).font(VT.Font.body).foregroundStyle(ink.primary)
+                (options.first { $0.value == selection }?.label ?? fallback).text.font(VT.Font.body).foregroundStyle(ink.primary)
                 Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(ink.secondary)
             }
             .contentShape(Rectangle())
@@ -303,21 +387,28 @@ struct HomePopup<T: Hashable>: View {
 
 /// A field that reads as a value: right-aligned, no frame. `lines` lets it grow to a few lines.
 struct HomeValueField: View {
-    var prompt: String
+    var prompt: HomeText
     @Binding var text: String
     var lines: ClosedRange<Int> = 1...1
     var onSubmit: (() -> Void)?
     @Environment(\.homeInk) private var ink
 
-    init(_ prompt: String, text: Binding<String>, lines: ClosedRange<Int> = 1...1, onSubmit: (() -> Void)? = nil) {
-        self.prompt = prompt
+    init(_ prompt: LocalizedStringKey, text: Binding<String>, lines: ClosedRange<Int> = 1...1, onSubmit: (() -> Void)? = nil) {
+        self.prompt = HomeText(prompt)
+        _text = text
+        self.lines = lines
+        self.onSubmit = onSubmit
+    }
+
+    init(verbatim prompt: String, text: Binding<String>, lines: ClosedRange<Int> = 1...1, onSubmit: (() -> Void)? = nil) {
+        self.prompt = HomeText(verbatim: prompt)
         _text = text
         self.lines = lines
         self.onSubmit = onSubmit
     }
 
     var body: some View {
-        TextField("", text: $text, prompt: Text(prompt).foregroundStyle(ink.tertiary), axis: lines.upperBound > 1 ? .vertical : .horizontal)
+        TextField("", text: $text, prompt: prompt.text.foregroundStyle(ink.tertiary), axis: lines.upperBound > 1 ? .vertical : .horizontal)
             .textFieldStyle(.plain).font(VT.Font.body).foregroundStyle(ink.secondary)
             .multilineTextAlignment(.trailing).lineLimit(lines)
             .onSubmit { onSubmit?() }
@@ -327,11 +418,27 @@ struct HomeValueField: View {
 /// A multi-line text area with a placeholder, transparent so it sits on a group or a plate.
 struct HomeTextArea: View {
     @Binding var text: String
-    var placeholder: String
+    var placeholder: HomeText
     var minHeight: CGFloat = 60
     var font: Font = VT.Font.body
     var lineSpacing: CGFloat = 3
     @Environment(\.homeInk) private var ink
+
+    init(text: Binding<String>, placeholder: LocalizedStringKey, minHeight: CGFloat = 60, font: Font = VT.Font.body, lineSpacing: CGFloat = 3) {
+        _text = text
+        self.placeholder = HomeText(placeholder)
+        self.minHeight = minHeight
+        self.font = font
+        self.lineSpacing = lineSpacing
+    }
+
+    init(text: Binding<String>, verbatimPlaceholder placeholder: String, minHeight: CGFloat = 60, font: Font = VT.Font.body, lineSpacing: CGFloat = 3) {
+        _text = text
+        self.placeholder = HomeText(verbatim: placeholder)
+        self.minHeight = minHeight
+        self.font = font
+        self.lineSpacing = lineSpacing
+    }
 
     var body: some View {
         TextEditor(text: $text)
@@ -341,7 +448,7 @@ struct HomeTextArea: View {
             .padding(.horizontal, -5).padding(.vertical, -4)
             .overlay(alignment: .topLeading) {
                 if text.isEmpty {
-                    Text(placeholder).font(font).foregroundStyle(ink.tertiary).allowsHitTesting(false)
+                    placeholder.text.font(font).foregroundStyle(ink.tertiary).allowsHitTesting(false)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -374,18 +481,25 @@ struct HomeSwitch: View {
 }
 
 struct HomeToggleRow: View {
-    var label: String
-    var detail: String?
+    var label: HomeText
+    var detail: HomeText?
     @Binding var isOn: Bool
 
-    init(_ label: String, detail: String? = nil, isOn: Binding<Bool>) {
-        self.label = label
-        self.detail = detail
+    init(_ label: LocalizedStringKey, detail: LocalizedStringKey? = nil, isOn: Binding<Bool>) {
+        self.label = HomeText(label)
+        self.detail = detail.map { HomeText($0) }
+        _isOn = isOn
+    }
+
+    /// A fixed label with a detail line that is data (a status the model wrote).
+    init(_ label: LocalizedStringKey, verbatimDetail detail: String?, isOn: Binding<Bool>) {
+        self.label = HomeText(label)
+        self.detail = detail.map { HomeText(verbatim: $0) }
         _isOn = isOn
     }
 
     var body: some View {
-        HomeRow(label, detail: detail) { HomeSwitch(isOn: $isOn) }
+        HomeRow(label: label, detail: detail) { HomeSwitch(isOn: $isOn) }
             .accessibilityElement(children: .combine)
     }
 }
@@ -425,17 +539,26 @@ struct HomeSlider: View {
 }
 
 struct HomeSliderRow: View {
-    var label: String
+    var label: HomeText
     @Binding var value: Double
     var range: ClosedRange<Double>
     var step: Double?
+    /// The formatted value ("62 %", "45 s"): data.
     var text: String
     @Environment(\.homeInk) private var ink
 
+    init(label: LocalizedStringKey, value: Binding<Double>, range: ClosedRange<Double>, step: Double? = nil, text: String) {
+        self.label = HomeText(label)
+        _value = value
+        self.range = range
+        self.step = step
+        self.text = text
+    }
+
     var body: some View {
-        HomeRow(label) {
+        HomeRow(label: label, detail: nil) {
             HomeSlider(value: $value, range: range, step: step)
-            Text(text).font(VT.Font.body).foregroundStyle(ink.secondary).monospacedDigit().frame(width: 54, alignment: .trailing)
+            Text(verbatim: text).font(VT.Font.body).foregroundStyle(ink.secondary).monospacedDigit().frame(width: 54, alignment: .trailing)
         }
         .accessibilityElement(children: .combine)
     }
@@ -443,11 +566,23 @@ struct HomeSliderRow: View {
 
 /// Status line such as "Saved" or an error.
 struct HomeNote: View {
-    var text: String
+    var text: HomeText
     var isError = false
     @Environment(\.homeInk) private var ink
+
+    init(text: LocalizedStringKey, isError: Bool = false) {
+        self.text = HomeText(text)
+        self.isError = isError
+    }
+
+    /// A message that is data or was built by a model (an error, a status line).
+    init(verbatim text: String, isError: Bool = false) {
+        self.text = HomeText(verbatim: text)
+        self.isError = isError
+    }
+
     var body: some View {
-        Text(text).font(VT.Font.callout).foregroundStyle(isError ? VT.coral : ink.secondary)
+        text.text.font(VT.Font.callout).foregroundStyle(isError ? VT.coral : ink.secondary)
             .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
     }
 }

@@ -116,7 +116,7 @@ public struct ScriptEditorView: View {
             }
             if let message = editor.message {
                 HStack {
-                    HomeNote(text: message.text, isError: message.isError)
+                    HomeNote(verbatim: message.text, isError: message.isError)
                     if editor.previousText != nil {
                         Button("Restore previous text") { editor.restorePreviousText() }.buttonStyle(.link)
                     }
@@ -182,7 +182,7 @@ struct WriteWithVerseSheet: View {
                     })
                 }
                 HomeRowDivider()
-                HomeRow("For") { HomeSegmented(ScriptUse.allCases.map { ($0.title, $0) }, selection: $use) }
+                HomeRow("For") { HomeSegmented(verbatim: ScriptUse.allCases.map { ($0.title, $0) }, selection: $use) }
             }
             HStack(spacing: 8) {
                 if editor.isWriting { ProgressView().controlSize(.small); Text("Writing…").font(VT.Font.callout).foregroundStyle(ink.secondary) }
@@ -199,7 +199,7 @@ struct WriteWithVerseSheet: View {
                 }
                 .disabled(topic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || editor.isWriting)
             }
-            if let message = editor.message, message.isError { HomeNote(text: message.text, isError: true) }
+            if let message = editor.message, message.isError { HomeNote(verbatim: message.text, isError: true) }
         }
         .padding(20)
         .frame(width: 480)
