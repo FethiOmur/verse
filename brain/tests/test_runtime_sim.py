@@ -21,9 +21,9 @@ from pathlib import Path
 import pytest
 
 from verse_brain.runtime.fake import FakeTransport, Script, lines_script
-from verse_brain.runtime.protocol import ListEmitter, parse_line
+from verse_brain.runtime.protocol import SIM_OUT_TYPES, ListEmitter, parse_line
 from verse_brain.runtime.settings import HAIKU, SONNET
-from verse_brain.runtime.sim import SILENCE_LINE, SimConfig, SimRuntime, sim_fake_responder
+from verse_brain.runtime.sim import (ACK_LINES, FIXED_LINES, SILENCE_LINE, SimConfig, SimRuntime, sim_fake_responder)
 from verse_brain.runtime.transport import Offline
 
 BRAIN = Path(__file__).resolve().parents[1]
@@ -230,7 +230,7 @@ def test_say_streams_before_the_call_ends(tmp_path):
 
 def test_prompt_layout_cache_stable(tmp_path):
     """system -> sim_pack.md (breakpoint 1) -> one block per finished question (breakpoint 2 every 2) -> tail."""
-    rig = Rig(tmp_path, responder(judge="NEXT"))
+    rig = Rig(tmp_path, responder(judge="NEXT"), prefetch=False)       # the normal ASK path; the speculative one has its own tests
     run(full_run(rig, mode="realistic"))
     run(rig.close())
     pack = (rig.session / "sim_pack.md").read_text(encoding="utf-8")
@@ -828,3 +828,396 @@ def test_live_three_question_sim(tmp_path):
     _check_results_schema(r, ["q1", "q2", "q3"])
     assert all(q["answers"] for q in r["questions"])
     assert r["candidate_question"]["reply"]
+
+
+# ---------------------------------------------------------------------------------------------------------- F4b: speculative ASK
+# While the candidate answers a planned question, the brain writes the NEXT planned question's line in the background and
+# sends it as `say_prefetch`; when the next question starts, the same sentences go out as `say` with the same line id.
+
+SPEC_MARK = "Do not refer to the candidate's previous answer; start with the question itself"
+ASK_SENTENCES = ["Thanks for joining today.", "Let's get started.", "Tell me a bit about yourself?"]
+ANSWER_1 = "I led Lantern, an invoice pipeline that cut entry from 11 to 2 minutes."
+
+
+def prefetches(rig: Rig) -> list[dict]:
+    return rig.em.of("say_prefetch")
+
+
+def line_texts(rig: Rig, line_id: str) -> list[str]:
+    return [e["text"] for e in rig.em.of("say", id=line_id)]
+
+
+def is_spec(info) -> bool:
+    return task_of(info) == "ASK" and SPEC_MARK in info.tail
+
+
+async def finish_run(rig: Rig, handled: int) -> None:
+    """Answer every further `listen` (handled = how many listens were dealt with already) and wait for the end."""
+    while True:
+        await rig.wait(lambda: len(rig.listens()) > handled or rig.rt.finished.is_set(), what="next listen")
+        if len(rig.listens()) <= handled:
+            break
+        q = rig.listens()[handled]["q_id"]
+        handled += 1
+        await rig.answer(q, "What does the case study look like?" if q == "candidate" else f"I built Lantern ({q}) and measured it.")
+    await rig.finished()
+
+
+def test_say_prefetch_is_a_sim_out_type():
+    assert "say_prefetch" in SIM_OUT_TYPES
+
+
+def test_prefetch_comes_after_listen_and_before_the_answer_and_is_replayed_on_next(tmp_path):
+    rig = Rig(tmp_path)
+
+    async def go():
+        await rig.start("realistic")
+        await rig.wait_listen("q1")
+        await rig.wait(lambda: prefetches(rig), what="say_prefetch")
+        ev = rig.em.events
+        i_listen = max(i for i, e in enumerate(ev) if e["type"] == "listen" and e["q_id"] == "q1")
+        pf = prefetches(rig)[0]
+        assert ev.index(pf) > i_listen                                   # after `listen` for q1, and no `answer` was sent yet
+        assert pf["q_id"] == "q2" and pf["sentences"] == [ACK_LINES["en"][0], *ASK_SENTENCES]
+        assert not rig.em.of("say", id=pf["id"]) and pf["id"] != "s1"    # nothing is said until the question starts
+        await rig.answer("q1", ANSWER_1)
+        await rig.wait_listen("q2")
+        # NEXT: the normal `say` lines carry the same id and the same text, `final` on the last only
+        says = rig.em.of("say", id=pf["id"])
+        assert [e["text"] for e in says] == pf["sentences"] and [e["final"] for e in says] == [False, False, False, True]
+        await finish_run(rig, 1)
+        await rig.close()
+
+    run(go())
+    q2 = rig.results()["questions"][1]
+    pf = prefetches(rig)[0]
+    assert q2["asked"][0] == {"id": pf["id"], "text": " ".join(pf["sentences"]), "kind": "question"}
+    # one normal ASK (q1) and one speculative ASK per later planned question; none for the candidate phase
+    spec = [c for c in rig.calls("ASK") if SPEC_MARK in c.tail]
+    assert len(rig.calls("ASK")) == 3 and len(spec) == 2
+    assert "[q2]" in spec[0].tail and "[q3]" in spec[1].tail
+    assert [e["q_id"] for e in prefetches(rig)] == ["q2", "q3"]
+
+
+def test_acknowledgements_rotate(tmp_path):
+    rig = Rig(tmp_path)
+    run(full_run(rig, mode="realistic"))
+    run(rig.close())
+    acks = [e["sentences"][0] for e in prefetches(rig)]
+    assert acks == [ACK_LINES["en"][0], ACK_LINES["en"][1]]
+
+
+def test_the_speculative_tail_does_not_refer_to_the_previous_answer(tmp_path):
+    rig = Rig(tmp_path)
+    run(full_run(rig, mode="realistic"))
+    run(rig.close())
+    first, spec = rig.calls("ASK")[0], [c for c in rig.calls("ASK") if SPEC_MARK in c.tail]
+    assert SPEC_MARK not in first.tail and "[q1]" in first.tail
+    assert spec and all("do not write one" in c.tail and "brief bridge" not in c.tail for c in spec)
+    # the same cached prefix as every other call: system and the pack block (breakpoint 1) are untouched
+    assert {json.dumps(c.request["system"]) for c in rig.calls("ASK")} == {json.dumps(first.request["system"])}
+    assert {json.dumps(c.request["messages"][0]["content"][0], sort_keys=True) for c in rig.calls("ASK")} == \
+        {json.dumps(first.request["messages"][0]["content"][0], sort_keys=True)}
+
+
+def test_follow_up_comes_first_and_the_prefetched_line_waits_for_the_next_next(tmp_path):
+    n = {"judge": 0}
+
+    def judge(info):
+        n["judge"] += 1
+        return "FOLLOW: What was the number before?" if n["judge"] == 1 else "NEXT"
+
+    rig = Rig(tmp_path, responder(judge=judge))
+
+    async def go():
+        await rig.start("realistic")
+        await rig.wait_listen("q1")
+        await rig.wait(lambda: prefetches(rig), what="say_prefetch")
+        pf = prefetches(rig)[0]
+        await rig.answer("q1", ANSWER_1)
+        await rig.wait_listen("q1", 2)                               # the follow-up was asked, the candidate answers again
+        follow = [e for e in rig.em.of("say") if e["id"] not in ("s1", pf["id"])]
+        assert follow and " ".join(e["text"] for e in follow) == "What was the number before?"
+        assert not rig.em.of("say", id=pf["id"])                     # the prefetched line has not been spoken
+        assert [e["q_id"] for e in prefetches(rig)] == ["q2"]        # and was not sent twice
+        await rig.answer("q1", "It went from 11 minutes to 2 minutes.")
+        await rig.wait_listen("q2")
+        assert line_texts(rig, pf["id"]) == pf["sentences"]
+        ev = rig.em.events
+        assert ev.index(rig.em.of("say", id=pf["id"])[0]) > ev.index(rig.listens("q1")[1])
+        await finish_run(rig, 2)
+        await rig.close()
+
+    run(go())
+    q1 = rig.results()["questions"][0]
+    assert [a["kind"] for a in q1["asked"]] == ["question", "follow_up"]
+
+
+def test_a_failed_speculative_ask_falls_back_to_a_normal_ask(tmp_path):
+    base = responder()
+
+    def resp(info):
+        if is_spec(info):
+            return Script(error=Offline("down"))
+        return base(info)
+
+    rig = Rig(tmp_path, resp)
+    run(full_run(rig, mode="realistic"))
+    run(rig.close())
+    assert prefetches(rig) == []
+    asks = rig.calls("ASK")
+    assert len([c for c in asks if SPEC_MARK in c.tail]) == 2               # tried for q2 and q3, both failed
+    normal = [c for c in asks if SPEC_MARK not in c.tail]
+    assert len(normal) == 3 and ["[q1]", "[q2]", "[q3]"] == [next(x for x in ("[q1]", "[q2]", "[q3]") if x in c.tail) for c in normal]
+    r = rig.results()
+    assert [len(q["asked"]) for q in r["questions"]] == [1, 1, 1] and r["questions"][1]["asked"][0]["text"] == ASK_TEXT
+    assert any(e["stage"] == "prefetch_failed" for e in rig.em.of("metric"))
+    assert not rig.em.of("status", state="offline")                         # a speculative failure is not a user-facing status
+
+
+def test_an_empty_speculative_line_is_not_sent(tmp_path):
+    base = responder()
+    rig = Rig(tmp_path, lambda info: lines_script("") if is_spec(info) else base(info))
+    run(full_run(rig, mode="realistic"))
+    run(rig.close())
+    assert prefetches(rig) == [] and len(rig.results()["questions"]) == 3
+
+
+def test_end_drops_a_ready_prefetch(tmp_path):
+    rig = Rig(tmp_path)
+
+    async def go():
+        await rig.start("realistic")
+        await rig.wait_listen("q1")
+        await rig.wait(lambda: prefetches(rig), what="say_prefetch")
+        await rig.control("end")
+        await rig.finished()
+        await rig.close()
+
+    run(go())
+    pf = prefetches(rig)[0]
+    assert not rig.em.of("say", id=pf["id"])
+    spoken = " ".join(e["text"] for e in rig.em.of("say"))
+    assert FIXED_LINES["en"]["close_early"] in spoken
+    assert rig.rt._pf is None and [q["q_id"] for q in rig.results()["questions"]] == ["q1"]
+
+
+def test_end_cancels_a_speculative_ask_that_is_still_running(tmp_path):
+    base = responder()
+    slow = {"opened": 0}
+
+    def resp(info):
+        if is_spec(info):
+            slow["opened"] += 1
+            return Script(first_byte_delay=0.6, chunks=[(0.0, "Tell me about a project?")])
+        return base(info)
+
+    rig = Rig(tmp_path, resp)
+
+    async def go():
+        await rig.start("realistic")
+        await rig.wait_listen("q1")
+        await rig.wait(lambda: slow["opened"], what="speculative call opened")
+        await rig.control("end")
+        await rig.finished()
+        await asyncio.sleep(0.8)                                          # longer than the slow call would have taken
+        await rig.close()
+
+    run(go())
+    assert prefetches(rig) == [] and rig.rt._pf is None
+    assert FIXED_LINES["en"]["close_early"] in " ".join(e["text"] for e in rig.em.of("say"))
+
+
+def test_skip_uses_the_prefetched_line(tmp_path):
+    rig = Rig(tmp_path)
+
+    async def go():
+        await rig.start("realistic")
+        await rig.wait_listen("q1")
+        await rig.wait(lambda: prefetches(rig), what="say_prefetch")
+        pf = prefetches(rig)[0]
+        await rig.control("skip")
+        await rig.wait_listen("q2")
+        assert line_texts(rig, pf["id"]) == pf["sentences"]
+        await finish_run(rig, 1)
+        await rig.close()
+
+    run(go())
+    assert rig.results()["questions"][0]["skipped"] is True
+
+
+def test_repeat_does_not_start_a_second_speculation(tmp_path):
+    rig = Rig(tmp_path)
+
+    async def go():
+        await rig.start("realistic")
+        await rig.wait_listen("q1")
+        await rig.wait(lambda: prefetches(rig), what="say_prefetch")
+        await rig.control("repeat")
+        await rig.wait_listen("q1", 2)
+        await rig.answer("q1", ANSWER_1)
+        await rig.wait_listen("q2")
+        await rig.close()
+
+    run(go())
+    assert [e["q_id"] for e in prefetches(rig)].count("q2") == 1          # q3's follows at q2's `listen`
+
+
+def test_a_speculative_ask_still_running_at_next_is_awaited(tmp_path):
+    """NEXT comes before the speculative call ends: the question waits for it and says its line (ack + sentences) at once."""
+    base = responder()
+
+    def resp(info):
+        if is_spec(info) and "[q2]" in info.tail:
+            return Script(first_byte_delay=0.3, chunks=[(0.0, "Tell me about an LLM feature you shipped?")])
+        return base(info)
+
+    rig = Rig(tmp_path, resp)
+
+    async def go():
+        await rig.start("realistic")
+        await rig.wait_listen("q1")
+        await rig.answer("q1", ANSWER_1)
+        await rig.wait_listen("q2")
+        await finish_run(rig, 1)
+        await rig.close()
+
+    run(go())
+    q2 = rig.results()["questions"][1]["asked"][0]
+    assert q2["text"] == f"{ACK_LINES['en'][0]} Tell me about an LLM feature you shipped?"
+    assert not any(e["q_id"] == "q2" for e in prefetches(rig))               # nothing to announce: it is said right away
+    assert [e["text"] for e in rig.em.of("say", id=q2["id"])] == [ACK_LINES["en"][0], "Tell me about an LLM feature you shipped?"]
+    assert len(rig.calls("ASK")) == 3                                          # and no second ASK was made for q2
+
+
+def test_a_speculative_ask_that_takes_too_long_is_replaced_by_the_normal_ask(tmp_path):
+    base = responder()
+
+    def resp(info):
+        if is_spec(info) and "[q2]" in info.tail:
+            return Script(first_byte_delay=2.0, chunks=[(0.0, "Too late for this question?")])
+        return base(info)
+
+    rig = Rig(tmp_path, resp, prefetch_wait_s=0.05)
+
+    async def go():
+        await rig.start("realistic")
+        await rig.wait_listen("q1")
+        await rig.answer("q1", ANSWER_1)
+        await rig.wait_listen("q2")
+        await finish_run(rig, 1)
+        await rig.close()
+
+    run(go())
+    assert not any(e["q_id"] == "q2" for e in prefetches(rig))
+    assert rig.results()["questions"][1]["asked"][0]["text"] == ASK_TEXT
+    assert any(e["stage"] == "prefetch_timeout" for e in rig.em.of("metric"))
+
+
+def test_in_coach_mode_the_prefetched_line_is_said_after_the_coach_note(tmp_path):
+    rig = Rig(tmp_path)
+    run(full_run(rig, mode="coach"))
+    run(rig.close())
+    pf = prefetches(rig)[0]
+    ev = rig.em.events
+    first_say = ev.index(rig.em.of("say", id=pf["id"])[0])
+    coach_q1 = next(i for i, e in enumerate(ev) if e["type"] == "coach" and e["q_id"] == "q1")
+    assert ev.index(pf) < coach_q1 < first_say
+
+
+def test_prefetch_can_be_turned_off(tmp_path):
+    rig = Rig(tmp_path, prefetch=False)
+    run(full_run(rig, mode="realistic"))
+    run(rig.close())
+    assert prefetches(rig) == [] and len(rig.calls("ASK")) == 3 and not any(SPEC_MARK in c.tail for c in rig.calls("ASK"))
+
+
+# ---------------------------------------------------------------------------------------------------------- F4b: Italian / Turkish fixed lines
+
+def test_every_language_has_every_fixed_line_and_acks():
+    keys = set(FIXED_LINES["en"])
+    assert keys == {"silence", "candidate_q", "close", "close_early", "answer_fallback"}
+    for lang in ("it", "tr"):
+        assert set(FIXED_LINES[lang]) == keys and all(FIXED_LINES[lang][k].strip() for k in keys)
+        assert all(FIXED_LINES[lang][k] != FIXED_LINES["en"][k] for k in keys)
+        assert len(ACK_LINES[lang]) == len(ACK_LINES["en"]) and all(a.strip() for a in ACK_LINES[lang])
+        assert set(ACK_LINES[lang]).isdisjoint(ACK_LINES["en"])
+
+
+@pytest.mark.parametrize("lang,name", [("it", "Italian"), ("tr", "Turkish")])
+def test_italian_and_turkish_fixed_lines_and_acks(tmp_path, lang, name):
+    rig = Rig(tmp_path, session=session_copy(tmp_path, lang=lang))
+    run(full_run(rig, mode="realistic"))
+    run(rig.close())
+    spoken = " ".join(e["text"] for e in rig.em.of("say"))
+    assert FIXED_LINES[lang]["candidate_q"] in spoken and FIXED_LINES[lang]["close"] in spoken
+    assert FIXED_LINES["en"]["candidate_q"] not in spoken and FIXED_LINES["en"]["close"] not in spoken
+    assert all(e["sentences"][0] in ACK_LINES[lang] for e in prefetches(rig)) and prefetches(rig)
+    assert all(f"Language: {name}" in c.tail for c in rig.t.calls if task_of(c) in ("ASK", "JUDGE"))
+
+
+@pytest.mark.parametrize("lang", ["it", "tr"])
+def test_silence_prompt_and_early_close_in_the_interview_language(tmp_path, lang):
+    rig = Rig(tmp_path, session=session_copy(tmp_path, lang=lang), silence_s=0.15, playback_wps=1000.0)
+
+    async def go():
+        await rig.start("realistic")
+        await rig.wait_listen("q1")
+        await rig.wait(lambda: FIXED_LINES[lang]["silence"] in " ".join(e["text"] for e in rig.em.of("say")), 1.0, "silence prompt")
+        await rig.control("end")
+        await rig.finished()
+        await rig.close()
+
+    run(go())
+    assert FIXED_LINES[lang]["close_early"] in " ".join(e["text"] for e in rig.em.of("say"))
+    assert not any(e["text"] == SILENCE_LINE for e in rig.em.of("say"))
+
+
+def test_an_unsupported_language_falls_back_to_the_english_lines(tmp_path):
+    rig = Rig(tmp_path, session=session_copy(tmp_path, lang="de"))
+    run(full_run(rig, mode="realistic"))
+    run(rig.close())
+    assert FIXED_LINES["en"]["close"] in " ".join(e["text"] for e in rig.em.of("say"))
+    assert all(e["sentences"][0] in ACK_LINES["en"] for e in prefetches(rig))
+
+
+# ---------------------------------------------------------------------------------------------------------- F4b: a sim built from a session
+
+def test_a_session_source_sim_answers_from_the_prep_pack(tmp_path):
+    sess = session_copy(tmp_path, source="session", source_session="harbor-pine",
+                        posting={"source_url": None, "text_path": "source_pack.md", "sha256": "fixture"})
+    (sess / "source_pack.md").write_text("[f006] number | Harbor & Pine serves 38 grocery chains across four countries.\n", encoding="utf-8")
+    rig = Rig(tmp_path, session=sess)
+    run(full_run(rig, mode="realistic"))
+    run(rig.close())
+    answer = rig.calls("ANSWER")[0].tail
+    assert "PREP PACK of the meeting" in answer and "serves 38 grocery chains" in answer and "from the prep pack" in answer
+    assert "JOB POSTING" not in answer
+    system = rig.calls("ASK")[0].request["system"][0]["text"]
+    assert "the competencies the prep pack points to" in system and "job posting" not in system
+
+
+def test_a_posting_source_sim_is_unchanged(tmp_path):
+    rig = Rig(tmp_path)
+    run(full_run(rig, mode="realistic"))
+    run(rig.close())
+    assert "JOB POSTING (the only source" in rig.calls("ANSWER")[0].tail
+    assert "the competencies the job posting asks for" in rig.calls("ASK")[0].request["system"][0]["text"]
+
+
+def test_a_mock_built_from_a_prepared_session_runs_end_to_end(tmp_path):
+    from verse_brain.prep.sim import FakeSimModel, build_sim_from_session
+
+    fixture = Path(__file__).resolve().parent / "fixtures" / "sim_session"
+    src = tmp_path / "in" / "harbor-pine"
+    shutil.copytree(fixture, src, ignore=shutil.ignore_patterns("me.md"))
+    built = build_sim_from_session(src, out=tmp_path / "out", model=FakeSimModel(), length_min=15, me=fixture / "me.md")
+    rig = Rig(tmp_path, sim_fake_responder, session=built)
+    run(full_run(rig, mode="coach"))
+    run(rig.close())
+    sim = json.loads((built / "sim.json").read_text(encoding="utf-8"))
+    r = rig.results()
+    assert [q["q_id"] for q in r["questions"]] == [q["id"] for q in sim["questions"]] and len(r["questions"]) == 5
+    assert len(prefetches(rig)) == 4 and r["candidate_question"]["reply"]
+    assert r["questions"][0]["asked"][0]["text"].startswith("Thanks. Can you tell me about yourself")
+    assert "PREP PACK of the meeting" in rig.calls("ANSWER")[0].tail and "Harbor & Pine" in rig.calls("ANSWER")[0].tail
