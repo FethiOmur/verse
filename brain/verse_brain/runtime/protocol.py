@@ -38,7 +38,7 @@ FOLLOW_OUT_TYPES = {"follow", "covered"}
 
 # Brain -> Swift in a sim: `say{id,text,final}`, `listen{q_id}`, `coach{q_id,lines}`, `sim_progress{q_index,q_total}`
 # (q_index is 1-based), `sim_report{path}`, plus `status` and `metric` as in meetings.
-SIM_OUT_TYPES = {"say", "listen", "coach", "sim_progress", "sim_report"}
+SIM_OUT_TYPES = {"say", "say_prefetch", "listen", "coach", "sim_progress", "sim_report"}
 IN_TYPES |= SIM_IN_TYPES
 # `turn.kind` (Swift VerseTurns): optional, absent from older senders. Anything else is treated as absent.
 TURN_KINDS = {"question", "statement", "fragment"}

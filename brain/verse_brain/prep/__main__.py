@@ -26,6 +26,14 @@ Interview simulation (S1):
 builds sessions/sim-<YYYYMMDD-HHMM>-<company>/ {posting.txt, sim.json, sim_pack.md}. Stdout is the session folder path, one
 line; the summary goes to stderr. --fake is deterministic and offline (no key, no network, no vault).
 
+Mock interview from a prepared meeting (spec 2026-10-20, F4b):
+  python -m verse_brain.prep --sim --from-session SESSION_DIR [--me ME.md] --type mixed --difficulty standard --length 30
+      [--lang en] [--company C] [--role R] --out DIR [--fake]
+builds sessions/sim-<YYYYMMDD-HHMM>-<source session>/ {source_pack.md, sim.json, sim_pack.md} from the meeting's pack.md and
+bank.jsonl. The questions are decided by code (the opener, then the bank entries in order); one Sonnet call writes the
+competencies, evidence, rubric and follow-ups. The language is meta.json languages[0] unless --lang is given. --me adds the
+profile as a second evidence source. Stdout and stderr as above.
+
 Prep from a conversation (P2): python -m verse_brain.prep conversation --thread FILE [--posting-file F] [--posting-url U]
   [--company-url U] [--note F] [--fake]
 reads a pasted LinkedIn/email thread, researches the company with the Anthropic web_search tool (at most 8 searches, a URL on
@@ -47,7 +55,7 @@ from .event import EventError, FakeEventModel, event_to_prep_note, load_event
 from .keychain import KeychainError, read_api_key, redact
 from .model import PRICES, PrepError, Usage, spend_usd
 from .pipeline import build
-from .sim import DIFFICULTIES, INTERVIEW_TYPES, FakeSimModel, build_sim
+from .sim import DIFFICULTIES, INTERVIEW_TYPES, FakeSimModel, build_sim, build_sim_from_session
 from .vault import DEFAULT_VAULT, BeyinVault
 from .voice import (DEFAULT_VOICE_PATH, FakeVoiceModel, distill_async, load_voice, strip_voice, with_voice, write_profile)
 
@@ -93,7 +101,9 @@ def _main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="python -m verse_brain.prep", description=__doc__)
     ap.add_argument("--prep-note", type=Path)
     ap.add_argument("--repo", type=Path, action="append", default=[])
-    ap.add_argument("--lang", default="en", help="comma-separated: en,it,tr (first = language of canonical questions)")
+    ap.add_argument("--lang", default=None,
+                    help="comma-separated: en,it,tr (first = language of canonical questions; default en; with --from-session "
+                         "the session's meta.json language)")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT, help="sessions root; a <session-id> folder is created in it")
     ap.add_argument("--max-questions", type=int, default=80)
     ap.add_argument("--vault", type=Path, default=DEFAULT_VAULT)
@@ -105,6 +115,9 @@ def _main(argv: list[str]) -> int:
     ap.add_argument("--fake", action="store_true",
                     help="with --from-event or --sim: deterministic offline model, no network, no key, no spend")
     ap.add_argument("--sim", action="store_true", help="build an interview-simulation pack (see the module doc)")
+    ap.add_argument("--from-session", type=Path, metavar="SESSION_DIR",
+                    help="--sim: build the mock interview from this prepared meeting session instead of a job posting")
+    ap.add_argument("--me", type=Path, metavar="ME.md", help="--sim --from-session: the profile (me.md), a second evidence source")
     ap.add_argument("--posting-file", type=Path, help="--sim: the job posting text the user confirmed")
     ap.add_argument("--posting-url", help="--sim: where the posting came from (stored in sim.json)")
     ap.add_argument("--cv", type=Path, help="--sim: CV as .pdf, .txt or .md")
@@ -127,8 +140,16 @@ def _main(argv: list[str]) -> int:
     if a.sim:
         if a.prep_note is not None or a.from_event is not None or a.live:
             ap.error("--sim cannot be combined with --prep-note, --from-event or --live")
-        if a.posting_file is None:
-            ap.error("--sim needs --posting-file")
+        if a.from_session is not None:
+            if a.posting_file is not None:
+                ap.error("--from-session and --posting-file are mutually exclusive")
+            bad = [f for f, v in (("--posting-url", a.posting_url), ("--cv", a.cv), ("--note", a.note), ("--repo", a.repo)) if v]
+            if bad:
+                ap.error(f"{', '.join(bad)} cannot be combined with --from-session")
+        elif a.posting_file is None:
+            ap.error("--sim needs --posting-file (or --from-session)")
+        elif a.me is not None:
+            ap.error("--me needs --from-session")
         return _run_sim(a)
     if a.from_event is not None and a.prep_note is not None:
         ap.error("--from-event and --prep-note are mutually exclusive")
@@ -136,7 +157,7 @@ def _main(argv: list[str]) -> int:
         ap.error("--fake needs --from-event (or --sim)")
     if a.prep_note is None and a.from_event is None:
         ap.error("--prep-note is required (or use --from-event or --live)")
-    langs = [c for c in a.lang.split(",") if c]
+    langs = [c for c in (a.lang or "en").split(",") if c]
     vault = None if (a.no_vault or a.fake) else BeyinVault(a.vault, audience=a.vault_audience)
     key = None
     try:
@@ -188,8 +209,11 @@ def _main(argv: list[str]) -> int:
 
 
 def _run_sim(a: argparse.Namespace) -> int:
-    lang = next((c for c in a.lang.split(",") if c.strip()), "en").strip()
-    vault = None if (a.no_vault or a.fake) else BeyinVault(a.vault, audience=a.vault_audience)
+    lang = next((c for c in (a.lang or "").split(",") if c.strip()), "").strip()
+    from_session = a.from_session is not None
+    if not from_session:
+        lang = lang or "en"
+    vault = None if (a.no_vault or a.fake or from_session) else BeyinVault(a.vault, audience=a.vault_audience)
     key = None
     try:
         voice_path = _resolve_voice(a)
@@ -198,10 +222,15 @@ def _run_sim(a: argparse.Namespace) -> int:
         else:
             key = read_api_key()  # only to scrub error text; the model client reads its own copy
             model = None
-        session = build_sim(
-            a.posting_file, out=a.out, model=model, posting_url=a.posting_url, cv=a.cv, note=a.note, repos=a.repo,
-            vault=vault, interview_type=a.interview_type, difficulty=a.difficulty, length_min=a.length, lang=lang,
-            company=a.company, role=a.role, voice_path=voice_path)
+        if from_session:
+            session = build_sim_from_session(
+                a.from_session, out=a.out, model=model, me=a.me, interview_type=a.interview_type, difficulty=a.difficulty,
+                length_min=a.length, lang=lang or None, company=a.company, role=a.role, voice_path=voice_path)
+        else:
+            session = build_sim(
+                a.posting_file, out=a.out, model=model, posting_url=a.posting_url, cv=a.cv, note=a.note, repos=a.repo,
+                vault=vault, interview_type=a.interview_type, difficulty=a.difficulty, length_min=a.length, lang=lang,
+                company=a.company, role=a.role, voice_path=voice_path)
     except (KeychainError, PrepError, OSError) as e:
         print(f"error: {redact(str(e), key)}", file=sys.stderr)
         return 1

@@ -23,6 +23,14 @@ Silence: `silence_s` without an answer after `listen` says SILENCE_LINE once per
 the app reports the line as played (`spoken`), or after an estimate of its playback time when no `spoken` comes;
 any `partial` (the app's live transcript of the candidate) restarts it, so a long answer is not interrupted.
 
+Speculative ASK (spec 2026-10-20 section 2.4): at the first `listen` of a planned question, the line for the NEXT planned
+question is generated in the background (Haiku ASK whose tail adds "Do not refer to the candidate's previous answer; start
+with the question itself") and sent as `say_prefetch{id,q_id,sentences}`: a short acknowledgement from a fixed rotating list
+in the interview language, then the question's sentences. The app synthesizes it while the candidate talks. When the next
+question starts (JUDGE said NEXT, or a skip) the same sentences go out as the normal `say` events with the same id: a cache
+hit in the app. A FOLLOW/PUSH streams as before and the prefetched line waits for the next NEXT. A failed speculative ASK
+means the normal ASK runs. `end` (and shutdown) drops it. The `say` events keep their place after a coach note.
+
 Failure never stalls the interview: a failed ASK says the planned question verbatim, a failed JUDGE moves on, a
 failed COACH shows nothing, a failed ANSWER says a fixed line; each failure is reported as a `status` event.
 sim_results.json is rewritten after every question, so a crash keeps the transcript so far.
@@ -57,12 +65,33 @@ MODES = ("coach", "realistic")
 VOICES = ("apple", "elevenlabs", "openai", "text")
 CANDIDATE_Q_ID = "candidate"
 
-# Fixed lines (English first; other languages fall back to these until they are written).
+# Fixed lines, per interview language (sim.json `lang`). English is the fallback for any other language.
 SILENCE_LINE = "Take your time — shall I repeat the question?"
 CANDIDATE_Q_LINE = "That's all from my side. Do you have any questions for us?"
 CLOSE_LINE = "Thank you for your time today, I enjoyed our conversation. That's the end of the interview."
 CLOSE_LINE_EARLY = "Let's stop here. Thank you for your time today."
 ANSWER_FALLBACK = "That's a good question. I'd rather not guess, so I'll make sure the team follows up with you on it."
+FIXED_LINES: dict[str, dict[str, str]] = {
+    "en": {"silence": SILENCE_LINE, "candidate_q": CANDIDATE_Q_LINE, "close": CLOSE_LINE, "close_early": CLOSE_LINE_EARLY,
+           "answer_fallback": ANSWER_FALLBACK},
+    # Italian uses "tu"; Turkish the polite "siz" (an interviewer speaking to a candidate). Written by the executor: Alex reviews.
+    "it": {"silence": "Prenditi pure il tempo che ti serve. Vuoi che ripeta la domanda?",
+           "candidate_q": "Da parte mia è tutto. Hai qualche domanda per noi?",
+           "close": "Grazie per il tuo tempo, mi è piaciuta la nostra conversazione. Il colloquio finisce qui.",
+           "close_early": "Fermiamoci qui. Grazie per il tuo tempo.",
+           "answer_fallback": "È una buona domanda. Preferisco non tirare a indovinare, quindi mi assicuro che il team ti risponda."},
+    "tr": {"silence": "Acele etmeyin. Soruyu tekrar edeyim mi?",
+           "candidate_q": "Benim sorularım bu kadar. Bize sormak istediğiniz bir şey var mı?",
+           "close": "Bugün ayırdığınız zaman için teşekkür ederim, görüşmemizden keyif aldım. Mülakat burada sona erdi.",
+           "close_early": "Burada duralım. Bugün ayırdığınız zaman için teşekkür ederim.",
+           "answer_fallback": "İyi bir soru. Tahmin yürütmek istemem, ekibin size bu konuda dönmesini sağlayacağım."},
+}
+# The short acknowledgement put in front of a prefetched question line; rotates so two questions in a row do not open alike.
+ACK_LINES: dict[str, tuple[str, ...]] = {
+    "en": ("Thank you.", "Okay.", "Got it.", "Alright.", "Thanks."),
+    "it": ("Grazie.", "Ok.", "Perfetto.", "Va bene.", "Capito."),
+    "tr": ("Teşekkürler.", "Tamam.", "Anladım.", "Peki.", "Güzel."),
+}
 
 TYPE_DESC = {
     "screening": "a recruiter's screening call: background, motivation and fit for the role; light on technical depth",
@@ -145,6 +174,8 @@ class SimConfig:
     answer_warm_wait_s: float = 2.0    # ANSWER waits this long for an in-flight Sonnet pre-warm (one cache write)
     ping_every_s: float = 30.0
     keepalive_idle_s: float = 240.0
+    prefetch: bool = True              # speculative ASK for the next planned question while the candidate answers
+    prefetch_wait_s: float = 4.0       # the next question waits this long for a speculative ASK that is still running
 
 
 ReportBuilder = Callable[..., Awaitable[Path]]
@@ -247,6 +278,7 @@ class SimRuntime:
         self.difficulty = "standard"
         self.mode = "realistic"
         self.voice = "text"
+        self.from_session = False
         self.started_at = ""
         self.evidence: dict[str, str] = {}
         # state
@@ -271,6 +303,10 @@ class SimRuntime:
         self._silence_done: set[str] = set()
         self._await_spoken: str | None = None
         self._spoken: set[str] = set()
+        # speculative ASK
+        self._questions: list[dict] = []
+        self._pf: dict | None = None         # {"q_id", "line_id", "sentences": list[str] | None, "task"}
+        self._ack_i = 0
 
     # ------------------------------------------------------------------ helpers
     def _spawn(self, coro) -> asyncio.Task:
@@ -289,6 +325,10 @@ class SimRuntime:
         self._line_seq += 1
         return f"s{self._line_seq}"
 
+    def _fixed(self, key: str) -> str:
+        """A fixed line in the interview language (English when that language has none)."""
+        return FIXED_LINES.get(self.lang, FIXED_LINES["en"]).get(key) or FIXED_LINES["en"][key]
+
     # ------------------------------------------------------------------ dispatch
     async def handle(self, msg: dict) -> None:
         t = msg.get("type")
@@ -304,6 +344,8 @@ class SimRuntime:
             if a in ("skip", "end"):
                 if self._action != "end":
                     self._action = a
+                if a == "end":
+                    self._drop_prefetch()
                 self._interrupt.set()
             elif a == "repeat":
                 self._inbox.put_nowait(("repeat", None))
@@ -348,6 +390,7 @@ class SimRuntime:
         except OSError:
             self.posting = ""
         self.lang = str(self.sim.get("lang") or "en")
+        self.from_session = self.sim.get("source") == "session"
         self.mode = msg.get("mode") if msg.get("mode") in MODES else "realistic"
         self.voice = msg.get("voice") if msg.get("voice") in VOICES else "text"
         self.evidence = {str(e.get("id")): str(e.get("text", "")) for e in self.sim.get("evidence") or [] if e.get("id")}
@@ -355,6 +398,8 @@ class SimRuntime:
         diff = self.sim.get("difficulty") if self.sim.get("difficulty") in DIFF_DESC else "standard"
         self.difficulty = diff
         self.system = SYSTEM_TEMPLATE.format(type_desc=TYPE_DESC[itype], diff_desc=DIFF_DESC[diff])
+        if self.from_session:       # a mock built from a prepared meeting: the competencies come from its pack, not a posting
+            self.system = self.system.replace("the competencies the job posting asks for", "the competencies the prep pack points to")
 
     def _request(self, route: str, max_tokens: int, tail: str) -> dict:
         req = route_params(route, max_tokens=max_tokens)
@@ -629,7 +674,7 @@ class SimRuntime:
             return
         self._silence_done.add(q_id)
         self._metric(q_id, "silence_prompt", after_s=round(delay, 2))
-        self._say_fixed(SILENCE_LINE)
+        self._say_fixed(self._fixed("silence"))
         self._await_spoken = None          # the count does not restart: one prompt per question
         self.emitter.emit({"type": "listen", "q_id": q_id})
 
@@ -682,9 +727,13 @@ class SimRuntime:
     def _q_head(self, q: dict) -> str:
         return f"QUESTION [{q.get('id')}] ({q.get('kind', 'question')}): {_clean(str(q.get('text', '')))}"
 
-    def ask_tail(self, q: dict, index: int, total: int) -> str:
+    def ask_tail(self, q: dict, index: int, total: int, speculative: bool = False) -> str:
         lines = ["TASK: ASK", f"Language: {self._lang()}", f"This is question {index} of {total}.", self._q_head(q)]
-        if index == 1:
+        if speculative:
+            # written while the candidate is still answering the previous question: it must not depend on that answer
+            lines.append("Do not refer to the candidate's previous answer; start with the question itself. The system puts a "
+                         "short acknowledgement in front of your line, so do not write one: no \"Thanks\", no bridge.")
+        elif index == 1:
             company = self.sim.get("company") or "the company"
             role = self.sim.get("role") or "this role"
             lines.append(f"This is the start of the interview: greet the candidate in one short sentence and say you "
@@ -755,13 +804,14 @@ class SimRuntime:
 
     def answer_tail(self, question: str) -> str:
         posting = self.posting or "(not available)"
+        what = "PREP PACK of the meeting" if self.from_session else "JOB POSTING"
         return "\n".join([
             "TASK: ANSWER", f"Language: {self._lang()}",
-            "JOB POSTING (the only source for facts about the company, the team, the role and the process):",
+            f"{what} (the only source for facts about the company, the team, the role and the process):",
             '"""', posting, '"""',
             f"The candidate asked: {_clean(question)}",
             "Reply as the interviewer in 2 to 4 short spoken sentences, at most 70 words, then stop. Use only facts "
-            "from the job posting above; when it does not cover the question, say so plainly and say the team will "
+            f"from the {'prep pack' if self.from_session else 'job posting'} above; when it does not cover the question, say so plainly and say the team will "
             "follow up. Do not invent names, numbers, salaries or dates. If the candidate has no question, reply with "
             "one short friendly sentence."])
 
@@ -806,6 +856,7 @@ class SimRuntime:
             self._status("error", "the sim pack has no questions")
             self.finished.set()
             return
+        self._questions = questions
         await self._prewarm()
         if self.start_background:
             self._spawn(self._background())
@@ -818,11 +869,12 @@ class SimRuntime:
             if not self._ending:
                 await self._candidate_phase()
             self._take_action()
-            self._say_fixed(CLOSE_LINE_EARLY if self._ending else CLOSE_LINE)
+            self._say_fixed(self._fixed("close_early" if self._ending else "close"))
             self._complete = True
             self._write_results()
             await self._report()
         finally:
+            self._drop_prefetch()
             self.finished.set()
 
     async def _question(self, q: dict, index: int, total: int) -> None:
@@ -834,11 +886,14 @@ class SimRuntime:
         planned = _clean(str(q.get("text", "")))
         coaching = False
         try:
-            line_id, text = await self._interruptible(self._say_model(
-                "ASK", rec.q_id, "S", cfg.ask_max_tokens, self.ask_tail(q, index, total), planned))
+            line_id, text = await self._interruptible(self._open_line(q, index, total, planned))
             self._record_line(rec, line_id, text, "question")
             followups = 0
+            first_listen = True
             while True:
+                if first_listen:
+                    first_listen = False
+                    self._start_prefetch(index, total)     # runs while the candidate answers; `listen` goes out first
                 kind, payload = await self._listen(rec.q_id, line_id, text)
                 if kind == "skip":
                     rec.skipped = True
@@ -873,6 +928,76 @@ class SimRuntime:
         finally:
             self.blocks.append(self._block(q, rec))
             self.cur = None
+
+    # ------------------------------------------------------------------ speculative ASK
+    async def _open_line(self, q: dict, index: int, total: int, planned: str) -> tuple[str, str]:
+        """Say the question: the prefetched line when there is one for it, else the normal ASK. Returns (line_id, text)."""
+        pf, self._pf = self._pf, None
+        if pf is not None and pf["q_id"] == str(q["id"]):
+            pf["claimed"] = True        # a call still running is awaited below; its line is then said, not announced
+            task = pf["task"]
+            if pf["sentences"] is None and task is not None and not task.done():
+                await asyncio.wait({task}, timeout=self.config.prefetch_wait_s)
+                if not task.done():
+                    pf["dropped"] = True
+                    task.cancel()
+                    self._metric(pf["q_id"], "prefetch_timeout")
+            if pf["sentences"]:
+                sentences = pf["sentences"]
+                emit = self._say_events(pf["line_id"])
+                for k, sentence in enumerate(sentences):
+                    emit(sentence, k == len(sentences) - 1)
+                self._await_spoken = pf["line_id"]
+                self._metric(pf["q_id"], "prefetch_used", line_id=pf["line_id"])
+                return pf["line_id"], " ".join(sentences)
+        elif pf is not None:
+            self._abandon(pf)
+        return await self._say_model("ASK", str(q["id"]), "S", self.config.ask_max_tokens,
+                                     self.ask_tail(q, index, total), planned)
+
+    def _start_prefetch(self, index: int, total: int) -> None:
+        """At the first `listen` of planned question `index` (1-based): start the next planned question's line."""
+        if (not self.config.prefetch or index >= total or self._pf is not None or self._ending or self._action is not None
+                or index >= len(self._questions)):
+            return
+        nq = self._questions[index]
+        pf = {"q_id": str(nq["id"]), "line_id": self._next_line_id(), "sentences": None, "task": None}
+        self._pf = pf
+        pf["task"] = self._spawn(self._prefetch_run(pf, nq, index + 1, total))
+
+    async def _prefetch_run(self, pf: dict, nq: dict, index: int, total: int) -> None:
+        acks = ACK_LINES.get(self.lang, ACK_LINES["en"])
+        ack = acks[self._ack_i % len(acks)]
+        self._ack_i += 1
+        sent = _Sentences(lambda _s, _final: None)
+        try:
+            await self._call("ASK_PREFETCH", pf["q_id"], "S", self.config.ask_max_tokens,
+                             self.ask_tail(nq, index, total, speculative=True), sent.feed)
+        except TransportError as e:
+            log.warning("speculative ASK failed: %s", e)
+            self._metric(pf["q_id"], "prefetch_failed", error=type(e).__name__)
+            return
+        if not sent.close():
+            self._metric(pf["q_id"], "prefetch_failed", error="empty")
+            return
+        if pf.get("dropped") or self._ending or self._action == "end" or self.stopped.is_set():
+            return
+        pf["sentences"] = [ack, *sent.parts]
+        if pf.get("claimed"):
+            return                  # the question is already waiting for this line: it is said at once, no announcement
+        self.emitter.emit({"type": "say_prefetch", "id": pf["line_id"], "q_id": pf["q_id"], "sentences": list(pf["sentences"])})
+        self._metric(pf["q_id"], "prefetch_ready", line_id=pf["line_id"])
+
+    @staticmethod
+    def _abandon(pf: dict) -> None:
+        pf["dropped"] = True
+        if pf["task"] is not None and not pf["task"].done():
+            pf["task"].cancel()
+
+    def _drop_prefetch(self) -> None:
+        pf, self._pf = self._pf, None
+        if pf is not None:
+            self._abandon(pf)
 
     def _block(self, q: dict, rec: QRec) -> str:
         body = rec.exchange() if rec._lines else "(not asked)"
@@ -944,13 +1069,14 @@ class SimRuntime:
         cfg = self.config
         self._drain_inbox()
         warm = self._spawn(self._warm_sonnet())   # writes the Sonnet cache while the candidate speaks
-        line_id = self._say_fixed(CANDIDATE_Q_LINE)
-        last_id, last_text = line_id, CANDIDATE_Q_LINE
+        cq = self._fixed("candidate_q")
+        line_id = self._say_fixed(cq)
+        last_id, last_text = line_id, cq
         try:
             while True:
                 kind, payload = await self._listen(CANDIDATE_Q_ID, last_id, last_text)
                 if kind == "repeat":
-                    last_id = self._say_fixed(CANDIDATE_Q_LINE)
+                    last_id = self._say_fixed(cq)
                     continue
                 if kind in ("skip", "end"):
                     return
@@ -960,7 +1086,7 @@ class SimRuntime:
                 await asyncio.wait({warm}, timeout=cfg.answer_warm_wait_s)
             _lid, reply = await self._interruptible(self._say_model(
                 "ANSWER", CANDIDATE_Q_ID, "D", cfg.answer_max_tokens, self.answer_tail(payload["text"]),
-                ANSWER_FALLBACK))
+                self._fixed("answer_fallback")))
             self.candidate["reply"] = reply
         except _Interrupted:
             self._take_action()
