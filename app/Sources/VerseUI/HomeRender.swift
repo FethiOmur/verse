@@ -618,7 +618,7 @@ public enum HomeRender {
         // practice
 
         private func fillPractice() {
-            sim.postingLink = "brightwave.example/careers/ai-engineer"
+            sim.postingLink = "brightwave.com/careers/ai-engineer"
             sim.pasteText = "AI Engineer · Brightwave\nRemote, Europe. You'll build the agents that answer e-commerce customers on WhatsApp and email, own evaluation, and ship weekly with a team of six. You have shipped LLM features to production and care about evals."
             sim.usePastedText()
             sim.confirmPosting()

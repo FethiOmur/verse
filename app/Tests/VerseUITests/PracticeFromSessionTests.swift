@@ -136,7 +136,7 @@ final class PracticeFromSessionTestsMeetings: XCTestCase {
         try FileManager.default.createDirectory(at: root.appendingPathComponent("stray-folder"), withIntermediateDirectories: true)
         let list = PracticeMeetings.list(root: root)
         XCTAssertEqual(list.map(\.name), ["mara-northwindlabs", "ironwood-lena"], "prepared only, newest first")
-        XCTAssertEqual(list.map(\.title), ["Mara northwindlabs", "Ironwood Lena"])
+        XCTAssertEqual(list.map(\.title), ["Mara Northwindlabs", "Ironwood Lena"])
     }
 
     func testNewestFirstUsesTheLatestSignalOfEachSession() throws {

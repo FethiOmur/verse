@@ -13,9 +13,9 @@ private func homeScratch() throws -> URL {
 
 final class HomeSessionParsingTests: XCTestCase {
     func testFolderTitles() {
-        XCTAssertEqual(HomeSession.title(forFolder: "mara-northwindlabs"), "Mara northwindlabs")
+        XCTAssertEqual(HomeSession.title(forFolder: "mara-northwindlabs"), "Mara Northwindlabs")
         XCTAssertEqual(HomeSession.title(forFolder: "conv-20261015-1857-northwind-labs"), "Northwind Labs")
-        XCTAssertEqual(HomeSession.title(forFolder: "sim-20261015-0930-brightwave"), "Practice · brightwave")
+        XCTAssertEqual(HomeSession.title(forFolder: "sim-20261015-0930-brightwave"), "Practice · Brightwave")
         XCTAssertEqual(HomeSession.title(forFolder: "Brightwave case review"), "Brightwave case review", "a folder named like a title is kept")
     }
 

@@ -42,7 +42,7 @@ public struct HomeSession: Identifiable, Equatable, Sendable {
     /// The second line of a Sessions row after the day: the route of an adhoc session, else the kind.
     public var kindText: String { routeLabel ?? kind.label }
 
-    /// `sim-20261015-0930-brightwave` -> "Practice · brightwave"; `conv-20261015-1857-northwind-labs` -> "Northwind Labs".
+    /// `sim-20261015-0930-brightwave` -> "Practice · Brightwave"; `conv-20261015-1857-northwind-labs` -> "Northwind Labs".
     static func title(forFolder name: String) -> String {
         // A folder named like a title already reads as one.
         if name.contains(" "), !name.hasPrefix("sim-") { return name }

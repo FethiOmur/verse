@@ -46,8 +46,8 @@ final class FolderSuggesterTests: XCTestCase {
 
     func testTheLongestNameWinsAndATieGoesToTheMostRecentlyUsedFolder() {
         let short = folder("Rank"), long = folder("Northwind Labs")
-        XCTAssertEqual(FolderSuggester.suggestion(for: signals("northwindlabs-intro"), folders: [short, long]), .existing(long))
-        XCTAssertEqual(FolderSuggester.suggestion(for: signals("northwindlabs-intro"), folders: [long, short]), .existing(long))
+        XCTAssertEqual(FolderSuggester.suggestion(for: signals("northwind-labs-intro"), folders: [short, long]), .existing(long))
+        XCTAssertEqual(FolderSuggester.suggestion(for: signals("northwind-labs-intro"), folders: [long, short]), .existing(long))
 
         // Two folders of the same length that both match: the one used last.
         let x = folder("Delta One", used: 0), y = folder("Delta Two", used: 900)
@@ -64,12 +64,12 @@ final class FolderSuggesterTests: XCTestCase {
         XCTAssertNil(FolderSuggester.suggestion(for: signals("sim-y", sim: "Unknown company"), folders: []), "the sim prep's placeholder is not a company")
         XCTAssertNil(FolderSuggester.suggestion(for: signals("c", conv: String(repeating: "x", count: 61)), folders: []))
         // An existing folder that matched blocks the new one, even when it was turned down.
-        XCTAssertNil(FolderSuggester.suggestion(for: signals("c", conv: "Northwind Labs"), folders: [folder("Northwind Labs")], dismissed: ["northwindlabs"]))
+        XCTAssertNil(FolderSuggester.suggestion(for: signals("c", conv: "Northwind Labs"), folders: [folder("Northwind Labs")], dismissed: ["northwind labs"]))
     }
 
     func testADismissedSuggestionIsNotSuggestedAgain() {
         let plural = folder("Ironwood")
-        XCTAssertNil(FolderSuggester.suggestion(for: signals("ironwood-lena"), folders: [plural], dismissed: ["ironwood"]))
+        XCTAssertNil(FolderSuggester.suggestion(for: signals("ironwood-lena"), folders: [plural], dismissed: ["IRONWOOD"]))
         XCTAssertNil(FolderSuggester.suggestion(for: signals("c", conv: "Northwind Labs"), folders: [], dismissed: ["Northwind Labs"]))
         // Another match is still offered.
         let lena = folder("Lena")

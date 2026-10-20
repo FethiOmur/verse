@@ -90,7 +90,7 @@ final class PostingFetcherTests: XCTestCase {
         let p = try await PostingFetcher.fetch(u, session: session)
         XCTAssertEqual(p.source, .ashby)
         XCTAssertEqual(p.title, "AI Engineer")
-        XCTAssertEqual(p.company, "brightwave")
+        XCTAssertEqual(p.company, "Brightwave")
         XCTAssertTrue(p.text.hasPrefix("Ciao, we're Brightwave"), p.text.prefix(60).description)
         XCTAssertFalse(p.text.contains("<"))
     }

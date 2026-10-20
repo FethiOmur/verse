@@ -467,7 +467,7 @@ private struct PracticePage: View {
             SectionHeader(text: "Job posting")
             InsetGroup {
                 ValueRow(label: "Link") {
-                    Text("brightwave.example/careers/ai-engineer").font(VT.Font.body).foregroundStyle(ink.secondary)
+                    Text("brightwave.com/careers/ai-engineer").font(VT.Font.body).foregroundStyle(ink.secondary)
                 }
                 RowDivider()
                 VStack(alignment: .leading, spacing: 6) {
