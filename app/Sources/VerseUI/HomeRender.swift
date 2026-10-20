@@ -36,6 +36,11 @@ public enum HomeRender {
             Variant(suffix: "-increase-contrast", override: HomeA11yOverride(increaseContrast: true), pages: [.prepare]),
         ]
         var out: [URL] = []
+        // `VERSE_RENDER_ASK_ONLY=1`: only the Ask panel's states (the redesign work renders these over and over).
+        if ProcessInfo.processInfo.environment["VERSE_RENDER_ASK_ONLY"] != nil {
+            for dark in [false, true] { out += try await renderAsk(fixtures, dir: dir, dark: dark) }
+            return out
+        }
         for dark in [false, true] {
             // Sessions on a practice run: its report on the reading plate.
             if only?.contains(.sessions) ?? true {
@@ -70,18 +75,10 @@ public enum HomeRender {
                     out.append(url)
                 }
             }
-            // Sessions with the Ask panel open (F2b): a chat with citation chips, and the empty panel with its starters.
+            // Sessions with the Ask panel open: the three-turn chat, the same with a hovered citation, the empty state, a question being
+            // thought about, one being answered, and one that failed.
             if only?.contains(.sessions) ?? true {
-                for (name, session) in [("", fixtures.transcriptSession), ("-empty", fixtures.selectedSession)] {
-                    let router = HomeRouter()
-                    router.page = .sessions
-                    router.selectedSession = session
-                    let url = dir.appendingPathComponent("home-sessions-ask\(name)-\(dark ? "dark" : "light").png")
-                    var scene = Scene(context: fixtures.context(router: router), dark: dark, override: nil)
-                    scene.askRender = AskRenderState()
-                    try await capture(scene, size: canvas, dark: dark, to: url)
-                    out.append(url)
-                }
+                out += try await renderAsk(fixtures, dir: dir, dark: dark)
             }
             // Me: the usual state, and the one with "Sources changed · Refresh" (a build older than a week, a source changed).
             if only?.contains(.me) ?? true {
@@ -123,6 +120,30 @@ public enum HomeRender {
                     out.append(url)
                 }
             }
+        }
+        return out
+    }
+
+    /// `home-sessions-ask[-state]-<light|dark>.png`: the Ask panel on the Brightwave call (fictional transcript and chat).
+    static func renderAsk(_ fixtures: Fixtures, dir: URL, dark: Bool) async throws -> [URL] {
+        let states: [(String, AskRenderState)] = [
+            ("", AskRenderState(draft: "What should I say next time?")),
+            ("-hover", AskRenderState(hover: .init(question: "q4", stamp: "22:06"))),
+            ("-empty", AskRenderState(script: .empty)),
+            ("-thinking", AskRenderState(script: .thinking)),
+            ("-streaming", AskRenderState(script: .streaming)),
+            ("-failed", AskRenderState(script: .failed)),
+        ]
+        var out: [URL] = []
+        for (name, state) in states {
+            let router = HomeRouter()
+            router.page = .sessions
+            router.selectedSession = fixtures.transcriptSession
+            let url = dir.appendingPathComponent("home-sessions-ask\(name)-\(dark ? "dark" : "light").png")
+            var scene = Scene(context: fixtures.context(router: router), dark: dark, override: nil)
+            scene.askRender = state
+            try await capture(scene, size: canvas, dark: dark, to: url)
+            out.append(url)
         }
         return out
     }
@@ -308,6 +329,10 @@ public enum HomeRender {
             profileDir = root.appendingPathComponent("profile", isDirectory: true)
             try Self.writeProfile(into: profileDir)
             try Self.writeSessions(into: sessionsRoot)
+            // The controller was built over the real sessions folder (its init lists it); point it at the fictional one and list again,
+            // so nothing a render shows (the sidebar's Recent, Practice's meetings, Ask) can be one of the owner's own sessions.
+            controller.sessionsRoot = sessionsRoot
+            controller.refreshSessions()
             sessions = HomeSessionsModel(root: sessionsRoot)
             upNext = HomeUpNextModel(settings: settings, meeting: controller.meeting.settings, sessions: { [] })
             settings.sessionName = "mara-northwindlabs"
@@ -486,15 +511,17 @@ public enum HomeRender {
             try Data(chat.utf8).write(to: d.appendingPathComponent("chat.jsonl"))
         }
 
-        /// What Ask this meeting wrote for the call above (fictional): one pair before a reset (hidden), then two answers with chips.
+        /// What Ask this meeting wrote for the call above (fictional): one pair before a reset (hidden), then three answers with citations.
         static let chat = """
         {"type":"q","id":"q1","t":"2026-10-19T16:30:00Z","text":"Test question before the reset","model":"claude-sonnet-5-5"}
         {"type":"a","id":"a1","q":"q1","t":"2026-10-19T16:30:04Z","text":"Old answer [0:14]","model":"claude-sonnet-5-5","usage":{"input":9,"output":6,"cache_read":0,"cache_write":3400},"cost_usd":0.0215,"cost_estimated":false,"ms_first_token":1500,"ms_total":2100,"citations":["0:14"],"stop_reason":"end_turn","context":"full"}
         {"type":"reset","t":"2026-10-19T16:31:00Z"}
         {"type":"q","id":"q2","t":"2026-10-19T16:32:00Z","text":"What did Lena ask me?","model":"claude-sonnet-5-5"}
-        {"type":"a","id":"a2","q":"q2","t":"2026-10-19T16:32:05Z","text":"She asked four things: what you built at your last company [0:14], how you measured the six-days-to-two claim [1:20], what you stopped doing to get there [2:10], and how you handle a technical disagreement [4:05]. After the connection dropped she added what you would need in your first month [21:20].\\n- She pushed hardest on the measurement and called it a big claim [1:20].\\n- She closed by saying she will come back to you by Friday [22:06].","model":"claude-sonnet-5-5","usage":{"input":412,"output":196,"cache_read":0,"cache_write":3400},"cost_usd":0.0214,"cost_estimated":false,"ms_first_token":1840,"ms_total":4120,"citations":["0:14","1:20","2:10","4:05","21:20","22:06"],"stop_reason":"end_turn","context":"full"}
+        {"type":"a","id":"a2","q":"q2","t":"2026-10-19T16:32:05Z","text":"She asked four things: what you built at your last company [0:14], how you measured the six-days-to-two claim [1:20], what you stopped doing to get there [2:10], and how you handle a technical disagreement [4:05].\\n- She pushed hardest on the measurement and called it a big claim [1:20].\\n- After the connection dropped she added what you would need in your first month [21:20].","model":"claude-sonnet-5-5","usage":{"input":412,"output":196,"cache_read":0,"cache_write":3400},"cost_usd":0.0214,"cost_estimated":false,"ms_first_token":1840,"ms_total":4120,"citations":["0:14","1:20","2:10","4:05","21:20"],"stop_reason":"end_turn","context":"full"}
         {"type":"q","id":"q3","t":"2026-10-19T16:33:10Z","text":"Where was my answer weak?","model":"claude-sonnet-5-5"}
         {"type":"a","id":"a3","q":"q3","t":"2026-10-19T16:33:13Z","text":"The disagreement answer. You gave one example, the nightly job instead of a real-time one, but not what you would do if the other person still disagreed [4:41].","model":"claude-sonnet-5-5","usage":{"input":260,"output":88,"cache_read":3400,"cache_write":0},"cost_usd":0.0035,"cost_estimated":false,"ms_first_token":900,"ms_total":2400,"citations":["4:41"],"stop_reason":"end_turn","context":"full"}
+        {"type":"q","id":"q4","t":"2026-10-19T16:34:20Z","text":"What did I promise to do?","model":"claude-sonnet-5-5"}
+        {"type":"a","id":"a4","q":"q4","t":"2026-10-19T16:34:23Z","text":"Nothing firm. Lena is the one who committed: she will come back to you by Friday [22:06].\\n- You said what you would need to start: a sandbox account, one owner for the data export and the last two post-mortems [21:47].","model":"claude-sonnet-5-5","usage":{"input":240,"output":104,"cache_read":3400,"cache_write":0},"cost_usd":0.0041,"cost_estimated":false,"ms_first_token":880,"ms_total":2900,"citations":["22:06","21:47"],"stop_reason":"end_turn","context":"full"}
         """
 
         static let summaryText = """
