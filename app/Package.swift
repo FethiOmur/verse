@@ -104,6 +104,7 @@ let package = Package(
         .testTarget(
             name: "VerseUITests",
             dependencies: ["VerseUI", "VerseTurns", "VerseVoice", "VersePrompter", "VerseSpeech", "VerseMeet"],
+            exclude: ["Fixtures"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         // F5: calendar prep (EventKit) and meeting detection (Core Audio process input flags).

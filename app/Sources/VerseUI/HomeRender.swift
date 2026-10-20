@@ -45,6 +45,17 @@ public enum HomeRender {
                 let url = dir.appendingPathComponent("home-sessions-report-\(dark ? "dark" : "light").png")
                 try await capture(Scene(context: fixtures.context(router: router), dark: dark, override: nil), size: canvas, dark: dark, to: url)
                 out.append(url)
+
+                // Sessions in folders (F3): two folders and No folder; the selected row carries its suggestion chip.
+                let folderFixtures = try FolderFixtures()
+                defer { folderFixtures.cleanUp() }
+                let folderRouter = HomeRouter()
+                folderRouter.page = .sessions
+                folderRouter.selectedSession = folderFixtures.selectedSession
+                let folderURL = dir.appendingPathComponent("home-sessions-folders-\(dark ? "dark" : "light").png")
+                try await capture(Scene(context: fixtures.context(router: folderRouter, sessions: folderFixtures.sessions), dark: dark, override: nil),
+                                  size: canvas, dark: dark, to: folderURL)
+                out.append(folderURL)
             }
             // Sessions on a meeting with a transcript (F1): the Transcript tab, and again with a search shown.
             if only?.contains(.sessions) ?? true {
@@ -175,6 +186,76 @@ public enum HomeRender {
         override var canBecomeKey: Bool { true }
     }
 
+    // MARK: folder fixtures
+
+    /// The Sessions page with folders: fictional sessions in a temporary folder, two folders filled the way the app fills them
+    /// (a move by hand, a practice run that follows its source), and one unfiled session with a "new folder" suggestion.
+    @MainActor
+    final class FolderFixtures {
+        let root: URL
+        let sessions: HomeSessionsModel
+        let selectedSession = "Tideline Studio first call"
+        private let suite = "dev.fethiverse.verse.render-folders-\(UUID().uuidString)"
+
+        init() throws {
+            let fm = FileManager.default
+            let root = fm.temporaryDirectory.appendingPathComponent("verse-render-folders-\(UUID().uuidString)", isDirectory: true)
+            self.root = root
+            try fm.createDirectory(at: root, withIntermediateDirectories: true)
+            let cal = Calendar.current
+            let now = Date()
+            func at(_ daysAgo: Int, _ hour: Int, _ minute: Int) -> Date {
+                let d = cal.date(byAdding: .day, value: -daysAgo, to: now) ?? now
+                return cal.date(bySettingHour: hour, minute: minute, second: 0, of: d) ?? d
+            }
+            func write(_ name: String, _ date: Date, _ files: [String: String]) throws {
+                let d = root.appendingPathComponent(name, isDirectory: true)
+                try fm.createDirectory(at: d, withIntermediateDirectories: true)
+                try Data().write(to: d.appendingPathComponent("pack.md"))
+                for (f, text) in files {
+                    let u = d.appendingPathComponent(f)
+                    try Data(text.utf8).write(to: u)
+                    try fm.setAttributes([.modificationDate: date], ofItemAtPath: u.path)
+                }
+            }
+            func summary(_ who: String, _ line: String) -> String {
+                "# Meeting summary\n\n_generated fixture_\n\n## Summary\n\n\(who) \(line)\n\n## Actions\n\n- Send the notes by Friday\n- Share the draft pricing sheet\n"
+            }
+            try write("Harbor Ledger pricing call", at(0, 14, 30), ["summary.md": summary("Dana from Harbor Ledger", "wants per-seat pricing for the pilot.")])
+            try write("Harbor Ledger kickoff", at(3, 11, 0), ["summary.md": summary("Dana from Harbor Ledger", "described the invoice-matching backlog.")])
+            try write("sim-20261018-0900-Harbor Ledger kickoff", at(2, 9, 0),
+                      ["report.html": FolderFixtures.report,
+                       "sim.json": #"{"source":"session","source_session":"Harbor Ledger kickoff","company":"Harbor Ledger"}"#])
+            try write("Northwind Labs intro call", at(4, 15, 0), ["summary.md": summary("Theo from Northwind Labs", "is hiring a first applied-ML engineer.")])
+            try write("Northwind Labs technical review", at(8, 10, 30), ["summary.md": summary("Theo and Mira from Northwind Labs", "walked through the retrieval stack.")])
+            try write("Tideline Studio first call", at(1, 16, 0),
+                      ["summary.md": summary("Ines from Tideline Studio", "wants a prototype of the booking assistant."),
+                       "meta.json": #"{"conversation":{"company":"Tideline Studio"}}"#])
+            try write("adhoc-20261019-0905-meeting", at(1, 9, 5), ["summary.md": summary("A short unplanned call:", "scheduling a follow-up."),
+                                                                 "meta.json": #"{"kind":"adhoc","lang":"en","mode":"unprepared","route":"meeting"}"#])
+            try write("Earlier sync with Dana", at(12, 10, 0), ["summary.md": summary("Dana", "checked in on the pilot timeline.")])
+
+            let defaults = UserDefaults(suiteName: suite) ?? .standard
+            defaults.removePersistentDomain(forName: suite)
+            let sessions = HomeSessionsModel(root: root, defaults: defaults)
+            self.sessions = sessions
+            let harbor = try sessions.folders.create(name: "Harbor Ledger")
+            let northwind = try sessions.folders.create(name: "Northwind Labs")
+            for s in ["Harbor Ledger pricing call", "Harbor Ledger kickoff"] { try sessions.folders.move(s, to: harbor.id) }
+            for s in ["Northwind Labs intro call", "Northwind Labs technical review"] { try sessions.folders.move(s, to: northwind.id) }
+            sessions.setMode(.folders)
+            // The practice run follows its source session into Harbor Ledger.
+            sessions.reload()
+        }
+
+        func cleanUp() {
+            try? FileManager.default.removeItem(at: root)
+            UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        }
+
+        static let report = Fixtures.sampleReport
+    }
+
     // MARK: fixtures
 
     /// The mockups' sample content, in real models and a temporary folder.
@@ -219,9 +300,9 @@ public enum HomeRender {
             fillPractice()
         }
 
-        func context(router: HomeRouter, staleMe: Bool = false) -> HomeContext {
+        func context(router: HomeRouter, staleMe: Bool = false, sessions override: HomeSessionsModel? = nil) -> HomeContext {
             HomeContext(settings: settings, controller: controller, simSettings: simSettings, sim: sim, conversation: conversation,
-                        sessions: sessions, upNext: upNext, me: meModel(stale: staleMe), router: router)
+                        sessions: override ?? sessions, upNext: upNext, me: meModel(stale: staleMe), router: router)
         }
 
         /// The Me page's model over the fictional profile. `stale`: a source changed and the build is more than a week old.

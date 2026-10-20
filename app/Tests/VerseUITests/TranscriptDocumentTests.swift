@@ -333,7 +333,10 @@ final class TranscriptDocumentTests: XCTestCase {
         XCTAssertEqual(d.markdown(title: "Courier planner review", meta: meta, includeCards: false), try golden("expected-nocards.md"))
     }
 
+    @MainActor
     func testMetaLineAndAskRows() {
+        // The meta line follows the interface language; pin English so the result does not depend on the Mac's.
+        L10nState.shared.apply(.en, preferred: ["en"])
         let d = load("transcript-forward")
         let date = Date(timeIntervalSince1970: 1_792_100_000)
         XCTAssertEqual(TranscriptDocument.metaLine(date: date, kind: "Phone", turns: 12, timeZone: TimeZone(identifier: "UTC")!), "15 Oct 2026 · Phone · 12 turns")
