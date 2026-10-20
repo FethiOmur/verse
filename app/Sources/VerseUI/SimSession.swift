@@ -1,4 +1,5 @@
 import Foundation
+import VerseMeet
 import VerseTurns
 import VerseVoice
 
@@ -314,6 +315,28 @@ public struct PreparedMeeting: Identifiable, Equatable, Sendable {
     /// The newest of its summary, its prep (`meta.json` `created_at`) and its pack.
     public let date: Date
     public let dir: URL
+    /// The start of the calendar event this session belongs to (the soonest one in the next 14 days); nil when no upcoming
+    /// event maps to it.
+    public var eventStart: Date?
+}
+
+/// A calendar event the Meeting picker offers under "Upcoming": it has no prepared session yet.
+public struct UpcomingMeeting: Identifiable, Equatable, Sendable {
+    public let event: MeetingEvent
+    public var id: String { event.id }
+    public var start: Date { event.start }
+    public var title: String {
+        let t = event.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? L10n.tr("Untitled event") : t
+    }
+}
+
+/// One choice in the Meeting picker.
+public enum MeetingChoice: Hashable, Sendable {
+    /// A prepared session, by folder name.
+    case prepared(String)
+    /// A calendar event with no prepared session, by event id.
+    case upcoming(String)
 }
 
 /// Which sessions the Practice page offers for "A meeting", and what it shows about the chosen one. Read-only.
@@ -373,5 +396,79 @@ public enum PracticeMeetings {
               let o = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
               let s = o["created_at"] as? String else { return nil }
         return ISO8601DateFormatter().date(from: s)
+    }
+}
+
+// MARK: - the Meeting picker's two groups
+
+extension PracticeMeetings {
+    /// How far ahead the picker looks for calendar events.
+    public static let upcomingWindow: TimeInterval = 14 * 86_400
+
+    /// What the picker lists: the prepared sessions, and the calendar events that have none.
+    public struct Groups: Equatable, Sendable {
+        public var prepared: [PreparedMeeting]
+        public var upcoming: [UpcomingMeeting]
+        public var isEmpty: Bool { prepared.isEmpty && upcoming.isEmpty }
+    }
+
+    /// Splits the next `window` of calendar events into the two groups. An event belongs to a prepared session when
+    /// `MeetingSessionResolver` finds one (the id the app remembered, or one session named like the event); it then appears
+    /// only under Prepared, which shows its date through `eventStart`. Every other event is Upcoming, soonest first. A
+    /// recurring event comes with one entry per occurrence and one id: only its next occurrence counts.
+    public static func groups(prepared: [PreparedMeeting], events: [MeetingEvent], remembered: [String: String], now: Date,
+                              window: TimeInterval = upcomingWindow) -> Groups {
+        let names = prepared.map(\.name)
+        var starts: [String: Date] = [:]
+        var upcoming: [UpcomingMeeting] = []
+        var seen = Set<String>()
+        let inWindow = events.filter { $0.end > now && $0.start <= now.addingTimeInterval(window) }
+        for e in inWindow.sorted(by: { ($0.start, $0.id) < ($1.start, $1.id) }) {
+            if case .prepared(let name) = MeetingSessionResolver.plan(for: e, sessions: names, remembered: remembered, selected: nil) {
+                if starts[name] == nil { starts[name] = e.start }
+            } else if seen.insert(e.id).inserted {
+                upcoming.append(UpcomingMeeting(event: e))
+            }
+        }
+        return Groups(prepared: prepared.map { m in
+            var m = m
+            m.eventStart = starts[m.name]
+            return m
+        }, upcoming: upcoming)
+    }
+
+    /// The picker's rows, ready to show.
+    public struct PickerMenu: Equatable, Sendable {
+        public struct Entry: Equatable, Identifiable, Sendable {
+            public var id: MeetingChoice
+            public var label: String
+        }
+        public var prepared: [Entry]
+        public var upcoming: [Entry]
+    }
+
+    public static func menu(_ g: Groups, now: Date = Date()) -> PickerMenu {
+        PickerMenu(prepared: g.prepared.map { PickerMenu.Entry(id: .prepared($0.name), label: label($0.title, at: $0.eventStart, now: now)) },
+             upcoming: g.upcoming.map { PickerMenu.Entry(id: .upcoming($0.id), label: label($0.title, at: $0.start, now: now)) })
+    }
+
+    /// "Northwind Labs technical · Tomorrow 10:00"; just the title when there is no date.
+    public static func label(_ title: String, at start: Date?, now: Date = Date()) -> String {
+        guard let start else { return title }
+        return "\(title) · \(dayTime(start, now: now))"
+    }
+
+    /// "Today 15:00", "Tomorrow 10:00", "Thu 23 Oct 14:30".
+    public static func dayTime(_ d: Date, now: Date = Date()) -> String {
+        let cal = Calendar.current
+        let day: String
+        if cal.isDate(d, inSameDayAs: now) {
+            day = L10n.tr("Today")
+        } else if let tomorrow = cal.date(byAdding: .day, value: 1, to: now), cal.isDate(d, inSameDayAs: tomorrow) {
+            day = L10n.tr("Tomorrow")
+        } else {
+            day = d.formatted(HomeFormat.dayMonth)
+        }
+        return "\(day) \(d.formatted(HomeFormat.time))"
     }
 }

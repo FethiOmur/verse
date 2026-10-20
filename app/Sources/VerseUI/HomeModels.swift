@@ -412,20 +412,40 @@ public final class HomeUpNextModel: ObservableObject {
         guard let event = item.event, !preparing.contains(item.id) else { return }
         preparing.insert(item.id)
         message = nil
-        let lang = settings.language
-        let prepare = self.prepare
         Task { @MainActor in
             defer { preparing.remove(item.id) }
             do {
-                let dir = try await prepare(event, lang)
-                eventMap.remember(eventID: event.id, session: dir.lastPathComponent)
-                onPrepared(dir.lastPathComponent)
+                _ = try await prepareSession(for: event)
                 await refresh()
             } catch {
                 message = "Could not prepare \"\(item.title)\": \(error)"
             }
         }
     }
+
+    /// Prepares `event` from its invite (the call the Prepare button makes), remembers which session belongs to the event
+    /// and tells `onPrepared`. Returns the new session folder. The Practice page's "Upcoming" meetings use it too, so there
+    /// is one event-prep path.
+    public func prepareSession(for event: MeetingEvent) async throws -> URL {
+        let lang = settings.language
+        let prepare = self.prepare
+        let dir = try await prepare(event, lang)
+        eventMap.remember(eventID: event.id, session: dir.lastPathComponent)
+        onPrepared(dir.lastPathComponent)
+        return dir
+    }
+
+    /// Calendar events that end after now and start within `within`, soonest first, for pickers. Empty when "Use my calendar"
+    /// is off, full calendar access is not granted (this never asks) or the read fails. A fixed model (renders, tests that
+    /// call `setItems`) returns the events of its items.
+    public func upcomingEvents(within: TimeInterval, now: Date = Date()) async -> [MeetingEvent] {
+        if fixed { return items.compactMap(\.event) }
+        guard meeting.useCalendar, calendar.authorization() == .fullAccess else { return [] }
+        return (try? await calendar.upcoming(within: within, now: now)) ?? []
+    }
+
+    /// Event id -> session folder name, for the sessions the app prepared from an event.
+    public var rememberedSessions: [String: String] { eventMap.load() }
 
     /// "Today 14:30 · Zoom · in 4 minutes".
     static func meta(_ e: MeetingEvent, now: Date = Date()) -> String {

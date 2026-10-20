@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import VerseMeet
 import VersePosting
 import VerseTurns
 import VerseVoice
@@ -46,6 +47,26 @@ public final class SimController: ObservableObject {
     @Published public private(set) var lastTTSGaps: [SimRunner.TTSGap] = []
     /// The user picked the source himself; a refresh then keeps it.
     private var sourceChosen = false
+    // practice from an upcoming calendar event
+    /// Calendar events in the next 14 days, as the last `refreshUpcoming` read them (empty without calendar access).
+    @Published public private(set) var calendarEvents: [MeetingEvent] = []
+    /// The calendar event chosen in the Meeting popup (one with no prepared session); exclusive with `meetingName`.
+    @Published public private(set) var upcomingEventID: String?
+    /// The two steps of "Build interview" for an upcoming event; nil for a prepared meeting or a posting (one step).
+    public enum PrepStep: Equatable, Sendable {
+        /// Step 1 of 2: the meeting's own prep, from the calendar invite.
+        case invite
+        /// Step 2 of 2: the practice interview, from that session.
+        case interview
+    }
+    @Published public private(set) var prepStep: PrepStep?
+    /// Event id -> session folder name, read with the calendar events.
+    private var remembered: [String: String] = [:]
+    /// Where the events and the event prep come from (the Prepare page's Up next model).
+    private var upcomingSource: HomeUpNextModel?
+    /// Bumped when a prep flow starts or is cancelled; a flow whose token is stale stops quietly.
+    private var flowToken = 0
+    private let now: @Sendable () -> Date
 
     public let settings: AppSettings
     public let simSettings: SimSettings
@@ -66,11 +87,12 @@ public final class SimController: ObservableObject {
     private let meProfile: URL
 
     public init(settings: AppSettings, simSettings: SimSettings, meeting: VerseController,
-                meProfile: URL = MeProfilePaths.defaultDirectory) {
+                meProfile: URL = MeProfilePaths.defaultDirectory, now: @escaping @Sendable () -> Date = { Date() }) {
         self.settings = settings
         self.simSettings = simSettings
         self.meeting = meeting
         self.meProfile = meProfile
+        self.now = now
         setup.voice = simSettings.voiceKind
         lastReport = SimSessionFolder.reports().first
     }
@@ -88,15 +110,76 @@ public final class SimController: ObservableObject {
     public func refreshMeetings(upNext: [String?] = []) {
         guard phase != .preparing, phase != .running else { return }
         meetings = PracticeMeetings.list(root: sessionsRoot)
-        if meetingName == nil || !meetings.contains(where: { $0.name == meetingName }) {
+        // An upcoming event that is prepared now (or fell out of the window) is no longer an upcoming choice.
+        if upcomingEventID != nil, selectedUpcoming == nil { upcomingEventID = nil }
+        if upcomingEventID == nil, meetingName == nil || !meetings.contains(where: { $0.name == meetingName }) {
             meetingName = PracticeMeetings.defaultPick(upNext: upNext, among: meetings)
         }
+        settleSelection()
         updatePreview()
-        if meetings.isEmpty {
+        if meetings.isEmpty, groups.upcoming.isEmpty {
             setup.source = .posting
-        } else if !sourceChosen {
+        } else if !sourceChosen, !meetings.isEmpty {
             setup.source = .meeting
         }
+    }
+
+    /// With "A meeting" chosen and nothing selected (no prepared meeting, but calendar events), the soonest event is selected.
+    private func settleSelection() {
+        guard setup.source == .meeting, meetingName == nil, upcomingEventID == nil, let first = groups.upcoming.first else { return }
+        upcomingEventID = first.id
+    }
+
+    // MARK: upcoming calendar events
+
+    /// The Meeting popup's rows: prepared sessions (with the date of their calendar event, when one is in the next 14 days) and
+    /// the calendar events that have no prepared session.
+    public var groups: PracticeMeetings.Groups {
+        PracticeMeetings.groups(prepared: meetings, events: calendarEvents, remembered: remembered, now: now())
+    }
+
+    public var selectedUpcoming: UpcomingMeeting? { upcomingEventID.flatMap { id in groups.upcoming.first { $0.id == id } } }
+
+    /// The popup's current choice.
+    public var choice: MeetingChoice? {
+        if let id = upcomingEventID { return .upcoming(id) }
+        return meetingName.map { .prepared($0) }
+    }
+
+    public func choose(_ c: MeetingChoice?) {
+        switch c {
+        case .prepared(let name)?: selectMeeting(name)
+        case .upcoming(let id)?: selectUpcoming(id)
+        case nil: selectMeeting(nil)
+        }
+    }
+
+    /// Where the calendar events and the event prep come from: the same Up next model the Prepare page uses.
+    public func attachUpcoming(_ model: HomeUpNextModel?) { upcomingSource = model }
+
+    /// Reads the next 14 days of the calendar. Without access (or with the calendar off) the list is empty and the popup shows
+    /// only the prepared group. Skipped while a prep or a practice is running.
+    public func refreshUpcoming() async {
+        guard let source = upcomingSource else { return }
+        let events = await source.upcomingEvents(within: PracticeMeetings.upcomingWindow, now: now())
+        let map = source.rememberedSessions
+        guard phase != .preparing, phase != .running else { return }
+        calendarEvents = events
+        remembered = map
+        if upcomingEventID != nil, selectedUpcoming == nil { upcomingEventID = nil }
+        if upcomingEventID == nil, meetingName == nil { meetingName = PracticeMeetings.defaultPick(upNext: [], among: meetings) }
+        settleSelection()
+        updatePreview()
+        if !sourceChosen, !meetings.isEmpty { setup.source = .meeting }
+    }
+
+    /// The popup's choice of a calendar event that has no prepared session.
+    public func selectUpcoming(_ id: String) {
+        guard phase != .preparing, phase != .running, groups.upcoming.contains(where: { $0.id == id }) else { return }
+        upcomingEventID = id
+        meetingName = nil
+        updatePreview()
+        if phase == .prepared || phase == .finished { newInterview() }
     }
 
     /// The user's choice in the "Practise for" control.
@@ -104,6 +187,8 @@ public final class SimController: ObservableObject {
         sourceChosen = true
         guard s != setup.source else { return }
         setup.source = s
+        settleSelection()
+        updatePreview()
         if phase == .prepared || phase == .finished { newInterview() }
     }
 
@@ -111,6 +196,7 @@ public final class SimController: ObservableObject {
     public func selectMeeting(_ name: String?) {
         guard phase != .preparing, phase != .running else { return }
         meetingName = name
+        upcomingEventID = nil
         updatePreview()
         if phase == .prepared || phase == .finished { newInterview() }
     }
@@ -193,6 +279,7 @@ public final class SimController: ObservableObject {
     /// Where the session folder will be created (prep may add `-2` when that name is taken).
     public var expectedFolderName: String? {
         if setup.source == .meeting {
+            // An upcoming event has no session folder yet (prep names it), so there is nothing to predict for it.
             return selectedMeeting.map { SimSessionFolder.name(company: $0.name) }
         }
         guard let p = posting else { return nil }
@@ -203,7 +290,7 @@ public final class SimController: ObservableObject {
     // MARK: prep
 
     public var canPrepare: Bool {
-        let ready = setup.source == .meeting ? selectedMeeting != nil : postingConfirmed
+        let ready = setup.source == .meeting ? selectedMeeting != nil || (selectedUpcoming != nil && upcomingSource != nil) : postingConfirmed
         return ready && phase != .preparing && phase != .running && !meeting.running
     }
 
@@ -214,46 +301,125 @@ public final class SimController: ObservableObject {
         }
         var s = setup
         s.fake = fake
+        flowToken += 1
+        let token = flowToken
         if s.source == .meeting {
-            guard let m = selectedMeeting else { return }
-            s.meetingSession = m.dir
             // The profile joins the pack when "Use my profile in every session" is on and it has been built.
             let me = meProfile.appendingPathComponent("me.md")
             s.meFile = settings.useMeProfile && FileManager.default.fileExists(atPath: me.path) ? me : nil
+            if let m = selectedMeeting {
+                s.meetingSession = m.dir
+            } else if let u = selectedUpcoming, let source = upcomingSource {
+                prepareFromInvite(u, source: source, setup: s, brainDir: brainDir, token: token)
+                return
+            } else {
+                return
+            }
         }
-        let p = SimPrep()
-        prep = p
+        beginPrep(step: nil)
+        logPrepStart(s)
+        Task { @MainActor in await runInterviewPrep(s, brainDir: brainDir, token: token) }
+    }
+
+    private func beginPrep(step: PrepStep?) {
         phase = .preparing
+        prepStep = step
         prepLines = []
         prepError = nil
         summary = nil
         sessionDir = nil
         prepStartedAt = Date()
+    }
+
+    private func logPrepStart(_ s: SimSetup) {
         log("prep start source=\(s.source.rawValue) me=\(s.meFile != nil) type=\(s.type.rawValue) difficulty=\(s.difficulty.rawValue) length=\(s.lengthMin) cv=\(s.cv != nil) note=\(!s.note.isEmpty) vault=\(s.useVault) repos=\(s.repos.count) fake=\(s.fake)")
+    }
+
+    /// The practice interview itself (S1 prep over a session or a posting).
+    private func runInterviewPrep(_ s: SimSetup, brainDir: URL, token: Int) async {
+        let p = SimPrep()
+        prep = p
+        let outcome = await p.run(s, brainDir: brainDir, root: sessionsRoot, onLine: { [weak self] l in
+            FileLog.shared.write("[sim prep] " + l)
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.prepLines.append(l) } }
+        })
+        prep = nil
+        guard token == flowToken else { return }
+        prepStep = nil
+        switch outcome {
+        case .done(let dir):
+            sessionDir = dir
+            summary = SimPackSummary.load(sessionDir: dir)
+            phase = .prepared
+            log("prep done \(dir.lastPathComponent)")
+        case .failed(let m):
+            prepError = m
+            phase = .setup
+            log("prep failed: \(m)")
+        case .cancelled:
+            phase = .setup
+            log("prep cancelled")
+        }
+    }
+
+    /// "Build interview" for a calendar event with no prepared session, in one flow: the event prep first (the Prepare page's
+    /// call, which also remembers the session for the event), then the practice interview from the session it made.
+    private func prepareFromInvite(_ u: UpcomingMeeting, source: HomeUpNextModel, setup start: SimSetup, brainDir: URL, token: Int) {
+        beginPrep(step: .invite)
+        log("prep start source=invite fake=\(start.fake)")
         Task { @MainActor in
-            let outcome = await p.run(s, brainDir: brainDir, root: sessionsRoot, onLine: { [weak self] l in
-                FileLog.shared.write("[sim prep] " + l)
-                DispatchQueue.main.async { MainActor.assumeIsolated { self?.prepLines.append(l) } }
-            })
-            prep = nil
-            switch outcome {
-            case .done(let dir):
-                sessionDir = dir
-                summary = SimPackSummary.load(sessionDir: dir)
-                phase = .prepared
-                log("prep done \(dir.lastPathComponent)")
-            case .failed(let m):
-                prepError = m
+            let dir: URL
+            do {
+                dir = try await source.prepareSession(for: u.event)
+                let pack = dir.appendingPathComponent("pack.md")
+                let size = (try? FileManager.default.attributesOfItem(atPath: pack.path))?[.size] as? Int ?? 0
+                guard size > 0 else { throw InvitePrepError.noPack(dir.lastPathComponent) }
+            } catch {
+                guard token == flowToken else { return }
+                prepError = L10n.tr("Could not prepare “\(u.title)” from its invite: \(String(describing: error))")
+                prepStep = nil
                 phase = .setup
-                log("prep failed: \(m)")
-            case .cancelled:
-                phase = .setup
-                log("prep cancelled")
+                log("invite prep failed: \(error)")
+                return
+            }
+            // The new session is a prepared meeting now, whether or not this flow goes on.
+            meetings = PracticeMeetings.list(root: sessionsRoot)
+            remembered = source.rememberedSessions
+            guard token == flowToken else {
+                log("invite prep finished after cancel \(dir.lastPathComponent)")
+                return
+            }
+            log("invite prep done \(dir.lastPathComponent)")
+            meetingName = dir.lastPathComponent
+            upcomingEventID = nil
+            prepStep = .interview
+            var s = start
+            s.meetingSession = dir
+            logPrepStart(s)
+            await runInterviewPrep(s, brainDir: brainDir, token: token)
+        }
+    }
+
+    enum InvitePrepError: Error, CustomStringConvertible {
+        case noPack(String)
+        var description: String {
+            switch self {
+            case .noPack(let n): return "prep wrote no pack for \(n)"
             }
         }
     }
 
-    public func cancelPrep() { prep?.cancel() }
+    public func cancelPrep() {
+        if let p = prep {
+            p.cancel()
+        } else if phase == .preparing, prepStep == .invite {
+            // The invite prep is a child process without a handle: let it finish, but stop the flow here.
+            flowToken += 1
+            prepStep = nil
+            phase = .setup
+            log("prep cancelled (invite)")
+        }
+    }
 
     // MARK: run
 

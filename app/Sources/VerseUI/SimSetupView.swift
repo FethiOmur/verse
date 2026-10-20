@@ -50,6 +50,11 @@ public struct SimSetupView: View {
             sim.refreshMeetings(upNext: upNext?.items.map(\.session) ?? [])
             takeRequestedMeeting()
         }
+        // The next 14 days of the calendar for the Meeting popup's Upcoming group; nothing without calendar access.
+        .task {
+            sim.attachUpcoming(upNext)
+            await sim.refreshUpcoming()
+        }
         .onChange(of: router.practiceSession) { _, _ in takeRequestedMeeting() }
         .accessibilityIdentifier("verse.home.practice")
     }
@@ -67,8 +72,8 @@ public struct SimSetupView: View {
         Binding(get: { sim.setup.source }, set: { sim.chooseSource($0) })
     }
 
-    private var meetingBinding: Binding<String> {
-        Binding(get: { sim.meetingName ?? "" }, set: { sim.selectMeeting($0.isEmpty ? nil : $0) })
+    private var meetingBinding: Binding<MeetingChoice?> {
+        Binding(get: { sim.choice }, set: { sim.choose($0) })
     }
 
     private var sourceGroup: some View {
@@ -78,17 +83,21 @@ public struct SimSetupView: View {
             }
             if fromMeeting {
                 HomeRowDivider()
-                if sim.meetings.isEmpty {
+                let groups = sim.groups
+                if groups.isEmpty {
                     HomeRow("Meeting", detail: "No prepared meeting yet. Prepare one first, or practise from a job posting.") {
                         HomeSecondaryButton("Prepare") { router.page = .prepare }
                     }
                 } else {
                     HomeRow("Meeting") {
-                        HomePopup(selection: meetingBinding, options: sim.meetings.map { HomeOption(verbatim: $0.title, $0.name) })
+                        MeetingPopup(selection: meetingBinding, menu: PracticeMeetings.menu(groups, now: Date()))
                     }
                     if let p = sim.meetingPreview {
                         HomeRowDivider()
                         previewRow(p)
+                    } else if sim.selectedUpcoming != nil {
+                        HomeRowDivider()
+                        unpreparedRow
                     }
                 }
             }
@@ -112,6 +121,20 @@ public struct SimSetupView: View {
         .padding(.horizontal, 14).frame(minHeight: 40)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("verse.practice.meetingPreview")
+    }
+
+    /// The preview line of a calendar event that has no prepared session.
+    private var unpreparedRow: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "calendar.badge.clock").font(.system(size: 13, weight: .medium)).foregroundStyle(ink.tertiary)
+                .frame(width: 18)
+            Text("Not prepared yet: Verse prepares it from the invite first", bundle: .module)
+                .font(VT.Font.callout).foregroundStyle(ink.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14).frame(minHeight: 40)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("verse.practice.meetingNotPrepared")
     }
 
     // MARK: posting
@@ -252,7 +275,7 @@ public struct SimSetupView: View {
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 3) {
                         if fromMeeting {
-                            if sim.selectedMeeting == nil { HomeNote(text: "Choose a prepared meeting first.") }
+                            if sim.selectedMeeting == nil, sim.selectedUpcoming == nil { HomeNote(text: "Choose a meeting first.") }
                         } else if !sim.postingConfirmed {
                             HomeNote(text: "Confirm the posting first.")
                         }
@@ -281,6 +304,7 @@ public struct SimSetupView: View {
                     Spacer()
                     HomeSecondaryButton("Cancel", action: sim.cancelPrep)
                 }
+                if let step = sim.prepStep { PrepStepsList(step: step) }
                 if let l = sim.prepLines.last { Text(l).font(VT.Font.callout).foregroundStyle(ink.secondary).lineLimit(2) }
             case .prepared, .running, .finished:
                 if let s = sim.summary {
@@ -336,6 +360,80 @@ public struct SimSetupView: View {
         p.allowsMultipleSelection = true
         if p.runModal() == .OK {
             for u in p.urls where !sim.setup.repos.contains(u.path) { sim.setup.repos.append(u.path) }
+        }
+    }
+}
+
+/// The Meeting popup: prepared sessions first, then the calendar events that have none. A menu with two sections, drawn like
+/// `HomePopup` (value and chevrons); the checkmark is the picker's own.
+struct MeetingPopup: View {
+    @Binding var selection: MeetingChoice?
+    var menu: PracticeMeetings.PickerMenu
+    @Environment(\.homeInk) private var ink
+
+    private var current: String {
+        (menu.prepared + menu.upcoming).first { $0.id == selection }?.label ?? ""
+    }
+
+    var body: some View {
+        Menu {
+            if !menu.prepared.isEmpty {
+                Section {
+                    Picker("", selection: $selection) {
+                        ForEach(menu.prepared) { Text(verbatim: $0.label).tag(MeetingChoice?.some($0.id)) }
+                    }
+                    .pickerStyle(.inline).labelsHidden()
+                } header: { Text("Prepared", bundle: .module) }
+            }
+            if !menu.upcoming.isEmpty {
+                Section {
+                    Picker("", selection: $selection) {
+                        ForEach(menu.upcoming) { Text(verbatim: $0.label).tag(MeetingChoice?.some($0.id)) }
+                    }
+                    .pickerStyle(.inline).labelsHidden()
+                } header: { Text("Upcoming", bundle: .module) }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(verbatim: current).font(VT.Font.body).foregroundStyle(ink.primary).lineLimit(1).truncationMode(.tail)
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(ink.secondary)
+            }
+            .frame(maxWidth: 380, alignment: .trailing)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+        .accessibilityIdentifier("verse.practice.meetingPopup")
+    }
+}
+
+/// The two steps of building an interview for an upcoming calendar event: the meeting's prep from the invite, then the
+/// practice interview from it.
+struct PrepStepsList: View {
+    var step: SimController.PrepStep
+    @Environment(\.homeInk) private var ink
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            row(done: step == .interview, active: step == .invite) { Text("Step 1 of 2 · Prepare the meeting from its invite", bundle: .module) }
+            row(done: false, active: step == .interview) { Text("Step 2 of 2 · Build the practice interview", bundle: .module) }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("verse.practice.prepSteps")
+    }
+
+    private func row<L: View>(done: Bool, active: Bool, @ViewBuilder _ label: () -> L) -> some View {
+        HStack(spacing: 8) {
+            ZStack {
+                if done {
+                    Image(systemName: "checkmark.circle.fill").font(.system(size: 13)).foregroundStyle(ink.secondary)
+                } else if active {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: "circle").font(.system(size: 13)).foregroundStyle(ink.tertiary)
+                }
+            }
+            .frame(width: 16, height: 16)
+            label().font(VT.Font.callout).foregroundStyle(active ? ink.primary : (done ? ink.secondary : ink.tertiary))
         }
     }
 }
