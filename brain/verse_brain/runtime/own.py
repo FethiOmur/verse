@@ -20,6 +20,15 @@ two matched ones):
   `cont_ahead` after the cursor, at least `cont_min` content words matched and `cont_share` of its words on the path. The
   cursor belongs to the card on screen and is reset with it.
 
+* re-anchor: the three rules above follow one path. When he jumps on the card (skips a sentence, re-reads a line, starts from a
+  point) that path is lost, so a text that holds `anchor_min` or more content words on a near-consecutive path (at most `anchor_gap`
+  card content words skipped between two matched ones) with `anchor_share` of the text's content words on it is also his reading,
+  wherever on the card it sits, and the reading cursor moves there, forward or back. Function words never count toward the threshold
+  (only content words are aligned). It is stronger than the continue rule (2 words, near the cursor) on purpose: a question from
+  the other side that shares two or three card words must neither be taken for his reading nor move the cursor, and a single
+  matching word never does. Only the cursor moves: nothing is un-read or marked read here (the lines he skipped stay as they were).
+  The Swift twin is `RoomReadingGate` (`.anchor`) in `app/Sources/VerseUI/CardReading.swift`, with the same constants.
+
 A text that mixes his reading and the other person's next question ("... tends to stay high. Great, how would you describe
 yourself as a team member") is split when its path covers a prefix and at least `split_trail` words after it do not: the
 prefix is `me`, the remainder is a `room` text and is judged on its own for kind and probe (`Verdict.label == "split"`).
@@ -68,6 +77,12 @@ class OwnParams:
     cont_share: float = 0.60  # ... and this share of the text's words on the path
     cont_back: int = 2        # ... the first matched card word at most this far before the cursor (a word said twice)
     cont_ahead: int = 4       # ... and at most this far after it (words dropped or misheard between two fragments)
+    # re-anchor anywhere on the card (twin: RoomReadingGate.anchorMin / anchorGap / anchorShare in app/Sources/VerseUI/CardReading.swift).
+    # Fixtures: the nearest interviewer text quotes 4 consecutive card words with one more word of its own (4 of 5, 0.80), so the share
+    # sits above that; a short line read whole (4 of 4) passes.
+    anchor_min: int = 4       # content words on one near-consecutive path, wherever on the card (function words do not count)
+    anchor_gap: int = 1       # card content words that may be skipped between two matched ones (stricter than max_gap: near-consecutive)
+    anchor_share: float = 0.85  # share of the text's content words on that path
     split_trail: int = 4      # words after the path that do not match, to split a text there
     split_trail_content: int = 2   # ... of which at least this many are content words (four filler words are not another speaker)
     # one turn, many cumulative partials (live English call, 17 Oct): a turn once taken for his keeps its label while its share stays above `exit_share`
@@ -192,6 +207,41 @@ def aligned(text: list[str], card: list[str], max_gap: int) -> int:
     return len(align_path(text, card, max_gap))
 
 
+def anchor_path(text: list[str], card: list[str], max_gap: int, near: int = 0) -> list[tuple[int, int]]:
+    """Like `align_path`, but for re-anchoring: the path may begin anywhere on the card, and among equally long paths the one that
+    begins nearest to card position `near` wins (a line said twice anchors at the occurrence closest to the reading cursor).
+    Rank of a path = (matched pairs, -|start - near|); the first one found wins a tie, in the order i, j ascending.
+    Twin: `RoomReading.anchorPath` in app/Sources/VerseUI/CardReading.swift."""
+    n, m = len(text), len(card)
+    if n == 0 or m == 0:
+        return []
+    best: dict[tuple[int, int], tuple[int, tuple[int, int] | None, int]] = {}      # (i, j) -> (count, previous pair, start j)
+    top: tuple[int, int] | None = None
+
+    def rank(c: tuple[int, tuple[int, int] | None, int]) -> tuple[int, int]:
+        return c[0], -abs(c[2] - near)
+
+    for i in range(n):
+        for j in range(m):
+            if card[j] != text[i]:
+                continue
+            cur = (1, None, j)
+            for i2 in range(i):
+                for j2 in range(max(0, j - 1 - max_gap), j):
+                    c = best.get((i2, j2))
+                    if c is not None and rank((c[0] + 1, c[1], c[2])) > rank(cur):
+                        cur = (c[0] + 1, (i2, j2), c[2])
+            best[(i, j)] = cur
+            if top is None or rank(cur) > rank(best[top]):
+                top = (i, j)
+    path: list[tuple[int, int]] = []
+    node = top
+    while node is not None:
+        path.append(node)
+        node = best[node][1]
+    return path[::-1]
+
+
 @dataclass(frozen=True)
 class OwnScore:
     share: float              # matched / content words of the text
@@ -203,7 +253,7 @@ class OwnScore:
 @dataclass(frozen=True)
 class Cand:
     """The best path of one rule over the card(s) on screen."""
-    rule: str                 # "strict" | "start" | "continue"
+    rule: str                 # "strict" | "start" | "continue" | "stay" | "anchor"
     ok: bool
     key: str | None
     matched: int
@@ -386,6 +436,14 @@ class OwnSpeech:
                 good = m >= need_matched and cm >= need_content and sh >= need_share
                 return Cand(rule, good, key, m, cm, sh, pth[-1][0] if pth else -1, pth[-1][1] + 1 if pth else 0, pth[0][1] if pth else -1)
 
+            # anchor: content words only, near-consecutive, anywhere on the card (the reading may have jumped)
+            near = sum(1 for j in cidx if j < base.get(key, 0))
+            apath = anchor_path(mine, [ctoks[j].stem for j in cidx], p.anchor_gap, near) if mine else []
+            an = len(apath)
+            ash = an / len(mine) if mine else 0.0
+            offer(Cand("anchor", an >= p.anchor_min and ash >= p.anchor_share, key, an, an, ash, mine_idx[apath[-1][0]] if apath else -1,
+                       cidx[apath[-1][1]] + 1 if apath else 0, cidx[apath[0][1]] if apath else -1))
+
             heads = {0, *starts}
             offer(all_cand("start", lambda j: any(h <= j <= h + p.start_slack for h in heads), p.start_min, 1, p.start_share))
             if reading:
@@ -398,7 +456,22 @@ class OwnSpeech:
                 offer(all_cand("stay", lambda j: e - p.cont_back <= j <= e + p.cont_ahead, p.stay_min, 1, p.exit_share))
         return list(best.values())
 
-    def _note_me(self, c: Cand, now: float, track: TurnTrack | None = None) -> None:
+    def _anchor_move(self, c: Cand, cands: list[Cand], base: dict[str, int]) -> tuple[str, int, int] | None:
+        """Where the reading cursor must jump to (card key, card position of the first matched token, cursor after the last), or None
+        when the text continues the reading where it was. The anchor path decides; a broader path of the verdict that contains it (a
+        long reading with a gap in the middle) gives the far end, so a jump never lands before where the text really ends."""
+        a = next((x for x in cands if x.rule == "anchor" and x.ok and x.key is not None), None)
+        if a is None:
+            return None
+        first, cursor = a.first, a.cursor
+        if c.key == a.key and 0 <= c.first <= a.first and c.cursor >= a.cursor:
+            first, cursor = c.first, c.cursor
+        at = base.get(a.key or "", 0)
+        if at - self.p.cont_back <= first <= at + self.p.cont_ahead:
+            return None
+        return a.key or "", first, cursor
+
+    def _note_me(self, c: Cand, now: float, track: TurnTrack | None = None, move: tuple[str, int, int] | None = None) -> None:
         self.last_me = now
         if c.key is not None:
             self.cursor[c.key] = max(self.cursor.get(c.key, 0), c.cursor)
@@ -406,6 +479,11 @@ class OwnSpeech:
                 track.me = True
                 if track.entry is None and c.first >= 0:
                     track.entry = (c.key, c.first)
+        if move is not None:
+            key, first, cursor = move
+            self.cursor[key] = cursor                  # a jump: forward or back, not the max of the two
+            if track is not None and (track.entry is None or track.entry[0] != key):
+                track.entry = (key, first)
 
     def judge(self, text: str, lang: str = "en", already: bool = False, now: float | None = None,
               turn_id: str | None = None, final: bool = False) -> Verdict:
@@ -437,24 +515,35 @@ class OwnSpeech:
         if stay is not None and not final:
             # a partial of a turn that is already his: a dip in the middle of a turn is no split and no probe. Only the final
             # may still cut the turn where the next speaker's question starts.
-            self._note_me(stay, now, track)
+            self._note_me(stay, now, track, self._anchor_move(stay, whole, base))
             return Verdict("me", "stay", stay.share, stay.matched, info["content"], stay.key, reading, self.cursor.get(stay.key or ""))
         # a prefix on the card, then words that are not: the next speaker's question glued to the end of his reading
-        for k in sorted({c.end for c in whole if c.end >= 0}, reverse=True):
+        def trails(k: int) -> list[Tok]:
+            """The tokens after the word that token `k` belongs to, when they are enough to be another speaker; else []."""
+            rest = [t for t in toks if t.word > toks[k].word]
+            if len(rest) < self.p.split_trail or sum(1 for t in rest if t.content) < self.p.split_trail_content:
+                return []
+            return rest
+
+        # a rule that already takes the whole text (nothing left over after its path) leaves nothing to split: a weaker rule's path
+        # that happens to end earlier (the start rule's, say) must not cut a sentence he read through to its end
+        whole_ok = any(c.ok and c.end >= 0 and not trails(c.end) for c in whole)
+        for k in [] if whole_ok else sorted({c.end for c in whole if c.end >= 0}, reverse=True):
             w = toks[k].word
-            trail = [t for t in toks if t.word > w]
-            if len(trail) < self.p.split_trail or sum(1 for t in trail if t.content) < self.p.split_trail_content:
+            trail = trails(k)
+            if not trail:
                 continue
-            ok = [c for c in self._cands([t for t in toks if t.word <= w], lang, already, reading, base, entry) if c.ok and c.rule != "stay"]
+            cands = self._cands([t for t in toks if t.word <= w], lang, already, reading, base, entry)
+            ok = [c for c in cands if c.ok and c.rule != "stay"]
             if ok:
                 c = max(ok, key=lambda x: x.matched)
-                self._note_me(c, now, track)
+                self._note_me(c, now, track, self._anchor_move(c, cands, base))
                 return Verdict("split", c.rule, c.share, c.matched, sum(1 for t in toks if t.word <= w if t.content), c.key, reading,
                                self.cursor.get(c.key or ""), " ".join(words[:w + 1]), " ".join(words[w + 1:]))
         ok = [c for c in whole if c.ok]
         if ok:
             c = max(ok, key=lambda x: x.matched)
-            self._note_me(c, now, track)
+            self._note_me(c, now, track, self._anchor_move(c, whole, base))
             return Verdict("me", c.rule, c.share, c.matched, info["content"], c.key, reading, self.cursor.get(c.key or ""))
         top = max(whole, key=lambda c: c.matched, default=None)
         if top is not None and top.rule != "strict":
