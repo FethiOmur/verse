@@ -121,6 +121,8 @@ func parse(_ args: [String]) -> RunOptions {
 
 signal(SIGPIPE, SIG_IGN)
 let options = parse(CommandLine.arguments)
+// Once, off the main thread, before any model load: removes compile bundles that killed runs left in the Core ML cache.
+E5BundleCacheCleaner.startOnce { stderr("verse-run: " + $0) }
 let runner = VerseRunner(options: options, log: { stderr("verse-run: " + $0) })
 
 // SIGINT / SIGTERM / SIGHUP: stop listening, then the run shuts the brain down. A second signal, or a run that does
@@ -150,6 +152,9 @@ for sig in [SIGINT, SIGTERM, SIGHUP] {
 
 let code = await runner.run()
 BrainProcess.killAll()   // no-op when the run shut the brain down itself
+// Core ML renames its `.tmp.<pid>_` compile bundle to the final name only when the model is released; exit() with the
+// pooled models alive left one 100 MB tmp bundle per run (measured: 125 s replay, 0 committed; with this line, 4 committed, 0 tmp).
+await NemotronModel.unloadIdle()
 exit(code)
 
 final class LockedCounter: @unchecked Sendable {

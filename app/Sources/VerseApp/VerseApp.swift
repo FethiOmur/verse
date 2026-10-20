@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VerseSpeech
 import VerseTurns
 import VerseUI
 
@@ -146,6 +147,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        // Once, off the main thread, before any model load: removes compile bundles that killed runs left in the Core ML cache.
+        E5BundleCacheCleaner.startOnce { FileLog.shared.write($0) }
         // SIGTERM / SIGINT (e.g. `kill`, Ctrl-C on a dev run): quit the normal way, which shuts the brain down.
         for sig in [SIGTERM, SIGINT, SIGHUP] {
             signal(sig, SIG_IGN)
