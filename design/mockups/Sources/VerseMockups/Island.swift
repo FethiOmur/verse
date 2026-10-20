@@ -447,7 +447,7 @@ struct IslandView: View {
             .padding(.horizontal, VT.Radius.islandShoulder + 22).padding(.top, 10)
         case .prompter:
             VStack(alignment: .leading, spacing: 8) {
-                Text("Northwind Labs keeps shops on the first screen of Maps.")
+                Text("Northwind Labs keeps clinic calendars full.")
                     .font(VT.Font.prompterOther).foregroundStyle(Color.white.opacity(0.28)).lineLimit(1)
                 (Text("I build the tools that ").foregroundStyle(Color.white)
                  + Text("turn that into a product").foregroundStyle(Color.white.opacity(0.55)))

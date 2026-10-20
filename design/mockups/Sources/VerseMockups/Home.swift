@@ -349,14 +349,14 @@ private struct PreparePage: View {
             InsetGroup {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Conversation").font(VT.Font.body).foregroundStyle(ink.primary)
-                    Text("Mara Castellan · 14 Oct\nHi Alex, thanks for the call last week. We'd like to go deeper on the internal tools: the appointment reminder and the recall-followup agent are the two we'd turn into a SaaS first. Could you walk us through how you'd scope a v1…")
+                    Text("Mara Castellan · 14 Oct\nHi Alex, thanks for the call last week. We'd like to go deeper on the internal tools: the shift planner and the reminder agent are the two we'd turn into a SaaS first. Could you walk us through how you'd scope a v1…")
                         .font(VT.Font.body).foregroundStyle(ink.secondary).lineSpacing(3).lineLimit(4)
                     Text("1,842 characters · stays on this Mac").font(VT.Font.caption).foregroundStyle(ink.tertiary)
                 }
                 .padding(14)
                 RowDivider()
                 ValueRow(label: "Job posting") {
-                    Text("linkedin.com/jobs/view/9876543210").font(VT.Font.body).foregroundStyle(ink.secondary)
+                    Text("linkedin.com/jobs/view/0000000000").font(VT.Font.body).foregroundStyle(ink.secondary)
                     Image(systemName: "link").font(.system(size: 11)).foregroundStyle(ink.tertiary)
                 }
                 RowDivider()
@@ -430,11 +430,11 @@ private struct SessionsPage: View {
                 InsetGroup(plate: true) {
                     VStack(alignment: .leading, spacing: 14) {
                         Text("Summary").font(VT.Font.title).foregroundStyle(ink.primary)
-                        Text("Mara wants the appointment reminder and the recall-followup agent turned into one SaaS for independent dental clinics. He owns pricing; Marta owns onboarding. Budget is EUR 4–6k a month for a contractor, starting in November.")
+                        Text("Mara wants the shift planner and the reminder agent turned into one SaaS for regional dental clinics. She owns pricing; Jonas owns onboarding. Budget is €4–5k a month for a contractor, starting in November.")
                             .font(VT.Font.body).foregroundStyle(ink.primary).lineSpacing(4).fixedSize(horizontal: false, vertical: true)
                         Text("Follow up").font(VT.Font.title).foregroundStyle(ink.primary).padding(.top, 4)
-                        ForEach(["Send a one-page v1 scope by Friday", "Ask Marta for three agency logins to test with",
-                                 "Price the recall-followup agent per location, not per seat"], id: \.self) { t in
+                        ForEach(["Send a one-page v1 scope by Friday", "Ask Jonas for three clinic logins to test with",
+                                 "Price the reminder agent per location, not per seat"], id: \.self) { t in
                             HStack(spacing: 10) {
                                 Circle().strokeBorder(ink.tertiary, lineWidth: 1.3).frame(width: 15, height: 15)
                                 Text(t).font(VT.Font.body).foregroundStyle(ink.primary)
@@ -531,7 +531,7 @@ private struct ScriptsPage: View {
                 }
                 InsetGroup(plate: true) {
                     VStack(alignment: .leading, spacing: 12) {
-                        para("Northwind Labs keeps local businesses on the first screen of Maps. I build the tools that turn that into a product your team can sell without me in the room.")
+                        para("Northwind Labs keeps clinic calendars full. I build the tools that turn that into a product your team can sell without me in the room.")
                         Text("[pause, look at Mara]").font(.system(size: 15)).foregroundStyle(ink.tertiary)
                         HStack(spacing: 10) {
                             Rectangle().fill(ink.separator).frame(height: 1)
@@ -539,7 +539,7 @@ private struct ScriptsPage: View {
                             Rectangle().fill(ink.separator).frame(height: 1)
                         }
                         .padding(.vertical, 4)
-                        para("Two of your internal tools are already most of a SaaS: the appointment reminder and the recall-followup agent. A v1 is one login, one agency, fifty locations, and a weekly report the owner actually reads.")
+                        para("Two of your internal tools are already most of a SaaS: the shift planner and the reminder agent. A v1 is one login, one clinic group, twelve sites, and a weekly report the owner actually reads.")
                         para("I'd ship it in six weeks, behind your brand.")
                     }
                     .padding(22)

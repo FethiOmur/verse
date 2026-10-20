@@ -543,13 +543,13 @@ public enum HomeRender {
 
         ## Summary
 
-        Mara wants the appointment reminder and the recall-followup agent turned into one SaaS for independent dental clinics. He owns pricing; Marta owns onboarding. Budget is EUR 4–6k a month for a contractor, starting in November.
+        Mara wants the shift planner and the reminder agent turned into one SaaS for regional dental clinics. She owns pricing; Jonas owns onboarding. Budget is €4–5k a month for a contractor, starting in November.
 
         ## Actions
 
         - Send a one-page v1 scope by Friday
-        - Ask Marta for three agency logins to test with
-        - Price the recall-followup agent per location, not per seat
+        - Ask Jonas for three clinic logins to test with
+        - Price the reminder agent per location, not per seat
         """
 
         static let sampleReport = """
@@ -574,13 +574,13 @@ public enum HomeRender {
             let store = ScriptStore(directory: root.appendingPathComponent("scripts", isDirectory: true))
             let scripts: [(String, String)] = [
                 ("Northwind Labs pitch", """
-                Northwind Labs keeps local businesses on the first screen of Maps. I build the tools that turn that into a product your team can sell without me in the room.
+                Northwind Labs keeps clinic calendars full. I build the tools that turn that into a product your team can sell without me in the room.
 
                 [pause, look at Mara]
 
                 ---
 
-                Two of your internal tools are already most of a SaaS: the appointment reminder and the recall-followup agent. A v1 is one login, one agency, fifty locations, and a weekly report the owner actually reads.
+                Two of your internal tools are already most of a SaaS: the shift planner and the reminder agent. A v1 is one login, one clinic group, twelve sites, and a weekly report the owner actually reads.
 
                 I'd ship it in six weeks, behind your brand.
                 """),
@@ -601,8 +601,8 @@ public enum HomeRender {
         // prepare
 
         private func fillPrepare() {
-            conversation.thread = "Mara Castellan · 14 Oct\nHi Alex, thanks for the call last week. We'd like to go deeper on the internal tools: the appointment reminder and the recall-followup agent are the two we'd turn into a SaaS first. Could you walk us through how you'd scope a v1?"
-            conversation.postingLink = "linkedin.com/jobs/view/9876543210"
+            conversation.thread = "Mara Castellan · 14 Oct\nHi Alex, thanks for the call last week. We'd like to go deeper on the internal tools: the shift planner and the reminder agent are the two we'd turn into a SaaS first. Could you walk us through how you'd scope a v1?"
+            conversation.postingLink = "linkedin.com/jobs/view/0000000000"
             conversation.companyURL = "northwindlabs.com"
             conversation.note = "Ask who owns pricing and the SaaS roadmap"
             let cal = Calendar.current
