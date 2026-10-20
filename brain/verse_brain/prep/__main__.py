@@ -1,5 +1,11 @@
 """CLI: python -m verse_brain.prep --prep-note PATH --repo PATH [--repo PATH...] --lang en[,it,tr] --out DIR
 
+A note over ~20000 chars (or a bank over 40 questions on a note over 8000 chars) is split at its `---` rules and `#`/`##`
+headings into sections of 12-18k chars; the note header goes into every section call, each section gets a share of
+--max-questions, the results are merged and one pack.md is built. --budget-usd caps the total of all section calls (no new
+section starts when its projected cost would pass it); meta.json "sections" has the usage and cost of every section.
+Notes up to 250000 chars are accepted. See prep/sections.py and prep/pipeline.py.
+
 --live runs the bundled sample prep note with the real model (budget < $0.50) and prints a summary.
 --from-event EVENT.json builds the prep note from a calendar event (F5); add --fake for an offline run (no network, no key).
 
@@ -109,7 +115,9 @@ def _main(argv: list[str]) -> int:
     ap.add_argument("--vault", type=Path, default=DEFAULT_VAULT)
     ap.add_argument("--no-vault", action="store_true", help="skip beyin.py retrieval")
     ap.add_argument("--vault-audience", choices=["internal", "public"], default="internal")
-    ap.add_argument("--budget-usd", type=float, default=1.0, help="hard cap used to size max_tokens")
+    ap.add_argument("--budget-usd", type=float, default=1.0,
+                    help="hard cap on the total spend of all section calls: it sizes max_tokens, and no new section starts "
+                         "when its projected cost would pass it (a long note needs about $0.5 per 15k chars section)")
     ap.add_argument("--from-event", type=Path, metavar="EVENT.json",
                     help="build the prep note from a calendar event JSON (id, title, start, end, attendees, notes, url, provider)")
     ap.add_argument("--fake", action="store_true",
@@ -202,7 +210,14 @@ def _main(argv: list[str]) -> int:
     print(f"pack tokens: {st['pack_tokens']} / cap {st['pack_cap']} (trimmed {st['pack_trimmed']})")
     u = meta["prep_usage"]
     print(f"usage: in {u['input']} out {u['output']} cache_read {u['cache_read']} cache_write {u['cache_write']}")
-    print(f"spend: ${meta['prep_spend_usd']:.4f}")
+    print(f"spend: ${meta['prep_spend_usd']:.4f} of ${meta.get('budget_usd', a.budget_usd):.2f} budget")
+    secs = meta.get("sections", [])
+    if len(secs) > 1:
+        print(f"sections: {st.get('sections_run', 0)} run of {len(secs)}")
+        for r in secs:
+            print(f"  section {r['index']}: lines L{r['lines'][0]}-L{r['lines'][1]} | {r['chars']} chars | quota {r['quota']} | "
+                  f"{r['status']} | bank {r['bank']} facts {r['facts']} terms {r['terms']} | out {r['usage']['output']} | "
+                  f"${r['spend_usd']:.4f}")
     for w in meta["warnings"]:
         print(f"warning: {w}")
     return 0

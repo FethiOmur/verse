@@ -155,6 +155,14 @@ def _num(tok: str) -> float:
     return float(re.sub(r"[.,]", "", tok))
 
 
+def _num_usd(tok: str) -> float:
+    """A `$` amount with exactly one point and no comma is dollars.cents with any number of decimals ($1.152 is one
+    dollar and 15.2 cents, not 1,152). Anything else (`$1,152`, `$1,152.50`, `$12.345.678`) reads as before."""
+    if re.fullmatch(r"\d+\.\d+", tok):
+        return float(tok)
+    return _num(tok)
+
+
 def _mult(s: str | None) -> float:
     return MULT.get(s.strip().casefold(), 1.0) if s else 1.0
 
@@ -380,10 +388,11 @@ def _sentence_mentions(sent: str, ref: str, src_kind: str, sid: tuple[str, int, 
             return
         cur = CURRENCY.get(m["cur"].casefold().strip(), "")
         s1, s2 = m["s1"], m["s2"]
-        a1 = _num(m["a1"]) * _mult(s1)
-        a2 = _num(m["a2"]) * _mult(s2) if m["a2"] else None
-        if a2 is not None and s1 is None and s2 is not None and _num(m["a1"]) < 1000:  # "€40-45K"
-            a1 = _num(m["a1"]) * _mult(s2)
+        num = _num_usd if m["cur"] == "$" else _num
+        a1 = num(m["a1"]) * _mult(s1)
+        a2 = num(m["a2"]) * _mult(s2) if m["a2"] else None
+        if a2 is not None and s1 is None and s2 is not None and num(m["a1"]) < 1000:  # "€40-45K"
+            a1 = num(m["a1"]) * _mult(s2)
         lo, hi = (a1, a1) if a2 is None else (min(a1, a2), max(a1, a2))
         disp = f"{cur} {_fmt(lo)}" + (f"-{_fmt(hi)}" if hi != lo else "")
         add("money", m.start(), m.end(), disp, lo, hi, (lo, hi) if hi != lo else (lo,), cur)
