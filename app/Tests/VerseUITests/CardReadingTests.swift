@@ -283,4 +283,155 @@ struct CardReadingTests {
         reading.ingest(roomEvent("the short version of", start: 1, final: true))
         #expect(reading.spoken(for: opener) >= 7)
     }
+
+    // MARK: re-anchoring anywhere on the card (twin: brain/tests/test_runtime_reanchor.py)
+
+    private let s1 = "I built the invoice pipeline at Lantern."                                    // words 0..<7
+    private let s2 = "Bad invoices never blocked the pipeline, they went to a review queue."      // words 7..<19
+    private let s3 = "Then I moved to the route optimiser project."                               // words 19..<27
+    private let p1 = "The first pilot shipped in six weeks."
+    private let p2 = "Routing costs dropped by eleven percent."
+    private var anchorSay: String { "\(s1) \(s2) \(s3)" }
+
+    private func anchorReading(roomRoute: Bool = false) -> CardReading {
+        let reading = CardReading(clock: ManualPrompterClock())
+        reading.roomRoute = roomRoute
+        reading.setSay(anchorSay)
+        reading.setPoints([p1, p2])
+        return reading
+    }
+
+    private func enEvent(_ text: String, start: Double, channel: Channel = .me, final: Bool = true) -> TranscriptEvent {
+        TranscriptEvent(channel: channel, text: text, isFinal: final, audioStart: start, audioEnd: start + 1, emittedAt: start, lang: "en")
+    }
+
+    /// Reads `texts` as finals of their own ranges, one per second.
+    private func read(_ texts: [String], on reading: CardReading, channel: Channel = .me, from start: Double = 0) {
+        for (k, text) in texts.enumerated() { reading.ingest(enEvent(text, start: start + Double(k), channel: channel)) }
+    }
+
+    @Test(arguments: [Channel.me, Channel.remote])
+    func skippingASentenceAheadAnchorsThereAndStrikesNothingItSkipped(channel: Channel) {
+        let reading = anchorReading(roomRoute: channel == .remote)
+        read([s1], on: reading, channel: channel)
+        #expect(reading.struckWords(for: anchorSay) == IndexSet(integersIn: 0..<7))
+        read([s3], on: reading, channel: channel, from: 1)
+        let struck = reading.struckWords(for: anchorSay)
+        #expect(struck.intersection(IndexSet(integersIn: 7..<19)).isEmpty, "the skipped sentence stays unstruck: \(struck)")
+        #expect(struck.isSuperset(of: IndexSet(integersIn: 19..<26)), "the sentence he read is struck: \(struck)")
+        #expect(reading.trackerWord >= 26)
+    }
+
+    @Test(arguments: [Channel.me, Channel.remote])
+    func reReadingTheFirstLineAfterTheSecondAnchorsBackAndUnstrikesNothing(channel: Channel) {
+        let reading = anchorReading(roomRoute: channel == .remote)
+        read([s1, s2], on: reading, channel: channel)
+        #expect(reading.struckWords(for: anchorSay) == IndexSet(integersIn: 0..<19))
+        #expect(reading.readingCursor == 19 && reading.trackerWord >= 18)       // 19 words, 19 tokens
+        read([s1], on: reading, channel: channel, from: 2)
+        #expect(reading.readingCursor == 7, "cursor moved back: \(reading.readingCursor)")
+        #expect(reading.trackerWord >= 6 && reading.trackerWord <= 8, "the word tracker is back on the first line: \(reading.trackerWord)")
+        #expect(reading.struckWords(for: anchorSay) == IndexSet(integersIn: 0..<19), "nothing is un-struck")
+        // and from there he goes on: the second sentence continues the moved cursor
+        read([s2], on: reading, channel: channel, from: 3)
+        #expect(reading.readingCursor == 19)
+    }
+
+    @Test(arguments: [Channel.me, Channel.remote])
+    func startingFromTheSecondPointAnchorsToItWithoutTouchingTheSayLine(channel: Channel) {
+        let reading = anchorReading(roomRoute: channel == .remote)
+        read([s1], on: reading, channel: channel)
+        let before = reading.readingCursor
+        read([p2], on: reading, channel: channel, from: 1)
+        let card = ReadingCard(lines: [anchorSay, p1, p2])
+        #expect(reading.readingCursor == card.tokens.count, "cursor at the end of the second point: \(reading.readingCursor) of \(card.tokens.count)")
+        #expect(reading.readingCursor > before)
+        #expect(reading.struckWords(for: anchorSay) == IndexSet(integersIn: 0..<7), "the SAY line is untouched")
+        read([p1], on: reading, channel: channel, from: 2)
+        #expect(reading.readingCursor == card.tokens.count - RoomReading.words(p2).count, "and back to the first point")
+    }
+
+    @Test
+    func aQuestionFromTheOtherSideSharingTwoOrThreeCardWordsIsNotHisAndMovesNothing() {
+        let reading = anchorReading(roomRoute: true)
+        read([s1], on: reading, channel: .remote)
+        let cursor = reading.readingCursor, struck = reading.struckWords(for: anchorSay), tracker = reading.trackerWord
+        let questions = [
+            "Can you tell me more about how bad invoices ended up in the review process",       // bad invoices ... review
+            "What was the hardest part of the route you chose for the optimiser",                 // route, optimiser
+            "And how long did the pilot take, six weeks or more",                                   // pilot, six, weeks
+        ]
+        let card = ReadingCard(lines: [anchorSay, p1, p2])
+        for (k, q) in questions.enumerated() {
+            let event = enEvent(q, start: 10 + Double(k), channel: .remote)
+            var gate = RoomReadingGate()
+            gate.observe(event)
+            #expect(gate.anchor(for: event, card: card) == nil, Comment(rawValue: q))
+            let accepted = gate.accepts(event, say: anchorSay, now: 10)
+            #expect(!accepted, Comment(rawValue: "not his: \(q)"))
+            reading.ingest(event)
+        }
+        #expect(reading.readingCursor == cursor && reading.struckWords(for: anchorSay) == struck && reading.trackerWord == tracker)
+    }
+
+    /// The room route's gate lets none of it through. On his own channel the word tracker alone takes whatever he says (it creeps forward
+    /// on off-script speech, as before); what a single word must never do there is re-anchor: no jump, nothing un-struck.
+    @Test(arguments: [Channel.me, Channel.remote])
+    func aSingleMatchingWordNeverMovesTheCursor(channel: Channel) {
+        let reading = anchorReading(roomRoute: channel == .remote)
+        read([s1, s2], on: reading, channel: channel)
+        let cursor = reading.readingCursor, struck = reading.struckWords(for: anchorSay)
+        let card = ReadingCard(lines: [anchorSay, p1, p2])
+        for (k, text) in ["pipeline", "queue", "we talked about the pipeline yesterday during lunch", "Lantern", "sure, six"].enumerated() {
+            let event = enEvent(text, start: 20 + Double(k), channel: channel)
+            var gate = RoomReadingGate()
+            gate.observe(event)
+            #expect(gate.anchor(for: event, card: card) == nil, Comment(rawValue: text))
+            reading.ingest(event)
+            if channel == .remote {
+                #expect(reading.readingCursor == cursor && reading.struckWords(for: anchorSay) == struck, Comment(rawValue: text))
+            } else {
+                #expect(reading.readingCursor >= cursor && reading.struckWords(for: anchorSay).isSuperset(of: struck), Comment(rawValue: text))
+            }
+        }
+    }
+
+    @Test
+    func functionWordsDoNotCountTowardTheThreshold() {
+        let card = ReadingCard(lines: [anchorSay, p1, p2])
+        var gate = RoomReadingGate()
+        // eight words, all on the card in order, but only "pipeline" and "queue" are content words
+        for text in ["the pipeline they went to a review queue", "then i to the at a the"] {
+            let event = enEvent(text, start: 0)
+            gate.observe(event)
+            #expect(gate.anchor(for: event, card: card) == nil, Comment(rawValue: text))
+        }
+    }
+
+    @Test
+    func aJumpIsStricterThanContinuing() {
+        // two words that continue from the cursor keep him reading; the same number of words elsewhere do not jump
+        let continuing = anchorReading(roomRoute: true)
+        read([s1], on: continuing, channel: .remote)
+        read(["bad invoices never blocked"], on: continuing, channel: .remote, from: 1)
+        #expect(continuing.struckWords(for: anchorSay).contains(7))
+        let far = anchorReading(roomRoute: true)
+        read([s1, "eleven percent"], on: far, channel: .remote)
+        #expect(far.readingCursor == 7)
+    }
+
+    @Test
+    func aLineSaidTwiceAnchorsAtTheOccurrenceNearestTheCursor() {
+        let card = Array("abcdxxabcd").map(String.init), text = Array("abcd").map(String.init)
+        #expect(RoomReading.anchorPath(text, card, maxGap: 1, near: 7).map(\.1) == [6, 7, 8, 9])
+        #expect(RoomReading.anchorPath(text, card, maxGap: 1, near: 1).map(\.1) == [0, 1, 2, 3])
+    }
+
+    @Test
+    func theStruckRunsJoinBackIntoTheText() {
+        let runs = SaySplit.segments("  One two  three four", struck: IndexSet([0, 2]))
+        #expect(runs.map(\.text).joined() == "  One two  three four")
+        #expect(runs.map(\.spoken) == [true, false, true, false])
+        #expect(SaySplit.segments("", struck: IndexSet()).isEmpty)
+    }
 }

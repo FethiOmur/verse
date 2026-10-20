@@ -255,6 +255,7 @@ public final class PrompterModel: ObservableObject {
     /// The overlay's current card changed. Queued, so quick changes apply in order.
     public func meetingCard(_ card: OverlayCard?) {
         cardReading.setSay(card?.say)   // the island card's spoken/unspoken split, whatever the prompter setting is
+        cardReading.setPoints((card?.bullets ?? []) + (card?.deepPoints ?? []))   // the reading can jump to a point too
         let previous = cardQueue
         cardQueue = Task { @MainActor [weak self] in
             await previous?.value

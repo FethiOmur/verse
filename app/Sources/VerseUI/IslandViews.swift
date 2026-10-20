@@ -204,14 +204,16 @@ struct SayLine: View {
     var scale: CGFloat
     /// Whole words of `text` already said.
     var spokenWords = 0
+    /// The words said, when they are not simply the first `spokenWords` (the reading jumped): wins over `spokenWords`.
+    var struck: IndexSet?
     var corrected = false
     @Environment(\.islandContrast) private var contrast
 
     var body: some View {
-        let parts = SaySplit.split(text, spokenWords: spokenWords)
+        let unspoken = contrast ? VT.Island.sayUnspokenContrast : VT.Island.sayUnspoken
+        let runs = SaySplit.segments(text, struck: struck ?? (spokenWords > 0 ? IndexSet(integersIn: 0..<spokenWords) : IndexSet()))
         VStack(alignment: .leading, spacing: 4) {
-            (Text(parts.spoken).foregroundStyle(VT.Island.saySpoken)
-             + Text(parts.rest).foregroundStyle(contrast ? VT.Island.sayUnspokenContrast : VT.Island.sayUnspoken))
+            runs.reduce(Text(verbatim: "")) { $0 + Text(verbatim: $1.text).foregroundStyle($1.spoken ? VT.Island.saySpoken : unspoken) }
                 .font(VT.Font.prompterCurrent(scale))
                 .tracking(VT.Font.promptSayTracking)
                 .lineSpacing(2)
@@ -352,6 +354,8 @@ struct CardView: View {
     var maxHeight: CGFloat?
     /// Whole words of the SAY line Alex has already said (`CardReading`).
     var spokenWords = 0
+    /// The said words by index, when the reading jumped (`CardReading.struck`).
+    var struck: IndexSet?
 
     var body: some View {
         if let maxHeight {
@@ -383,7 +387,7 @@ struct CardView: View {
                 } else {
                     CardLead(text: card.question.isEmpty ? L10n.tr("Listening to the question…") : "“\(card.question)”", scale: scale)
                 }
-                SayLine(text: say, scale: scale, spokenWords: spokenWords, corrected: card.sayCorrected)
+                SayLine(text: say, scale: scale, spokenWords: spokenWords, struck: struck, corrected: card.sayCorrected)
                     .padding(.top, 8)
                 if !card.bullets.isEmpty {
                     PointList(points: card.bullets, scale: scale, struck: card.struck).padding(.top, 14)
@@ -430,7 +434,8 @@ struct LiveCardView: View {
     @ObservedObject var reading: CardReading
 
     var body: some View {
-        CardView(card: card, scale: scale, maxHeight: maxHeight, spokenWords: reading.spoken(for: card.say))
+        CardView(card: card, scale: scale, maxHeight: maxHeight, spokenWords: reading.spoken(for: card.say),
+                 struck: reading.struckWords(for: card.say))
     }
 }
 
