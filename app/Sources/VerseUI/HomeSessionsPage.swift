@@ -47,15 +47,21 @@ struct HomeSessionsPage: View {
                 .frame(width: askOpen ? 0 : Self.listWidth, alignment: .leading).clipped()
                 .opacity(askOpen ? 0 : 1)
                 .accessibilityHidden(askOpen)
+                // Reduce Motion: the columns change place at once; only the panel fades.
+                .transaction(value: askOpen) { if reduceMotion { $0.animation = nil } }
             if let s = selected {
                 HomeSessionDetailView(session: s, controller: controller, settings: settings, jump: jump,
                                       askAvailability: availability, askOpen: askOpen, onAsk: toggleAsk)
                     .id(s.name)
+                    .transaction(value: askOpen) { if reduceMotion { $0.animation = nil } }
                 if askOpen {
-                    Rectangle().fill(ink.separator).frame(width: 1).padding(.vertical, 16)
-                    AskPanel(session: ask, settings: settings, stamps: Set(document?.rows.map(\.stamp) ?? []),
-                             onCitation: { Self.reveal($0, in: document, jump: jump) }, onClose: closeAsk)
-                        .transition(.identity)
+                    // The panel enters from the trailing edge and leaves the same way; Reduce Motion crossfades it.
+                    HStack(alignment: .top, spacing: 0) {
+                        Rectangle().fill(ink.separator).frame(width: 1).padding(.vertical, 16)
+                        AskPanel(session: ask, settings: settings, stamps: Set(document?.rows.map(\.stamp) ?? []), lines: citedLines,
+                                 onCitation: { Self.reveal($0, in: document, jump: jump) }, onClose: closeAsk)
+                    }
+                    .transition(reduceMotion ? .opacity : .move(edge: .trailing).combined(with: .opacity))
                 }
             } else {
                 Spacer()
@@ -89,6 +95,7 @@ struct HomeSessionsPage: View {
         ask.model = settings.askModel
         ask.open(AskContext(sessionDir: s.dir, ownerName: settings.ownerName, title: s.title, date: s.date,
                             meCore: Self.meCore(enabled: settings.useMeProfile), rows: document.askRows.map { AskRow(stamp: $0.stamp, speaker: $0.speaker, text: $0.text) }))
+        if let askRender { ask.applyRender(askRender) }
         setOpen(true)
     }
 
@@ -98,9 +105,21 @@ struct HomeSessionsPage: View {
         setOpen(false)
     }
 
-    /// The list hides in 140 ms, ease-out; Reduce Motion skips the animation.
+    /// The panel slides in and the list collapses on one spring (response 0.34 s opening, 0.26 s closing, damping 1.0: no overshoot, and
+    /// interruptible, so a second ⌘⇧A turns it round from where it is). Reduce Motion: a 150 ms crossfade of the panel, the columns snap.
     private func setOpen(_ on: Bool) {
-        if reduceMotion { askOpen = on } else { withAnimation(VT.morph) { askOpen = on } }
+        if reduceMotion {
+            withAnimation(AskMotion.crossfade) { askOpen = on }
+        } else {
+            withAnimation(on ? AskMotion.settle : .spring(response: 0.26, dampingFraction: 1)) { askOpen = on }
+        }
+    }
+
+    /// The transcript line of every stamp, for the card under a hovered citation (the first row wins when a stamp repeats).
+    private var citedLines: [String: AskCitedLine] {
+        var out: [String: AskCitedLine] = [:]
+        for r in document?.askRows ?? [] where out[r.stamp] == nil { out[r.stamp] = AskCitedLine(speaker: r.speaker, text: r.text) }
+        return out
     }
 
     private func loadDocument() async {

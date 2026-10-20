@@ -48,24 +48,89 @@ final class AskPanelTests: XCTestCase {
         XCTAssertEqual(ChatLog.load(sessionDir: URL(fileURLWithPath: "/nonexistent-verse-dir")).turns, [])
     }
 
-    // MARK: chips
+    // MARK: the answer as text
 
-    func testAnAnswerBecomesWordsAndChipsOnlyForStampsThatExist() {
+    func testAnAnswerBecomesBlocksAndCitationRunsOnlyForStampsThatExist() {
         let stamps: Set<String> = ["0:22", "1:02:05"]
-        let lines = AskAnswerParser.lines("Dana said yes [0:22], then costs [1:02:05].\n- Nothing at [9:59] though.\n\n- Next [0:22][0:22]", validStamps: stamps)
-        XCTAssertEqual(lines.count, 3)
-        XCTAssertFalse(lines[0].bullet)
-        XCTAssertTrue(lines[1].bullet && lines[2].bullet)
-        let chips0 = lines[0].pieces.compactMap { if case .chip(let s, _) = $0 { s } else { nil } }
-        XCTAssertEqual(chips0, ["0:22", "1:02:05"])
-        // The chip hugs the comma after it and keeps a space before it.
-        XCTAssertEqual(lines[0].pieces[3], .chip("0:22", spaceBefore: true))
-        XCTAssertEqual(lines[0].pieces[4], .word(",", spaceBefore: false))
+        let blocks = AskAnswerParser.blocks("Dana said yes [0:22], then costs [1:02:05].\n- Nothing at [9:59] though.\n\n• Next [0:22][0:22]", validStamps: stamps)
+        XCTAssertEqual(blocks.count, 3)
+        XCTAssertFalse(blocks[0].bullet)
+        XCTAssertTrue(blocks[1].bullet && blocks[2].bullet)
+        // A mark hugs its word: no run ends in a space before a mark, so a line never opens a gap before the comma after it.
+        XCTAssertEqual(blocks[0].runs.map(\.text), ["Dana said yes", "0:22", ", then costs", "1:02:05", "."])
+        XCTAssertEqual(blocks[0].runs.map(\.stamp), [nil, "0:22", nil, "1:02:05", nil])
+        // Offsets count characters of the whole answer: chunks of a stream are measured the same way.
+        XCTAssertEqual(blocks[0].runs.map(\.offset), [0, 14, 20, 33, 42])
         // An unknown stamp stays plain text.
-        XCTAssertEqual(lines[1].pieces.compactMap { if case .chip = $0 { 1 } else { nil } }.count, 0)
-        XCTAssertTrue(lines[1].pieces.contains(.word("[9:59]", spaceBefore: true)))
-        // Chips side by side.
-        XCTAssertEqual(lines[2].pieces.suffix(2), [.chip("0:22", spaceBefore: true), .chip("0:22", spaceBefore: false)])
+        XCTAssertEqual(blocks[1].runs.map(\.text), ["Nothing at [9:59] though."])
+        // Marks side by side.
+        XCTAssertEqual(blocks[2].runs.map(\.text), ["Next", "0:22", "0:22"])
+        XCTAssertEqual(AskAnswerParser.citedStamps(blocks), ["0:22", "1:02:05"])
+    }
+
+    func testAStampThatHasNotFinishedStreamingIsHeldBack() {
+        let stamps: Set<String> = ["0:22"]
+        XCTAssertEqual(AskAnswerParser.blocks("Yes [0:2", validStamps: stamps, streaming: true).first?.runs.map(\.text), ["Yes"])
+        XCTAssertEqual(AskAnswerParser.blocks("Yes [", validStamps: stamps, streaming: true).first?.runs.map(\.text), ["Yes"])
+        XCTAssertEqual(AskAnswerParser.blocks("Yes [0:22", validStamps: stamps, streaming: true).first?.runs.map(\.text), ["Yes"])
+        XCTAssertEqual(AskAnswerParser.blocks("Yes [0:22]", validStamps: stamps, streaming: true).first?.runs.map(\.text), ["Yes", "0:22"])
+        XCTAssertEqual(AskAnswerParser.blocks("Yes [0:2", validStamps: stamps, streaming: false).first?.runs.map(\.text), ["Yes [0:2"])
+    }
+
+    func testCitationsAreSuperscriptMarksThatLinkOnlyOnceTheAnswerIsComplete() throws {
+        let ink = VT.Window(dark: false)
+        let block = try XCTUnwrap(AskAnswerParser.blocks("Yes [0:22][1:20], then.", validStamps: ["0:22", "1:20"]).first)
+        let done = AskAttributed.string(block, ink: ink, chunks: [], now: Date(), interactive: true)
+        XCTAssertEqual(String(done.characters), "Yes\u{202F}0:22,\u{202F}1:20, then.")
+        XCTAssertEqual(done.runs.compactMap(\.link).compactMap(AskAttributed.stamp(from:)), ["0:22", "1:20"])
+        let live = AskAttributed.string(block, ink: ink, chunks: [], now: Date(), interactive: false)
+        XCTAssertEqual(live.runs.compactMap(\.link).count, 0, "nothing under the pointer changes while text streams")
+        XCTAssertEqual(AskAttributed.stamp(from: try XCTUnwrap(AskAttributed.url(for: "1:02:05"))), "1:02:05")
+    }
+
+    func testAChunkFadesInOverItsDurationAndEarlierTextIsUntouched() {
+        let t0 = Date(timeIntervalSince1970: 1_000)
+        let chunks = [AskChunk(start: 5, end: 10, at: t0)]
+        XCTAssertEqual(AskFade.alpha(at: 3, chunks: chunks, now: t0), 1)
+        XCTAssertEqual(AskFade.alpha(at: 7, chunks: chunks, now: t0), 0)
+        let mid = AskFade.alpha(at: 7, chunks: chunks, now: t0.addingTimeInterval(AskFade.duration / 2))
+        XCTAssertGreaterThan(mid, 0.5, "ease-out: more than half way at half the time")
+        XCTAssertLessThan(mid, 1)
+        XCTAssertEqual(AskFade.alpha(at: 7, chunks: chunks, now: t0.addingTimeInterval(AskFade.duration)), 1)
+        XCTAssertEqual(AskFade.alpha(at: 10, chunks: chunks, now: t0), 1, "the next characters are not in this chunk")
+        XCTAssertTrue(AskFade.isFading(chunks, now: t0.addingTimeInterval(0.1)))
+        XCTAssertFalse(AskFade.isFading(chunks, now: t0.addingTimeInterval(1)))
+    }
+
+    func testCitationsAreReadAsTimes() {
+        let en = Locale(identifier: "en")
+        XCTAssertEqual(AskSpoken.time("1:20", locale: en), "1 minute, 20 seconds")
+        XCTAssertEqual(AskSpoken.time("0:14", locale: en), "14 seconds")
+        XCTAssertEqual(AskSpoken.time("1:02:05", locale: en), "1 hour, 2 minutes, 5 seconds")
+        let blocks = AskAnswerParser.blocks("Costs came up [1:20].", validStamps: ["1:20"])
+        XCTAssertEqual(AskSpoken.answer(blocks, locale: en), "Costs came up (at 1 minute, 20 seconds).")
+    }
+
+    func testThePanelFollowsTheStreamUntilTheReaderScrollsAwayAndPicksItUpAtTheBottom() {
+        XCTAssertTrue(AskFollow.pins(restingDistance: 0))
+        XCTAssertTrue(AskFollow.pins(restingDistance: 39))
+        XCTAssertFalse(AskFollow.pins(restingDistance: 40), "scrolled up to read: stop following")
+        XCTAssertFalse(AskFollow.showsJump(pinned: true, distance: 500, hasTurns: true), "following: no control")
+        XCTAssertFalse(AskFollow.showsJump(pinned: false, distance: 60, hasTurns: true), "nearly at the bottom: no control")
+        XCTAssertTrue(AskFollow.showsJump(pinned: false, distance: 400, hasTurns: true))
+        XCTAssertFalse(AskFollow.showsJump(pinned: false, distance: 400, hasTurns: false), "the empty state has nothing to jump to")
+    }
+
+    func testShiftReturnInsertsTheLineBreakAtTheCaret() {
+        XCTAssertEqual(AskComposerEdit.insertNewline(in: "héllo", selection: 2 ..< 2).text, "hé\nllo")
+        XCTAssertEqual(AskComposerEdit.insertNewline(in: "héllo", selection: 2 ..< 2).caret, 3)
+        let replaced = AskComposerEdit.insertNewline(in: "abcdef", selection: 1 ..< 4)
+        XCTAssertEqual(replaced.text, "a\nef")
+        XCTAssertEqual(replaced.caret, 2)
+        let appended = AskComposerEdit.insertNewline(in: "abc", selection: nil)
+        XCTAssertEqual(appended.text, "abc\n")
+        XCTAssertEqual(appended.caret, 4)
+        XCTAssertEqual(AskComposerEdit.insertNewline(in: "abc", selection: 9 ..< 12).text, "abc\n", "a stale selection is clamped")
     }
 
     func testACitationChipSetsTheTranscriptJumpToTheMatchingRow() throws {
