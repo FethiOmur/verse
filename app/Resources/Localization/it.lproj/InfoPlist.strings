@@ -1,0 +1,5 @@
+/* Verse permission prompts (Italian). macOS shows these in the system language. */
+"NSAudioCaptureUsageDescription" = "Verse trascrive l’audio dell’app di riunione su questo Mac per poter suggerire risposte. Nulla viene registrato o salvato.";
+"NSCalendarsFullAccessUsageDescription" = "Verse legge gli eventi in arrivo del tuo calendario su questo Mac per capire a quale riunione appartiene una chiamata e per prepararla. I dettagli degli eventi restano su questo Mac.";
+"NSCalendarsUsageDescription" = "Verse legge gli eventi in arrivo del tuo calendario su questo Mac per capire a quale riunione appartiene una chiamata e per prepararla. I dettagli degli eventi restano su questo Mac.";
+"NSMicrophoneUsageDescription" = "Verse trascrive la tua voce su questo Mac per seguire la conversazione. Nulla viene registrato o salvato.";

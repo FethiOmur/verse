@@ -48,19 +48,19 @@ public enum ScreenRenderer {
         idle.activity = .listening
 
         var marco = idle
-        marco.addresseeTag = "for Marco"
+        marco.addresseeTag = L10n.tr("for \("Marco")")
         marco.tagDimmed = true
 
         var q = idle
-        q.addresseeTag = "for you"
+        q.addresseeTag = L10n.tr("for you")
         var card = OverlayCard(turnID: "r3", question: "Can you walk me through how Lantern handled bad invoices?")
         card.say = "In Lantern, bad invoices never blocked the pipeline — they went to a review queue."
         card.sayTier = "S"
         card.bullets = ["Schema-validated extraction with one retry on a failed field",
                         "Low-confidence fields went to an operator, not straight to the ERP",
                         "Manual entry fell from 11 minutes to 2 per invoice"]
-        card.chips = [OverlayChip(text: "38,000 invoices a month", source: "prep note", kind: "number"),
-                      OverlayChip(text: "Lantern", source: "glossary", kind: "term")]
+        card.chips = [OverlayChip(text: "38,000 invoices a month", source: L10n.tr("prep note"), kind: "number"),
+                      OverlayChip(text: "Lantern", source: L10n.tr("glossary"), kind: "term")]
         q.card = card
 
         var d = q
@@ -82,14 +82,14 @@ public enum ScreenRenderer {
 
         // Follow my answer: the original card, the follow card with its mark, and the follow card with one point said.
         var followOriginal = idle
-        followOriginal.addresseeTag = "for you"
+        followOriginal.addresseeTag = L10n.tr("for you")
         var fCard = OverlayCard(turnID: "r5", question: "What was the hardest project you worked on?")
         fCard.say = "The hardest was Lantern: bad invoices had to be flagged without blocking the batch."
         fCard.sayTier = "F"
         fCard.bullets = ["Schema-validated extraction with one retry on a failed field",
                          "Low-confidence fields went to an operator, not straight to the ERP",
                          "Manual entry fell from 11 minutes to 2 per invoice"]
-        fCard.chips = [OverlayChip(text: "38,000 invoices a month", source: "prep note", kind: "number")]
+        fCard.chips = [OverlayChip(text: "38,000 invoices a month", source: L10n.tr("prep note"), kind: "number")]
         followOriginal.card = fCard
         var followCard = followOriginal
         followCard.card?.say = "And on the route optimiser I built the first pilot on my own, in six weeks."
@@ -105,8 +105,8 @@ public enum ScreenRenderer {
         credit.status = .creditExhausted("Max API credit used up until 1 December. Verse keeps transcribing locally.")
 
         var topics = idle
-        topics.topics = [OverlayChip(text: "ETA drift", source: "glossary", kind: "topic"),
-                         OverlayChip(text: "Compass re-plans every 90 s", source: "prep note", kind: "topic")]
+        topics.topics = [OverlayChip(text: "ETA drift", source: L10n.tr("glossary"), kind: "topic"),
+                         OverlayChip(text: "Compass re-plans every 90 s", source: L10n.tr("prep note"), kind: "topic")]
 
         var perm = idle
         perm.activity = .offline
@@ -161,8 +161,8 @@ public enum ScreenRenderer {
         i3.remoteBars = [0.7, 1, 0.5]
         i3.card = OverlayCard(turnID: "r3", question: question)
         var i4 = q
-        i4.card?.chips = [OverlayChip(text: "38,000 invoices / month", source: "prep note", kind: "number"),
-                          OverlayChip(text: "Lantern", source: "glossary", kind: "term")]
+        i4.card?.chips = [OverlayChip(text: "38,000 invoices / month", source: L10n.tr("prep note"), kind: "number"),
+                          OverlayChip(text: "Lantern", source: L10n.tr("glossary"), kind: "term")]
         i4.card?.bullets = ["Schema-validated extraction, one retry on a failed field",
                             "Low-confidence fields went to an operator, not the ERP",
                             "Manual entry fell from 11 minutes to 2 per invoice"]
@@ -308,8 +308,12 @@ public enum ScreenRenderer {
     }
 
     /// Renders every shot over both backdrops into `dir`. Returns the written paths.
-    public static func renderAll(to dir: URL, shots: [Shot] = sampleShots(), scales: [TextScale] = [.medium]) async throws -> [URL] {
+    public static func renderAll(to dir: URL, shots: [Shot]? = nil, scales: [TextScale] = [.medium]) async throws -> [URL] {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        // VERSE_RENDER_LANG=it|tr|en renders the island in that interface language (set before the sample states are built).
+        let renderLanguage = ProcessInfo.processInfo.environment["VERSE_RENDER_LANG"].flatMap(InterfaceLanguage.init(rawValue:))
+        if let renderLanguage { L10nState.shared.apply(renderLanguage) }
+        let shots = shots ?? sampleShots()
         var out: [URL] = []
         let suite = "dev.fethiverse.verse.render"
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
@@ -321,6 +325,7 @@ public enum ScreenRenderer {
                     let d = UserDefaults(suiteName: suite)!
                     d.removePersistentDomain(forName: suite)
                     let settings = AppSettings(defaults: d)
+                    if let renderLanguage { settings.interfaceLanguage = renderLanguage }
                     settings.cardWidth = shot.width
                     settings.textScale = sc
                     if let o = shot.islandOpacity { settings.islandOpacity = o }

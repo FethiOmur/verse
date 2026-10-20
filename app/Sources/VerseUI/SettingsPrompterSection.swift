@@ -15,12 +15,12 @@ public struct PrompterSettingsSection: View {
             }
             HomeRowDivider()
             HomeRow("Speed") {
-                Text("\(Int(settings.wordsPerMinute)) words per minute").font(VT.Font.body).foregroundStyle(ink.secondary).monospacedDigit()
+                Text("\(Int(settings.wordsPerMinute)) words per minute", bundle: .module).font(VT.Font.body).foregroundStyle(ink.secondary).monospacedDigit()
                 Stepper("", value: $settings.wordsPerMinute, in: PrompterSettings.wordsPerMinuteRange, step: PrompterSession.speedStep).labelsHidden()
             }
             HomeRowDivider()
             HomeRow("Font size") {
-                Text("\(Int(settings.fontSize)) pt").font(VT.Font.body).foregroundStyle(ink.secondary).monospacedDigit()
+                Text("\(Int(settings.fontSize)) pt", bundle: .module).font(VT.Font.body).foregroundStyle(ink.secondary).monospacedDigit()
                 Stepper("", value: $settings.fontSize, in: PrompterSettings.fontSizeRange, step: 2).labelsHidden()
             }
             HomeRowDivider()
@@ -30,7 +30,7 @@ public struct PrompterSettingsSection: View {
             HomeRowDivider()
             HomeToggleRow("Read meeting cards on the prompter", isOn: $settings.followMeetingCards)
         }
-        HomeFootnote(verbatim: "Hiding asks macOS to leave the panel out of captures, only while the prompter is open. Some capture paths ignore it, so test it with your meeting app before relying on it. "
-                     + "Shortcuts while the prompter is open: " + PrompterCommand.allCases.map { "\($0.shortcut) \($0.title.lowercased())" }.joined(separator: ", ") + ".")
+        HomeFootnote(verbatim: L10n.tr("Hiding asks macOS to leave the panel out of captures, only while the prompter is open. Some capture paths ignore it, so test it with your meeting app before relying on it.") + " "
+                     + L10n.tr("Shortcuts while the prompter is open: \(PrompterCommand.allCases.map { "\($0.shortcut) \($0.title.lowercased(with: L10n.locale))" }.joined(separator: ", "))."))
     }
 }

@@ -217,7 +217,7 @@ struct SayLine: View {
                 .lineSpacing(2)
                 .fixedSize(horizontal: false, vertical: true)
             if corrected {
-                Label("Corrected by Sonnet", systemImage: "arrow.uturn.backward")
+                Label { Text("Corrected by Sonnet", bundle: .module) } icon: { Image(systemName: "arrow.uturn.backward") }
                     .font(VT.Font.meta)
                     .foregroundStyle(VT.Island.tertiary)
             }
@@ -269,7 +269,7 @@ struct PointList: View {
                         .foregroundStyle(color(done: done))
                         .lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel(done ? "\(p), said" : p)
+                        .accessibilityLabel(done ? Text("\(p), said", bundle: .module) : Text(verbatim: p))
                 }
             }
         }
@@ -318,7 +318,7 @@ struct SonnetDivider: View {
     var body: some View {
         HStack(spacing: 8) {
             Rectangle().fill(.white.opacity(0.16)).frame(width: 14, height: 0.5)
-            Text("Sonnet").font(VT.Font.caption).foregroundStyle(VT.Island.tertiary)
+            Text("Sonnet", bundle: .module).font(VT.Font.caption).foregroundStyle(VT.Island.tertiary)
             Rectangle().fill(.white.opacity(0.16)).frame(height: 0.5)
         }
     }
@@ -378,10 +378,10 @@ struct CardView: View {
                 // Prompter style: the heard question (or "Following you") on one line, the SAY in teleprompter type under
                 // it, then the points and chips.
                 if card.following {
-                    CardLead(text: "Following you", scale: scale, symbol: "arrow.turn.down.right")
+                    CardLead(text: L10n.tr("Following you"), scale: scale, symbol: "arrow.turn.down.right")
                         .accessibilityIdentifier("verse.followMark")
                 } else {
-                    CardLead(text: card.question.isEmpty ? "Listening to the question…" : "“\(card.question)”", scale: scale)
+                    CardLead(text: card.question.isEmpty ? L10n.tr("Listening to the question…") : "“\(card.question)”", scale: scale)
                 }
                 SayLine(text: say, scale: scale, spokenWords: spokenWords, corrected: card.sayCorrected)
                     .padding(.top, 8)
@@ -397,7 +397,7 @@ struct CardView: View {
                 }
             } else {
                 // Hearing: Verse has the question and the answer is on its way.
-                Text(card.question.isEmpty ? "Listening to the question…" : "“\(card.question)”")
+                Text(verbatim: card.question.isEmpty ? L10n.tr("Listening to the question…") : "“\(card.question)”")
                     .font(.system(size: (15 * scale).rounded(), weight: .medium))
                     .foregroundStyle(VT.Island.tertiary)
                     .lineLimit(2)
@@ -480,15 +480,15 @@ struct StatusPanelView: View {
             if status != .stopConfirm {
                 HStack(spacing: 8) {
                     if case .permission(let kind) = status {
-                        Button("Open System Settings") { onOpenSettings(kind) }.buttonStyle(OverlayButtonStyle(prominent: true))
+                        Button { onOpenSettings(kind) } label: { Text("Open System Settings", bundle: .module) }.buttonStyle(OverlayButtonStyle(prominent: true))
                     }
                     if status == .meMissing {
-                        Button("Open Me page", action: onOpenMe).buttonStyle(OverlayButtonStyle(prominent: true))
+                        Button(action: onOpenMe) { Text("Open Me page", bundle: .module) }.buttonStyle(OverlayButtonStyle(prominent: true))
                     }
                     if let onRetry {
-                        Button("Retry", action: onRetry).buttonStyle(OverlayButtonStyle(prominent: true))
+                        Button(action: onRetry) { Text("Retry", bundle: .module) }.buttonStyle(OverlayButtonStyle(prominent: true))
                     }
-                    Button("Dismiss", action: onDismiss).buttonStyle(OverlayButtonStyle(prominent: false))
+                    Button(action: onDismiss) { Text("Dismiss", bundle: .module) }.buttonStyle(OverlayButtonStyle(prominent: false))
                 }
                 .padding(.top, 8)
             }
@@ -566,18 +566,18 @@ struct StartCardChips: View {
     var onAction: (StartChipAction) -> Void
 
     /// The AUTO chip's text: "AUTO · EN" while on (the detected language), "AUTO" while off.
-    static func autoLabel(auto: Bool, lang: String) -> String { auto ? "AUTO · \(lang.uppercased())" : "AUTO" }
+    static func autoLabel(auto: Bool, lang: String) -> String { auto ? L10n.tr("AUTO · \(lang.uppercased())") : L10n.tr("AUTO") }
 
     var body: some View {
         HStack(spacing: 6) {
             StartChip(label: StartRoutes.label(route), symbol: StartRoutes.symbol(route), selected: true, trailingSymbol: "chevron.up.chevron.down") {
                 onAction(.cycleRoute)
             }
-            .accessibilityLabel("Route: \(StartRoutes.label(route))")
-            .accessibilityHint("Changes where Verse listens")
+            .accessibilityLabel(Text("Route: \(StartRoutes.label(route))", bundle: .module))
+            .accessibilityHint(Text("Changes where Verse listens", bundle: .module))
             Rectangle().fill(Color.white.opacity(0.16)).frame(width: 0.5, height: 14).padding(.horizontal, 2)
             StartChip(label: Self.autoLabel(auto: auto, lang: lang), selected: auto) { onAction(.setLanguage(AppSettings.autoLanguage)) }
-                .accessibilityLabel(auto ? "Auto, \(StartRoutes.languageName(lang))" : "Auto")
+                .accessibilityLabel(auto ? Text("Auto, \(StartRoutes.languageName(lang))", bundle: .module) : Text("Auto", bundle: .module))
                 .accessibilityAddTraits(auto ? .isSelected : [])
             ForEach(AppSettings.pinnableLanguages, id: \.self) { code in
                 StartChip(label: code.uppercased(), selected: !auto && code == lang) { onAction(.setLanguage(code)) }
@@ -598,9 +598,9 @@ enum StartRoutes {
 
     static func label(_ r: AudioRoute) -> String {
         switch r {
-        case .meeting: return "Meeting"
-        case .phone: return "Phone"
-        case .room: return "Room"
+        case .meeting: return L10n.tr("Meeting")
+        case .phone: return L10n.tr("Phone")
+        case .room: return L10n.tr("Room")
         }
     }
 
@@ -614,10 +614,10 @@ enum StartRoutes {
 
     static func languageName(_ code: String) -> String {
         switch code {
-        case "auto": return "Auto"
-        case "it": return "Italian"
-        case "tr": return "Turkish"
-        default: return "English"
+        case "auto": return L10n.tr("Auto")
+        case "it": return L10n.tr("Italian")
+        case "tr": return L10n.tr("Turkish")
+        default: return L10n.tr("English")
         }
     }
 
@@ -697,6 +697,6 @@ struct ResizeGrip: View {
                     .onChanged { onDrag($0.translation) }
                     .onEnded { _ in onEnd() }
             )
-            .accessibilityLabel("Resize")
+            .accessibilityLabel(Text("Resize", bundle: .module))
     }
 }

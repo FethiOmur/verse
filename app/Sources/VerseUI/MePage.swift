@@ -34,7 +34,7 @@ struct MePage: View {
 
             HomeSectionHeader("General prep")
             HomeGroup {
-                HomeRow("General prep", verbatimDetail: GeneralPrep.status(root: controller.sessionsRoot)?.text() ?? "Not built yet") { EmptyView() }
+                HomeRow("General prep", verbatimDetail: GeneralPrep.status(root: controller.sessionsRoot)?.text() ?? L10n.tr("Not built yet")) { EmptyView() }
             }
 
             if model.showSourcesChanged {
@@ -71,11 +71,11 @@ struct MePage: View {
             model.reload()
             Task { await model.checkSources() }
         }
-        .confirmationDialog("Delete this line?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
+        .confirmationDialog(Text("Delete this line?", bundle: .module), isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
                             presenting: pendingDelete) { line in
-            Button("Delete", role: .destructive) { apply(model.delete(id: line.id)) }
+            Button(role: .destructive) { apply(model.delete(id: line.id)) } label: { Text("Delete", bundle: .module) }
         } message: { line in
-            Text("“\(line.text)” is removed from your profile. Refresh will not bring it back.")
+            Text("“\(line.text)” is removed from your profile. Refresh will not bring it back.", bundle: .module)
         }
         .accessibilityIdentifier("verse.home.me")
     }
@@ -87,7 +87,7 @@ struct MePage: View {
         case .running(let action):
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text(model.progress ?? (action == .build ? "Building your profile…" : "Refreshing your profile…"))
+                Text(verbatim: model.progress ?? (action == .build ? L10n.tr("Building your profile…") : L10n.tr("Refreshing your profile…")))
                     .font(VT.Font.callout).foregroundStyle(ink.secondary).lineLimit(1)
             }
             .padding(.top, 14)
@@ -102,7 +102,7 @@ struct MePage: View {
 
     private var profileGroup: some View {
         HomeGroup {
-            HomeRow(label: HomeText(verbatim: model.meta?.summary ?? "Built"),
+            HomeRow(label: HomeText(verbatim: model.meta?.summary ?? L10n.tr("Built")),
                     detail: HomeText("Calls read it when they start, so an edit applies from the next session. The cap is 3,500 tokens.")) { EmptyView() }
             HomeRowDivider()
             HomeRow(controller.running ? "In this session" : "In the last session") {
@@ -118,12 +118,20 @@ struct MePage: View {
     /// `ready.me` of the brain's status: how big the layer was in the running (or last) session.
     private var sessionLayerText: String {
         if let info = controller.meLayer {
-            var s = MeMeta.tokenText(info.tokens) + " tokens"
-            if let d = Self.builtDate(info.builtAt) { s += " · built " + d.formatted(Date.FormatStyle().locale(HomeFormat.locale).day().month(.abbreviated)) }
+            var s = L10n.tr("\(MeMeta.tokenText(info.tokens)) tokens")
+            if let d = Self.builtDate(info.builtAt) { s += " · " + L10n.tr("built \(d.formatted(Date.FormatStyle().locale(HomeFormat.locale).day().month(.abbreviated)))") }
             return s
         }
-        if controller.meLayerMissing { return "Not found" }
-        return controller.running ? "Not used" : "No session yet"
+        if controller.meLayerMissing { return L10n.tr("Not found") }
+        return controller.running ? L10n.tr("Not used") : L10n.tr("No session yet")
+    }
+
+    /// "Your profile says “…” (L12); the meeting pack (F3) gives a different number. The pack wins in the call."
+    private func conflictDetail(_ c: MeConflict) -> String {
+        if let line = model.line(id: c.me) {
+            return L10n.tr("Your profile says “\(line.text)” (\(c.me)); the meeting pack (\(c.pack)) gives a different number. The pack wins in the call.")
+        }
+        return L10n.tr("Your profile (\(c.me)); the meeting pack (\(c.pack)) gives a different number. The pack wins in the call.")
     }
 
     static func builtDate(_ iso: String) -> Date? {
@@ -137,8 +145,8 @@ struct MePage: View {
             HomeGroup {
                 ForEach(Array(controller.meConflicts.enumerated()), id: \.offset) { i, c in
                     if i > 0 { HomeRowDivider() }
-                    HomeRow(verbatim: c.topic.isEmpty ? "A number differs" : c.topic,
-                            detail: "Your profile\(model.line(id: c.me).map { " says “" + $0.text + "”" } ?? "") (\(c.me)); the meeting pack (\(c.pack)) gives a different number. The pack wins in the call.") {
+                    HomeRow(verbatim: c.topic.isEmpty ? L10n.tr("A number differs") : c.topic,
+                            detail: conflictDetail(c)) {
                         EmptyView()
                     }
                 }
@@ -181,9 +189,9 @@ struct MePage: View {
                         .padding(.horizontal, 8).padding(.vertical, 6)
                         .background(ink.fill, in: RoundedRectangle(cornerRadius: VT.Radius.row, style: .continuous))
                         .onSubmit { commitEdit(line) }
-                        .accessibilityLabel("Edit line \(line.id)")
+                        .accessibilityLabel(Text("Edit line \(line.id)", bundle: .module))
                     if line.section.fieldCount > 1 {
-                        Text("\(line.section.fieldCount) parts, separated by “|”").font(VT.Font.caption).foregroundStyle(ink.tertiary)
+                        Text("\(line.section.fieldCount) parts, separated by “|”", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary)
                     }
                 } else {
                     Text(line.text).font(VT.Font.body).foregroundStyle(ink.primary).lineSpacing(2)
@@ -212,14 +220,14 @@ struct MePage: View {
         [line.hasID ? line.id : nil, line.source.isEmpty ? nil : line.source].compactMap { $0 }.joined(separator: " · ")
     }
 
-    private func iconButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+    private func iconButton(_ symbol: String, label: LocalizedStringKey, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol).font(.system(size: 12, weight: .medium)).foregroundStyle(ink.tertiary)
                 .frame(width: 24, height: 24).contentShape(Rectangle())
         }
         .buttonStyle(HomePressStyle())
-        .accessibilityLabel(label)
-        .help(label)
+        .accessibilityLabel(Text(label, bundle: .module))
+        .help(Text(label, bundle: .module))
     }
 
     private func commitEdit(_ line: MeLine) {
@@ -252,7 +260,7 @@ struct MePage: View {
                             .disabled(model.isRunning)
                     }
                     .contextMenu {
-                        if source.kind == "file" { Button("Remove source", role: .destructive) { apply(model.removeSource(source.id)) } }
+                        if source.kind == "file" { Button(role: .destructive) { apply(model.removeSource(source.id)) } label: { Text("Remove source", bundle: .module) } }
                     }
                 }
                 if !model.sources.isEmpty { HomeRowDivider() }
@@ -278,7 +286,7 @@ struct MePage: View {
     private func sourceDetail(_ s: MeSource) -> String {
         var parts = [s.kindText]
         if s.kind != "sessions" { parts.append((s.path as NSString).abbreviatingWithTildeInPath) }
-        if s.changed { parts.append("changed since the build") }
+        if s.changed { parts.append(L10n.tr("changed since the build")) }
         return parts.joined(separator: " · ")
     }
 
@@ -291,7 +299,7 @@ struct MePage: View {
         let p = NSOpenPanel()
         p.allowedContentTypes = [.plainText, .pdf, UTType(filenameExtension: "md") ?? .plainText]
         p.allowsMultipleSelection = false
-        p.prompt = "Add"
+        p.prompt = L10n.tr("Add")
         if p.runModal() == .OK, let u = p.url { apply(model.addSource(file: u)) }
     }
 

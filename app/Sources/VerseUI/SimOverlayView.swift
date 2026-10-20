@@ -11,11 +11,11 @@ struct SimPanelView: View {
     private func size(_ s: CGFloat) -> CGFloat { (s * scale).rounded() }
 
     private var stateLine: String {
-        if sim.closing { return "Writing your report…" }
-        if sim.listening { return sim.answer.isEmpty ? "Your turn · ⌥Space when done" : "Listening · ⌥Space when done" }
-        if sim.speaking { return "Interviewer speaking" }
-        if sim.qTotal == 0 { return "Starting the interview…" }
-        return "Interviewer thinking…"
+        if sim.closing { return L10n.tr("Writing your report…") }
+        if sim.listening { return sim.answer.isEmpty ? L10n.tr("Your turn · ⌥Space when done") : L10n.tr("Listening · ⌥Space when done") }
+        if sim.speaking { return L10n.tr("Interviewer speaking") }
+        if sim.qTotal == 0 { return L10n.tr("Starting the interview…") }
+        return L10n.tr("Interviewer thinking…")
     }
 
     var body: some View {
@@ -26,7 +26,7 @@ struct SimPanelView: View {
                 if sim.coach.isEmpty { Text(stateLine).font(VT.Font.meta).foregroundStyle(VT.Island.tertiary) }
                 Spacer(minLength: 0)
                 if sim.showsAIDisclosure {
-                    Label("AI-generated voice", systemImage: "waveform")
+                    Label { Text("AI-generated voice", bundle: .module) } icon: { Image(systemName: "waveform") }
                         .font(VT.Font.caption)
                         .foregroundStyle(VT.Island.secondary)
                         .padding(.horizontal, 7)
@@ -35,7 +35,7 @@ struct SimPanelView: View {
                         .accessibilityIdentifier("verse.sim.aiVoice")
                 }
                 if sim.voiceFellBack {
-                    Text("Apple voice used").font(VT.Font.caption).foregroundStyle(VT.Island.tertiary)
+                    Text("Apple voice used", bundle: .module).font(VT.Font.caption).foregroundStyle(VT.Island.tertiary)
                 }
             }
             }
@@ -64,7 +64,7 @@ struct SimPanelView: View {
 
             if !sim.coach.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Coach").font(VT.Font.meta).foregroundStyle(VT.Island.tertiary)
+                    Text("Coach", bundle: .module).font(VT.Font.meta).foregroundStyle(VT.Island.tertiary)
                     ForEach(Array(sim.coach.map(Self.unbullet).enumerated()), id: \.offset) { _, line in
                         Text(line)
                             .font(.system(size: size(16), weight: .medium))
@@ -73,7 +73,7 @@ struct SimPanelView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     if !sim.listening {
-                        Text("⌥Space for the next question").font(VT.Font.meta).foregroundStyle(VT.Island.quaternary)
+                        Text("⌥Space for the next question", bundle: .module).font(VT.Font.meta).foregroundStyle(VT.Island.quaternary)
                     }
                 }
             }
@@ -94,13 +94,13 @@ struct SimPanelView: View {
 
     private var controls: some View {
         HStack(spacing: 6) {
-                Button("Done  ⌥Space") { onAction(.doneAnswering) }
+                Button { onAction(.doneAnswering) } label: { Text("Done  ⌥Space", bundle: .module) }
                     .buttonStyle(OverlayButtonStyle(prominent: sim.listening))
                     .disabled(!sim.listening)
                     .opacity(sim.listening ? 1 : 0.45)
-                Button("Repeat") { onAction(.repeat) }
+                Button { onAction(.repeat) } label: { Text("Repeat", bundle: .module) }
                     .buttonStyle(OverlayButtonStyle(prominent: false))
-                Button("Skip") { onAction(.skip) }
+                Button { onAction(.skip) } label: { Text("Skip", bundle: .module) }
                     .buttonStyle(OverlayButtonStyle(prominent: false))
                 Spacer(minLength: 0)
                 if !sim.textMode {
@@ -108,10 +108,10 @@ struct SimPanelView: View {
                         Image(systemName: sim.showCaption ? "captions.bubble.fill" : "captions.bubble")
                     }
                     .buttonStyle(OverlayButtonStyle(prominent: false))
-                    .help(sim.showCaption ? "Hide the caption" : "Show the interviewer's line")
-                    .accessibilityLabel("Caption")
+                    .help(sim.showCaption ? Text("Hide the caption", bundle: .module) : Text("Show the interviewer's line", bundle: .module))
+                    .accessibilityLabel(Text("Caption", bundle: .module))
                 }
-                Button("End") { onAction(.end) }
+                Button { onAction(.end) } label: { Text("End", bundle: .module) }
                     .buttonStyle(OverlayButtonStyle(prominent: false))
             }
         .disabled(sim.closing)

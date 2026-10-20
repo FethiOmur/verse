@@ -6,7 +6,7 @@ public enum KeychainError: Error, CustomStringConvertible, Equatable {
 
     public var description: String {
         switch self {
-        case .invalidKey: return "That does not look like an Anthropic API key (letters, digits, - and _ only)."
+        case .invalidKey: return L10n.tr("That does not look like an Anthropic API key (letters, digits, - and _ only).")
         case .failed(let m): return m
         }
     }
@@ -46,22 +46,22 @@ public struct KeychainStore {
     public static func save(_ key: String, service: String, account: String = account) throws {
         let k = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard isPlausible(k) else { throw KeychainError.invalidKey }
-        guard isSafeToken(service), isSafeToken(account) else { throw KeychainError.failed("unsupported service or account name") }
+        guard isSafeToken(service), isSafeToken(account) else { throw KeychainError.failed(L10n.tr("unsupported service or account name")) }
         let last = String(k.suffix(4))
         let cmd = "add-generic-password -U -a \(account) -s \(service) -l \(service) -j \(commentPrefix)\(last) -w \(k)\n"
         let r = run(["-i"], stdin: cmd)
         // `security -i` prints a prompt and reports errors on stderr; it exits 0 either way, so check the result.
         guard hasKey(service: service, account: account) else {
-            throw KeychainError.failed("the Keychain did not accept the key (\(r.stderr.isEmpty ? "exit \(r.status)" : sanitized(r.stderr, removing: k)))")
+            throw KeychainError.failed(L10n.tr("the Keychain did not accept the key (\(r.stderr.isEmpty ? L10n.tr("exit \(r.status)") : sanitized(r.stderr, removing: k)))"))
         }
     }
 
     public static func remove(service: String, account: String = account) throws {
-        guard isSafeToken(service), isSafeToken(account) else { throw KeychainError.failed("unsupported service or account name") }
+        guard isSafeToken(service), isSafeToken(account) else { throw KeychainError.failed(L10n.tr("unsupported service or account name")) }
         guard hasKey(service: service, account: account) else { return }
         let r = run(["delete-generic-password", "-a", account, "-s", service])
         if r.status != 0 || hasKey(service: service, account: account) {
-            throw KeychainError.failed("the Keychain item could not be removed (exit \(r.status))")
+            throw KeychainError.failed(L10n.tr("the Keychain item could not be removed (exit \(r.status))"))
         }
     }
 

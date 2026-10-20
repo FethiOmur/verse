@@ -34,11 +34,12 @@ if [ "${L10N_SKIP_BUILD:-0}" != "1" ]; then
   (cd "$APP_DIR" && swift build >/dev/null)
 fi
 
-# The module's own target folders (VerseUI-t.build, VerseApp-t.build, ...); VerseUITests-t.build does not match.
+# The module's own target folders (VerseUI-t.build, ...) and the app's executable (the `Verse` product builds VerseApp in
+# Verse-p.build); VerseUITests-t.build does not match.
 FILES=()
 while IFS= read -r f; do
   FILES+=("$f")
-done < <(find "$BUILD_DIR" -name '*.stringsdata' 2>/dev/null | grep -E '/(VerseUI|VerseApp)-[^/]*\.build/' | sort)
+done < <(find "$BUILD_DIR" -name '*.stringsdata' 2>/dev/null | grep -E '/(VerseUI|VerseApp)-[^/]*\.build/|/Verse-p\.build/' | sort)
 
 if [ "${#FILES[@]}" -eq 0 ]; then
   echo "l10n-sync: no .stringsdata found under $BUILD_DIR (did swift build run?)" >&2

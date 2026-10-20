@@ -67,9 +67,9 @@ struct HomeSessionDetailView: View {
     private var shownTab: SessionsDetailTab { tabLayout.shown }
 
     private var meta: String {
-        var parts = [session.unprepared ? "Unprepared · \(session.kindText)" : (session.kind == .practice ? "Practice" : session.kind.rawValue),
+        var parts = [session.unprepared ? L10n.tr("Unprepared · \(session.kindText)") : session.kind.label,
                      "\(HomeFormat.day(session.date)) \(session.date.formatted(HomeFormat.time))"]
-        if session.spend > 0 { parts.append(String(format: "$%.2f spent", session.spend)) }
+        if session.spend > 0 { parts.append(L10n.tr("\(L10n.usd(session.spend)) spent")) }
         return parts.joined(separator: " · ")
     }
 
@@ -113,7 +113,7 @@ struct HomeSessionDetailView: View {
     @ViewBuilder private var actions: some View {
         if session.kind != .practice, !session.unprepared, controller.sessions.contains(session.name) {
             if settings.sessionName == session.name {
-                Label("Used for Start", systemImage: "checkmark").font(VT.Font.callout).foregroundStyle(ink.secondary)
+                Label { Text("Used for Start", bundle: .module) } icon: { Image(systemName: "checkmark") }.font(VT.Font.callout).foregroundStyle(ink.secondary)
             } else {
                 HomeSecondaryButton("Use for Start") { settings.sessionName = session.name }.disabled(controller.running)
             }
@@ -185,9 +185,9 @@ struct HomeSessionDetailView: View {
 
     @ViewBuilder private var content: some View {
         if detail.sections.isEmpty, detail.questions.isEmpty {
-            Text(session.kind == .prepared
-                 ? "Prepared, not used in a meeting yet. Pick it with “Use for Start” and press Start in the menu, or open a meeting that matches it."
-                 : "Nothing was written for this session.")
+            Text(verbatim: session.kind == .prepared
+                 ? L10n.tr("Prepared, not used in a meeting yet. Pick it with “Use for Start” and press Start in the menu, or open a meeting that matches it.")
+                 : L10n.tr("Nothing was written for this session."))
                 .font(VT.Font.body).foregroundStyle(ink.secondary).lineSpacing(4)
         }
         ForEach(detail.sections) { section in
@@ -207,12 +207,12 @@ struct HomeSessionDetailView: View {
             }
         }
         if !detail.questions.isEmpty {
-            Text("Questions you got").font(VT.Font.title).foregroundStyle(ink.primary).padding(.top, 4)
+            Text("Questions you got", bundle: .module).font(VT.Font.title).foregroundStyle(ink.primary).padding(.top, 4)
             ForEach(Array(detail.questions.prefix(12)), id: \.self) { q in
                 Text(q).font(VT.Font.body).foregroundStyle(ink.primary).fixedSize(horizontal: false, vertical: true)
             }
             if detail.questions.count > 12 {
-                Text("and \(detail.questions.count - 12) more in the transcript").font(VT.Font.caption).foregroundStyle(ink.tertiary)
+                Text("and \(detail.questions.count - 12) more in the transcript", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary)
             }
         }
     }
@@ -221,14 +221,18 @@ struct HomeSessionDetailView: View {
 
     @ViewBuilder private func more(_ count: Int) -> some View {
         if count > Self.cap {
-            Text("and \(count - Self.cap) more in summary.md").font(VT.Font.caption).foregroundStyle(ink.tertiary)
+            Text("and \(count - Self.cap) more in summary.md", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary)
         }
     }
 
     private static func heading(_ s: String) -> String {
         switch s {
-        case "Actions": "Follow up"
-        case "Open questions": "Still open"
+        case "Summary": L10n.tr("Summary")
+        case "Decisions": L10n.tr("Decisions")
+        case "Actions": L10n.tr("Follow up")
+        case "Open questions": L10n.tr("Still open")
+        case "Conflicts with the fact sheet": L10n.tr("Conflicts with the fact sheet")
+        case "Metrics": L10n.tr("Metrics")
         default: s
         }
     }
@@ -261,7 +265,7 @@ struct HomeSessionDetailView: View {
         let writer = VaultSummaryWriter(vaultRoot: controller.meeting.settings.vaultURL)
         do {
             let url = try writer.write(summaryAt: summary, title: session.title, date: session.date)
-            message = "Saved to \((url.path as NSString).abbreviatingWithTildeInPath)"
+            message = L10n.tr("Saved to \((url.path as NSString).abbreviatingWithTildeInPath)")
             messageIsError = false
         } catch {
             message = "\(error)"

@@ -100,6 +100,7 @@ public struct HomeRoot: View {
         .background { if !inWindowGlass { HomeWindowConfigurator(reduceTransparency: ink.reduceTransparency) } }
         .environment(\.homeInk, ink)
         .tint(VT.mint)
+        .interfaceLocale()
     }
 
     @ViewBuilder private var page: some View {
@@ -149,7 +150,7 @@ private struct HomeSidebar: View {
             .padding(.horizontal, 10)
 
             if !sessions.sessions.isEmpty {
-                Text("Recent").font(VT.Font.caption).foregroundStyle(ink.tertiary)
+                Text("Recent", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary)
                     .padding(.leading, 20).padding(.top, 22).padding(.bottom, 4)
                 ForEach(sessions.sessions.prefix(3)) { s in
                     Button {
@@ -179,7 +180,7 @@ private struct HomeSidebar: View {
                 Text(p.title).font(VT.Font.sidebar).foregroundStyle(ink.primary)
                 Spacer()
                 if p == .sessions, !sessions.sessions.isEmpty {
-                    Text("\(sessions.sessions.count)").font(VT.Font.caption).foregroundStyle(ink.tertiary).monospacedDigit()
+                    Text(verbatim: "\(sessions.sessions.count)").font(VT.Font.caption).foregroundStyle(ink.tertiary).monospacedDigit()
                 }
             }
             .padding(.horizontal, 10).frame(height: 32)
@@ -209,11 +210,11 @@ private struct HomeSidebar: View {
     }
 
     private var statusLines: (String, Color, String) {
-        if controller.stopping { return ("Stopping", VT.amber, controller.settings.sessionName) }
-        if controller.running { return ("Listening · \(controller.settings.sessionName)", VT.mint, "Also stops with ⌥⌘V twice") }
-        if sim.running { return ("Practice running", VT.mint, "Answer under the notch") }
-        if controller.sessions.isEmpty { return ("No session", VT.amber, "Prepare one to start") }
-        return ("Ready", VT.mint, controller.settings.sessionName)
+        if controller.stopping { return (L10n.tr("Stopping"), VT.amber, controller.settings.sessionName) }
+        if controller.running { return (L10n.tr("Listening · \(controller.settings.sessionName)"), VT.mint, L10n.tr("Also stops with ⌥⌘V twice")) }
+        if sim.running { return (L10n.tr("Practice running"), VT.mint, L10n.tr("Answer under the notch")) }
+        if controller.sessions.isEmpty { return (L10n.tr("No session"), VT.amber, L10n.tr("Prepare one to start")) }
+        return (L10n.tr("Ready"), VT.mint, controller.settings.sessionName)
     }
 }
 

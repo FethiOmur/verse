@@ -4,9 +4,9 @@ import SwiftUI
 enum SessionStop {
     /// Stop is offered while a session runs and is not already stopping.
     static func canStop(running: Bool, stopping: Bool) -> Bool { running && !stopping }
-    static func title(stopping: Bool) -> String { stopping ? "Stopping…" : "Stop" }
+    static func title(stopping: Bool) -> String { stopping ? L10n.tr("Stopping…") : L10n.tr("Stop") }
     /// What VoiceOver reads on the button (the visible text stays short).
-    static func accessibilityLabel(stopping: Bool) -> String { stopping ? "Stopping session" : "Stop session" }
+    static func accessibilityLabel(stopping: Bool) -> String { stopping ? L10n.tr("Stopping session") : L10n.tr("Stop session") }
 }
 
 /// The island's Stop button: the neutral glass button (never the accent, never red), a square stop glyph and "Stop".
@@ -35,7 +35,7 @@ struct IslandStopButton: View {
         .buttonStyle(IslandStopButtonStyle(compact: compact))
         .disabled(stopping)
         .opacity(stopping ? 0.6 : 1)
-        .help("Stop the session")
+        .help(Text("Stop the session", bundle: .module))
         .accessibilityLabel(SessionStop.accessibilityLabel(stopping: stopping))
         .accessibilityIdentifier("verse.island.stop")
     }

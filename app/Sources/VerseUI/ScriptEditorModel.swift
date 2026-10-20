@@ -83,7 +83,7 @@ public final class ScriptEditorModel: ObservableObject {
             previousText = nil
             message = nil
         } catch {
-            message = .error("Could not open \(entry.name): \(error.localizedDescription)")
+            message = .error(L10n.tr("Could not open \(entry.name): \(error.localizedDescription)"))
         }
     }
 
@@ -107,10 +107,10 @@ public final class ScriptEditorModel: ObservableObject {
             savedText = text
             savedFile = url.lastPathComponent
             reload()
-            message = .info("Saved \(url.lastPathComponent)")
+            message = .info(L10n.tr("Saved \(url.lastPathComponent)"))
             return true
         } catch {
-            message = .error("Could not save: \(error.localizedDescription)")
+            message = .error(L10n.tr("Could not save: \(error.localizedDescription)"))
             return false
         }
     }
@@ -130,7 +130,7 @@ public final class ScriptEditorModel: ObservableObject {
             savedText = ""
             savedFile = nil
             previousText = nil
-            message = .info("Imported \(url.lastPathComponent): \(script.totalWordCount) words, \(script.pages.count) page\(script.pages.count == 1 ? "" : "s")")
+            message = .info(L10n.tr("Imported \(url.lastPathComponent): \(L10n.tr("\(script.totalWordCount) words")), \(L10n.tr("\(script.pages.count) pages"))"))
         } catch {
             message = .error(error.localizedDescription)
         }
@@ -142,15 +142,15 @@ public final class ScriptEditorModel: ObservableObject {
         let trimmed = topic.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isWriting else { return }
         isWriting = true
-        message = .info("Verse is writing…")
+        message = .info(L10n.tr("Verse is writing…"))
         defer { isWriting = false }
         do {
             let draft = try await writer.write(topic: trimmed, seconds: seconds, use: use)
             previousText = text.isEmpty ? nil : text
             text = draft.text
             if savedFile == nil, name == Self.untitled || name.isEmpty { name = Self.title(fromTopic: trimmed) }
-            var note = "Verse wrote \(draft.words) words on \(draft.pages) page\(draft.pages == 1 ? "" : "s")"
-            if !draft.usedVoiceProfile { note += " (no voice profile found)" }
+            var note = L10n.tr("Verse wrote \(L10n.tr("\(draft.words) words")) on \(L10n.tr("\(draft.pages) pages"))")
+            if !draft.usedVoiceProfile { note += L10n.tr(" (no voice profile found)") }
             if let warning = draft.warnings.first(where: { !$0.hasPrefix("no voice profile") }) { note += ". \(warning)" }
             message = .info(note)
         } catch {
@@ -163,7 +163,7 @@ public final class ScriptEditorModel: ObservableObject {
         guard let previous = previousText else { return }
         text = previous
         previousText = nil
-        message = .info("Previous text restored")
+        message = .info(L10n.tr("Previous text restored"))
     }
 
     /// First words of the topic, as a file name.

@@ -1,0 +1,5 @@
+/* Verse permission prompts (Turkish). macOS shows these in the system language. */
+"NSAudioCaptureUsageDescription" = "Verse, yanıt önerebilmek için toplantı uygulamasının sesini bu Mac’te yazıya döker. Hiçbir şey kaydedilmez veya saklanmaz.";
+"NSCalendarsFullAccessUsageDescription" = "Verse, bir görüşmenin hangi toplantıya ait olduğunu anlamak ve hazırlık yapmak için takvimindeki yaklaşan etkinlikleri bu Mac’te okur. Etkinlik ayrıntıları bu Mac’te kalır.";
+"NSCalendarsUsageDescription" = "Verse, bir görüşmenin hangi toplantıya ait olduğunu anlamak ve hazırlık yapmak için takvimindeki yaklaşan etkinlikleri bu Mac’te okur. Etkinlik ayrıntıları bu Mac’te kalır.";
+"NSMicrophoneUsageDescription" = "Verse, konuşmayı takip edebilmek için kendi sesini bu Mac’te yazıya döker. Hiçbir şey kaydedilmez veya saklanmaz.";

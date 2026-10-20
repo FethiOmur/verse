@@ -275,6 +275,7 @@ class SimRuntime:
         self.posting = ""
         self.system = ""
         self.lang = "en"
+        self.ui_lang = "en"
         self.difficulty = "standard"
         self.mode = "realistic"
         self.voice = "text"
@@ -390,6 +391,9 @@ class SimRuntime:
         except OSError:
             self.posting = ""
         self.lang = str(self.sim.get("lang") or "en")
+        # The app's interface language: only the report page's own words follow it (`sim_results.json` carries it to the renderer).
+        ui = str(msg.get("ui_lang") or "en")
+        self.ui_lang = ui if ui in ("en", "it", "tr") else "en"
         self.from_session = self.sim.get("source") == "session"
         self.mode = msg.get("mode") if msg.get("mode") in MODES else "realistic"
         self.voice = msg.get("voice") if msg.get("voice") in VOICES else "text"
@@ -1099,10 +1103,13 @@ class SimRuntime:
 
     # ------------------------------------------------------------------ results / report
     def results(self) -> dict:
-        return {"session_id": str(self.sim.get("session_id") or (self.session_dir.name if self.session_dir else "")),
-                "mode": self.mode, "voice": self.voice, "started_at": self.started_at or now_iso(),
-                "ended_at": now_iso(), "questions": [r.as_dict() for r in self.records],
-                "candidate_question": dict(self.candidate), "usage_usd": float(round(self.spend, 6))}
+        out = {"session_id": str(self.sim.get("session_id") or (self.session_dir.name if self.session_dir else "")),
+               "mode": self.mode, "voice": self.voice, "started_at": self.started_at or now_iso(),
+               "ended_at": now_iso(), "questions": [r.as_dict() for r in self.records],
+               "candidate_question": dict(self.candidate), "usage_usd": float(round(self.spend, 6))}
+        if self.ui_lang != "en":
+            out["ui_lang"] = self.ui_lang      # the report renderer picks its headings by it; absent means English
+        return out
 
     def _write_results(self) -> Path | None:
         if self.session_dir is None or not self.started_at:

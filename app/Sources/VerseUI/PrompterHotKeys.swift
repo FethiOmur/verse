@@ -36,13 +36,13 @@ public enum PrompterCommand: UInt32, CaseIterable, Sendable {
 
     public var title: String {
         switch self {
-        case .toggle: return "Start / pause"
-        case .previousPage: return "Previous page"
-        case .nextPage: return "Next page"
-        case .slower: return "Slower (−10 wpm)"
-        case .faster: return "Faster (+10 wpm)"
-        case .restart: return "Back to the top of the page"
-        case .close: return "Close the prompter"
+        case .toggle: return L10n.tr("Start / pause")
+        case .previousPage: return L10n.tr("Previous page")
+        case .nextPage: return L10n.tr("Next page")
+        case .slower: return L10n.tr("Slower (−10 wpm)")
+        case .faster: return L10n.tr("Faster (+10 wpm)")
+        case .restart: return L10n.tr("Back to the top of the page")
+        case .close: return L10n.tr("Close the prompter")
         }
     }
 }

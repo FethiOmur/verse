@@ -8,7 +8,19 @@ import VerseMeet
 // MARK: - Sessions
 
 public struct HomeSession: Identifiable, Equatable, Sendable {
-    public enum Kind: String, Sendable { case meeting = "Meeting", practice = "Practice", prepared = "Prepared", call = "Call" }
+    public enum Kind: String, Sendable {
+        case meeting = "Meeting", practice = "Practice", prepared = "Prepared", call = "Call"
+
+        /// The name in the interface language (the raw value is the English identifier).
+        public var label: String {
+            switch self {
+            case .meeting: L10n.tr("Meeting")
+            case .practice: L10n.tr("Practice")
+            case .prepared: L10n.tr("Prepared")
+            case .call: L10n.tr("Call")
+            }
+        }
+    }
 
     public var id: String { name }
     public var name: String
@@ -28,7 +40,7 @@ public struct HomeSession: Identifiable, Equatable, Sendable {
     var folderSignals = FolderSignals()
 
     /// The second line of a Sessions row after the day: the route of an adhoc session, else the kind.
-    public var kindText: String { routeLabel ?? kind.rawValue }
+    public var kindText: String { routeLabel ?? kind.label }
 
     /// `sim-20261015-0930-brightwave` -> "Practice · brightwave"; `conv-20261015-1857-northwind-labs` -> "Northwind Labs".
     static func title(forFolder name: String) -> String {
@@ -38,9 +50,9 @@ public struct HomeSession: Identifiable, Equatable, Sendable {
         if SessionCatalog.isAdhoc(name) {
             let parts = name.split(separator: "-").map(String.init)
             if parts.count >= 3, parts[2].count == 4, parts[2].allSatisfy(\.isNumber) {
-                return "Call at \(parts[2].prefix(2)):\(parts[2].suffix(2))"
+                return L10n.tr("Call at \(String(parts[2].prefix(2))):\(String(parts[2].suffix(2)))")
             }
-            return "Call"
+            return L10n.tr("Call")
         }
         var s = name
         var practice = false
@@ -55,7 +67,7 @@ public struct HomeSession: Identifiable, Equatable, Sendable {
         }
         let words = rest.joined(separator: " ").split(separator: " ").map { String($0.prefix(1)).uppercased() + $0.dropFirst() }.joined(separator: " ")
         let base = words.isEmpty ? name : words
-        return practice ? "Practice · \(base)" : base
+        return practice ? L10n.tr("Practice · \(base)") : base
     }
 
     static func load(name: String, root: URL) -> HomeSession {
@@ -86,9 +98,9 @@ public struct HomeSession: Identifiable, Equatable, Sendable {
     /// `room` -> "Room".
     static func routeLabel(_ route: String?) -> String? {
         switch route {
-        case "phone": return "Phone"
-        case "room": return "Room"
-        case "meeting": return "Meeting"
+        case "phone": return L10n.tr("Phone")
+        case "room": return L10n.tr("Room")
+        case "meeting": return L10n.tr("Meeting")
         default: return nil
         }
     }
@@ -415,7 +427,7 @@ public final class HomeUpNextModel: ObservableObject {
                 _ = try await prepareSession(for: event)
                 await refresh()
             } catch {
-                message = "Could not prepare \"\(item.title)\": \(error)"
+                message = L10n.tr("Could not prepare \"\(item.title)\": \(String(describing: error))")
             }
         }
     }
@@ -448,13 +460,13 @@ public final class HomeUpNextModel: ObservableObject {
     static func meta(_ e: MeetingEvent, now: Date = Date()) -> String {
         let cal = Calendar.current
         let day: String
-        if cal.isDateInToday(e.start) { day = "Today" } else if cal.isDateInTomorrow(e.start) { day = "Tomorrow" } else {
+        if cal.isDateInToday(e.start) { day = L10n.tr("Today") } else if cal.isDateInTomorrow(e.start) { day = L10n.tr("Tomorrow") } else {
             day = e.start.formatted(HomeFormat.dayMonth)
         }
         var parts = ["\(day) \(e.start.formatted(HomeFormat.time))"]
         if e.provider != .other { parts.append(e.provider.displayName) }
         let minutes = Int(e.start.timeIntervalSince(now) / 60)
-        if minutes > 0 && minutes < 90 { parts.append("in \(minutes) minute\(minutes == 1 ? "" : "s")") }
+        if minutes > 0 && minutes < 90 { parts.append(L10n.tr("in \(minutes) minutes")) }
         return parts.joined(separator: " · ")
     }
 }

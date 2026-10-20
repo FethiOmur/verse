@@ -7,7 +7,7 @@ import VerseTurns
 // `Verse --render-home DIR`: every home page over the mockups' wallpaper, 1280 x 800 pt at 2x, light and dark, plus
 // Prepare under Reduce Transparency and Increase Contrast. The same canvas, window frame (1100 x 680) and wallpaper as
 // design/mockups, so a render lines up with the approved PNGs. Fixture data only; nothing reads or writes the user's
-// sessions or settings.
+// sessions, spend ledger, profile or settings. `VERSE_RENDER_LANG=it|tr` renders in that interface language.
 //
 // Render-only differences from the app: the window glass is SwiftUI's in-window `glassEffect` over the wallpaper (the app
 // uses a behind-window AppKit sheet, HomeGlass.swift), and the traffic lights are drawn, not real.
@@ -322,19 +322,31 @@ public enum HomeRender {
             let defaults = UserDefaults(suiteName: suite) ?? .standard
             defaults.removePersistentDomain(forName: suite)
             settings = AppSettings(defaults: defaults)
+            // `VERSE_RENDER_LANG=it|tr|en`: the interface language of the whole render (set before the models read their texts).
+            if let raw = ProcessInfo.processInfo.environment["VERSE_RENDER_LANG"], let lang = InterfaceLanguage(rawValue: raw) {
+                settings.interfaceLanguage = lang
+            }
             simSettings = SimSettings(defaults: defaults)
             controller = VerseController(settings: settings)
             sim = SimController(settings: settings, simSettings: simSettings, meeting: controller)
-            conversation = ConversationController(settings: settings, meeting: controller)
+            // Every path below is under `root` (a temporary folder): no render reads the user's sessions, spend ledger, event map,
+            // reports or profile. `HomeRenderPrivacyTests` pins this.
+            conversation = ConversationController(owner: { "Dana" }, fake: { false }, brainDir: { nil }, root: sessionsRoot,
+                                                  selectSession: { _ in false })
             profileDir = root.appendingPathComponent("profile", isDirectory: true)
             try Self.writeProfile(into: profileDir)
             try Self.writeSessions(into: sessionsRoot)
             // The controller was built over the real sessions folder (its init lists it); point it at the fictional one and list again,
             // so nothing a render shows (the sidebar's Recent, Practice's meetings, Ask) can be one of the owner's own sessions.
             controller.sessionsRoot = sessionsRoot
+            controller.eventSessions = EventSessionMap(url: root.appendingPathComponent("event-sessions.json"))
             controller.refreshSessions()
-            sessions = HomeSessionsModel(root: sessionsRoot)
-            upNext = HomeUpNextModel(settings: settings, meeting: controller.meeting.settings, sessions: { [] })
+            controller.setSpendForPreview(session: 0.84, month: 12.30)
+            sim.setLastReportForPreview(sessionsRoot.appendingPathComponent("sim-20261013-1000-Brightwave/report.html"))
+            sim.refreshMeetings()
+            sessions = HomeSessionsModel(root: sessionsRoot, defaults: defaults)
+            upNext = HomeUpNextModel(settings: settings, meeting: controller.meeting.settings, sessions: { [] },
+                                     eventMap: EventSessionMap(url: root.appendingPathComponent("event-sessions.json")))
             settings.sessionName = "mara-northwindlabs"
             try fillScripts()
             fillPrepare()
@@ -597,9 +609,9 @@ public enum HomeRender {
             let soon = Date().addingTimeInterval(4 * 60)
             let tomorrow = cal.date(bySettingHour: 10, minute: 0, second: 0, of: cal.date(byAdding: .day, value: 1, to: Date()) ?? Date()) ?? Date()
             upNext.setItems([
-                HomeUpNextItem(id: "a", title: "Mara · Northwind Labs", meta: "Today \(soon.formatted(HomeFormat.time)) · Comet · in 4 minutes",
+                HomeUpNextItem(id: "a", title: "Mara · Northwind Labs", meta: "\(L10n.tr("Today")) \(soon.formatted(HomeFormat.time)) · Comet · \(L10n.tr("in \(4) minutes"))",
                                session: "mara-northwindlabs"),
-                HomeUpNextItem(id: "b", title: "Design review with Ingrid", meta: "Tomorrow \(tomorrow.formatted(HomeFormat.time)) · Zoom", session: nil),
+                HomeUpNextItem(id: "b", title: "Design review with Ingrid", meta: "\(L10n.tr("Tomorrow")) \(tomorrow.formatted(HomeFormat.time)) · Zoom", session: nil),
             ])
         }
 

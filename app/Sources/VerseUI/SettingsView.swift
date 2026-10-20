@@ -26,23 +26,23 @@ struct HomeKeyRows: View {
     var body: some View {
         HomeRow(verbatim: name) {
             if hasKey {
-                Text(last4.map { "Saved in Keychain · ends in \($0)" } ?? "Saved in Keychain").font(VT.Font.body).foregroundStyle(ink.secondary)
+                Text(verbatim: last4.map { L10n.tr("Saved in Keychain · ends in \($0)") } ?? L10n.tr("Saved in Keychain")).font(VT.Font.body).foregroundStyle(ink.secondary)
                 HomeSecondaryButton("Replace…") { editing = true }
                 HomeSecondaryButton("Remove…", destructive: true) { confirmRemove = true }
             } else {
-                Label("No key", systemImage: "key").font(VT.Font.body).foregroundStyle(ink.secondary)
+                Label { Text("No key", bundle: .module) } icon: { Image(systemName: "key") }.font(VT.Font.body).foregroundStyle(ink.secondary)
             }
         }
         .onAppear(perform: refresh)
-        .confirmationDialog("Remove the \(name) from the Keychain?", isPresented: $confirmRemove) {
-            Button("Remove", role: .destructive, action: removeKey)
+        .confirmationDialog(Text("Remove the \(name) from the Keychain?", bundle: .module), isPresented: $confirmRemove) {
+            Button(role: .destructive, action: removeKey) { Text("Remove", bundle: .module) }
         } message: {
-            Text(removeNote)
+            Text(verbatim: removeNote)
         }
         if !hasKey || editing {
             HomeRowDivider()
             HomeRow(hasKey ? "New key" : "Add key") {
-                SecureField("", text: $draft, prompt: Text(hasKey ? "Replaces the saved key" : placeholder).foregroundStyle(ink.tertiary))
+                SecureField("", text: $draft, prompt: Text(verbatim: hasKey ? L10n.tr("Replaces the saved key") : placeholder).foregroundStyle(ink.tertiary))
                     .textFieldStyle(.plain).font(VT.Font.body).foregroundStyle(ink.secondary).multilineTextAlignment(.trailing)
                     .textContentType(.password)
                     .onSubmit(saveDraft)
@@ -60,15 +60,15 @@ struct HomeKeyRows: View {
     private func saveDraft() {
         let k = draft
         draft = ""
-        do { try save(k); message = "Saved"; messageIsError = false; editing = false } catch {
-            message = (error as? VoiceKeyError)?.description ?? "\(error)"
+        do { try save(k); message = L10n.tr("Saved"); messageIsError = false; editing = false } catch {
+            message = (error as? VoiceKeyError).map(L10n.message(for:)) ?? "\(error)"
             messageIsError = true
         }
         refresh()
     }
 
     private func removeKey() {
-        do { try remove(); message = "Removed"; messageIsError = false } catch { message = "\(error)"; messageIsError = true }
+        do { try remove(); message = L10n.tr("Removed"); messageIsError = false } catch { message = "\(error)"; messageIsError = true }
         refresh()
     }
 
@@ -84,8 +84,8 @@ struct HomeKeyRows: View {
 struct APIKeySection: View {
     var body: some View {
         HomeGroup {
-            HomeKeyRows(name: "Anthropic API key", placeholder: "sk-ant-…",
-                        removeNote: "Verse can't call Claude until a key is saved again.",
+            HomeKeyRows(name: L10n.tr("Anthropic API key"), placeholder: "sk-ant-…",
+                        removeNote: L10n.tr("Verse can't call Claude until a key is saved again."),
                         status: { (KeychainStore.hasKey, KeychainStore.last4) },
                         save: { try KeychainStore.save($0) },
                         remove: { try KeychainStore.remove() })
@@ -116,9 +116,9 @@ public struct SettingsView: View {
         self.meetingsOnly = meetingsOnly
     }
 
-    private static let usd: FloatingPointFormatStyle<Double>.Currency = .currency(code: "USD").precision(.fractionLength(2...4))
+    private static var usd: FloatingPointFormatStyle<Double>.Currency { .currency(code: "USD").precision(.fractionLength(2...4)).locale(Locale(identifier: L10n.code == "en" ? "en_US" : L10n.formatLocale.identifier)) }
 
-    private func percent(_ v: Double) -> String { "\(Int((v * 100).rounded())) %" }
+    private func percent(_ v: Double) -> String { L10n.percent(v) }
 
     public var body: some View {
         HomeColumnPage {
@@ -133,9 +133,20 @@ public struct SettingsView: View {
         .accessibilityIdentifier("verse.home.settings")
     }
 
+    /// System (<the language it resolves to>), then the three languages by their own names.
+    private static var languageOptions: [HomeOption<InterfaceLanguage>] {
+        let resolved = L10n.endonym(of: InterfaceLanguage.systemLanguage())
+        return [HomeOption(verbatim: L10n.tr("System (\(resolved))"), .system)]
+            + [InterfaceLanguage.en, .it, .tr].map { HomeOption(verbatim: $0.endonym ?? $0.rawValue, $0) }
+    }
+
     @ViewBuilder private var appearanceSection: some View {
             HomeSectionHeader("Appearance")
             HomeGroup {
+                HomeRow("Language") {
+                    HomePopup(selection: $settings.interfaceLanguage, options: Self.languageOptions)
+                }
+                HomeRowDivider()
                 HomeSliderRow(label: "Island opacity", value: $settings.islandOpacity, range: AppSettings.islandOpacityRange,
                               step: 0.01, text: percent(settings.islandOpacity))
                     .disabled(ink.reduceTransparency || reduceTransparency)
@@ -146,11 +157,11 @@ public struct SettingsView: View {
                 HomeRow("Text size") { HomeSegmented(verbatim: TextScale.allCases.map { ($0.rawValue, $0) }, selection: $settings.textScale) }
                 HomeRowDivider()
                 HomeSliderRow(label: "Card width", value: $settings.cardWidth, range: AppSettings.cardWidthRange, step: 10,
-                              text: "\(Int(settings.cardWidth)) pt")
+                              text: L10n.tr("\(Int(settings.cardWidth)) pt"))
                 HomeRowDivider()
                 HomeRow("Card closes after") {
                     HomePopup(selection: $settings.cardTimeout,
-                              options: [HomeOption("Never", 0.0)] + [30.0, 45.0, 60.0, 90.0, 120.0, 180.0].map { HomeOption(verbatim: "\(Int($0)) s", $0) })
+                              options: [HomeOption("Never", 0.0)] + [30.0, 45.0, 60.0, 90.0, 120.0, 180.0].map { HomeOption(verbatim: L10n.tr("\(Int($0)) s"), $0) })
                 }
             }
             HomeFootnote("Reduce Transparency and Increase Contrast (System Settings › Accessibility › Display) override these.")
@@ -176,12 +187,12 @@ public struct SettingsView: View {
             HomeSectionHeader("Listening")
             HomeGroup {
                 HomeRow("Question end wait") {
-                    Text("\(settings.cueEndpointMs) ms").font(VT.Font.body).foregroundStyle(ink.secondary).monospacedDigit()
+                    Text("\(settings.cueEndpointMs) ms", bundle: .module).font(VT.Font.body).foregroundStyle(ink.secondary).monospacedDigit()
                     Stepper("", value: $settings.cueEndpointMs, in: 150...1500, step: 50).labelsHidden()
                 }
                 HomeRowDivider()
                 HomeRow("Other turn end wait") {
-                    Text("\(settings.plainEndpointMs) ms").font(VT.Font.body).foregroundStyle(ink.secondary).monospacedDigit()
+                    Text("\(settings.plainEndpointMs) ms", bundle: .module).font(VT.Font.body).foregroundStyle(ink.secondary).monospacedDigit()
                     Stepper("", value: $settings.plainEndpointMs, in: 300...2500, step: 50).labelsHidden()
                 }
                 HomeRowDivider()
@@ -208,7 +219,7 @@ public struct SettingsView: View {
                 HomeToggleRow("Fake brain (canned replies, no API calls)", isOn: $settings.fakeBrain)
                 HomeRowDivider()
                 HomeRow("Audio file instead of live") {
-                    Text(settings.testAudioPath.isEmpty ? "None (live)" : (settings.testAudioPath as NSString).lastPathComponent)
+                    Text(verbatim: settings.testAudioPath.isEmpty ? L10n.tr("None (live)") : (settings.testAudioPath as NSString).lastPathComponent)
                         .font(VT.Font.body).foregroundStyle(ink.secondary).lineLimit(1)
                     HomeSecondaryButton("Choose…", action: chooseFile)
                     if !settings.testAudioPath.isEmpty { HomeSecondaryButton("Clear") { settings.testAudioPath = "" } }
@@ -240,7 +251,7 @@ struct HomePracticeVoiceSection: View {
         HomeGroup {
             HomeRow("Interviewer voice") {
                 HomePopup(selection: $sim.voice, options: [VoiceKind.apple, .elevenlabs, .openai, .text].map { k in
-                    HomeOption(verbatim: SimSettings.label(k) + (voiceKeys.isAvailable(k) ? "" : " · needs a key"), k.rawValue, enabled: voiceKeys.isAvailable(k))
+                    HomeOption(verbatim: voiceKeys.isAvailable(k) ? SimSettings.label(k) : L10n.tr("\(SimSettings.label(k)) · needs a key"), k.rawValue, enabled: voiceKeys.isAvailable(k))
                 })
                 .id(keysChanged)
             }
@@ -252,7 +263,7 @@ struct HomePracticeVoiceSection: View {
             HomeRowDivider()
             HomeRow("OpenAI voice") {
                 HomePopup(selection: $sim.openAIVoiceID,
-                          options: [HomeOption(verbatim: "Default (\(OpenAIVoice.defaultVoice.capitalized))", "")]
+                          options: [HomeOption(verbatim: L10n.tr("Default (\(OpenAIVoice.defaultVoice.capitalized))"), "")]
                               + OpenAIVoice.availableVoices().map { HomeOption(verbatim: $0.detail.isEmpty ? $0.name : "\($0.name) · \($0.detail)", $0.id) },
                           fallback: "Saved voice")
             }
@@ -267,18 +278,17 @@ struct HomePracticeVoiceSection: View {
             HomeRowDivider()
             HomeToggleRow("Show the interviewer's line as a caption", isOn: $sim.showCaption)
             HomeRowDivider()
-            voiceKey(.elevenlabs, name: "ElevenLabs key")
+            voiceKey(.elevenlabs, name: L10n.tr("ElevenLabs key"))
             HomeRowDivider()
-            voiceKey(.openai, name: "OpenAI key")
+            voiceKey(.openai, name: L10n.tr("OpenAI key"))
         }
         .onAppear { voiceKeys.refresh() }
-        HomeFootnote(verbatim: "Cloud voices are billed by ElevenLabs or OpenAI to your own key and are labelled “AI-generated voice” while they speak. "
-                     + "Keys stay in the login Keychain. Better Apple voices: System Settings › Accessibility › Spoken Content › Manage Voices.")
+        HomeFootnote("Cloud voices are billed by ElevenLabs or OpenAI to your own key and are labelled “AI-generated voice” while they speak. Keys stay in the login Keychain. Better Apple voices: System Settings › Accessibility › Spoken Content › Manage Voices.")
     }
 
     private func voiceKey(_ kind: VoiceKind, name: String) -> some View {
-        HomeKeyRows(name: name, placeholder: "\(kind == .elevenlabs ? "ElevenLabs" : "OpenAI") API key",
-                    removeNote: "Practice interviews fall back to the Apple voice until a key is saved again.",
+        HomeKeyRows(name: name, placeholder: L10n.tr("\(kind == .elevenlabs ? "ElevenLabs" : "OpenAI") API key"),
+                    removeNote: L10n.tr("Practice interviews fall back to the Apple voice until a key is saved again."),
                     status: { (VoiceKeys.hasKey(kind), VoiceKeys.last4(kind)) },
                     save: { try VoiceKeys.save($0, for: kind) },
                     remove: { try VoiceKeys.remove(kind) },
@@ -286,13 +296,13 @@ struct HomePracticeVoiceSection: View {
     }
 
     private func loadEleven() {
-        elevenMessage = "Loading…"
+        elevenMessage = L10n.tr("Loading…")
         Task { @MainActor in
             do {
                 elevenVoices = try await ElevenLabsVoice.listVoices()
-                elevenMessage = "\(elevenVoices.count) voices"
+                elevenMessage = L10n.tr("\(elevenVoices.count) voices")
             } catch {
-                elevenMessage = (error as? VoiceError)?.description ?? "Could not load the voices."
+                elevenMessage = (error as? VoiceError).map(L10n.message(for:)) ?? L10n.tr("Could not load the voices.")
             }
         }
     }

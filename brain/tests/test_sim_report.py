@@ -280,3 +280,79 @@ def test_missing_sim_results_raises(tmp_path):
     shutil.copy(FIX / "sim.json", sd / "sim.json")
     with pytest.raises(FileNotFoundError):
         run(build_report(sd, FakeTransport()))
+
+
+# ---------------------------------------------------------------- interface language (L1)
+
+def report_in(ui_lang: str | None) -> str:
+    res = json.loads(json.dumps(RESULTS))
+    if ui_lang is not None:
+        res["ui_lang"] = ui_lang
+    g = grade.parse_grades(GRADE_RAW, SIM)
+    return render.render_html(render.assemble(SIM, res, g, error=None, usage={}))
+
+
+def test_report_headings_are_english_by_default():
+    html = report_in(None)
+    for heading in ("Competencies", "Delivery", "Question by question", "Your answer", "Strong", "Missing"):
+        assert heading in html
+    assert "Interview report: " in html
+
+
+def test_report_headings_follow_ui_lang_turkish():
+    html = report_in("tr")
+    for heading in ("Yetkinlikler", "Anlatım", "Soru soru", "Yanıt", "Güçlü yönler", "Eksikler", "Mülakat raporu: "):
+        assert heading in html
+    assert "<h2>Delivery</h2>" not in html and "Question by question" not in html
+    # the interview itself is untouched: its language is the sim's, and the answers are the candidate's words
+    assert '<html lang="en">' in html
+    assert "Why Brightwave?" in html
+
+
+def test_report_headings_follow_ui_lang_italian():
+    html = report_in("it")
+    for heading in ("Competenze", "Esposizione", "Domanda per domanda", "La tua risposta", "Punti di forza", "Cosa manca"):
+        assert heading in html
+    assert "<h2>Competencies</h2>" not in html
+
+
+def test_report_unknown_ui_lang_falls_back_to_english():
+    assert report_in("de") == report_in("en") == report_in(None)
+
+
+def test_report_notes_fillers_for_a_non_english_interview_only():
+    res = json.loads(json.dumps(RESULTS))
+    res["ui_lang"] = "tr"
+    it_sim = json.loads(json.dumps(SIM))
+    it_sim["lang"] = "it"
+    note = render.TEXT["tr"]["fillers_en_only"]
+    assert note in render.render_html(render.assemble(it_sim, res, None, error="x", usage={}))
+    assert note not in render.render_html(render.assemble(SIM, res, None, error="x", usage={}))
+
+
+def test_report_page_stays_deterministic_in_every_ui_language():
+    for lang in ("en", "it", "tr"):
+        assert report_in(lang) == report_in(lang)
+        assert "<script" not in report_in(lang)
+
+
+def test_ui_lang_is_written_to_results_and_defaults_to_english():
+    rep = render.assemble(SIM, dict(RESULTS, ui_lang="it"), None, error="x", usage={})
+    assert rep["ui_lang"] == "it"
+    assert render.assemble(SIM, RESULTS, None, error="x", usage={})["ui_lang"] == "en"
+    assert render.assemble(SIM, dict(RESULTS, ui_lang="xx"), None, error="x", usage={})["ui_lang"] == "en"
+
+
+def test_runtime_passes_ui_lang_through_to_the_results_file(tmp_path):
+    from verse_brain.runtime.sim import SimRuntime
+    for sent, written in (("tr", "tr"), ("it", "it"), ("en", None), ("de", None), (None, None)):
+        rt = SimRuntime.__new__(SimRuntime)
+        rt.sim, rt.records, rt.candidate, rt.spend, rt.mode, rt.voice = {}, [], {}, 0.0, "coach", "text"
+        rt.session_dir, rt.started_at = tmp_path, "2026-10-20T10:00:00"
+        msg = {"session_dir": str(tmp_path), "mode": "coach", "voice": "text"}
+        if sent is not None:
+            msg["ui_lang"] = sent
+        (tmp_path / "sim.json").write_text("{}")
+        (tmp_path / "sim_pack.md").write_text("pack")
+        rt._load(msg)
+        assert rt.results().get("ui_lang") == written, sent

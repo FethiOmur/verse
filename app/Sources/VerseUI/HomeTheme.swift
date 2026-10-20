@@ -92,7 +92,7 @@ struct HomePrimaryButton: View {
     var body: some View {
         let button = Button(action: action) {
             HStack(spacing: 6) {
-                title.text
+                title.text.lineLimit(1).fixedSize()
                 if let hint { Text(verbatim: hint).opacity(0.55) }
             }
             .font(.system(size: 13, weight: .semibold)).foregroundStyle(VT.onMint)
@@ -132,7 +132,7 @@ struct HomeSecondaryButton: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 if let symbol { Image(systemName: symbol) }
-                title.text
+                title.text.lineLimit(1).fixedSize()
             }
             .font(.system(size: 13, weight: .medium)).foregroundStyle(destructive ? VT.coral : ink.primary)
             .padding(.horizontal, 12).frame(height: 28)

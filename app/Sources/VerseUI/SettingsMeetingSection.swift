@@ -65,7 +65,7 @@ struct SettingsMeetingSection: View {
         p.canChooseDirectories = true
         p.canChooseFiles = false
         p.allowsMultipleSelection = false
-        p.prompt = "Choose"
+        p.prompt = L10n.tr("Choose")
         if p.runModal() == .OK, let u = p.url { settings.vaultPath = u.path }
     }
 }
@@ -76,8 +76,8 @@ public enum RemoteFilePicker {
     public static func choose() -> URL? {
         NSApp.activate()
         let p = NSOpenPanel()
-        p.title = "Play test file as remote"
-        p.message = "The file plays as the other side of the call. Your microphone stays you."
+        p.title = L10n.tr("Play test file as remote")
+        p.message = L10n.tr("The file plays as the other side of the call. Your microphone stays you.")
         p.allowedContentTypes = [.audio]
         p.allowsMultipleSelection = false
         return p.runModal() == .OK ? p.url : nil

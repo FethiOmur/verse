@@ -11,6 +11,7 @@ struct VerseApp: App {
     var body: some Scene {
         MenuBarExtra {
             VerseMenu(controller: delegate.controller, settings: delegate.settings, sim: delegate.sim)
+                .interfaceLocale()
         } label: {
             MenuBarLabel(controller: delegate.controller)
         }
@@ -32,7 +33,7 @@ struct MenuBarLabel: View {
     @Environment(\.openWindow) private var openWindow
     var body: some View {
         Image(systemName: controller.running ? "waveform.circle.fill" : "waveform.circle")
-            .accessibilityLabel("Verse")
+            .accessibilityLabel(Text("Verse", bundle: L10n.bundle))
             // The label is always alive: it hands the scene's openWindow to the router, so code outside a view (the
             // practice report, the launch options) can open the home window.
             .onAppear { HomeRouter.shared.register(openWindow: openWindow) }
@@ -48,81 +49,85 @@ struct VerseMenu: View {
     var body: some View {
         Text(controller.statusLine)
         Divider()
-        Button("Open Verse") { HomeRouter.shared.show(HomeRouter.shared.page, openWindow: openWindow) }
+        Button { HomeRouter.shared.show(HomeRouter.shared.page, openWindow: openWindow) } label: { Text("Open Verse", bundle: L10n.bundle) }
         Divider()
         if controller.running {
-            Button("Stop") { Task { await controller.stop() } }
+            Button { Task { await controller.stop() } } label: { Text("Stop", bundle: L10n.bundle) }
                 .keyboardShortcut("s")
                 .disabled(controller.stopping)
         } else {
             // Start at once, with or without a prepared session (anytime calls). ⌥⌘V does the same from anywhere.
-            Button("Start now") { controller.startNow() }
+            Button { controller.startNow() } label: { Text("Start now", bundle: L10n.bundle) }
                 .keyboardShortcut("v", modifiers: [.option, .command])
                 .disabled(sim.running || controller.stopping)
-            Button("Start prepared session") { controller.start() }
+            Button { controller.start() } label: { Text("Start prepared session", bundle: L10n.bundle) }
                 .keyboardShortcut("s")
                 .disabled(controller.sessions.isEmpty || sim.running)
         }
         // Where Verse listens and in which language: before a Start they are the choice for it; during a call they switch it.
-        Menu("Route") {
-            Picker("Route", selection: Binding<AudioRoute?>(
+        Menu {
+            Picker(selection: Binding<AudioRoute?>(
                 get: { controller.running ? controller.route : controller.routeChoice },
                 set: { controller.chooseRoute($0) })) {
-                if !controller.running { Text("Automatic").tag(AudioRoute?.none) }
-                Text("Meeting app").tag(AudioRoute?.some(.meeting))
-                Text("Room (microphone only)").tag(AudioRoute?.some(.room))
-            }
+                if !controller.running { Text("Automatic", bundle: L10n.bundle).tag(AudioRoute?.none) }
+                Text("Meeting app", bundle: L10n.bundle).tag(AudioRoute?.some(.meeting))
+                Text("Room (microphone only)", bundle: L10n.bundle).tag(AudioRoute?.some(.room))
+            } label: { Text("Route", bundle: L10n.bundle) }
             .pickerStyle(.inline)
-        }
+        } label: { Text("Route", bundle: L10n.bundle) }
         .disabled(controller.stopping)
-        Menu("Language") {
-            Picker("Language", selection: Binding(
+        Menu {
+            Picker(selection: Binding(
                 get: { controller.running ? (controller.autoLanguage ? AppSettings.autoLanguage : controller.callLanguage) : settings.defaultCallLanguage },
                 set: { controller.chooseLanguage($0) })) {
-                Text(controller.running && controller.autoLanguage ? "Auto · \(controller.callLanguage.uppercased())" : "Auto").tag(AppSettings.autoLanguage)
-                Text("English").tag("en")
-                Text("Italian").tag("it")
-                Text("Turkish").tag("tr")
-            }
+                if controller.running && controller.autoLanguage {
+                    Text("Auto · \(controller.callLanguage.uppercased())", bundle: L10n.bundle).tag(AppSettings.autoLanguage)
+                } else {
+                    Text("Auto", bundle: L10n.bundle).tag(AppSettings.autoLanguage)
+                }
+                Text("English", bundle: L10n.bundle).tag("en")
+                Text("Italian", bundle: L10n.bundle).tag("it")
+                Text("Turkish", bundle: L10n.bundle).tag("tr")
+            } label: { Text("Language", bundle: L10n.bundle) }
             .pickerStyle(.inline)
-        }
+        } label: { Text("Language", bundle: L10n.bundle) }
         .disabled(controller.stopping)
-        Picker("Session", selection: $settings.sessionName) {
-            ForEach(controller.sessions, id: \.self) { Text($0).tag($0) }
-        }
+        Picker(selection: $settings.sessionName) {
+            ForEach(controller.sessions, id: \.self) { Text(verbatim: $0).tag($0) }
+        } label: { Text("Session", bundle: L10n.bundle) }
         .disabled(controller.running)
-        Picker("Meeting language", selection: $settings.language) {
-            Text("English").tag("en")
-            Text("Italian").tag("it")
-            Text("Turkish").tag("tr")
-        }
+        Picker(selection: $settings.language) {
+            Text("English", bundle: L10n.bundle).tag("en")
+            Text("Italian", bundle: L10n.bundle).tag("it")
+            Text("Turkish", bundle: L10n.bundle).tag("tr")
+        } label: { Text("Meeting language", bundle: L10n.bundle) }
         .disabled(controller.running)
         Divider()
         // W2: self-test without a meeting app: the file is the remote side, the microphone stays "me".
-        Button("Play test file as remote…") {
+        Button {
             if let url = RemoteFilePicker.choose() { controller.start(remoteFile: url) }
-        }
+        } label: { Text("Play test file as remote…", bundle: L10n.bundle) }
         .disabled(controller.running || controller.stopping || controller.sessions.isEmpty || sim.running)
         Divider()
         if sim.running {
-            Button("End practice interview") { sim.endInterview() }
+            Button { sim.endInterview() } label: { Text("End practice interview", bundle: L10n.bundle) }
         } else {
-            Button("Practice interview…") {
+            Button {
                 HomeRouter.shared.show(.practice, openWindow: openWindow)
-            }
+            } label: { Text("Practice interview…", bundle: L10n.bundle) }
             .disabled(controller.running)
         }
         if sim.lastReport != nil {
-            Button("Last practice report") { sim.openLastReport() }
+            Button { sim.openLastReport() } label: { Text("Last practice report", bundle: L10n.bundle) }
         }
         PrompterMenuBlock(controller: controller)
         ConversationMenuBlock()
         Divider()
-        Button("Settings…") {
+        Button {
             HomeRouter.shared.show(.settings, openWindow: openWindow)
-        }
+        } label: { Text("Settings…", bundle: L10n.bundle) }
         .keyboardShortcut(",")
-        Button("Quit Verse") { NSApp.terminate(nil) }
+        Button { NSApp.terminate(nil) } label: { Text("Quit Verse", bundle: L10n.bundle) }
             .keyboardShortcut("q")
     }
 }

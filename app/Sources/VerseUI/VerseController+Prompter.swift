@@ -27,13 +27,15 @@ public struct PrompterMenuBlock: View {
 
     public var body: some View {
         Divider()
-        Button("Teleprompter scripts…") {
+        Button {
             HomeRouter.shared.show(.scripts, openWindow: openWindow)
-        }
+        } label: { Text("Teleprompter scripts…", bundle: .module) }
         if prompter.isOpen {
-            Button(prompter.state.isPaused ? "Start prompter" : "Pause prompter") { prompter.send(.toggle) }
-            Button("Close prompter") { prompter.send(.close) }
+            Button { prompter.send(.toggle) } label: {
+                if prompter.state.isPaused { Text("Start prompter", bundle: .module) } else { Text("Pause prompter", bundle: .module) }
+            }
+            Button { prompter.send(.close) } label: { Text("Close prompter", bundle: .module) }
         }
-        Toggle("Prompter on meeting cards", isOn: $settings.followMeetingCards)
+        Toggle(isOn: $settings.followMeetingCards) { Text("Prompter on meeting cards", bundle: .module) }
     }
 }

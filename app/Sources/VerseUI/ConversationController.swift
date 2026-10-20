@@ -82,7 +82,7 @@ public final class ConversationController: ObservableObject {
     public func fetchPosting() {
         let raw = postingLink.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: raw.contains("://") ? raw : "https://" + raw), url.host != nil else {
-            fetchMessage = "That is not a link. Paste the posting text below instead."
+            fetchMessage = L10n.tr("That is not a link. Paste the posting text below instead.")
             return
         }
         fetching = true
@@ -94,11 +94,11 @@ public final class ConversationController: ObservableObject {
                 let p = try await fetch(url)
                 posting = p
                 postingPaste = ""
-                fetchMessage = "Using: \(p.title.isEmpty ? url.host ?? "posting" : p.title) · \(p.text.count) characters"
+                fetchMessage = L10n.tr("Using: \(p.title.isEmpty ? url.host ?? L10n.tr("posting") : p.title) · \(p.text.count.formatted()) characters")
             } catch PostingError.network {
-                fetchMessage = "Could not reach the page. Check the link, or paste the posting text below."
+                fetchMessage = L10n.tr("Could not reach the page. Check the link, or paste the posting text below.")
             } catch {
-                fetchMessage = "No job posting found on that page. Paste the posting text below instead."
+                fetchMessage = L10n.tr("No job posting found on that page. Paste the posting text below instead.")
             }
         }
     }
@@ -124,7 +124,7 @@ public final class ConversationController: ObservableObject {
     public func prepare() {
         guard canPrepare else { return }
         guard let brain = brainDir() else {
-            error = "The brain folder was not found (set VERSE_BRAIN_DIR)."
+            error = L10n.tr("The brain folder was not found (set VERSE_BRAIN_DIR).")
             return
         }
         var s = ConversationSetup(thread: thread)
@@ -164,7 +164,7 @@ public final class ConversationController: ObservableObject {
                 if !s.fake, let c = summary?.costUSD, c > 0 { recordSpend(dir, t0, c) }
                 let selected = selectSession(dir.lastPathComponent)
                 phase = .done
-                if !selected { warnings.append("The session is ready: \(dir.lastPathComponent). Pick it in the menu when the meeting ends.") }
+                if !selected { warnings.append(L10n.tr("The session is ready: \(dir.lastPathComponent). Pick it in the menu when the meeting ends.")) }
                 log("prep done \(dir.lastPathComponent) selected=\(selected)")
             case .failed(let m):
                 error = m

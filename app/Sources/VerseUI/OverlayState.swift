@@ -17,14 +17,14 @@ public struct OverlayChip: Equatable, Sendable, Identifiable {
 
     /// `prep:L13` -> "prep note", a glossary term -> "glossary".
     static func sourceLabel(kind: String, ref: String) -> String {
-        if kind == "term" { return "glossary" }
+        if kind == "term" { return L10n.tr("glossary") }
         let prefix = ref.split(separator: ":").first.map(String.init) ?? ref
         switch prefix {
-        case "prep": return "prep note"
+        case "prep": return L10n.tr("prep note")
         case "vault": return "vault"
         case "commit": return "commit"
-        case "me": return "my profile"
-        case "": return "notes"
+        case "me": return L10n.tr("my profile")
+        case "": return L10n.tr("notes")
         default: return prefix
         }
     }
@@ -76,28 +76,28 @@ public enum OverlayStatus: Equatable, Sendable {
     /// The short text in the capsule chip.
     public var title: String {
         switch self {
-        case .offline: return "Offline"
-        case .rateLimited: return "Rate limited"
-        case .creditExhausted: return "Max API credit used up"
-        case .restarting: return "Restarting"
-        case .error: return "Error"
-        case .permission(let k): return k == "microphone" ? "Microphone access needed" : "Audio recording access needed"
-        case .stopConfirm: return "Press ⌥⌘V again to stop"
-        case .meMissing: return "Your profile was not found"
+        case .offline: return L10n.tr("Offline")
+        case .rateLimited: return L10n.tr("Rate limited")
+        case .creditExhausted: return L10n.tr("Max API credit used up")
+        case .restarting: return L10n.tr("Restarting")
+        case .error: return L10n.tr("Error")
+        case .permission(let k): return k == "microphone" ? L10n.tr("Microphone access needed") : L10n.tr("Audio recording access needed")
+        case .stopConfirm: return L10n.tr("Press ⌥⌘V again to stop")
+        case .meMissing: return L10n.tr("Your profile was not found")
         }
     }
 
     /// The few words that fit the capsule's wing.
     public var shortTitle: String {
         switch self {
-        case .offline: return "Offline"
-        case .rateLimited: return "Rate limited"
-        case .creditExhausted: return "No credit"
-        case .restarting: return "Restarting"
-        case .error: return "Error"
-        case .permission: return "Needs access"
-        case .stopConfirm: return "Stop?"
-        case .meMissing: return "No profile"
+        case .offline: return L10n.tr("Offline")
+        case .rateLimited: return L10n.tr("Rate limited")
+        case .creditExhausted: return L10n.tr("No credit")
+        case .restarting: return L10n.tr("Restarting")
+        case .error: return L10n.tr("Error")
+        case .permission: return L10n.tr("Needs access")
+        case .stopConfirm: return L10n.tr("Stop?")
+        case .meMissing: return L10n.tr("No profile")
         }
     }
 
@@ -107,11 +107,11 @@ public enum OverlayStatus: Equatable, Sendable {
         case .creditExhausted(let m), .error(let m): return m.isEmpty ? nil : m
         case .permission(let k):
             return k == "microphone"
-                ? "Verse needs the microphone to hear your side of the call. Allow it in System Settings, then press Start again."
-                : "Verse needs System Audio Recording to hear the meeting app. Allow it in System Settings, then press Start again."
-        case .restarting: return "The brain stopped; restarting it once."
-        case .stopConfirm: return "Verse keeps listening if you don't."
-        case .meMissing: return "Verse answers without it. Build it on the Me page."
+                ? L10n.tr("Verse needs the microphone to hear your side of the call. Allow it in System Settings, then press Start again.")
+                : L10n.tr("Verse needs System Audio Recording to hear the meeting app. Allow it in System Settings, then press Start again.")
+        case .restarting: return L10n.tr("The brain stopped; restarting it once.")
+        case .stopConfirm: return L10n.tr("Verse keeps listening if you don't.")
+        case .meMissing: return L10n.tr("Verse answers without it. Build it on the Me page.")
         default: return nil
         }
     }
@@ -221,15 +221,15 @@ public struct StartupPanel: Equatable, Sendable {
     public var title: String {
         if isStartCard {
             switch phase {
-            case .starting: return "Starting…"
-            case .ready: return "Ready"
-            case .listening: return "Listening"
+            case .starting: return L10n.tr("Starting…")
+            case .ready: return L10n.tr("Ready")
+            case .listening: return L10n.tr("Listening")
             }
         }
         switch phase {
-        case .starting: return "Starting…"
-        case .ready: return "Ready · \(session)"
-        case .listening: return "Listening · \(session)"
+        case .starting: return L10n.tr("Starting…")
+        case .ready: return L10n.tr("Ready · \(session)")
+        case .listening: return L10n.tr("Listening · \(session)")
         }
     }
 
@@ -238,18 +238,18 @@ public struct StartupPanel: Equatable, Sendable {
         case .starting(let step): return step
         case .ready:
             switch route {
-            case .room?: return "listening through the microphone"
-            case .phone?: return "listening to the phone call"
-            default: return app.map { "listening to \($0)" } ?? "waiting for the meeting app's audio"
+            case .room?: return L10n.tr("listening through the microphone")
+            case .phone?: return L10n.tr("listening to the phone call")
+            default: return app.map { L10n.tr("listening to \($0)") } ?? L10n.tr("waiting for the meeting app's audio")
             }
         case .listening:
             let hearing: String
             switch route {
-            case .room?: hearing = "hearing the room"
-            case .phone?: hearing = "hearing the call"
-            default: hearing = app.map { "hearing \($0)" } ?? "hearing the meeting"
+            case .room?: hearing = L10n.tr("hearing the room")
+            case .phone?: hearing = L10n.tr("hearing the call")
+            default: hearing = app.map { L10n.tr("hearing \($0)") } ?? L10n.tr("hearing the meeting")
             }
-            return transcribing ? hearing + " · transcribing" : hearing
+            return transcribing ? L10n.tr("\(hearing) · transcribing") : hearing
         }
     }
 }
@@ -411,7 +411,7 @@ public struct OverlayReducer: Sendable {
             state.remoteSpeaking = false
             state.remoteBars = [0, 0, 0]
             state.meBars = [0, 0, 0]
-            if code != 0, state.status == nil { state.status = .error("The session ended with an error.") }
+            if code != 0, state.status == nil { state.status = .error(L10n.tr("The session ended with an error.")) }
             if code == 0, state.status == .restarting || state.status == .offline || state.status == .rateLimited { state.status = nil }
         }
     }
@@ -441,7 +441,7 @@ public struct OverlayReducer: Sendable {
         state.activity = .warming
         state.route = route
         state.unprepared = unprepared
-        state.startup = StartupPanel(phase: .starting(step: "Starting the brain and loading models"), session: session, app: app,
+        state.startup = StartupPanel(phase: .starting(step: L10n.tr("Starting the brain and loading models")), session: session, app: app,
                                      route: route, lang: lang, autoLang: auto)
     }
 
@@ -480,7 +480,7 @@ public struct OverlayReducer: Sendable {
         switch st {
         case "warming": state.activity = .warming
         case "ready":
-            if case .starting? = state.startup?.phase { state.startup?.phase = .starting(step: "Brain ready · starting speech recognition") }
+            if case .starting? = state.startup?.phase { state.startup?.phase = .starting(step: L10n.tr("Brain ready · starting speech recognition")) }
             if state.activity == .warming || state.activity == .offline || state.activity == .idle { state.activity = .listening }
             if state.status == .offline || state.status == .rateLimited || state.status == .restarting { state.status = nil }
         case "offline":
@@ -555,7 +555,7 @@ public struct OverlayReducer: Sendable {
             let text = o[string: "text"] ?? ""
             lastRemoteTurnID = tid
             if who == "other" {
-                state.addresseeTag = "for " + (otherName(in: text) ?? "someone else")
+                state.addresseeTag = otherName(in: text).map { L10n.tr("for \($0)") } ?? L10n.tr("for someone else")
                 state.tagDimmed = true
                 return
             }
@@ -576,7 +576,7 @@ public struct OverlayReducer: Sendable {
         statements[tid] = nil
         // A new remote question ends follow mode for the card it replaces.
         if let previous = state.card?.turnID, previous != tid { turns[previous]?.endFollow() }
-        state.addresseeTag = who == "me" ? "for you" : nil
+        state.addresseeTag = who == "me" ? L10n.tr("for you") : nil
         state.tagDimmed = false
         state.card = OverlayCard(turnID: tid, question: question)
         if state.status == .meMissing { state.status = nil }
@@ -873,7 +873,7 @@ public struct SimOverlay: Equatable, Sendable {
         self.showCaption = showCaption
     }
 
-    public var capsuleTag: String { qTotal > 0 ? "practice · Q\(qIndex)/\(qTotal)" : "practice" }
+    public var capsuleTag: String { qTotal > 0 ? L10n.tr("practice · Q\(qIndex)/\(qTotal)") : L10n.tr("practice") }
 
     public var textMode: Bool { voice == "text" }
 
@@ -911,7 +911,7 @@ extension OverlayReducer {
             state.activity = .idle
             state.card = nil
             state.addresseeTag = nil
-            if code != 0, state.status == nil { state.status = .error("The practice interview ended with an error.") }
+            if code != 0, state.status == nil { state.status = .error(L10n.tr("The practice interview ended with an error.")) }
             return
         }
         guard var sim = state.sim else { return }

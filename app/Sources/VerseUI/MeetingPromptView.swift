@@ -11,7 +11,7 @@ struct MeetingPromptView: View {
     private var detail: String? { prompt.detailLine ?? (prompt.subtitle.isEmpty ? nil : prompt.subtitle) }
 
     /// The quiet button of a start prompt reads "Not now" (the model keeps "Dismiss" for its own callers).
-    private var dismissText: String? { prompt.dismissLabel.map { $0 == "Dismiss" ? "Not now" : $0 } }
+    private var dismissText: String? { prompt.dismissLabel.map { $0 == "Dismiss" ? L10n.tr("Not now") : $0 } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {

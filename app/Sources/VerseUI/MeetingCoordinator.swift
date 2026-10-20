@@ -302,7 +302,7 @@ public final class MeetingCoordinator: ObservableObject {
                     if host.sessions.isEmpty {
                         self.startOffer = nil
                         host.overlay.showPrompt(nil)
-                        host.overlay.showError("Could not prepare a session from the invite (\(error)). Prepare one for this meeting, then press Start.")
+                        host.overlay.showError(L10n.tr("Could not prepare a session from the invite (\(String(describing: error))). Prepare one for this meeting, then press Start."))
                         host.showOverlayPanel()
                     } else {
                         self.begin(session: nil, offer: o)
@@ -392,11 +392,11 @@ public final class MeetingCoordinator: ObservableObject {
 
     private static func describe(_ a: CalendarAuthorization) -> String {
         switch a {
-        case .fullAccess: return "Calendar access allowed"
-        case .notDetermined: return "Calendar access not asked yet"
-        case .denied: return "Calendar access denied (System Settings > Privacy & Security > Calendars)"
-        case .restricted: return "Calendar access is restricted on this Mac"
-        case .writeOnly: return "Write-only calendar access (Verse needs full access to read events)"
+        case .fullAccess: return L10n.tr("Calendar access allowed")
+        case .notDetermined: return L10n.tr("Calendar access not asked yet")
+        case .denied: return L10n.tr("Calendar access denied (System Settings > Privacy & Security > Calendars)")
+        case .restricted: return L10n.tr("Calendar access is restricted on this Mac")
+        case .writeOnly: return L10n.tr("Write-only calendar access (Verse needs full access to read events)")
         }
     }
 }

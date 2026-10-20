@@ -92,7 +92,18 @@ public struct SimPackSummary: Equatable, Sendable {
 /// The inputs of one practice interview, as the setup window collects them.
 public struct SimSetup: Equatable, Sendable {
     public enum InterviewType: String, CaseIterable, Sendable { case screening, manager, technical, mixed }
-    public enum Difficulty: String, CaseIterable, Sendable { case friendly, standard, tough }
+    public enum Difficulty: String, CaseIterable, Sendable {
+        case friendly, standard, tough
+
+        /// The name in the interface language (the raw value is what the brain gets).
+        public var label: String {
+            switch self {
+            case .friendly: L10n.tr("Friendly")
+            case .standard: L10n.tr("Standard")
+            case .tough: L10n.tr("Tough")
+            }
+        }
+    }
 
     /// What the interview is built from: a prepared meeting session or a job posting (today's flow).
     public enum Source: String, CaseIterable, Sendable { case meeting, posting }
@@ -176,16 +187,16 @@ public final class SimPrep: @unchecked Sendable {
                     onLine: @escaping @Sendable (String) -> Void) async -> Outcome {
         let fm = FileManager.default
         let python = brainDir.appendingPathComponent(".venv/bin/python")
-        guard fm.isExecutableFile(atPath: python.path) else { return .failed("brain python missing: \(python.path)") }
+        guard fm.isExecutableFile(atPath: python.path) else { return .failed(L10n.tr("brain python missing: \(python.path)")) }
         // A job posting goes through a private temp folder; a meeting session is read by prep where it lies.
         var tmp: URL?
         defer { if let tmp { try? fm.removeItem(at: tmp) } }
         let arguments: [String]
         switch setup.source {
         case .meeting:
-            guard let session = setup.meetingSession else { return .failed("no meeting is selected") }
+            guard let session = setup.meetingSession else { return .failed(L10n.tr("no meeting is selected")) }
             do { try fm.createDirectory(at: root, withIntermediateDirectories: true) } catch {
-                return .failed("cannot create the sessions folder: \(error.localizedDescription)")
+                return .failed(L10n.tr("cannot create the sessions folder: \(error.localizedDescription)"))
             }
             arguments = setup.prepArguments(sessionDir: session, out: root)
         case .posting:
@@ -204,7 +215,7 @@ public final class SimPrep: @unchecked Sendable {
                 }
                 try fm.createDirectory(at: root, withIntermediateDirectories: true)
             } catch {
-                return .failed("cannot write the posting for prep: \(error.localizedDescription)")
+                return .failed(L10n.tr("cannot write the posting for prep: \(error.localizedDescription)"))
             }
             arguments = setup.prepArguments(postingFile: postingFile, noteFile: noteFile, out: root)
         }
@@ -247,14 +258,14 @@ public final class SimPrep: @unchecked Sendable {
         if let rest = collected.rest() { onLine(rest) }
 
         if lock.withLock({ cancelled }) { return .cancelled }
-        if exited == -1 { return .failed("could not start prep") }
+        if exited == -1 { return .failed(L10n.tr("could not start prep")) }
         guard exited == 0 else {
-            let last = collected.lines.last { $0.hasPrefix("error:") } ?? collected.lines.last ?? "prep failed (exit \(exited))"
+            let last = collected.lines.last { $0.hasPrefix("error:") } ?? collected.lines.last ?? L10n.tr("prep failed (exit \(exited))")
             return .failed(last)
         }
         let printed = stdout.text.split(whereSeparator: \.isNewline).last.map(String.init) ?? ""
         guard let dir = SimSessionFolder.validated(printed, root: root) else {
-            return .failed("prep did not report a session folder")
+            return .failed(L10n.tr("prep did not report a session folder"))
         }
         return .done(dir)
     }

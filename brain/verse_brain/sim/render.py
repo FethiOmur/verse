@@ -16,6 +16,66 @@ from .templates.styles import CSS
 MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 LENGTH_WORDS = {"short": "shorter than the target", "on_target": "on target", "long": "longer than the target"}
 
+# The page's own words (headings, labels, short captions) follow the app's interface language (`sim_start.ui_lang`, copied into
+# `sim_results.json`). The interview itself, the grades and the notices keep the interview language / English. Italian uses
+# "tu"; Turkish avoids direct address (spec 2.5). Executor-written: Alex reviews.
+UI_LANGS = ("en", "it", "tr")
+TEXT: dict[str, dict[str, str]] = {
+    "en": {
+        "report": "Interview report", "practice": "Practice interview", "mode": "{mode} mode",
+        "grading_a": "Grading unavailable", "grading_b": "The transcript and delivery numbers below are complete; run the report again to get scores.",
+        "hero": "Overall score across the competencies this posting asks for.",
+        "competencies": "Competencies", "posting": "Posting", "judged": "Judged on",
+        "practise_next": "Practise next", "delivery": "Delivery",
+        "pace": "Pace", "wpm": "wpm", "fillers": "Filler words", "pause": "Longest pause", "answered": "Answered", "s": "s",
+        "delivery_note": "Pace is words per minute over your speaking time. A pause is the gap between two answers to the same question; the transcript has no word timings, so pauses inside an answer are not measured. Filler words are counted from the transcript text.",
+        "fillers_en_only": "Fillers are counted for English only.",
+        "qbyq": "Question by question", "skipped": "Skipped.", "no_answer": "No answer recorded.", "your_answer": "Your answer",
+        "follow_up": "Follow-up", "target": "target", "short": "shorter than the target", "on_target": "on target", "long": "longer than the target",
+        "filler_one": "filler", "filler_many": "fillers", "longest_pause": "longest pause",
+        "strong": "Strong", "missing": "Missing", "nothing": "Nothing noted.", "better": "A better answer, from your own evidence",
+        "coach": "Live coach note", "your_q": "Your question to them", "their_reply": "Their reply",
+        "footer": "Session {id}. Graded from the transcript only; no audio was stored.",
+    },
+    "it": {
+        "report": "Report del colloquio", "practice": "Colloquio di prova", "mode": "modalità {mode}",
+        "grading_a": "Valutazione non disponibile", "grading_b": "La trascrizione e i numeri sull'esposizione qui sotto sono completi; rigenera il report per ottenere i punteggi.",
+        "hero": "Punteggio complessivo sulle competenze richieste da questo annuncio.",
+        "competencies": "Competenze", "posting": "Annuncio", "judged": "Valutata su",
+        "practise_next": "Su cosa esercitarti", "delivery": "Esposizione",
+        "pace": "Ritmo", "wpm": "parole/min", "fillers": "Intercalari", "pause": "Pausa più lunga", "answered": "Risposte", "s": "s",
+        "delivery_note": "Il ritmo è il numero di parole al minuto nel tempo in cui parli. Una pausa è l'intervallo tra due risposte alla stessa domanda; la trascrizione non ha i tempi delle parole, quindi le pause dentro una risposta non vengono misurate. Gli intercalari sono contati dal testo della trascrizione.",
+        "fillers_en_only": "Gli intercalari vengono contati solo per l'inglese.",
+        "qbyq": "Domanda per domanda", "skipped": "Saltata.", "no_answer": "Nessuna risposta registrata.", "your_answer": "La tua risposta",
+        "follow_up": "Approfondimento", "target": "obiettivo", "short": "più breve dell'obiettivo", "on_target": "in linea con l'obiettivo", "long": "più lunga dell'obiettivo",
+        "filler_one": "intercalare", "filler_many": "intercalari", "longest_pause": "pausa più lunga",
+        "strong": "Punti di forza", "missing": "Cosa manca", "nothing": "Niente da segnalare.", "better": "Una risposta migliore, dalle tue esperienze",
+        "coach": "Nota del coach dal vivo", "your_q": "La tua domanda per loro", "their_reply": "La loro risposta",
+        "footer": "Sessione {id}. Valutata solo dalla trascrizione; nessun audio è stato salvato.",
+    },
+    "tr": {
+        "report": "Mülakat raporu", "practice": "Deneme mülakatı", "mode": "{mode} modu",
+        "grading_a": "Puanlama kullanılamıyor", "grading_b": "Aşağıdaki transkript ve anlatım sayıları eksiksizdir; puanları görmek için raporu yeniden oluştur.",
+        "hero": "Bu ilanın istediği yetkinlikler üzerinden genel puan.",
+        "competencies": "Yetkinlikler", "posting": "İlan", "judged": "Değerlendirilen sorular",
+        "practise_next": "Sıradaki çalışma konuları", "delivery": "Anlatım",
+        "pace": "Hız", "wpm": "sözcük/dk", "fillers": "Dolgu sözcükleri", "pause": "En uzun duraklama", "answered": "Yanıtlanan", "s": "sn",
+        "delivery_note": "Hız, konuşma süresi üzerinden dakikadaki sözcük sayısıdır. Duraklama, aynı soruya verilen iki yanıt arasındaki boşluktur; transkriptte sözcük zamanlaması olmadığı için bir yanıtın içindeki duraklamalar ölçülmez. Dolgu sözcükleri transkript metninden sayılır.",
+        "fillers_en_only": "Dolgu sözcükleri yalnızca İngilizce için sayılır.",
+        "qbyq": "Soru soru", "skipped": "Atlandı.", "no_answer": "Yanıt kaydedilmedi.", "your_answer": "Yanıt",
+        "follow_up": "Devam sorusu", "target": "hedef", "short": "hedeften kısa", "on_target": "hedefte", "long": "hedeften uzun",
+        "filler_one": "dolgu sözcüğü", "filler_many": "dolgu sözcüğü", "longest_pause": "en uzun duraklama",
+        "strong": "Güçlü yönler", "missing": "Eksikler", "nothing": "Not yok.", "better": "Deneyimlere dayalı daha iyi bir yanıt",
+        "coach": "Canlı koç notu", "your_q": "Mülakatçıya sorulan soru", "their_reply": "Yanıtları",
+        "footer": "Oturum {id}. Yalnızca transkriptten puanlandı; ses kaydedilmedi.",
+    },
+}
+
+
+def _tx(r: dict) -> dict[str, str]:
+    """The page's words for `r["ui_lang"]` (English for anything else)."""
+    return TEXT.get(r.get("ui_lang") or "en", TEXT["en"])
+
 
 def _fillers(answers: list[dict], lang: str) -> int:
     if lang in delivery.FILLERS:
@@ -102,6 +162,7 @@ def assemble(sim: dict, results: dict, grades: dict | None, *, error: str | None
     return {
         "session_id": sim.get("session_id", ""), "company": sim.get("company", ""), "role": sim.get("role", ""),
         "interview_type": sim.get("interview_type", ""), "difficulty": sim.get("difficulty", ""), "lang": lang,
+        "ui_lang": results.get("ui_lang") if results.get("ui_lang") in UI_LANGS else "en",
         "mode": results.get("mode", ""), "voice": results.get("voice", ""),
         "started_at": results.get("started_at", ""), "ended_at": results.get("ended_at", ""),
         "graded": grades is not None, "grading_error": None if grades is not None else (error or "unknown error"),
@@ -147,7 +208,7 @@ def _stat(label: str, value: str, unit: str = "") -> str:
     return f'<div class="stat"><dt>{_e(label)}</dt><dd>{_e(value)}{u}</dd></div>'
 
 
-def _question(q: dict) -> str:
+def _question(q: dict, t: dict[str, str]) -> str:
     asked = [a for a in q["asked"] if a["kind"] in ("question", "repeat")] or q["asked"][:1]
     title = asked[0]["text"] if asked else q["planned_text"]
     follow = [a["text"] for a in q["asked"] if a["kind"] in ("follow_up", "push")]
@@ -155,27 +216,28 @@ def _question(q: dict) -> str:
     out = ['<article class="q">', f'<div class="q-tag"><b>{_e(q["q_id"].upper())}</b>'
            + (f" · {_e(q['kind'])}" if q["kind"] else "") + "</div>", f"<h3>{_e(title)}</h3>"]
     if q["skipped"] or not q["answers"]:
-        out.append(f'<p class="skipped">{"Skipped." if q["skipped"] else "No answer recorded."}</p>')
+        out.append(f'<p class="skipped">{_e(t["skipped"] if q["skipped"] else t["no_answer"])}</p>')
     else:
-        out.append('<div class="said"><div class="label">Your answer</div>')
+        out.append(f'<div class="said"><div class="label">{_e(t["your_answer"])}</div>')
         out += [f'<p class="answer">{_e(a["text"])}</p>' for a in q["answers"]]
         out.append("</div>")
         if follow:
-            out.append(f'<p class="follow">Follow-up: {_e(" / ".join(follow))}</p>')
-        bits = [f'{_num(d["seconds"])} s' + (f' (target {d["target_s"][0]}-{d["target_s"][1]} s, {LENGTH_WORDS[d["length"]]})'
-                                              if d["length"] else ""),
-                f'{_num(d["wpm"])} wpm', f'{d["fillers"]} filler{"" if d["fillers"] == 1 else "s"}']
+            out.append(f'<p class="follow">{_e(t["follow_up"])}: {_e(" / ".join(follow))}</p>')
+        u = t["s"]
+        bits = [f'{_num(d["seconds"])} {u}' + (f' ({t["target"]} {d["target_s"][0]}-{d["target_s"][1]} {u}, {t[d["length"]]})'
+                                                if d["length"] else ""),
+                f'{_num(d["wpm"])} {t["wpm"]}', f'{d["fillers"]} {t["filler_one"] if d["fillers"] == 1 else t["filler_many"]}']
         if d["longest_pause_s"]:
-            bits.append(f'longest pause {_num(d["longest_pause_s"])} s')
+            bits.append(f'{t["longest_pause"]} {_num(d["longest_pause_s"])} {u}')
         out.append('<p class="deliv">' + "".join(f"<span>{_e(b)}</span>" for b in bits) + "</p>")
     g = q["grade"]
     if g and not (q["skipped"] or not q["answers"]):
         def col(title_, items):
-            body = "".join(f"<li>{_e(i)}</li>" for i in items) or '<li class="note">Nothing noted.</li>'
+            body = "".join(f"<li>{_e(i)}</li>" for i in items) or f'<li class="note">{_e(t["nothing"])}</li>'
             return f'<div><div class="label">{title_}</div><ul>{body}</ul></div>'
-        out.append('<div class="cols">' + col("Strong", g["strong"]) + col("Missing", g["missing"]) + "</div>")
+        out.append('<div class="cols">' + col(t["strong"], g["strong"]) + col(t["missing"], g["missing"]) + "</div>")
         if g["better_answer"]:
-            out.append('<div class="better"><div class="label">A better answer, from your own evidence</div>')
+            out.append(f'<div class="better"><div class="label">{_e(t["better"])}</div>')
             out += [f'<p>{_e(b["sentence"])}</p>' for b in g["better_answer"]]
             seen, src = set(), []
             for b in g["better_answer"]:
@@ -189,55 +251,55 @@ def _question(q: dict) -> str:
                 out.append('<div class="src">' + "".join(src) + "</div>")
             out.append("</div>")
     if q["coach"]:
-        out.append(f'<p class="coach">Live coach note: {_e(" ".join(q["coach"]))}</p>')
+        out.append(f'<p class="coach">{_e(t["coach"])}: {_e(" ".join(q["coach"]))}</p>')
     out.append("</article>")
     return "".join(out)
 
 
 def render_html(r: dict) -> str:
-    title = f'Interview report: {r["company"]}' if r["company"] else "Interview report"
+    t = _tx(r)
+    title = f'{t["report"]}: {r["company"]}' if r["company"] else t["report"]
     meta = [x for x in (r["role"], r["interview_type"], r["difficulty"], _date(r["started_at"]),
-                        _minutes(r["started_at"], r["ended_at"]), f'{r["mode"]} mode' if r["mode"] else "") if x]
+                        _minutes(r["started_at"], r["ended_at"]),
+                        t["mode"].format(mode=r["mode"]) if r["mode"] else "") if x]
     d = r["delivery"]
     p = ["<!doctype html>", f'<html lang="{_e(r["lang"] or "en")}"><head><meta charset="utf-8">',
          '<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark">',
          f"<title>{_e(title)}</title><style>{CSS}</style></head><body><main>",
-         f'<header><h1>{_e(r["company"] or "Practice interview")}</h1>'
+         f'<header><h1>{_e(r["company"] or t["practice"])}</h1>'
          f'<p class="meta">{_e(" · ".join(meta))}</p></header>']
     if not r["graded"]:
-        p.append(f'<p class="notice">Grading unavailable ({_e(r["grading_error"])}). The transcript and delivery numbers '
-                 "below are complete; run the report again to get scores.</p>")
+        p.append(f'<p class="notice">{_e(t["grading_a"])} ({_e(r["grading_error"])}). {_e(t["grading_b"])}</p>')
     p += [f'<p class="notice">{_e(w)}</p>' for w in r["warnings"]]
     if r["graded"]:
         hero = (f'<div class="hero"><div class="big">{r["overall"]}<small>/5</small></div>'
-                "<p>Overall score across the competencies this posting asks for.</p></div>"
+                f"<p>{_e(t['hero'])}</p></div>"
                 if r["overall"] else "")
         p.append(hero)
         if r["competencies"]:
-            p.append("<section><h2>Competencies</h2>")
+            p.append(f"<section><h2>{_e(t['competencies'])}</h2>")
             for c in r["competencies"]:
                 qs = ", ".join(x.upper() for x in c["q_ids"])
                 p.append(f'<div class="comp"><div class="comp-head"><strong>{_e(c["name"])}</strong>'
                          f'<span class="score">{c["score"]}/5</span></div>{_bar(c["score"])}'
                          + (f'<p>{_e(c["rubric_line"])}</p>' if c["rubric_line"] else "")
-                         + (f'<p class="quote">Posting: “{_e(c["posting_quote"])}”</p>' if c["posting_quote"] else "")
-                         + (f'<p class="quote">Judged on {_e(qs)}</p>' if qs else "") + "</div>")
+                         + (f'<p class="quote">{_e(t["posting"])}: “{_e(c["posting_quote"])}”</p>' if c["posting_quote"] else "")
+                         + (f'<p class="quote">{_e(t["judged"])} {_e(qs)}</p>' if qs else "") + "</div>")
             p.append("</section>")
         if r["practise_next"]:
-            p.append("<section><h2>Practise next</h2><ol class=\"practise\">"
+            p.append(f"<section><h2>{_e(t['practise_next'])}</h2><ol class=\"practise\">"
                      + "".join(f"<li>{_e(x)}</li>" for x in r["practise_next"]) + "</ol></section>")
-    p.append("<section><h2>Delivery</h2><dl class=\"stats\">"
-             + _stat("Pace", _num(d["wpm"]), "wpm") + _stat("Filler words", str(d["fillers"]))
-             + _stat("Longest pause", _num(d["longest_pause_s"]), "s")
-             + _stat("Answered", f'{d["questions_answered"]}/{d["questions_total"]}')
-             + '</dl><p class="note">Pace is words per minute over your speaking time. A pause is the gap between two '
-             "answers to the same question; the transcript has no word timings, so pauses inside an answer are not "
-             "measured. Filler words are counted from the transcript text.</p></section>")
-    p.append("<section><h2>Question by question</h2>" + "".join(_question(q) for q in r["questions"]) + "</section>")
+    note = t["delivery_note"] + (" " + t["fillers_en_only"] if (r["lang"] or "en") != "en" else "")
+    p.append(f"<section><h2>{_e(t['delivery'])}</h2><dl class=\"stats\">"
+             + _stat(t["pace"], _num(d["wpm"]), t["wpm"]) + _stat(t["fillers"], str(d["fillers"]))
+             + _stat(t["pause"], _num(d["longest_pause_s"]), t["s"])
+             + _stat(t["answered"], f'{d["questions_answered"]}/{d["questions_total"]}')
+             + f'</dl><p class="note">{_e(note)}</p></section>')
+    p.append(f"<section><h2>{_e(t['qbyq'])}</h2>" + "".join(_question(q, t) for q in r["questions"]) + "</section>")
     cq = r.get("candidate_question")
     if cq and cq.get("text"):
-        p.append('<section><h2>Your question to them</h2><p class="answer">' + _e(cq["text"]) + "</p>"
-                 + (f'<p class="follow">Their reply: {_e(cq["reply"])}</p>' if cq.get("reply") else "") + "</section>")
-    p.append(f'<footer>Session {_e(r["session_id"])}. Graded from the transcript only; no audio was stored.</footer>')
+        p.append(f'<section><h2>{_e(t["your_q"])}</h2><p class="answer">' + _e(cq["text"]) + "</p>"
+                 + (f'<p class="follow">{_e(t["their_reply"])}: {_e(cq["reply"])}</p>' if cq.get("reply") else "") + "</section>")
+    p.append(f'<footer>{_e(t["footer"].format(id=r["session_id"]))}</footer>')
     p.append("</main></body></html>")
     return "\n".join(p) + "\n"

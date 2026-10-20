@@ -94,7 +94,7 @@ public final class ConversationPrep: ConversationRunning, @unchecked Sendable {
                     onLine: @escaping @Sendable (String) -> Void) async -> ConversationOutcome {
         let fm = FileManager.default
         let python = brainDir.appendingPathComponent(".venv/bin/python")
-        guard fm.isExecutableFile(atPath: python.path) else { return .failed("brain python missing: \(python.path)") }
+        guard fm.isExecutableFile(atPath: python.path) else { return .failed(L10n.tr("brain python missing: \(python.path)")) }
         let tmp = fm.temporaryDirectory.appendingPathComponent("verse-conversation-\(UUID().uuidString)", isDirectory: true)
         defer { try? fm.removeItem(at: tmp) }
         let threadFile = tmp.appendingPathComponent("thread.txt")
@@ -116,7 +116,7 @@ public final class ConversationPrep: ConversationRunning, @unchecked Sendable {
             if !note.isEmpty { noteFile = try write("note.md", note) }
             try fm.createDirectory(at: root, withIntermediateDirectories: true)
         } catch {
-            return .failed("cannot write the conversation for prep: \(error.localizedDescription)")
+            return .failed(L10n.tr("cannot write the conversation for prep: \(error.localizedDescription)"))
         }
 
         let out = Pipe(), err = Pipe()
@@ -156,14 +156,14 @@ public final class ConversationPrep: ConversationRunning, @unchecked Sendable {
         if let rest = collected.rest() { onLine(rest) }
 
         if lock.withLock({ cancelled }) { return .cancelled }
-        if exited == -1 { return .failed("could not start prep") }
+        if exited == -1 { return .failed(L10n.tr("could not start prep")) }
         guard exited == 0 else {
-            let last = collected.lines.last { $0.hasPrefix("error:") } ?? collected.lines.last ?? "prep failed (exit \(exited))"
+            let last = collected.lines.last { $0.hasPrefix("error:") } ?? collected.lines.last ?? L10n.tr("prep failed (exit \(exited))")
             return .failed(last)
         }
         let printed = stdout.text.split(whereSeparator: \.isNewline).last.map(String.init) ?? ""
         guard let dir = ConversationSessionFolder.validated(printed, root: root) else {
-            return .failed("prep did not report a session folder")
+            return .failed(L10n.tr("prep did not report a session folder"))
         }
         return .done(dir)
     }

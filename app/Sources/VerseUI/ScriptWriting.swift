@@ -5,7 +5,7 @@ import VersePrompter
 public enum ScriptUse: String, CaseIterable, Identifiable, Sendable {
     case recording, talk
     public var id: String { rawValue }
-    public var title: String { self == .recording ? "Recording" : "Talk" }
+    public var title: String { self == .recording ? L10n.tr("Recording") : L10n.tr("Talk") }
 }
 
 /// The brain's answer: the text (pages split by a `---` line, optional `[cues]`) and what it cost.
@@ -54,10 +54,10 @@ public enum ScriptWriteError: Error, LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .brainMissing(let detail): return "Verse could not find its brain: \(detail)"
+        case .brainMissing(let detail): return L10n.tr("Verse could not find its brain: \(detail)")
         case .failed(let detail): return detail
-        case .badOutput: return "The brain returned no script."
-        case .timedOut: return "Writing the script took too long and was stopped."
+        case .badOutput: return L10n.tr("The brain returned no script.")
+        case .timedOut: return L10n.tr("Writing the script took too long and was stopped.")
         }
     }
 }
@@ -144,7 +144,7 @@ enum ChildProcess {
                 process.standardError = err
                 process.standardInput = FileHandle.nullDevice
                 do { try process.run() } catch {
-                    continuation.resume(throwing: ScriptWriteError.failed("could not start the brain: \(error.localizedDescription)"))
+                    continuation.resume(throwing: ScriptWriteError.failed(L10n.tr("could not start the brain: \(error.localizedDescription)")))
                     return
                 }
                 let timedOut = Box(false)

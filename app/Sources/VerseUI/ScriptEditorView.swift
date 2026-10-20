@@ -37,15 +37,15 @@ public struct ScriptEditorView: View {
     private var list: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
-                Text("Scripts").font(VT.Font.largeTitle).tracking(VT.Font.largeTitleTracking).foregroundStyle(ink.primary)
+                Text("Scripts", bundle: .module).font(VT.Font.largeTitle).tracking(VT.Font.largeTitleTracking).foregroundStyle(ink.primary)
                 Spacer()
                 Button { editor.newScript() } label: {
                     Image(systemName: "square.and.pencil").font(.system(size: 14, weight: .medium)).foregroundStyle(ink.secondary)
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
-                .help("New script")
-                .accessibilityLabel("New script")
+                .help(Text("New script", bundle: .module))
+                .accessibilityLabel(Text("New script", bundle: .module))
             }
             .padding(.leading, 10).padding(.bottom, 14)
             ScrollView {
@@ -65,7 +65,7 @@ public struct ScriptEditorView: View {
                         .buttonStyle(.plain)
                     }
                     if editor.entries.isEmpty {
-                        Text("No saved scripts yet").font(VT.Font.callout).foregroundStyle(ink.tertiary).padding(.horizontal, 10)
+                        Text("No saved scripts yet", bundle: .module).font(VT.Font.callout).foregroundStyle(ink.tertiary).padding(.horizontal, 10)
                     }
                 }
             }
@@ -80,7 +80,7 @@ public struct ScriptEditorView: View {
             guard let text = try? String(contentsOf: e.url, encoding: .utf8) else { continue }
             let words = ScriptParser.parse(text).totalWordCount
             let seconds = Int((Double(words) / 140 * 60).rounded())
-            out[e.url] = "\(words) words · \(seconds / 60):\(String(format: "%02d", seconds % 60))"
+            out[e.url] = "\(L10n.tr("\(words) words")) · \(seconds / 60):\(String(format: "%02d", seconds % 60))"
         }
         return out
     }
@@ -90,14 +90,14 @@ public struct ScriptEditorView: View {
     private var main: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
-                TextField("", text: $editor.name, prompt: Text("Name").foregroundStyle(ink.tertiary))
+                TextField("", text: $editor.name, prompt: Text("Name", bundle: .module).foregroundStyle(ink.tertiary))
                     .textFieldStyle(.plain).font(.system(size: 20, weight: .bold)).foregroundStyle(ink.primary)
-                if editor.isDirty { Text("Unsaved").font(VT.Font.caption).foregroundStyle(ink.tertiary) }
+                if editor.isDirty { Text("Unsaved", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary) }
                 Spacer(minLength: 8)
                 HomeSecondaryButton("Write with Verse") { showWriter = true }.disabled(editor.isWriting)
                 HomePrimaryButton("Present", hint: "⌘P", shortcut: KeyboardShortcut("p"), action: read)
                     .disabled(editor.script.isEmpty)
-                    .help("Save and start the prompter")
+                    .help(Text("Save and start the prompter", bundle: .module))
             }
             HomeGroup(plate: true) {
                 TextEditor(text: $editor.text)
@@ -106,7 +106,7 @@ public struct ScriptEditorView: View {
                     .padding(.horizontal, 17).padding(.vertical, 14)
                     .overlay(alignment: .topLeading) {
                         if editor.text.isEmpty {
-                            Text("Paste or type your script. A line with only --- between blank lines starts a new page. [Notes in brackets] are shown but not tracked.")
+                            Text("Paste or type your script. A line with only --- between blank lines starts a new page. [Notes in brackets] are shown but not tracked.", bundle: .module)
                                 .font(.system(size: 15)).foregroundStyle(ink.tertiary)
                                 .padding(.horizontal, 22).padding(.vertical, 14)
                                 .allowsHitTesting(false)
@@ -118,7 +118,7 @@ public struct ScriptEditorView: View {
                 HStack {
                     HomeNote(verbatim: message.text, isError: message.isError)
                     if editor.previousText != nil {
-                        Button("Restore previous text") { editor.restorePreviousText() }.buttonStyle(.link)
+                        Button { editor.restorePreviousText() } label: { Text("Restore previous text", bundle: .module) }.buttonStyle(.link)
                     }
                 }
             }
@@ -137,8 +137,11 @@ public struct ScriptEditorView: View {
     private var summary: String {
         let seconds = editor.readingSeconds(wordsPerMinute: prompter.settings.wordsPerMinute)
         let pages = editor.pageCount
-        return "\(editor.wordCount) words · \(pages) page\(pages == 1 ? "" : "s") · about \(seconds / 60):\(String(format: "%02d", seconds % 60)) at \(Int(prompter.settings.wordsPerMinute)) wpm"
-            + (editor.isDirty ? "" : " · saved")
+        let clock = "\(seconds / 60):\(String(format: "%02d", seconds % 60))"
+        var parts = [L10n.tr("\(editor.wordCount) words"), L10n.tr("\(pages) pages"),
+                     L10n.tr("about \(clock) at \(Int(prompter.settings.wordsPerMinute)) wpm")]
+        if !editor.isDirty { parts.append(L10n.tr("saved")) }
+        return parts.joined(separator: " · ")
     }
 
     private func importFile() {
@@ -168,8 +171,8 @@ struct WriteWithVerseSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Write with Verse").font(VT.Font.title).foregroundStyle(ink.primary)
-            Text("What is it about? Say what you want to get across, in your own words. Verse writes it the way you talk.")
+            Text("Write with Verse", bundle: .module).font(VT.Font.title).foregroundStyle(ink.primary)
+            Text("What is it about? Say what you want to get across, in your own words. Verse writes it the way you talk.", bundle: .module)
                 .font(VT.Font.callout).foregroundStyle(ink.secondary)
             HomeGroup(plate: true) {
                 HomeTextArea(text: $topic, placeholder: "The point, the audience, anything you want in it.", minHeight: 110, font: .system(size: 14))
@@ -178,14 +181,14 @@ struct WriteWithVerseSheet: View {
             HomeGroup {
                 HomeRow("Length") {
                     HomePopup(selection: $seconds, options: Self.lengths.map { s in
-                        HomeOption(s < 60 ? "\(s) s" : "\(s / 60) min\(s % 60 == 0 ? "" : " 30 s")", s)
+                        HomeOption(verbatim: s < 60 ? L10n.tr("\(s) s") : (s % 60 == 0 ? L10n.tr("\(s / 60) min") : L10n.tr("\(s / 60) min 30 s")), s)
                     })
                 }
                 HomeRowDivider()
                 HomeRow("For") { HomeSegmented(verbatim: ScriptUse.allCases.map { ($0.title, $0) }, selection: $use) }
             }
             HStack(spacing: 8) {
-                if editor.isWriting { ProgressView().controlSize(.small); Text("Writing…").font(VT.Font.callout).foregroundStyle(ink.secondary) }
+                if editor.isWriting { ProgressView().controlSize(.small); Text("Writing…", bundle: .module).font(VT.Font.callout).foregroundStyle(ink.secondary) }
                 Spacer()
                 HomeSecondaryButton("Cancel") { isPresented = false }
                     .keyboardShortcut(.cancelAction)

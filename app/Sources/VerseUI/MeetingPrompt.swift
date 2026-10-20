@@ -65,33 +65,33 @@ public struct MeetingPrompt: Equatable, Sendable {
 
     /// "Meeting detected · Start Verse?" with the calendar event and the session it will use underneath.
     public static func detected(appName: String, eventTitle: String?, plan: SessionPlan, questionCount: Int? = nil) -> MeetingPrompt {
-        MeetingPrompt(kind: .detected, title: "Meeting detected · Start Verse?",
+        MeetingPrompt(kind: .detected, title: L10n.tr("Meeting detected · Start Verse?"),
                       subtitle: subtitle(app: appName, eventTitle: eventTitle, plan: plan),
-                      acceptLabel: "Start", dismissLabel: "Dismiss",
-                      eyebrow: "\(appName) is using the microphone", headline: eventTitle ?? "Meeting detected",
+                      acceptLabel: L10n.tr("Start"), dismissLabel: "Dismiss",
+                      eyebrow: L10n.tr("\(appName) is using the microphone"), headline: eventTitle ?? L10n.tr("Meeting detected"),
                       detailLine: detailLine(plan: plan, questionCount: questionCount))
     }
 
     /// The same question ahead of a meeting that has not begun: ready before he joins.
     public static func upcoming(eventTitle: String, minutes: Int, plan: SessionPlan, questionCount: Int? = nil) -> MeetingPrompt {
-        let when = minutes <= 0 ? "Meeting now" : "Meeting in \(minutes) min"
-        return MeetingPrompt(kind: .upcoming, title: "\(when) · Start Verse?",
+        let when = minutes <= 0 ? L10n.tr("Meeting now") : L10n.tr("Meeting in \(minutes) min")
+        return MeetingPrompt(kind: .upcoming, title: L10n.tr("\(when) · Start Verse?"),
                              subtitle: subtitle(app: nil, eventTitle: eventTitle, plan: plan),
-                             acceptLabel: "Start", dismissLabel: "Dismiss",
+                             acceptLabel: L10n.tr("Start"), dismissLabel: "Dismiss",
                              eyebrow: when, headline: eventTitle, detailLine: detailLine(plan: plan, questionCount: questionCount))
     }
 
     /// "Prepared · 14 questions" (or the session's name when the count is not known), "Prepares a session from the invite".
     private static func detailLine(plan: SessionPlan, questionCount: Int?) -> String {
         func prepared(_ name: String) -> String {
-            if let n = questionCount { return "Prepared · \(n) question\(n == 1 ? "" : "s")" }
-            return "Prepared · \(name)"
+            if let n = questionCount { return L10n.tr("Prepared · \(n) questions") }
+            return L10n.tr("Prepared · \(name)")
         }
         switch plan {
         case .prepared(let name): return prepared(name)
-        case .fromInvite: return "Prepares a session from the invite"
+        case .fromInvite: return L10n.tr("Prepares a session from the invite")
         case .selected(let name?): return prepared(name)
-        case .selected(nil): return "No session prepared yet"
+        case .selected(nil): return L10n.tr("No session prepared yet")
         }
     }
 
@@ -99,10 +99,10 @@ public struct MeetingPrompt: Equatable, Sendable {
         let head = [eventTitle, app].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
         let tail: String
         switch plan {
-        case .prepared(let name): tail = "session \(name)"
-        case .fromInvite: tail = "prepares a session from the invite"
-        case .selected(let name?): tail = "session \(name)"
-        case .selected(nil): tail = "no session prepared yet"
+        case .prepared(let name): tail = L10n.tr("session \(name)")
+        case .fromInvite: tail = L10n.tr("prepares a session from the invite")
+        case .selected(let name?): tail = L10n.tr("session \(name)")
+        case .selected(nil): tail = L10n.tr("no session prepared yet")
         }
         return head.isEmpty ? tail : head + "\n" + tail
     }
@@ -110,7 +110,7 @@ public struct MeetingPrompt: Equatable, Sendable {
     /// The accept button was pressed and a session is being prepared.
     public func preparing() -> MeetingPrompt {
         var p = self
-        p.subtitle = "Preparing a session from the invite…"
+        p.subtitle = L10n.tr("Preparing a session from the invite…")
         p.busy = true
         return p
     }
@@ -118,16 +118,16 @@ public struct MeetingPrompt: Equatable, Sendable {
     // MARK: summary prompts
 
     public static func saveSummary(session: String, folder: String) -> MeetingPrompt {
-        MeetingPrompt(kind: .saveSummary, title: "Save summary to vault?",
-                      subtitle: "\(session)\nWrites a new note to \(folder)",
-                      acceptLabel: "Save", dismissLabel: "Not now")
+        MeetingPrompt(kind: .saveSummary, title: L10n.tr("Save summary to vault?"),
+                      subtitle: L10n.tr("\(session)\nWrites a new note to \(folder)"),
+                      acceptLabel: L10n.tr("Save"), dismissLabel: L10n.tr("Not now"))
     }
 
     public static func saved(path: String) -> MeetingPrompt {
-        MeetingPrompt(kind: .saved, title: "Summary saved", subtitle: path, acceptLabel: "OK")
+        MeetingPrompt(kind: .saved, title: L10n.tr("Summary saved"), subtitle: path, acceptLabel: L10n.tr("OK"))
     }
 
     public static func saveFailed(_ message: String) -> MeetingPrompt {
-        MeetingPrompt(kind: .saved, title: "Summary not saved", subtitle: message, acceptLabel: "OK")
+        MeetingPrompt(kind: .saved, title: L10n.tr("Summary not saved"), subtitle: message, acceptLabel: L10n.tr("OK"))
     }
 }

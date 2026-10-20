@@ -73,19 +73,19 @@ extension AskSession {
 enum AskFormat {
     /// "$0.012" for one answer; "~$0.003" when the cost is an estimate (a cancelled answer).
     static func cost(_ value: Double, estimated: Bool = false) -> String {
-        let s = value >= 1 ? String(format: "$%.2f", value) : String(format: "$%.3f", value)
+        let s = value >= 1 ? L10n.usd(value) : L10n.usd(value, digits: 3)
         return estimated ? "~" + s : s
     }
 
     /// "$0.04" for the header menu: cents once it reaches one, thousandths before.
     static func chatCost(_ value: Double) -> String {
-        value >= 0.01 || value == 0 ? String(format: "$%.2f", value) : String(format: "$%.3f", value)
+        value >= 0.01 || value == 0 ? L10n.usd(value) : L10n.usd(value, digits: 3)
     }
 
     /// "Sonnet · 2.4 s · $0.012".
     static func meta(_ a: ChatAnswer) -> String {
         var parts = [AskModel.displayName(forModelID: a.model)]
-        if let ms = a.msTotal { parts.append(String(format: "%.1f s", Double(ms) / 1000)) }
+        if let ms = a.msTotal { parts.append(L10n.tr("\((Double(ms) / 1000).formatted(.number.precision(.fractionLength(1)).locale(L10n.formatLocale))) s")) }
         parts.append(cost(a.costUSD, estimated: a.costEstimated))
         if a.cancelled { parts.insert(L10n.tr("Stopped"), at: 0) }
         return parts.joined(separator: " · ")

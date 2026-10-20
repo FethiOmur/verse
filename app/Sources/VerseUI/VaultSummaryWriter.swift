@@ -11,9 +11,9 @@ public struct VaultSummaryWriter: Sendable {
 
         public var description: String {
             switch self {
-            case .vaultMissing(let p): return "The vault folder does not exist: \(p)"
-            case .noSummary: return "There is no summary to save."
-            case .failed(let m): return "Could not write the note: \(m)"
+            case .vaultMissing(let p): return L10n.tr("The vault folder does not exist: \(p)")
+            case .noSummary: return L10n.tr("There is no summary to save.")
+            case .failed(let m): return L10n.tr("Could not write the note: \(m)")
             }
         }
     }

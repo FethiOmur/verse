@@ -149,6 +149,8 @@ public actor SimRunner {
         /// After ⌥Space, words already spoken still arrive from the recognizer for this long.
         public var doneGrace: TimeInterval = 0.4
         public var lang = "en"
+        /// The app's interface language (`en|it|tr`): the report page's headings follow it. The interview stays in `lang`.
+        public var uiLang = "en"
         public init() {}
     }
 
@@ -255,7 +257,7 @@ public actor SimRunner {
                 await self.tick(now: await m.now())
             }
         })
-        send(["type": "sim_start", "session_dir": sessionDir.path, "mode": mode.rawValue, "voice": kind.rawValue])
+        send(["type": "sim_start", "session_dir": sessionDir.path, "mode": mode.rawValue, "voice": kind.rawValue, "ui_lang": config.uiLang])
     }
 
     /// Ends at once without a report (Quit, Abort): the brain writes the transcript so far and exits.

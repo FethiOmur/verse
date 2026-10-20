@@ -81,13 +81,13 @@ struct MockMenuBar: View {
         let ink: Color = kind == .light ? .black.opacity(0.85) : .white.opacity(0.92)
         HStack(spacing: 18) {
             Image(systemName: "apple.logo").font(.system(size: 14, weight: .medium))
-            Text("Comet").font(.system(size: 13, weight: .bold))
+            Text(verbatim: "Comet").font(.system(size: 13, weight: .bold))
             ForEach(["File", "Edit", "View", "History", "Window"], id: \.self) { Text($0).font(.system(size: 13)) }
             Spacer()
             Image(systemName: "battery.75percent")
             Image(systemName: "wifi")
             Image(systemName: "magnifyingglass")
-            Text("Thu 16 Oct  14:29").font(.system(size: 13))
+            Text(verbatim: "Thu 16 Oct  14:29").font(.system(size: 13))
         }
         .foregroundStyle(ink)
         .padding(.horizontal, 18)
@@ -113,8 +113,8 @@ private struct DocPage: View {
             Color.white
             VStack(alignment: .leading, spacing: 10) {
                 Spacer().frame(height: 34)
-                Text("Q3 delivery review").font(.system(size: 30, weight: .bold)).foregroundStyle(.black)
-                Text("Halden Logistics · Platform team").font(.system(size: 14)).foregroundStyle(.gray)
+                Text(verbatim: "Q3 delivery review").font(.system(size: 30, weight: .bold)).foregroundStyle(.black)
+                Text(verbatim: "Halden Logistics · Platform team").font(.system(size: 14)).foregroundStyle(.gray)
                 ForEach(0..<16, id: \.self) { i in
                     Text(String(repeating: "Route planning latency and ETA drift across the Milan depots. ", count: 3))
                         .font(.system(size: 15)).foregroundStyle(.black.opacity(i % 5 == 0 ? 0.95 : 0.78)).lineLimit(1)

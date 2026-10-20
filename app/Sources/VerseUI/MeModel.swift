@@ -19,14 +19,14 @@ public enum MeSection: String, CaseIterable, Sendable {
     /// What the page calls it.
     public var title: String {
         switch self {
-        case .who: return "Who I am"
-        case .experience: return "Experience"
-        case .projects: return "Projects"
-        case .skills: return "Skills"
-        case .numbers: return "Numbers"
-        case .stories: return "Stories"
-        case .looking: return "Looking for"
-        case .notes: return "My notes"
+        case .who: return L10n.tr("Who I am")
+        case .experience: return L10n.tr("Experience")
+        case .projects: return L10n.tr("Projects")
+        case .skills: return L10n.tr("Skills")
+        case .numbers: return L10n.tr("Numbers")
+        case .stories: return L10n.tr("Stories")
+        case .looking: return L10n.tr("Looking for")
+        case .notes: return L10n.tr("My notes")
         }
     }
 
@@ -177,16 +177,25 @@ public struct MeMeta: Equatable, Sendable {
     /// "Built 16 Oct · 3,140 tokens · $0.07".
     public var summary: String {
         var parts: [String] = []
-        if let b = builtAt { parts.append("Built " + b.formatted(Date.FormatStyle().locale(HomeFormat.locale).day().month(.abbreviated))) } else { parts.append("Built") }
-        parts.append(Self.tokenText(tokens) + " tokens")
-        parts.append(String(format: "$%.2f", spendTotal))
+        if let b = builtAt { parts.append(L10n.tr("Built \(b.formatted(Date.FormatStyle().locale(HomeFormat.locale).day().month(.abbreviated)))")) } else { parts.append(L10n.tr("Built")) }
+        parts.append(L10n.tr("\(Self.tokenText(tokens)) tokens"))
+        parts.append(L10n.usd(spendTotal))
+        return parts.joined(separator: " · ")
+    }
+
+    /// The same line for the "Done · built 16 Oct · …" message after a run.
+    public var doneSummary: String {
+        var parts: [String] = []
+        if let b = builtAt { parts.append(L10n.tr("built \(b.formatted(Date.FormatStyle().locale(HomeFormat.locale).day().month(.abbreviated)))")) } else { parts.append(L10n.tr("built")) }
+        parts.append(L10n.tr("\(Self.tokenText(tokens)) tokens"))
+        parts.append(L10n.usd(spendTotal))
         return parts.joined(separator: " · ")
     }
 
     public static func tokenText(_ n: Int) -> String {
         let f = NumberFormatter()
         f.numberStyle = .decimal
-        f.locale = Locale(identifier: "en_US")
+        f.locale = L10n.formatLocale
         return f.string(from: NSNumber(value: n)) ?? "\(n)"
     }
 }
@@ -204,10 +213,10 @@ public struct MeSource: Identifiable, Equatable, Sendable {
     /// "vault note", "file", "facts of earlier meeting preps".
     public var kindText: String {
         switch kind {
-        case "vault": return "Vault note"
-        case "sessions": return "Earlier meeting preps"
-        case "notes": return "Notes"
-        default: return "File"
+        case "vault": return L10n.tr("Vault note")
+        case "sessions": return L10n.tr("Earlier meeting preps")
+        case "notes": return L10n.tr("Notes")
+        default: return L10n.tr("File")
         }
     }
 }
@@ -263,7 +272,7 @@ public final class MePrep: MeRunning, @unchecked Sendable {
 
     public func run(_ action: MeAction, profileDir: URL, brainDir: URL, fake: Bool, onLine: @escaping @Sendable (String) -> Void) async -> MeOutcome {
         let python = self.python ?? brainDir.appendingPathComponent(".venv/bin/python")
-        guard FileManager.default.isExecutableFile(atPath: python.path) else { return .failed("brain python missing: \(python.path)") }
+        guard FileManager.default.isExecutableFile(atPath: python.path) else { return .failed(L10n.tr("brain python missing: \(python.path)")) }
         let out = Pipe(), err = Pipe()
         process.executableURL = python
         process.arguments = Self.arguments(action, profileDir: profileDir, fake: fake)
@@ -301,9 +310,9 @@ public final class MePrep: MeRunning, @unchecked Sendable {
         if let rest = collected.rest() { onLine(rest) }
 
         if lock.withLock({ cancelled }) { return .cancelled }
-        if exited == -1 { return .failed("could not start prep") }
+        if exited == -1 { return .failed(L10n.tr("could not start prep")) }
         guard exited == 0 else {
-            let last = collected.lines.last { $0.hasPrefix("error:") } ?? collected.lines.last ?? "prep failed (exit \(exited))"
+            let last = collected.lines.last { $0.hasPrefix("error:") } ?? collected.lines.last ?? L10n.tr("prep failed (exit \(exited))")
             return .failed(last)
         }
         return .done(stdout: stdout.text, log: collected.lines)
@@ -424,14 +433,14 @@ public final class MeModel: ObservableObject {
         case busy, unknownLine, parts(expected: Int), empty, noRoom, noProfile, noSourcesFile, notFound(String), failed(String)
         public var description: String {
             switch self {
-            case .busy: return "Wait for the refresh to finish."
-            case .unknownLine: return "That line is gone."
-            case .parts(let n): return "This line has \(n) parts separated by “|”. Keep all of them."
-            case .empty: return "A line cannot be empty."
-            case .noRoom: return "This section has no free line number."
-            case .noProfile: return "Build the profile first."
-            case .noSourcesFile: return "Build the profile once first: the default sources are chosen at the first build."
-            case .notFound(let p): return "No file at \(p)."
+            case .busy: return L10n.tr("Wait for the refresh to finish.")
+            case .unknownLine: return L10n.tr("That line is gone.")
+            case .parts(let n): return L10n.tr("This line has \(n) parts separated by “|”. Keep all of them.")
+            case .empty: return L10n.tr("A line cannot be empty.")
+            case .noRoom: return L10n.tr("This section has no free line number.")
+            case .noProfile: return L10n.tr("Build the profile first.")
+            case .noSourcesFile: return L10n.tr("Build the profile once first: the default sources are chosen at the first build.")
+            case .notFound(let p): return L10n.tr("No file at \(p).")
             case .failed(let m): return m
             }
         }
@@ -498,7 +507,7 @@ public final class MeModel: ObservableObject {
             try Data(MeFile.render(all).utf8).write(to: mdURL, options: .atomic)
             if touchesNumbers { try writeFacts(all[.numbers] ?? []) }
         } catch {
-            return .failure(.failed("Could not save: \(error.localizedDescription)"))
+            return .failure(.failed(L10n.tr("Could not save: \(error.localizedDescription)")))
         }
         reload()
         return .success(())
@@ -561,7 +570,7 @@ public final class MeModel: ObservableObject {
             let out = try JSONSerialization.data(withJSONObject: arr, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
             try (out + Data("\n".utf8)).write(to: sourcesURL, options: .atomic)
         } catch {
-            return .failure(.failed("Could not save: \(error.localizedDescription)"))
+            return .failure(.failed(L10n.tr("Could not save: \(error.localizedDescription)")))
         }
         reload()
         return .success(())
@@ -590,7 +599,7 @@ public final class MeModel: ObservableObject {
     private func run(_ action: MeAction) async {
         guard !isRunning else { return }
         guard let brain = brainDir() else {
-            phase = .failed("The brain folder was not found.")
+            phase = .failed(L10n.tr("The brain folder was not found."))
             return
         }
         phase = .running(action)
@@ -610,7 +619,7 @@ public final class MeModel: ObservableObject {
             if let nothing = log.first(where: { $0.hasPrefix("no source changed") }) {
                 message = nothing.prefix(1).uppercased() + nothing.dropFirst()
             } else {
-                message = meta.map { "Done · \($0.summary.replacingOccurrences(of: "Built ", with: "built "))" } ?? "Done"
+                message = meta.map { L10n.tr("Done · \($0.doneSummary)") } ?? L10n.tr("Done")
             }
             await checkSources()
         case .failed(let m):
@@ -619,7 +628,7 @@ public final class MeModel: ObservableObject {
         case .cancelled:
             phase = .idle
             progress = nil
-            message = "Cancelled"
+            message = L10n.tr("Cancelled")
         }
     }
 }

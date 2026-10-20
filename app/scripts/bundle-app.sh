@@ -35,6 +35,12 @@ cp "$APP_DIR/Resources/AppIcon/AppIcon.icns" "$OUT/Contents/Resources/AppIcon.ic
 /usr/libexec/PlistBuddy -c "Add :VerseBrainDir string $BRAIN_DIR" "$OUT/Contents/Info.plist"
 printf 'APPL????' > "$OUT/Contents/PkgInfo"
 
+# The microphone, audio-capture and calendar prompts in Italian and Turkish (InfoPlist.strings). macOS shows them in the system
+# language, not the in-app choice. The interface's own strings travel in Verse_VerseUI.bundle (copied below).
+for d in "$APP_DIR"/Resources/Localization/*.lproj; do
+  [ -d "$d" ] && cp -R "$d" "$OUT/Contents/Resources/"
+done
+
 # Resource bundles SwiftPM produced for dependencies (if any) go next to the executable's resources.
 for b in "$(dirname "$BIN")"/*.bundle; do
   [ -e "$b" ] && cp -R "$b" "$OUT/Contents/Resources/"

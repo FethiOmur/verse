@@ -104,10 +104,10 @@ public struct SimSetupView: View {
         }
     }
 
-    /// "From its prep: 14 likely questions · 9 facts" (singular for one). Built with `L10n.tr`, so it follows the interface language.
+    /// "From its prep: 14 likely questions · 9 facts" (singular for one). Built with `L10n.tr` and catalog plurals, so it follows the interface language.
     private func previewText(_ p: PracticeMeetings.Preview) -> String {
-        let q = p.questions == 1 ? L10n.tr("\(p.questions) likely question") : L10n.tr("\(p.questions) likely questions")
-        let f = p.facts == 1 ? L10n.tr("\(p.facts) fact") : L10n.tr("\(p.facts) facts")
+        let q = L10n.tr("\(p.questions) likely questions")
+        let f = L10n.tr("\(p.facts) facts")
         return L10n.tr("From its prep: \(q) · \(f)")
     }
 
@@ -160,12 +160,12 @@ public struct SimSetupView: View {
                 HomeRowDivider()
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .firstTextBaseline) {
-                        Text(p.title.isEmpty ? "Posting" : p.title).font(VT.Font.bodyEmph).foregroundStyle(ink.primary).lineLimit(2)
+                        Text(verbatim: p.title.isEmpty ? L10n.tr("Posting") : p.title).font(VT.Font.bodyEmph).foregroundStyle(ink.primary).lineLimit(2)
                         Text([p.company, p.source == .pasted ? nil : p.source.rawValue].compactMap { $0 }.joined(separator: " · "))
                             .font(VT.Font.callout).foregroundStyle(ink.tertiary).lineLimit(1)
                         Spacer()
                         if sim.postingConfirmed {
-                            Label("Confirmed", systemImage: "checkmark").font(VT.Font.callout).foregroundStyle(ink.secondary)
+                            Label { Text("Confirmed", bundle: .module) } icon: { Image(systemName: "checkmark") }.font(VT.Font.callout).foregroundStyle(ink.secondary)
                         } else {
                             HomeSecondaryButton("Use this posting", action: sim.confirmPosting)
                         }
@@ -180,7 +180,7 @@ public struct SimSetupView: View {
                         }
                         .frame(height: 150)
                     }
-                    Text("\(p.text.count.formatted()) characters").font(VT.Font.caption).foregroundStyle(ink.tertiary)
+                    Text("\(p.text.count.formatted()) characters", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary)
                 }
                 .padding(14)
             }
@@ -192,13 +192,13 @@ public struct SimSetupView: View {
     private var experienceGroup: some View {
         HomeGroup {
             HomeRow("CV") {
-                Text(sim.setup.cv?.lastPathComponent ?? "None").font(VT.Font.body).foregroundStyle(ink.secondary).lineLimit(1)
+                Text(verbatim: sim.setup.cv?.lastPathComponent ?? L10n.tr("None")).font(VT.Font.body).foregroundStyle(ink.secondary).lineLimit(1)
                 HomeSecondaryButton("Choose…", action: chooseCV)
                 if sim.setup.cv != nil { HomeSecondaryButton("Clear") { sim.setup.cv = nil } }
             }
             HomeRowDivider()
             VStack(alignment: .leading, spacing: 6) {
-                Text("About me (optional)").font(VT.Font.body).foregroundStyle(ink.primary)
+                Text("About me (optional)", bundle: .module).font(VT.Font.body).foregroundStyle(ink.primary)
                 HomeTextArea(text: $sim.setup.note, placeholder: "Anything the interviewer should know about you.", minHeight: 40)
             }
             .padding(14)
@@ -215,7 +215,7 @@ public struct SimSetupView: View {
                                 Image(systemName: "minus.circle").foregroundStyle(ink.tertiary)
                             }
                             .buttonStyle(.plain)
-                            .accessibilityLabel("Remove \(r)")
+                            .accessibilityLabel(Text("Remove \(r)", bundle: .module))
                         }
                     }
                     HomeSecondaryButton("Add folder…", action: addRepo)
@@ -239,7 +239,7 @@ public struct SimSetupView: View {
             }
             HomeRowDivider()
             HomeRow("Difficulty") {
-                HomeSegmented(verbatim: SimSetup.Difficulty.allCases.map { ($0.rawValue.capitalized, $0) }, selection: $sim.setup.difficulty)
+                HomeSegmented(verbatim: SimSetup.Difficulty.allCases.map { ($0.label, $0) }, selection: $sim.setup.difficulty)
             }
             HomeRowDivider()
             HomeRow("Length") {
@@ -253,7 +253,7 @@ public struct SimSetupView: View {
             HomeRowDivider()
             HomeRow("Interviewer voice", verbatimDetail: voiceNote) {
                 HomePopup(selection: $sim.setup.voice, options: [VoiceKind.apple, .elevenlabs, .openai, .text].map { k in
-                    HomeOption(verbatim: SimSettings.label(k) + (voiceKeys.isAvailable(k) ? "" : " · add a key in Settings"), k, enabled: voiceKeys.isAvailable(k))
+                    HomeOption(verbatim: voiceKeys.isAvailable(k) ? SimSettings.label(k) : L10n.tr("\(SimSettings.label(k)) · add a key in Settings"), k, enabled: voiceKeys.isAvailable(k))
                 })
             }
             HomeRowDivider()
@@ -263,7 +263,7 @@ public struct SimSetupView: View {
 
     private var voiceNote: String? {
         !voiceKeys.isAvailable(.elevenlabs) || !voiceKeys.isAvailable(.openai)
-            ? "ElevenLabs and OpenAI voices need your own key (Settings › Practice interview)." : nil
+            ? L10n.tr("ElevenLabs and OpenAI voices need your own key (Settings › Practice interview).") : nil
     }
 
     // MARK: prepare / start
@@ -297,7 +297,7 @@ public struct SimSetupView: View {
                     ProgressView().controlSize(.small)
                     if let t0 = sim.prepStartedAt {
                         TimelineView(.periodic(from: t0, by: 1)) { ctx in
-                            Text("Preparing · \(SimOverlay.elapsed(from: t0, now: ctx.date))")
+                            Text("Preparing · \(SimOverlay.elapsed(from: t0, now: ctx.date))", bundle: .module)
                                 .font(VT.Font.bodyEmph).foregroundStyle(ink.primary).monospacedDigit()
                         }
                     }
@@ -312,9 +312,9 @@ public struct SimSetupView: View {
                         HomeRow("Interview", value: "\(s.company) · \(s.role)")
                         HomeRowDivider()
                         if s.sourceSession != nil {
-                            HomeRow("Plan", value: "\(s.questions) questions · \(s.evidence) evidence items from the prep and your profile")
+                            HomeRow("Plan", value: "\(L10n.tr("\(s.questions) questions")) · \(L10n.tr("\(s.evidence) evidence items from the prep and your profile"))")
                         } else {
-                            HomeRow("Plan", value: "\(s.questions) questions · \(s.evidence) evidence items from your sources")
+                            HomeRow("Plan", value: "\(L10n.tr("\(s.questions) questions")) · \(L10n.tr("\(s.evidence) evidence items from your sources"))")
                         }
                     }
                     ForEach(s.warnings, id: \.self) { w in
@@ -323,10 +323,10 @@ public struct SimSetupView: View {
                 }
                 HStack(spacing: 8) {
                     if sim.phase == .prepared {
-                        Text("Answer out loud. Your answer ends after 2 seconds of silence, or ⌥Space.")
+                        Text("Answer out loud. Your answer ends after 2 seconds of silence, or ⌥Space.", bundle: .module)
                             .font(VT.Font.callout).foregroundStyle(ink.secondary)
                     } else if sim.phase == .running {
-                        Text("Running · under the notch").font(VT.Font.callout).foregroundStyle(ink.secondary)
+                        Text("Running · under the notch", bundle: .module).font(VT.Font.callout).foregroundStyle(ink.secondary)
                     }
                     Spacer()
                     if sim.lastReport != nil { HomeSecondaryButton("Open last report", action: sim.openLastReport) }

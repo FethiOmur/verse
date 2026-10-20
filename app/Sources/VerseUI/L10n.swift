@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import SwiftUI
 import os
 
 // Interface language (spec 2.5). One String Catalog (`Resources/Localizable.xcstrings`), English at the source, with Italian
@@ -78,6 +79,21 @@ public enum L10n {
         String(localized: LocalizedStringResource(v, locale: locale ?? self.locale, bundle: .atURL(Bundle.module.bundleURL)))
     }
 
+    /// "$1.23" with the number written the way the interface language writes it (decimal comma in Italian and Turkish).
+    public static func usd(_ value: Double, digits: Int = 2) -> String {
+        "$" + value.formatted(.number.precision(.fractionLength(digits)).locale(formatLocale))
+    }
+
+    /// A fraction as a percentage in the interface language ("50%" in English and Italian, "%50" in Turkish).
+    public static func percent(_ fraction: Double) -> String {
+        fraction.formatted(.percent.precision(.fractionLength(0)).locale(formatLocale))
+    }
+
+    /// The name of a language in its own language, for the pickers that name a call language: "English", "Italiano", "Türkçe".
+    public static func endonym(of code: String) -> String {
+        InterfaceLanguage(rawValue: code)?.endonym ?? code
+    }
+
     fileprivate static func set(code: String) { currentCode.withLock { $0 = code } }
 }
 
@@ -118,4 +134,20 @@ public enum TextFold {
         }
         return String(out)
     }
+}
+
+/// Applies the interface language to a window root and repaints it when the language changes: the one place the run-time
+/// switch (spec 2.5) reaches SwiftUI. Roots: `HomeRoot`, `OverlayView` (island, prompter, practice overlay and meeting prompt),
+/// and the menu bar menu.
+private struct InterfaceLocale: ViewModifier {
+    @ObservedObject private var state = L10nState.shared
+
+    func body(content: Content) -> some View {
+        content.environment(\.locale, state.locale)
+    }
+}
+
+public extension View {
+    /// `.environment(\.locale, L10nState.shared.locale)`, observing `L10nState` so a language change repaints this root.
+    func interfaceLocale() -> some View { modifier(InterfaceLocale()) }
 }

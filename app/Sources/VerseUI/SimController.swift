@@ -102,6 +102,9 @@ public final class SimController: ObservableObject {
 
     private func log(_ s: String) { FileLog.shared.write("sim: " + s) }
 
+    /// Renders only: the "last report" is a fixture file, not the newest report in the user's sessions folder.
+    func setLastReportForPreview(_ url: URL?) { lastReport = url }
+
     // MARK: meeting source
 
     /// Reads the prepared sessions again (the Practice page does this each time it appears) and keeps or picks the
@@ -228,7 +231,7 @@ public final class SimController: ObservableObject {
     public func fetchPosting() {
         let raw = postingLink.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: raw.contains("://") ? raw : "https://" + raw), url.host != nil else {
-            fetchMessage = "That is not a link. Paste the posting text below instead."
+            fetchMessage = L10n.tr("That is not a link. Paste the posting text below instead.")
             return
         }
         fetching = true
@@ -239,9 +242,9 @@ public final class SimController: ObservableObject {
                 let p = try await PostingFetcher.fetch(url)
                 usePosting(p)
             } catch PostingError.network {
-                fetchMessage = "Could not reach the page. Check the link, or paste the posting text below."
+                fetchMessage = L10n.tr("Could not reach the page. Check the link, or paste the posting text below.")
             } catch {
-                fetchMessage = "No job posting found on that page. Paste the posting text below instead."
+                fetchMessage = L10n.tr("No job posting found on that page. Paste the posting text below instead.")
             }
         }
     }
@@ -249,7 +252,7 @@ public final class SimController: ObservableObject {
     public func usePastedText() {
         let p = PostingFetcher.pasted(pasteText)
         guard !p.text.isEmpty else {
-            fetchMessage = "The paste box is empty."
+            fetchMessage = L10n.tr("The paste box is empty.")
             return
         }
         fetchMessage = nil
@@ -296,7 +299,7 @@ public final class SimController: ObservableObject {
 
     public func prepare() {
         guard canPrepare, let brainDir = VerseController.brainDir() else {
-            if VerseController.brainDir() == nil { prepError = "The brain folder was not found (set VERSE_BRAIN_DIR)." }
+            if VerseController.brainDir() == nil { prepError = L10n.tr("The brain folder was not found (set VERSE_BRAIN_DIR).") }
             return
         }
         var s = setup
@@ -404,7 +407,7 @@ public final class SimController: ObservableObject {
         case noPack(String)
         var description: String {
             switch self {
-            case .noPack(let n): return "prep wrote no pack for \(n)"
+            case .noPack(let n): return L10n.tr("prep wrote no pack for \(n)")
             }
         }
     }
@@ -452,12 +455,13 @@ public final class SimController: ObservableObject {
                                      onStderr: { l in FileLog.shared.write("[sim brain] " + l) })
             try brain.start()
         } catch {
-            overlay.showError("Could not start the interview: \(error)")
+            overlay.showError(L10n.tr("Could not start the interview: \(String(describing: error))"))
             meeting.showOverlayPanel()
             return
         }
         var config = SimRunner.Config()
         config.lang = lang
+        config.uiLang = L10n.code
         let r = SimRunner(transport: brain, voice: voice, mic: ListenSimMic(lang: lang), config: config, sink: { [weak self] e in
             // One FIFO hop to the main thread keeps the runner's order.
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.handle(e) } }

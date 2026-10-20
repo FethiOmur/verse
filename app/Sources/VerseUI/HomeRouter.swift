@@ -6,7 +6,16 @@ public enum HomePage: String, CaseIterable, Identifiable, Sendable {
     case prepare, me, sessions, practice, scripts, settings
 
     public var id: String { rawValue }
-    public var title: String { rawValue.capitalized }
+    public var title: String {
+        switch self {
+        case .prepare: L10n.tr("Prepare")
+        case .me: L10n.tr("Me")
+        case .sessions: L10n.tr("Sessions")
+        case .practice: L10n.tr("Practice")
+        case .scripts: L10n.tr("Scripts")
+        case .settings: L10n.tr("Settings")
+        }
+    }
     var symbol: String {
         switch self {
         case .prepare: "checklist"

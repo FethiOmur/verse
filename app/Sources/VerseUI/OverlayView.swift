@@ -84,7 +84,11 @@ struct IslandBand: View {
         case .prompt(let p):
             IslandDot(p.busy ? .waiting : .idle)
         case .sim(let sim):
-            Text(sim.qTotal > 0 ? "Q\(sim.qIndex) of \(sim.qTotal)" : "Practice").foregroundStyle(VT.Island.secondary)
+            if sim.qTotal > 0 {
+                Text("Q\(sim.qIndex) of \(sim.qTotal)", bundle: .module).foregroundStyle(VT.Island.secondary)
+            } else {
+                Text("Practice", bundle: .module).foregroundStyle(VT.Island.secondary)
+            }
             SimTimer(start: sim.startedAt)
         case .prompter:
             IslandDot(prompter?.speaking == true ? .live : .idle)
@@ -117,32 +121,32 @@ struct IslandBand: View {
             } else if let tag = state.addresseeTag {
                 Text(tag).foregroundStyle(state.tagDimmed ? VT.Island.tertiary : VT.Island.secondary)
             } else if state.unprepared, state.running, width >= metrics.listeningWidth {
-                Text("Unprepared").foregroundStyle(VT.Island.tertiary)
+                Text("Unprepared", bundle: .module).foregroundStyle(VT.Island.tertiary)
             }
         case .statusPanel(let s):
             Text(s.shortTitle)
         case .startup:
-            if state.unprepared { Text("Unprepared").foregroundStyle(VT.Island.tertiary) }
+            if state.unprepared { Text("Unprepared", bundle: .module).foregroundStyle(VT.Island.tertiary) }
         case .prompt, .topics:
             EmptyView()
         case .sim(let sim):
             if sim.closing {
-                Text("report").foregroundStyle(VT.Island.secondary)
+                Text("report", bundle: .module).foregroundStyle(VT.Island.secondary)
                 IslandDot(.waiting)
             } else if sim.listening || (!sim.coach.isEmpty && !sim.speaking) {
-                Text("your turn").foregroundStyle(VT.Island.secondary)
+                Text("your turn", bundle: .module).foregroundStyle(VT.Island.secondary)
                 IslandDot(.live)
             } else if sim.speaking {
-                Text("interviewer").foregroundStyle(VT.Island.secondary)
+                Text("interviewer", bundle: .module).foregroundStyle(VT.Island.secondary)
                 IslandDot(.idle)
             } else {
-                Text("thinking").foregroundStyle(VT.Island.secondary)
+                Text("thinking", bundle: .module).foregroundStyle(VT.Island.secondary)
                 IslandDot(.waiting)
             }
         case .prompter:
-            if let p = prompter { Text("\(p.page) / \(p.pages)").monospacedDigit() }
+            if let p = prompter { Text(verbatim: "\(p.page) / \(p.pages)").monospacedDigit() }
         case .card(let c):
-            Text(c.following && c.say != nil ? "your answer" : (state.addresseeTag ?? "for you"))
+            Text(verbatim: c.following && c.say != nil ? L10n.tr("your answer") : (state.addresseeTag ?? L10n.tr("for you")))
                 .foregroundStyle(state.tagDimmed ? VT.Island.tertiary : VT.Island.secondary)
         }
     }
@@ -256,6 +260,7 @@ public struct OverlayView: View {
         .environment(\.colorScheme, .dark)
         .environment(\.islandContrast, a.increaseContrast)
         .frame(maxWidth: .infinity, alignment: .top)
+        .interfaceLocale()
     }
 
     private var prompterInfo: PrompterBandInfo {

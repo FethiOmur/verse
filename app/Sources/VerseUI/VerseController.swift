@@ -158,15 +158,15 @@ public final class VerseController: ObservableObject {
     public var recordingSessionName: String? { running ? runSessionDir?.lastPathComponent : nil }
 
     public var statusLine: String {
-        if stopping { return "Stopping…" }
+        if stopping { return L10n.tr("Stopping…") }
         if running {
-            var s = "Listening · \(settings.sessionName)"
-            if testFile != nil { s += " (test file)" }
-            if fakeBrain { s += " · fake brain" }
+            var s = L10n.tr("Listening · \(settings.sessionName)")
+            if testFile != nil { s += L10n.tr(" (test file)") }
+            if fakeBrain { s += L10n.tr(" · fake brain") }
             return s
         }
-        if sessions.isEmpty { return "No session prepared" }
-        return "Ready · \(settings.sessionName)"
+        if sessions.isEmpty { return L10n.tr("No session prepared") }
+        return L10n.tr("Ready · \(settings.sessionName)")
     }
 
     // MARK: start / stop
@@ -229,7 +229,7 @@ public final class VerseController: ObservableObject {
         refreshSessions()
         guard !settings.sessionName.isEmpty else {
             log("start ignored: no session")
-            overlay.showError("No session prepared. Run the prep for this meeting first.")
+            overlay.showError(L10n.tr("No session prepared. Run the prep for this meeting first."))
             showPanel()
             return
         }
@@ -264,7 +264,7 @@ public final class VerseController: ObservableObject {
             launchSession(name: plan.session, mode: plan.mode, route: plan.route, lang: plan.lang, anytimeStart: true)
         } catch {
             log("start now failed: \(error)")
-            overlay.showError("Could not create a session folder: \(error.localizedDescription)")
+            overlay.showError(L10n.tr("Could not create a session folder: \(error.localizedDescription)"))
             showPanel()
         }
     }
@@ -374,6 +374,12 @@ public final class VerseController: ObservableObject {
             self?.stopArmed = false
             self?.overlay.setStopConfirm(false)
         }
+    }
+
+    /// Renders only: Settings → Spend shows these (fictional) figures instead of the ledger in the user's sessions folder.
+    func setSpendForPreview(session: Double, month: Double) {
+        sessionSpend = session
+        monthSpend = month
     }
 
     /// Renders and tests: what the Me page shows of the last session.
@@ -526,8 +532,8 @@ public final class VerseController: ObservableObject {
         remoteFileOverride = nil
         // Never fail silently: a failed run without a status of its own says what the log said last.
         if code != 0 {
-            let detail = lastLogLine.map { "The session ended: \($0)" } ?? "The session ended with an error (code \(code))."
-            if overlay.state.status == nil || overlay.state.status == .error("The session ended with an error.") {
+            let detail = lastLogLine.map { L10n.tr("The session ended: \($0)") } ?? L10n.tr("The session ended with an error (code \(code)).")
+            if overlay.state.status == nil || overlay.state.status == .error(L10n.tr("The session ended with an error.")) {
                 overlay.showError(detail)
             }
             showPanel()

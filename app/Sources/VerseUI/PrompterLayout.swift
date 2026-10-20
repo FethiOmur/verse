@@ -64,9 +64,9 @@ public enum PrompterHint: Equatable, Sendable {
         switch self {
         case .fellBack(let reason):
             let short = reason.count > 90 ? String(reason.prefix(88)) + "…" : reason
-            return "Classic mode: \(short)"
-        case .lost: return "Lost: click a word"
-        case .done: return "End of script"
+            return L10n.tr("Classic mode: \(short)")
+        case .lost: return L10n.tr("Lost: click a word")
+        case .done: return L10n.tr("End of script")
         }
     }
 

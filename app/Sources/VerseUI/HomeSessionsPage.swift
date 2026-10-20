@@ -186,17 +186,18 @@ private struct WindowCloseObserver: NSViewRepresentable {
     }
 }
 
-/// The window's text is English whatever the system region; dates follow it.
+/// Dates and times follow the interface language (`L10n.formatLocale`): English keeps 24-hour time (`en_GB`), Italian and Turkish
+/// use their own. Tests pin the language through `L10nState` / `L10n.tr(locale:)`.
 enum HomeFormat {
-    static let locale = Locale(identifier: "en_GB")
+    static var locale: Locale { L10n.formatLocale }
     static var time: Date.FormatStyle { Date.FormatStyle().locale(locale).hour(.twoDigits(amPM: .omitted)).minute(.twoDigits) }
     static var dayMonth: Date.FormatStyle { Date.FormatStyle().locale(locale).weekday(.abbreviated).day().month(.abbreviated) }
 
     /// "Today", "Yesterday", "Tue 14 Oct".
     static func day(_ d: Date) -> String {
         let cal = Calendar.current
-        if cal.isDateInToday(d) { return "Today" }
-        if cal.isDateInYesterday(d) { return "Yesterday" }
+        if cal.isDateInToday(d) { return L10n.tr("Today") }
+        if cal.isDateInYesterday(d) { return L10n.tr("Yesterday") }
         return d.formatted(dayMonth)
     }
 }

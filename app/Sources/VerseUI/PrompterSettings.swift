@@ -53,17 +53,17 @@ extension PrompterMode {
     /// The name in Settings.
     public var title: String {
         switch self {
-        case .wordTracking: return "Word tracking"
-        case .voicePaced: return "Voice-paced"
-        case .classic: return "Classic (timer)"
+        case .wordTracking: return L10n.tr("Word tracking")
+        case .voicePaced: return L10n.tr("Voice-paced")
+        case .classic: return L10n.tr("Classic (timer)")
         }
     }
 
     public var explanation: String {
         switch self {
-        case .wordTracking: return "Follows the words you say. Needs the microphone."
-        case .voicePaced: return "Moves at the set speed while you speak and stops when you stop."
-        case .classic: return "Moves at the set speed. No microphone."
+        case .wordTracking: return L10n.tr("Follows the words you say. Needs the microphone.")
+        case .voicePaced: return L10n.tr("Moves at the set speed while you speak and stops when you stop.")
+        case .classic: return L10n.tr("Moves at the set speed. No microphone.")
         }
     }
 }

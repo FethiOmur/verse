@@ -35,12 +35,12 @@ public enum GeneralPrep {
         public var answers: Int
         public var built: Date
         /// "12 answers · built 16 Oct 2026".
-        public func text(locale: Locale = Locale(identifier: "en_US_POSIX"), timeZone: TimeZone = .current) -> String {
+        public func text(locale: Locale = L10n.formatLocale, timeZone: TimeZone = .current) -> String {
             let f = DateFormatter()
             f.locale = locale
             f.timeZone = timeZone
             f.dateFormat = "d MMM yyyy"
-            return "\(answers) \(answers == 1 ? "answer" : "answers") · built \(f.string(from: built))"
+            return "\(L10n.tr("\(answers) answers")) · \(L10n.tr("built \(f.string(from: built))"))"
         }
     }
 

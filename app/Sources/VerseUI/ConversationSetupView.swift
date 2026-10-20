@@ -55,16 +55,16 @@ public struct ConversationSetupView: View {
 
     private var threadRow: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Conversation").font(VT.Font.body).foregroundStyle(ink.primary)
+            Text("Conversation", bundle: .module).font(VT.Font.body).foregroundStyle(ink.primary)
             HomeTextArea(text: $model.thread, placeholder: "Paste the LinkedIn or email thread.", minHeight: 62)
             HStack {
-                Text("\(model.thread.count.formatted()) characters · stays on this Mac")
+                Text("\(model.thread.count.formatted()) characters · stays on this Mac", bundle: .module)
                     .font(VT.Font.caption).foregroundStyle(ink.tertiary)
                 Spacer()
                 Button {
                     if let s = NSPasteboard.general.string(forType: .string) { model.thread = s }
                 } label: {
-                    Label("Paste", systemImage: "doc.on.clipboard").font(VT.Font.caption).foregroundStyle(ink.secondary)
+                    Label { Text("Paste", bundle: .module) } icon: { Image(systemName: "doc.on.clipboard") }.font(VT.Font.caption).foregroundStyle(ink.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -110,7 +110,7 @@ public struct ConversationSetupView: View {
                     ProgressView().controlSize(.small)
                     if let t0 = model.startedAt {
                         TimelineView(.periodic(from: t0, by: 1)) { ctx in
-                            Text("Preparing · \(SimOverlay.elapsed(from: t0, now: ctx.date))")
+                            Text("Preparing · \(SimOverlay.elapsed(from: t0, now: ctx.date))", bundle: .module)
                                 .font(VT.Font.bodyEmph).foregroundStyle(ink.primary).monospacedDigit()
                         }
                     }
@@ -122,17 +122,17 @@ public struct ConversationSetupView: View {
                 }
             case .done:
                 if let s = model.summary {
-                    Label("\(model.sessionDir?.lastPathComponent ?? "") is ready and selected", systemImage: "checkmark.circle.fill")
+                    Label { Text("\(model.sessionDir?.lastPathComponent ?? "") is ready and selected", bundle: .module) } icon: { Image(systemName: "checkmark.circle.fill") }
                         .font(VT.Font.bodyEmph).foregroundStyle(ink.primary)
-                    Text("\(s.company.isEmpty ? "Conversation" : s.company) · \(s.bankEntries) questions · \(s.searches) searches · "
-                         + "\(s.sourced) sourced, \(s.unverified) unverified · \(String(format: "$%.2f", s.costUSD))")
+                    Text(verbatim: [s.company.isEmpty ? L10n.tr("Conversation") : s.company, L10n.tr("\(s.bankEntries) questions"), L10n.tr("\(s.searches) searches"),
+                                    L10n.tr("\(s.sourced) sourced, \(s.unverified) unverified"), L10n.usd(s.costUSD)].joined(separator: " · "))
                         .font(VT.Font.callout).foregroundStyle(ink.secondary)
                 }
                 ForEach(Array(model.warnings.prefix(3).enumerated()), id: \.offset) { _, w in
                     Label(w, systemImage: "exclamationmark.triangle").font(VT.Font.callout).foregroundStyle(ink.secondary).lineLimit(3)
                 }
                 if model.warnings.count > 3 {
-                    Text("and \(model.warnings.count - 3) more in the session's meta.json").font(VT.Font.caption).foregroundStyle(ink.tertiary)
+                    Text("and \(model.warnings.count - 3) more in the session's meta.json", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary)
                 }
                 HStack(spacing: 8) {
                     Spacer()
@@ -204,7 +204,7 @@ struct HomeUpNextGroup: View {
             }
             Spacer(minLength: 12)
             if let session = item.session {
-                Label("Prepared", systemImage: "checkmark").font(VT.Font.callout).foregroundStyle(ink.secondary)
+                Label { Text("Prepared", bundle: .module) } icon: { Image(systemName: "checkmark") }.font(VT.Font.callout).foregroundStyle(ink.secondary)
                 HomeSecondaryButton("Practise") { HomeRouter.shared.showPractice(session: session) }
                     .disabled(meeting.running)
                 HomeSecondaryButton("Open") {
@@ -214,9 +214,9 @@ struct HomeUpNextGroup: View {
                 }
             } else if upNext.preparing.contains(item.id) {
                 ProgressView().controlSize(.small)
-                Text("Preparing…").font(VT.Font.callout).foregroundStyle(ink.secondary)
+                Text("Preparing…", bundle: .module).font(VT.Font.callout).foregroundStyle(ink.secondary)
             } else {
-                Text("Not prepared").font(VT.Font.callout).foregroundStyle(ink.tertiary)
+                Text("Not prepared", bundle: .module).font(VT.Font.callout).foregroundStyle(ink.tertiary)
                 HomeSecondaryButton("Prepare") { upNext.prepare(item) }
             }
         }
@@ -231,9 +231,9 @@ public struct ConversationMenuBlock: View {
     public init() {}
 
     public var body: some View {
-        Button("New session from a conversation…") {
+        Button {
             HomeRouter.shared.show(.prepare, openWindow: openWindow)
-        }
+        } label: { Text("New session from a conversation…", bundle: .module) }
     }
 }
 

@@ -58,12 +58,15 @@ public final class AppSettings: ObservableObject {
     @Published public var defaultCallLanguage: String { didSet { defaults.set(defaultCallLanguage, forKey: "defaultCallLanguage") } }
     /// Room route: cards for questions by themselves (on) or only on ⌥⌘↩ (off).
     @Published public var roomAutoCards: Bool { didSet { defaults.set(roomAutoCards, forKey: "roomAutoCards") } }
+    /// What "System" resolves against. Under XCTest it is English, so a test run never depends on the language of the Mac it runs on.
+    static var preferredLanguagesForUI: [String] { NSClassFromString("XCTestCase") != nil ? ["en"] : Locale.preferredLanguages }
+
     /// The interface language (spec 2.5): `system` (the default, follows macOS), `en`, `it` or `tr`. Changing it repaints the open
     /// windows at once through `L10nState`; call and answer languages are unaffected.
     @Published public var interfaceLanguage: InterfaceLanguage {
         didSet {
             defaults.set(interfaceLanguage.rawValue, forKey: "interfaceLanguage")
-            L10nState.shared.apply(interfaceLanguage)
+            L10nState.shared.apply(interfaceLanguage, preferred: Self.preferredLanguagesForUI)
         }
     }
     /// The model Ask this meeting answers with (spec 2.2): Haiku, Sonnet (default) or Opus, remembered app-wide.
@@ -98,7 +101,7 @@ public final class AppSettings: ObservableObject {
         roomAutoCards = d.object(forKey: "roomAutoCards") as? Bool ?? true
         let uiLanguage = InterfaceLanguage(rawValue: d.string(forKey: "interfaceLanguage") ?? "") ?? .system
         interfaceLanguage = uiLanguage
-        L10nState.shared.apply(uiLanguage)
+        L10nState.shared.apply(uiLanguage, preferred: Self.preferredLanguagesForUI)
         askModel = AskModel(rawValue: d.string(forKey: "askModel") ?? "") ?? .sonnet
         fakeBrain = d.bool(forKey: "fakeBrain")
         testAudioPath = d.string(forKey: "testAudioPath") ?? ""

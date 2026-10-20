@@ -147,18 +147,18 @@ struct PrompterPanelView: View {
     private var controls: some View {
         let state = model.state
         return HStack(spacing: 6) {
-            PrompterIconButton(symbol: "chevron.left", help: "Previous page  \(PrompterCommand.previousPage.shortcut)") { model.send(.previousPage) }
+            PrompterIconButton(symbol: "chevron.left", help: L10n.tr("Previous page  \(PrompterCommand.previousPage.shortcut)")) { model.send(.previousPage) }
             PrompterIconButton(symbol: state.isPaused || state.isDone ? "play.fill" : "pause.fill",
-                               help: "Start / pause  \(PrompterCommand.toggle.shortcut)") { model.send(.toggle) }
-            PrompterIconButton(symbol: "chevron.right", help: "Next page  \(PrompterCommand.nextPage.shortcut)") { model.send(.nextPage) }
+                               help: L10n.tr("Start / pause  \(PrompterCommand.toggle.shortcut)")) { model.send(.toggle) }
+            PrompterIconButton(symbol: "chevron.right", help: L10n.tr("Next page  \(PrompterCommand.nextPage.shortcut)")) { model.send(.nextPage) }
             Spacer(minLength: 8)
-            PrompterIconButton(symbol: "minus", help: "Slower  \(PrompterCommand.slower.shortcut)") { model.send(.slower) }
-            Text("\(Int(state.wordsPerMinute.rounded())) wpm")
+            PrompterIconButton(symbol: "minus", help: L10n.tr("Slower  \(PrompterCommand.slower.shortcut)")) { model.send(.slower) }
+            Text("\(Int(state.wordsPerMinute.rounded())) wpm", bundle: .module)
                 .font(VT.Font.meta.monospacedDigit())
                 .foregroundStyle(state.mode == .wordTracking ? VT.Island.quaternary : VT.Island.secondary)
                 .frame(minWidth: 52)
-            PrompterIconButton(symbol: "plus", help: "Faster  \(PrompterCommand.faster.shortcut)") { model.send(.faster) }
-            PrompterIconButton(symbol: "xmark", help: "Close the prompter  \(PrompterCommand.close.shortcut)") { model.send(.close) }
+            PrompterIconButton(symbol: "plus", help: L10n.tr("Faster  \(PrompterCommand.faster.shortcut)")) { model.send(.faster) }
+            PrompterIconButton(symbol: "xmark", help: L10n.tr("Close the prompter  \(PrompterCommand.close.shortcut)")) { model.send(.close) }
                 .padding(.leading, 6)
         }
     }
@@ -168,17 +168,17 @@ extension PrompterMode {
     /// The word in the island's left wing.
     var wingName: String {
         switch self {
-        case .wordTracking: return "tracking"
-        case .voicePaced: return "voice"
-        case .classic: return "classic"
+        case .wordTracking: return L10n.tr("tracking")
+        case .voicePaced: return L10n.tr("voice")
+        case .classic: return L10n.tr("classic")
         }
     }
 
     var shortName: String {
         switch self {
-        case .wordTracking: return "Tracking"
-        case .voicePaced: return "Voice-paced"
-        case .classic: return "Classic"
+        case .wordTracking: return L10n.tr("Tracking")
+        case .voicePaced: return L10n.tr("Voice-paced")
+        case .classic: return L10n.tr("Classic")
         }
     }
 }
