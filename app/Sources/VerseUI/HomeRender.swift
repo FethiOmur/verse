@@ -46,6 +46,19 @@ public enum HomeRender {
                 try await capture(Scene(context: fixtures.context(router: router), dark: dark, override: nil), size: canvas, dark: dark, to: url)
                 out.append(url)
             }
+            // Sessions on a meeting with a transcript (F1): the Transcript tab, and again with a search shown.
+            if only?.contains(.sessions) ?? true {
+                for (name, query) in [("", ""), ("-search", "close")] {
+                    let router = HomeRouter()
+                    router.page = .sessions
+                    router.selectedSession = fixtures.transcriptSession
+                    let url = dir.appendingPathComponent("home-sessions-transcript\(name)-\(dark ? "dark" : "light").png")
+                    var scene = Scene(context: fixtures.context(router: router), dark: dark, override: nil)
+                    scene.detailRender = SessionsDetailRenderState(tab: .transcript, query: query)
+                    try await capture(scene, size: canvas, dark: dark, to: url)
+                    out.append(url)
+                }
+            }
             // Me: the usual state, and the one with "Sources changed · Refresh" (a build older than a week, a source changed).
             if only?.contains(.me) ?? true {
                 let router = HomeRouter()
@@ -97,11 +110,14 @@ public enum HomeRender {
         var dark: Bool
         var override: HomeA11yOverride?
         var meetingsOnly = false
+        /// The Sessions detail's tab and search, forced for the transcript renders.
+        var detailRender: SessionsDetailRenderState?
 
         var body: some View {
             ZStack {
                 RenderWallpaper(dark: dark)
                 HomeRoot(context: context, a11yOverride: override ?? HomeA11yOverride(), inWindowGlass: true, meetingsOnly: meetingsOnly)
+                    .environment(\.sessionsDetailRender, detailRender)
                     .frame(width: 1100, height: HomeRender.windowHeight)
                     .shadow(color: .black.opacity(dark ? 0.45 : 0.18), radius: 30, y: 16)
             }
@@ -176,6 +192,8 @@ public enum HomeRender {
         let profileDir: URL
         let selectedSession = "Mara · Northwind Labs"
         let practiceSession = "sim-20261013-1000-Brightwave"
+        /// A meeting with a transcript and its events (fictional): the Transcript tab renders.
+        let transcriptSession = "Brightwave · Lena Brandt"
 
         init() throws {
             let fm = FileManager.default
@@ -298,6 +316,7 @@ public enum HomeRender {
                 try Data(Self.summaryText.utf8).write(to: summary)
                 try fm.setAttributes([.modificationDate: date], ofItemAtPath: summary.path)
             }
+            try writeTranscriptSession(into: dir, date: at(daysAgo: 1, hour: 16, minute: 0))
             for (name, date, meeting) in rows {
                 let d = dir.appendingPathComponent(name, isDirectory: true)
                 try fm.createDirectory(at: d, withIntermediateDirectories: true)
@@ -319,6 +338,54 @@ public enum HomeRender {
                     try fm.setAttributes([.modificationDate: date], ofItemAtPath: report.path)
                 }
             }
+        }
+
+        /// Two runs of one call (the connection dropped once), speakers, and the cards that fired: `transcript.jsonl` and
+        /// `events.jsonl` in the forward format (`run_start`, `t_wall`, `card_done`). All text is fictional.
+        private static func writeTranscriptSession(into dir: URL, date: Date) throws {
+            let fm = FileManager.default
+            let d = dir.appendingPathComponent("Brightwave · Lena Brandt", isDirectory: true)
+            try fm.createDirectory(at: d, withIntermediateDirectories: true)
+            try Data().write(to: d.appendingPathComponent("pack.md"))
+            let summary = d.appendingPathComponent("summary.md")
+            try Data(summaryText.utf8).write(to: summary)
+            try fm.setAttributes([.modificationDate: date], ofItemAtPath: summary.path)
+            let r1 = 1_792_000_000.0, r2 = r1 + 1_260.0
+            typealias Line = (run: Double, id: String, speaker: String, end: Double, text: String)
+            let lines: [Line] = [
+                (r1, "r1", "remote", 14.0, "Thanks for joining, Alex. I'm Lena, I lead platform at Brightwave. Before we dive in, can you tell me what you built at your last company?"),
+                (r1, "m1", "me", 41.0, "Sure. I built a route planner for a small courier fleet, then a month-end close tool for finance teams. Both were one-engineer products, so I owned everything from the data model to the on-call rota."),
+                (r1, "m2", "me", 58.0, "The close tool is the one I'm proudest of: it took the monthly close from six days to two."),
+                (r1, "r2", "remote", 80.0, "Six days to two is a big claim. How did you measure it, and what was the baseline?"),
+                (r1, "m3", "me", 112.0, "The baseline was the finance lead's own checklist timings over three months. After the rollout we tracked the same checklist with the same people, and the median close was two days."),
+                (r1, "r3", "remote", 130.0, "Okay. And what did you stop doing to get there?"),
+                (r1, "m4", "me", 161.0, "Mostly manual reconciliation. We replaced a shared spreadsheet with a matching job that flags only the exceptions."),
+                (r1, "r4", "remote", 245.0, "Let's talk about the team. How do you work with someone who disagrees with a technical decision of yours?"),
+                (r1, "m5", "me", 281.0, "I write down what would change my mind, and then we try the smaller option first. Last year that meant a nightly matching job instead of a real-time one, and nobody missed the real-time version."),
+                (r2, "r1", "remote", 20.0, "Sorry, my connection dropped. Where were we? Right, disagreement. One last thing: what would you need in your first month?"),
+                (r2, "m1", "me", 47.0, "A sandbox account, one person who owns the data export, and the last two post-mortems. I would rather read how things broke than how they are meant to work."),
+                (r2, "r2", "remote", 66.0, "That is easy to arrange. Thank you, Alex, we will come back to you by Friday."),
+            ]
+            let transcript = lines.map { l -> String in
+                #"{"addressee":"\#(l.speaker == "me" ? "other" : "me")","kind":"\#(l.speaker == "me" ? "statement" : "question")","lang":"en","run_start":\#(l.run),"speaker":"\#(l.speaker)","t_audio_end":\#(l.end),"t_wall":\#(l.run + l.end),"text":"\#(l.text)","turn_id":"\#(l.id)"}"#
+            }.joined(separator: "\n")
+            try Data(transcript.utf8).write(to: d.appendingPathComponent("transcript.jsonl"))
+            typealias Card = (run: Double, after: Double, turn: String, tier: String, say: String?, points: [String])
+            let cards: [Card] = [
+                (r1, 16.0, "r1", "F", "I build small products end to end: a route planner for a courier fleet, then a month-end close tool for finance teams.",
+                 ["Close tool: six days to two", "One engineer, full ownership from data model to on-call"]),
+                (r1, 82.0, "r2", "F", "I compared the finance lead's own checklist timings over three months, before and after the rollout. Same people, same checklist: the median close went from six days to two.", []),
+                (r1, 84.0, "r2", "D", nil, ["Baseline: three months of checklist timings", "Median, not the best case"]),
+                (r1, 247.0, "r4", "F", "I write down what would change my mind, then we try the smaller option first.", ["Example: nightly matching job instead of real-time"]),
+                (r2, 22.0, "r1", "F", "A sandbox account, one owner for the data export, and the last two post-mortems.", []),
+            ]
+            var events = [#"{"ev":"start","lang":"en","mode":"prepared","route":"meeting","t":\#(r1 - 3)}"#, #"{"ev":"start","lang":"en","mode":"prepared","route":"meeting","t":\#(r2 - 2)}"#]
+            for c in cards {
+                let say = c.say.map { #","say":"\#($0)""# } ?? ""
+                let points = c.points.map { #""\#($0)""# }.joined(separator: ",")
+                events.append(#"{"ev":"card_done","id":"\#(c.tier.lowercased())\#(Int(c.after))","points":[\#(points)]\#(say),"t":\#(c.run + c.after),"tier":"\#(c.tier)","turn":"\#(c.turn)"}"#)
+            }
+            try Data(events.joined(separator: "\n").utf8).write(to: d.appendingPathComponent("events.jsonl"))
         }
 
         static let summaryText = """
