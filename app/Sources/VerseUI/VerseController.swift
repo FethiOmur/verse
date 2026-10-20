@@ -154,6 +154,9 @@ public final class VerseController: ObservableObject {
         return try? BrainProcess.locateBrainDir()
     }
 
+    /// The folder name of the session being recorded right now, nil when none is (Ask this meeting waits for the call to end).
+    public var recordingSessionName: String? { running ? runSessionDir?.lastPathComponent : nil }
+
     public var statusLine: String {
         if stopping { return "Stopping…" }
         if running {

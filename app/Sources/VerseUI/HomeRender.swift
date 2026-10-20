@@ -70,6 +70,19 @@ public enum HomeRender {
                     out.append(url)
                 }
             }
+            // Sessions with the Ask panel open (F2b): a chat with citation chips, and the empty panel with its starters.
+            if only?.contains(.sessions) ?? true {
+                for (name, session) in [("", fixtures.transcriptSession), ("-empty", fixtures.selectedSession)] {
+                    let router = HomeRouter()
+                    router.page = .sessions
+                    router.selectedSession = session
+                    let url = dir.appendingPathComponent("home-sessions-ask\(name)-\(dark ? "dark" : "light").png")
+                    var scene = Scene(context: fixtures.context(router: router), dark: dark, override: nil)
+                    scene.askRender = AskRenderState()
+                    try await capture(scene, size: canvas, dark: dark, to: url)
+                    out.append(url)
+                }
+            }
             // Me: the usual state, and the one with "Sources changed · Refresh" (a build older than a week, a source changed).
             if only?.contains(.me) ?? true {
                 let router = HomeRouter()
@@ -123,12 +136,15 @@ public enum HomeRender {
         var meetingsOnly = false
         /// The Sessions detail's tab and search, forced for the transcript renders.
         var detailRender: SessionsDetailRenderState?
+        /// The Ask panel open over what `chat.jsonl` holds (F2b).
+        var askRender: AskRenderState?
 
         var body: some View {
             ZStack {
                 RenderWallpaper(dark: dark)
                 HomeRoot(context: context, a11yOverride: override ?? HomeA11yOverride(), inWindowGlass: true, meetingsOnly: meetingsOnly)
                     .environment(\.sessionsDetailRender, detailRender)
+                    .environment(\.askRender, askRender)
                     .frame(width: 1100, height: HomeRender.windowHeight)
                     .shadow(color: .black.opacity(dark ? 0.45 : 0.18), radius: 30, y: 16)
             }
@@ -467,7 +483,19 @@ public enum HomeRender {
                 events.append(#"{"ev":"card_done","id":"\#(c.tier.lowercased())\#(Int(c.after))","points":[\#(points)]\#(say),"t":\#(c.run + c.after),"tier":"\#(c.tier)","turn":"\#(c.turn)"}"#)
             }
             try Data(events.joined(separator: "\n").utf8).write(to: d.appendingPathComponent("events.jsonl"))
+            try Data(chat.utf8).write(to: d.appendingPathComponent("chat.jsonl"))
         }
+
+        /// What Ask this meeting wrote for the call above (fictional): one pair before a reset (hidden), then two answers with chips.
+        static let chat = """
+        {"type":"q","id":"q1","t":"2026-10-19T16:30:00Z","text":"Test question before the reset","model":"claude-sonnet-5-5"}
+        {"type":"a","id":"a1","q":"q1","t":"2026-10-19T16:30:04Z","text":"Old answer [0:14]","model":"claude-sonnet-5-5","usage":{"input":9,"output":6,"cache_read":0,"cache_write":3400},"cost_usd":0.0215,"cost_estimated":false,"ms_first_token":1500,"ms_total":2100,"citations":["0:14"],"stop_reason":"end_turn","context":"full"}
+        {"type":"reset","t":"2026-10-19T16:31:00Z"}
+        {"type":"q","id":"q2","t":"2026-10-19T16:32:00Z","text":"What did Lena ask me?","model":"claude-sonnet-5-5"}
+        {"type":"a","id":"a2","q":"q2","t":"2026-10-19T16:32:05Z","text":"She asked four things: what you built at your last company [0:14], how you measured the six-days-to-two claim [1:20], what you stopped doing to get there [2:10], and how you handle a technical disagreement [4:05]. After the connection dropped she added what you would need in your first month [21:20].\\n- She pushed hardest on the measurement and called it a big claim [1:20].\\n- She closed by saying she will come back to you by Friday [22:06].","model":"claude-sonnet-5-5","usage":{"input":412,"output":196,"cache_read":0,"cache_write":3400},"cost_usd":0.0214,"cost_estimated":false,"ms_first_token":1840,"ms_total":4120,"citations":["0:14","1:20","2:10","4:05","21:20","22:06"],"stop_reason":"end_turn","context":"full"}
+        {"type":"q","id":"q3","t":"2026-10-19T16:33:10Z","text":"Where was my answer weak?","model":"claude-sonnet-5-5"}
+        {"type":"a","id":"a3","q":"q3","t":"2026-10-19T16:33:13Z","text":"The disagreement answer. You gave one example, the nightly job instead of a real-time one, but not what you would do if the other person still disagreed [4:41].","model":"claude-sonnet-5-5","usage":{"input":260,"output":88,"cache_read":3400,"cache_write":0},"cost_usd":0.0035,"cost_estimated":false,"ms_first_token":900,"ms_total":2400,"citations":["4:41"],"stop_reason":"end_turn","context":"full"}
+        """
 
         static let summaryText = """
         # Meeting summary

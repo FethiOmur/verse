@@ -66,6 +66,8 @@ public final class AppSettings: ObservableObject {
             L10nState.shared.apply(interfaceLanguage)
         }
     }
+    /// The model Ask this meeting answers with (spec 2.2): Haiku, Sonnet (default) or Opus, remembered app-wide.
+    @Published public var askModel: AskModel { didSet { defaults.set(askModel.rawValue, forKey: "askModel") } }
     /// Testing: canned brain replies (no network, no key).
     @Published public var fakeBrain: Bool { didSet { defaults.set(fakeBrain, forKey: "fakeBrain") } }
     /// Testing: play this audio file as the meeting instead of listening live. Empty: live.
@@ -97,6 +99,7 @@ public final class AppSettings: ObservableObject {
         let uiLanguage = InterfaceLanguage(rawValue: d.string(forKey: "interfaceLanguage") ?? "") ?? .system
         interfaceLanguage = uiLanguage
         L10nState.shared.apply(uiLanguage)
+        askModel = AskModel(rawValue: d.string(forKey: "askModel") ?? "") ?? .sonnet
         fakeBrain = d.bool(forKey: "fakeBrain")
         testAudioPath = d.string(forKey: "testAudioPath") ?? ""
     }

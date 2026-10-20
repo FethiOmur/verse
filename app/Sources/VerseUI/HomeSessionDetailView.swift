@@ -35,6 +35,11 @@ struct HomeSessionDetailView: View {
     @ObservedObject var settings: AppSettings
     /// Where Ask's citation chips ask the transcript to reveal a row (F2b passes the page's). Without one the view keeps its own.
     var jump: TranscriptJump?
+    /// The Ask button (spec 2.2): `.hidden` for practice runs and prepared sessions, disabled with a hint while the call is recorded or
+    /// when there is no transcript. `onAsk` opens the panel; with the panel open the header stacks its actions under the title.
+    var askAvailability: AskAvailability = .hidden
+    var askOpen = false
+    var onAsk: () -> Void = {}
     @StateObject private var ownJump = TranscriptJump()
     @Environment(\.sessionsDetailRender) private var render
     @State private var detail = HomeSessionDetail()
@@ -70,26 +75,7 @@ struct HomeSessionDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 8) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(session.title).font(.system(size: 20, weight: .bold)).tracking(-0.3).foregroundStyle(ink.primary).lineLimit(2)
-                    Text(meta).font(VT.Font.callout).foregroundStyle(ink.secondary)
-                }
-                Spacer(minLength: 8)
-                if session.kind != .practice, !session.unprepared, controller.sessions.contains(session.name) {
-                    if settings.sessionName == session.name {
-                        Label("Used for Start", systemImage: "checkmark").font(VT.Font.callout).foregroundStyle(ink.secondary)
-                    } else {
-                        HomeSecondaryButton("Use for Start") { settings.sessionName = session.name }.disabled(controller.running)
-                    }
-                }
-                if session.summaryURL != nil, session.kind != .practice {
-                    HomePrimaryButton("Save to vault", action: saveToVault)
-                }
-                SessionChromeMenu(symbol: "ellipsis.circle", help: "More") {
-                    Button { NSWorkspace.shared.activateFileViewerSelecting([session.dir]) } label: { Text("Show in Finder", bundle: .module) }
-                }
-            }
+            header
             if let message { HomeNote(verbatim: message, isError: messageIsError).padding(.top, 8) }
             if showsTabs {
                 HomeSegmented(Self.tabItems,
@@ -112,6 +98,61 @@ struct HomeSessionDetailView: View {
         .onReceive(activeJump.$serial.dropFirst()) { _ in
             guard hasTranscript else { return }
             tab = .transcript
+        }
+    }
+
+    // MARK: header
+
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(session.title).font(.system(size: 20, weight: .bold)).tracking(-0.3).foregroundStyle(ink.primary).lineLimit(2)
+            Text(meta).font(VT.Font.callout).foregroundStyle(ink.secondary)
+        }
+    }
+
+    @ViewBuilder private var actions: some View {
+        if session.kind != .practice, !session.unprepared, controller.sessions.contains(session.name) {
+            if settings.sessionName == session.name {
+                Label("Used for Start", systemImage: "checkmark").font(VT.Font.callout).foregroundStyle(ink.secondary)
+            } else {
+                HomeSecondaryButton("Use for Start") { settings.sessionName = session.name }.disabled(controller.running)
+            }
+        }
+        if askAvailability != .hidden {
+            HomeSecondaryButton("Ask", symbol: "bubble.left.and.text.bubble.right", action: onAsk)
+                .disabled(!askAvailability.isAvailable)
+                .help(askHelp)
+                .accessibilityIdentifier("verse.home.sessions.ask")
+        }
+        if session.summaryURL != nil, session.kind != .practice {
+            HomePrimaryButton("Save to vault", action: saveToVault)
+        }
+        SessionChromeMenu(symbol: "ellipsis.circle", help: "More") {
+            Button { NSWorkspace.shared.activateFileViewerSelecting([session.dir]) } label: { Text("Show in Finder", bundle: .module) }
+        }
+    }
+
+    private var askHelp: Text {
+        switch askAvailability {
+        case .recording: Text("Available when the call ends", bundle: .module)
+        case .noTranscript: Text("This session has no transcript to ask about", bundle: .module)
+        default: Text("Ask this meeting", bundle: .module)
+        }
+    }
+
+    @ViewBuilder private var header: some View {
+        if askOpen {
+            // The panel leaves this column 340 pt: the actions go under the title.
+            VStack(alignment: .leading, spacing: 12) {
+                titleBlock
+                AskFlow(space: 8, lineSpacing: 8, uniformSpace: true) { actions }
+            }
+        } else {
+            HStack(alignment: .top, spacing: 8) {
+                titleBlock
+                Spacer(minLength: 8)
+                actions
+            }
         }
     }
 

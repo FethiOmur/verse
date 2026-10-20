@@ -1,30 +1,169 @@
 import AppKit
 import SwiftUI
+import VerseTurns
 
 /// The home window's Sessions page: every session folder (meetings, practice runs, prepared packs) on the left, the
 /// selected one on a reading plate: Summary, Follow up (checkable), what is still open, the questions heard, and for a
 /// practice run its report. It replaces the practice report window and shows the vault summary before saving it.
-/// This file is the container; the list column is `HomeSessionsList.swift` and the detail `HomeSessionDetailView.swift`.
+/// This file is the container: list | detail | the Ask panel (spec 2.2). The list column is `HomeSessionsList.swift`, the detail
+/// `HomeSessionDetailView.swift`, the panel `AskPanel.swift`.
 struct HomeSessionsPage: View {
     @ObservedObject var model: HomeSessionsModel
     @ObservedObject var router: HomeRouter
     @ObservedObject var controller: VerseController
     @ObservedObject var settings: AppSettings
 
+    @StateObject private var ask: AskSession
+    @StateObject private var jump = TranscriptJump()
+    @State private var askOpen = false
+    /// The selected session's transcript, read once here: Ask's rows and the stamps its chips jump to come from this one document.
+    @State private var document: TranscriptDocument?
+    @State private var documentSession: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.askRender) private var askRender
+
+    init(model: HomeSessionsModel, router: HomeRouter, controller: VerseController, settings: AppSettings) {
+        self.model = model
+        self.router = router
+        self.controller = controller
+        self.settings = settings
+        let fake = { controller.fakeBrain }
+        _ask = StateObject(wrappedValue: AskSession(model: settings.askModel, makeBrain: { try AskSession.makeBrainProcess(fake: fake()) }))
+    }
+
     private var selected: HomeSession? { model.session(named: router.selectedSession) ?? model.sessions.first }
+
+    private var availability: AskAvailability {
+        guard let s = selected else { return .hidden }
+        return AskAvailability.of(s, recordingSession: controller.recordingSessionName, rows: documentSession == s.name ? document?.rows.count : nil)
+    }
+
+    /// The list column's width with its 18 pt left margin; it animates to 0 while the panel is open.
+    private static let listWidth: CGFloat = 254
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             HomeSessionsList(model: model, router: router, selectedName: selected?.name)
+                .frame(width: askOpen ? 0 : Self.listWidth, alignment: .leading).clipped()
+                .opacity(askOpen ? 0 : 1)
+                .accessibilityHidden(askOpen)
             if let s = selected {
-                HomeSessionDetailView(session: s, controller: controller, settings: settings)
+                HomeSessionDetailView(session: s, controller: controller, settings: settings, jump: jump,
+                                      askAvailability: availability, askOpen: askOpen, onAsk: toggleAsk)
                     .id(s.name)
+                if askOpen {
+                    Rectangle().fill(ink.separator).frame(width: 1).padding(.vertical, 16)
+                    AskPanel(session: ask, settings: settings, stamps: Set(document?.rows.map(\.stamp) ?? []),
+                             onCitation: { Self.reveal($0, in: document, jump: jump) }, onClose: closeAsk)
+                        .transition(.identity)
+                }
             } else {
                 Spacer()
             }
         }
         .onAppear { model.reload() }
+        .task(id: selected?.name) { await loadDocument() }
+        .onChange(of: selected?.name) { _, _ in closeAsk() }
+        .onChange(of: availability) { _, a in if !a.isAvailable, askOpen, askRender == nil { closeAsk() } }
+        .onDisappear { ask.close() }
+        .background(WindowCloseObserver { ask.close(); askOpen = false })
+        .background {
+            // ⌘⇧A opens and closes the panel.
+            Button("") { toggleAsk() }.keyboardShortcut("a", modifiers: [.command, .shift])
+                .opacity(0).frame(width: 0, height: 0).accessibilityHidden(true)
+        }
         .accessibilityIdentifier("verse.home.sessions")
+    }
+
+    @Environment(\.homeInk) private var ink
+
+    // MARK: Ask
+
+    private func toggleAsk() {
+        if askOpen { closeAsk() } else { openAsk() }
+    }
+
+    private func openAsk() {
+        guard availability.isAvailable || askRender != nil, let s = selected, let document else { return }
+        ask.launchesBrain = askRender == nil
+        ask.model = settings.askModel
+        ask.open(AskContext(sessionDir: s.dir, ownerName: settings.ownerName, title: s.title, date: s.date,
+                            meCore: Self.meCore(enabled: settings.useMeProfile), rows: document.askRows.map { AskRow(stamp: $0.stamp, speaker: $0.speaker, text: $0.text) }))
+        setOpen(true)
+    }
+
+    private func closeAsk() {
+        ask.close()
+        guard askOpen else { return }
+        setOpen(false)
+    }
+
+    /// The list hides in 140 ms, ease-out; Reduce Motion skips the animation.
+    private func setOpen(_ on: Bool) {
+        if reduceMotion { askOpen = on } else { withAnimation(VT.morph) { askOpen = on } }
+    }
+
+    private func loadDocument() async {
+        guard let s = selected else { document = nil; documentSession = nil; return }
+        let dir = s.dir, owner = settings.ownerName
+        let doc = await Task.detached { TranscriptDocument.load(sessionDir: dir, ownerName: owner) }.value
+        guard !Task.isCancelled else { return }
+        document = doc
+        documentSession = s.name
+        // A render opens the panel by itself once the transcript is read.
+        if askRender?.open == true, !askOpen { openAsk() }
+    }
+
+    /// A citation chip: shows the transcript tab and scrolls to the row stamped `stamp`. False when the transcript has no such row.
+    @discardableResult
+    static func reveal(_ stamp: String, in document: TranscriptDocument?, jump: TranscriptJump) -> Bool {
+        guard let document else { return false }
+        return jump.reveal(stamp: stamp, in: document)
+    }
+
+    /// `profile/me.md`, only when the profile toggle is on and the file exists.
+    static func meCore(enabled: Bool, directory: URL = MeProfilePaths.defaultDirectory) -> URL? {
+        let url = directory.appendingPathComponent("me.md")
+        return enabled && FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+}
+
+extension AskSession {
+    /// The real brain: `python -u -m verse_brain.runtime` (`--fake` for Settings → Testing → Fake brain), logs to `verse.log`.
+    static func makeBrainProcess(fake: Bool) throws -> any SimBrainTransport {
+        guard let dir = VerseController.brainDir() else { throw BrainError.brainDirNotFound("set VERSE_BRAIN_DIR") }
+        let b = try BrainProcess(brainDir: dir, extraArgs: fake ? ["--fake"] : [], onStderr: { FileLog.shared.write("[ask brain] " + $0) })
+        try b.start()
+        return b
+    }
+}
+
+/// Tells the page when its window closes: the Ask process ends with it.
+private struct WindowCloseObserver: NSViewRepresentable {
+    var onClose: () -> Void
+
+    func makeNSView(context: Context) -> NSView { Probe(onClose: onClose) }
+    func updateNSView(_ view: NSView, context: Context) { (view as? Probe)?.onClose = onClose }
+
+    private final class Probe: NSView {
+        var onClose: () -> Void
+        private var token: NSObjectProtocol?
+
+        init(onClose: @escaping () -> Void) {
+            self.onClose = onClose
+            super.init(frame: .zero)
+        }
+
+        required init?(coder: NSCoder) { fatalError() }
+
+        override func viewDidMoveToWindow() {
+            token.map(NotificationCenter.default.removeObserver)
+            token = nil
+            guard let window else { return }
+            token = NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.onClose() }
+            }
+        }
     }
 }
 

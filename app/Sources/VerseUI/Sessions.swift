@@ -22,7 +22,15 @@ public struct SpendLedger: Sendable {
     public struct Run: Codable, Sendable, Equatable {
         public var startedAt: Date
         public var costUSD: Double
-        enum CodingKeys: String, CodingKey { case startedAt = "started_at", costUSD = "cost_usd" }
+        /// `"ask"` for the cost of a panel opening of Ask this meeting (spec 3.1); nil is a call run.
+        public var kind: String?
+        enum CodingKeys: String, CodingKey { case startedAt = "started_at", costUSD = "cost_usd", kind }
+
+        public init(startedAt: Date, costUSD: Double, kind: String? = nil) {
+            self.startedAt = startedAt
+            self.costUSD = costUSD
+            self.kind = kind
+        }
     }
 
     struct File: Codable { var runs: [Run] }
@@ -46,14 +54,16 @@ public struct SpendLedger: Sendable {
         return f.runs
     }
 
-    /// Writes (or updates) the record for the run that started at `startedAt`.
-    public static func record(sessionDir: URL, startedAt: Date, costUSD: Double) {
+    /// Writes (or updates) the record for the run that started at `startedAt`. `kind` is nil for a call and `"ask"` for a panel opening
+    /// of Ask this meeting; a call and an Ask opening that start in the same second stay two records.
+    public static func record(sessionDir: URL, startedAt: Date, costUSD: Double, kind: String? = nil) {
         var runs = runs(sessionDir: sessionDir)
-        let key = startedAt.timeIntervalSince1970.rounded()
-        if let i = runs.firstIndex(where: { $0.startedAt.timeIntervalSince1970.rounded() == key }) {
+        // The file keeps whole seconds (ISO 8601), so both sides compare rounded down: a start at :12.7 must find its own record again.
+        let key = startedAt.timeIntervalSince1970.rounded(.down)
+        if let i = runs.firstIndex(where: { $0.startedAt.timeIntervalSince1970.rounded(.down) == key && $0.kind == kind }) {
             runs[i].costUSD = costUSD
         } else {
-            runs.append(Run(startedAt: startedAt, costUSD: costUSD))
+            runs.append(Run(startedAt: startedAt, costUSD: costUSD, kind: kind))
         }
         guard let d = try? encoder.encode(File(runs: runs)) else { return }
         try? d.write(to: sessionDir.appendingPathComponent("spend.json"), options: .atomic)
