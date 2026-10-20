@@ -62,8 +62,11 @@ Prefer questions the material can answer well. Order entries from most to least 
 blocks first, then the @BANK blocks."""
 
 
-def render_prep_note(lines: list[str]) -> str:
-    return "\n".join(f"L{i}: {ln}" for i, ln in enumerate(lines, start=1) if ln.strip())
+def render_prep_note(lines: list[str] | list[tuple[int, str]]) -> str:
+    """Numbered note lines. Plain strings are numbered from 1; (number, text) pairs keep their numbers (a section of a
+    long note keeps the line numbers it has in the whole note)."""
+    pairs = [x if isinstance(x, tuple) else (i, x) for i, x in enumerate(lines, start=1)]
+    return "\n".join(f"L{i}: {ln}" for i, ln in pairs if ln.strip())
 
 
 def render_user(
@@ -72,12 +75,29 @@ def render_user(
     commits: dict[str, Commit],
     langs: list[str],
     max_questions: int,
+    *,
+    section: tuple[int, int, int, int] | None = None,
+    header: list[tuple[int, str]] | None = None,
 ) -> str:
+    """`section` = (index, count, first line, last line) turns this into one call of a sectioned run: `prep_lines` are
+    then the section's (number, text) pairs and `header` the note's header pairs, given in every call."""
     names = ", ".join(f"{LANG_NAMES.get(c, c)} ({c})" for c in langs)
     parts = [
         f"Meeting languages: {names}. Canonical questions are written in {LANG_NAMES.get(langs[0], langs[0])} "
         f"(lang: {langs[0]}); give at least 3 paraphrases for every meeting language.",
         f"Write up to {max_questions} @BANK blocks (aim for {max_questions} if the sources support them).",
+    ]
+    if section is not None:
+        i, n, a, b = section
+        parts += [
+            f"The prep note is long, so it is processed in {n} sections; this is section {i} of {n} (lines L{a} to L{b}). "
+            f"The note header comes first in <prep_note>, as context for every section; its lines keep their numbers "
+            f"(`prep:L<number>` always means the line number shown). Write the @BANK, @FACT and @TERM blocks about the "
+            f"content of THIS section; use the header only for context (who, what, when). Other sections are written "
+            f"in other calls, so do not try to cover the whole note.",
+        ]
+        prep_lines = [*(header or []), *prep_lines]
+    parts += [
         "",
         "<prep_note>",
         render_prep_note(prep_lines),

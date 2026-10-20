@@ -56,7 +56,10 @@ def spend_usd(model: str, u: Usage) -> float:
 class PrepModel(Protocol):
     model: str
 
-    async def generate(self, system: str, user: str, max_tokens: int) -> ModelOutput: ...
+    async def generate(self, system: str, user: str, max_tokens: int) -> ModelOutput:
+        """A model may also accept `effort: str` ("low" | "medium" | "high"); the prep pipeline passes it only to models
+        whose `generate` has that parameter (pipeline._generate)."""
+        ...
 
     async def count_tokens(self, text: str) -> int:
         """Tokens of `text` as a user message (the pack cap)."""
@@ -80,7 +83,9 @@ class AnthropicPrepModel:
         self.model = model
         self._progress = progress
 
-    async def generate(self, system: str, user: str, max_tokens: int) -> ModelOutput:
+    async def generate(self, system: str, user: str, max_tokens: int, effort: str = "high") -> ModelOutput:
+        # Adaptive thinking has no token budget parameter (SDK 1.13: ThinkingConfigAdaptiveParam is type/display only), so
+        # `effort` is the lever that keeps thinking from eating max_tokens; the prep pipeline asks for "medium".
         parts: list[str] = []
         shown = 0
         async with self._client.messages.stream(
@@ -89,7 +94,7 @@ class AnthropicPrepModel:
             system=system,
             messages=[{"role": "user", "content": user}],
             thinking={"type": "adaptive"},
-            output_config={"effort": "high"},
+            output_config={"effort": effort},
         ) as stream:
             async for chunk in stream.text_stream:
                 parts.append(chunk)
