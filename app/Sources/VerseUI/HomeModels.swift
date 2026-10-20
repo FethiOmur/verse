@@ -381,10 +381,7 @@ public final class HomeUpNextModel: ObservableObject {
         self.eventMap = eventMap
         self.onPrepared = onPrepared
         let brainDir = VerseController.brainDir()
-        self.prepare = prepare ?? { event, lang in
-            guard let brain = brainDir else { throw CalendarPrepError.brainDirNotFound("(not found)") }
-            return try await CalendarPrep(brainDir: brain).makeSession(for: event, lang: lang)
-        }
+        self.prepare = prepare ?? EventPrep.prepare(brainDir: brainDir)
     }
 
     /// Fixed items for renders and tests.
@@ -398,7 +395,7 @@ public final class HomeUpNextModel: ObservableObject {
             items = []
             return
         }
-        let events = (try? await calendar.upcoming(within: Self.window)) ?? []
+        let events = (try? await calendar.upcoming(within: Self.window, realMeetingsOnly: true)) ?? []
         let remembered = eventMap.load()
         let names = sessions()
         items = events.prefix(6).map { e in
@@ -441,7 +438,7 @@ public final class HomeUpNextModel: ObservableObject {
     public func upcomingEvents(within: TimeInterval, now: Date = Date()) async -> [MeetingEvent] {
         if fixed { return items.compactMap(\.event) }
         guard meeting.useCalendar, calendar.authorization() == .fullAccess else { return [] }
-        return (try? await calendar.upcoming(within: within, now: now)) ?? []
+        return (try? await calendar.upcoming(within: within, now: now, realMeetingsOnly: true)) ?? []
     }
 
     /// Event id -> session folder name, for the sessions the app prepared from an event.

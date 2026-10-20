@@ -47,7 +47,8 @@ final class PracticeUpcomingRender: XCTestCase {
     }
 
     private func entry(_ id: String, _ title: String, start: Date) -> CalendarEntry {
-        CalendarEntry(id: id, title: title, start: start, end: start.addingTimeInterval(1_800))
+        CalendarEntry(id: id, title: title, start: start, end: start.addingTimeInterval(1_800),
+                      url: URL(string: "https://meet.google.com/abc-defg-hij"))
     }
 
     func testRenderThePickerWithUpcomingMeetings() async throws {

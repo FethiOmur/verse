@@ -36,7 +36,7 @@ public final class EventKitBackend: CalendarBackend, @unchecked Sendable {
                 title: (e.title ?? "").isEmpty ? "(no title)" : e.title!,
                 start: e.startDate, end: e.endDate, isAllDay: e.isAllDay,
                 attendees: (e.attendees ?? []).map(Self.attendee),
-                notes: e.notes, location: e.location, url: e.url)
+                notes: e.notes, location: e.location, url: e.url, currentUser: me.map(Self.attendee))
         }
     }
 

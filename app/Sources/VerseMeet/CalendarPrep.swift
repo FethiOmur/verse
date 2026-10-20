@@ -5,6 +5,8 @@ public enum CalendarPrepError: Error, Sendable, Equatable, CustomStringConvertib
     case brainDirNotFound(String)
     case prepFailed(status: Int32, stderrTail: String)
     case noSessionInOutput
+    /// A live run found no Anthropic key in the Keychain (the brain reads it; Swift never does).
+    case apiKeyMissing
 
     public var description: String {
         switch self {
@@ -12,6 +14,7 @@ public enum CalendarPrepError: Error, Sendable, Equatable, CustomStringConvertib
         case .brainDirNotFound(let p): return "brain directory not found: \(p)"
         case .prepFailed(let s, let t): return "prep failed (exit \(s)): \(t)"
         case .noSessionInOutput: return "prep finished but printed no session folder"
+        case .apiKeyMissing: return "No Anthropic API key in the Keychain. Add it in Settings (Anthropic API key), then prepare again."
         }
     }
 }
@@ -71,7 +74,7 @@ public struct CalendarPrep: Sendable {
     public var python: URL
     /// Sessions root; nil keeps the prep default (`~/Library/Application Support/Verse/sessions`).
     public var outRoot: URL?
-    /// Offline deterministic prep (no network, no spend). The default; pass `false` for a real model run.
+    /// Offline deterministic prep (no network, no spend). The library default; the app builds `CalendarPrep.live` instead.
     public var fake: Bool
     /// Hard spend cap for a live run.
     public var budgetUSD: Double
@@ -85,6 +88,12 @@ public struct CalendarPrep: Sendable {
         self.fake = fake
         self.budgetUSD = budgetUSD
         self.runner = runner
+    }
+
+    /// The real model run the app uses: not fake, with the default spend cap. Tests inject `CalendarPrep(... fake: true ...)` instead.
+    public static func live(brainDir: URL, python: URL? = nil, outRoot: URL? = nil,
+                            runner: any CommandRunning = ProcessCommandRunner()) -> CalendarPrep {
+        CalendarPrep(brainDir: brainDir, python: python, outRoot: outRoot, fake: false, runner: runner)
     }
 
     /// The prep command line, without the event file (exposed for tests).
@@ -113,6 +122,7 @@ public struct CalendarPrep: Sendable {
         let r = try await runner.run(executable: python, arguments: arguments(eventFile: file, repos: repos, lang: lang), workingDirectory: brainDir)
         guard r.status == 0 else {
             let tail = String(r.stderr.suffix(300)).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !fake, r.stderr.contains("Keychain item") || r.stderr.contains("Keychain read failed") { throw CalendarPrepError.apiKeyMissing }
             throw CalendarPrepError.prepFailed(status: r.status, stderrTail: tail)
         }
         guard let line = r.stdout.split(separator: "\n").first(where: { $0.hasPrefix("session: ") }) else {

@@ -50,8 +50,10 @@ private func event(_ id: String, _ title: String, start: Date, minutes: Double =
     MeetingEvent(id: id, title: title, start: start, end: start.addingTimeInterval(minutes * 60))
 }
 
+/// A real meeting by the Upcoming rule (it has a Meet link), so the lists keep it.
 private func entry(_ id: String, _ title: String, start: Date, minutes: Double = 30) -> CalendarEntry {
-    CalendarEntry(id: id, title: title, start: start, end: start.addingTimeInterval(minutes * 60))
+    CalendarEntry(id: id, title: title, start: start, end: start.addingTimeInterval(minutes * 60),
+                  url: URL(string: "https://meet.google.com/abc-defg-hij"))
 }
 
 /// The part of the calendar store the source needs, with nothing behind it. Counts the access prompts it was asked for.
@@ -411,7 +413,7 @@ final class PracticeUpcomingTestsEventPrep: XCTestCase {
         }
         let recorder = Recorder()
         let prep = CalendarPrep(brainDir: brainDir, python: URL(fileURLWithPath: "/usr/bin/true"), outRoot: URL(fileURLWithPath: "/tmp/sessions"),
-                                runner: recorder)
+                                fake: true, runner: recorder)
         var e = event("e11", "Design review with Ingrid", start: at(21, 10))
         e.notes = "SECRET-NOTES-4711 agenda"
         e.attendees = [Attendee(name: "Ingrid Solberg", email: "ingrid@example.invalid")]
@@ -427,6 +429,33 @@ final class PracticeUpcomingTestsEventPrep: XCTestCase {
             XCTAssertFalse(line.contains(banned), "\(banned) is on the line: \(line)")
         }
         XCTAssertTrue(recorder.eventFileText.contains("SECRET-NOTES-4711"), "the event reaches prep through its file")
+    }
+
+    /// The app's real path: no `--fake`, the spend cap instead, still no key, notes or attendees on the line.
+    func testLiveEventPrepArgvGoldenHasNoKey() async throws {
+        final class Recorder: CommandRunning, @unchecked Sendable {
+            private let lock = NSLock()
+            var calls: [[String]] = []
+            func run(executable: URL, arguments: [String], workingDirectory: URL) async throws -> CommandResult {
+                lock.withLock { calls.append(arguments) }
+                return CommandResult(status: 0, stdout: "session: /tmp/sessions/design-review\n", stderr: "")
+            }
+        }
+        let recorder = Recorder()
+        let prep = CalendarPrep.live(brainDir: brainDir, python: URL(fileURLWithPath: "/usr/bin/true"),
+                                     outRoot: URL(fileURLWithPath: "/tmp/sessions"), runner: recorder)
+        XCTAssertFalse(prep.fake)
+        var e = event("e12", "Design review with Ingrid", start: at(21, 10))
+        e.notes = "SECRET-NOTES-4711 agenda"
+        e.attendees = [Attendee(name: "Ingrid Solberg", email: "ingrid@example.invalid")]
+        _ = try await prep.makeSession(for: e, lang: "en")
+        let argv = try XCTUnwrap(recorder.calls.first)
+        XCTAssertEqual(Array(argv[0..<3]), ["-m", "verse_brain.prep", "--from-event"])
+        XCTAssertEqual(Array(argv[4...]), ["--lang", "en", "--out", "/tmp/sessions", "--budget-usd", "0.45"], "\(argv)")
+        let line = argv.joined(separator: " ")
+        for banned in ["--fake", "SECRET-NOTES", "Ingrid", "ingrid@example", "sk-ant", "api-key", "--key", "ANTHROPIC"] {
+            XCTAssertFalse(line.contains(banned), "\(banned) is on the line: \(line)")
+        }
     }
 
     /// Step 2's command line for the session step 1 made: paths and choices only, nothing from the profile or the pack.

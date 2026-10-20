@@ -178,6 +178,101 @@ final class HomeUpNextTests: XCTestCase {
         XCTAssertFalse(model.preparing.contains("e1"))
     }
 
+    // MARK: event prep is the real run
+
+    private func fixtureBrainDir() throws -> URL {
+        let d = FileManager.default.temporaryDirectory.appendingPathComponent("brain-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: d.appendingPathComponent("verse_brain"), withIntermediateDirectories: true)
+        return d
+    }
+
+    private final class ArgvRecorder: CommandRunning, @unchecked Sendable {
+        private let lock = NSLock()
+        private var all: [[String]] = []
+        var calls: [[String]] { lock.withLock { all } }
+        func run(executable: URL, arguments: [String], workingDirectory: URL) async throws -> CommandResult {
+            lock.withLock { all.append(arguments) }
+            return CommandResult(status: 0, stdout: "session: /tmp/sessions/from-invite\n", stderr: "")
+        }
+    }
+
+    func testTheAppsEventPrepBuildsALivePrepNotTheFake() throws {
+        let prep = EventPrep.live(URL(fileURLWithPath: "/tmp/brain"))
+        XCTAssertFalse(prep.fake, "the real path must not default to the offline fake")
+        XCTAssertEqual(prep.budgetUSD, 0.45)
+    }
+
+    func testPrepareClosureUsesTheInjectedPrepAndStaysOffline() async throws {
+        let brain = try fixtureBrainDir()
+        defer { try? FileManager.default.removeItem(at: brain) }
+        let recorder = ArgvRecorder()
+        let prepare = EventPrep.prepare(brainDir: brain, make: { dir in
+            CalendarPrep(brainDir: dir, python: URL(fileURLWithPath: "/usr/bin/true"), fake: true, runner: recorder)
+        })
+        let event = MeetingEvent(id: "e9", title: "Invite", start: Date(), end: Date().addingTimeInterval(1_800))
+        let dir = try await prepare(event, "en")
+        XCTAssertEqual(dir.lastPathComponent, "from-invite")
+        XCTAssertTrue(try XCTUnwrap(recorder.calls.first).contains("--fake"))
+        // Without a brain folder the closure fails the same way the app always did.
+        do {
+            _ = try await EventPrep.prepare(brainDir: nil)(event, "en")
+            XCTFail("expected brainDirNotFound")
+        } catch {
+            XCTAssertEqual(error as? CalendarPrepError, .brainDirNotFound("(not found)"))
+        }
+    }
+
+    func testAMissingKeyReachesTheUpNextMessageAsAClearSentence() async throws {
+        let model = makeModel(prepare: { _, _ in throw CalendarPrepError.apiKeyMissing })
+        let event = MeetingEvent(id: "e3", title: "Review", start: Date(), end: Date().addingTimeInterval(1_800))
+        model.setItems([HomeUpNextItem(id: "e3", title: "Review", meta: "Today", session: nil, event: event)])
+        model.prepare(model.items[0])
+        for _ in 0..<100 where model.message == nil { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertEqual(model.message, "Could not prepare \"Review\": No Anthropic API key in the Keychain. Add it in Settings (Anthropic API key), then prepare again.")
+    }
+
+    // MARK: only real meetings
+
+    private final class OneCalendar: CalendarBackend, @unchecked Sendable {
+        let all: [CalendarEntry]
+        init(_ all: [CalendarEntry]) { self.all = all }
+        func authorization() -> CalendarAuthorization { .fullAccess }
+        func requestFullAccess() async throws -> Bool { false }
+        func accountCount() -> Int { 1 }
+        func entries(from: Date, to: Date) -> [CalendarEntry] { all.filter { $0.end > from && $0.start < to } }
+    }
+
+    private func calendarModel(_ entries: [CalendarEntry]) -> HomeUpNextModel {
+        let defaults = UserDefaults(suiteName: "dev.fethiverse.verse.test-\(UUID().uuidString)")!
+        let meeting = MeetingSettings(defaults: defaults)
+        meeting.useCalendar = true
+        return HomeUpNextModel(settings: AppSettings(defaults: defaults), meeting: meeting, sessions: { [] },
+                               calendar: CalendarSource(backend: OneCalendar(entries)),
+                               eventMap: EventSessionMap(url: FileManager.default.temporaryDirectory.appendingPathComponent("evmap-\(UUID().uuidString).json")),
+                               prepare: { _, _ in URL(fileURLWithPath: "/tmp/sessions/x") })
+    }
+
+    func testUpNextAndUpcomingListOnlyRealMeetings() async throws {
+        let me = Attendee(name: "Test Owner", email: "owner@example.invalid")
+        let guest = Attendee(name: "Ingrid S", email: "ingrid@example.invalid")
+        func e(_ id: String, minutes: Double, attendees: [Attendee] = [], url: String? = nil, allDay: Bool = false, mine: Bool = false) -> CalendarEntry {
+            let start = Date().addingTimeInterval(minutes * 60)
+            return CalendarEntry(id: id, title: "T-\(id)", start: start, end: start.addingTimeInterval(1_800), isAllDay: allDay, attendees: attendees,
+                                 url: url.flatMap(URL.init(string:)), currentUser: mine ? me : nil)
+        }
+        let model = calendarModel([
+            e("people", minutes: 10, attendees: [me, guest], mine: true),
+            e("link", minutes: 20, url: "https://acme.webex.com/meet/someone"),
+            e("solo", minutes: 30),
+            e("self", minutes: 40, attendees: [me], mine: true),
+            e("allday", minutes: 50, attendees: [guest], allDay: true),
+        ])
+        await model.refresh()
+        XCTAssertEqual(model.items.map(\.id), ["people", "link"])
+        let upcoming = await model.upcomingEvents(within: 14 * 86_400)
+        XCTAssertEqual(upcoming.map(\.id), ["people", "link"])
+    }
+
     func testPrepareFailureShowsAMessage() async throws {
         struct Boom: Error {}
         let model = makeModel(prepare: { _, _ in throw Boom() })

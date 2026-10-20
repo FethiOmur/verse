@@ -72,6 +72,29 @@ final class CalendarPrepTests: XCTestCase {
         XCTAssertEqual(args[args.firstIndex(of: "--budget-usd")! + 1], "0.45")
     }
 
+    func testLiveFactoryBuildsARealRunAndAMissingKeyIsAClearError() async throws {
+        let (brain, python) = try fixtureBrain()
+        let prep = CalendarPrep.live(brainDir: brain, python: python)
+        XCTAssertFalse(prep.fake)
+        let stderr = "error: Keychain item service=verse-anthropic account=someone missing (exit 44)"
+        let noKey = RecordingRunner(result: CommandResult(status: 1, stdout: "", stderr: stderr))
+        do {
+            _ = try await CalendarPrep.live(brainDir: brain, python: python, runner: noKey).makeSession(for: event)
+            XCTFail("expected apiKeyMissing")
+        } catch {
+            XCTAssertEqual(error as? CalendarPrepError, .apiKeyMissing)
+            XCTAssertTrue("\(error)".contains("Anthropic API key"), "\(error)")
+        }
+        // An offline run never reports a key problem.
+        let fakeFail = RecordingRunner(result: CommandResult(status: 1, stdout: "", stderr: stderr))
+        do {
+            _ = try await CalendarPrep(brainDir: brain, python: python, fake: true, runner: fakeFail).makeSession(for: event)
+            XCTFail("expected prepFailed")
+        } catch {
+            guard case .prepFailed? = error as? CalendarPrepError else { return XCTFail("\(error)") }
+        }
+    }
+
     func testPrepFailuresAreTyped() async throws {
         let (brain, python) = try fixtureBrain()
         let failing = RecordingRunner(result: CommandResult(status: 1, stdout: "", stderr: "error: no key"))

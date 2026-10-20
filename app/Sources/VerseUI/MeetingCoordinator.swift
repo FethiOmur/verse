@@ -101,10 +101,7 @@ public final class MeetingCoordinator: ObservableObject {
         self.gate = gate
         self.detector = detector ?? MeetingDetector(eventLookup: { when in gate.isOn ? calendar.overlapping(now: when) : [] })
         let brainDir = VerseController.brainDir()
-        self.prepare = prepare ?? { event, lang in
-            guard let brain = brainDir else { throw CalendarPrepError.brainDirNotFound("(not found)") }
-            return try await CalendarPrep(brainDir: brain).makeSession(for: event, lang: lang)
-        }
+        self.prepare = prepare ?? EventPrep.prepare(brainDir: brainDir)
         self.upcomingLookup = upcoming ?? { when in
             guard gate.isOn, calendar.authorization() == .fullAccess else { return [] }
             return (try? await calendar.upcoming(within: Self.upcomingWindow, now: when)) ?? []

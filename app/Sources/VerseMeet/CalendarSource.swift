@@ -34,9 +34,11 @@ public struct CalendarEntry: Sendable, Equatable {
     public var notes: String?
     public var location: String?
     public var url: URL?
+    /// The attendee that is the calendar's owner (EventKit's `isCurrentUser`); nil when the owner is not on the list.
+    public var currentUser: Attendee?
 
     public init(id: String, title: String, start: Date, end: Date, isAllDay: Bool = false, attendees: [Attendee] = [],
-                notes: String? = nil, location: String? = nil, url: URL? = nil) {
+                notes: String? = nil, location: String? = nil, url: URL? = nil, currentUser: Attendee? = nil) {
         self.id = id
         self.title = title
         self.start = start
@@ -46,6 +48,7 @@ public struct CalendarEntry: Sendable, Equatable {
         self.notes = notes
         self.location = location
         self.url = url
+        self.currentUser = currentUser
     }
 }
 
@@ -90,10 +93,11 @@ public struct CalendarSource: Sendable {
     }
 
     /// Events that end after `now` and start within `within` of it (so a call that is running now counts), soonest first.
-    /// All-day events are skipped.
-    public func upcoming(within: TimeInterval = 30 * 60, now: Date = Date()) async throws -> [MeetingEvent] {
+    /// All-day events are skipped. With `realMeetingsOnly`, only events with someone besides the owner or a video-call link
+    /// are kept (see `RealMeeting`); the pickers set it, the call detector does not.
+    public func upcoming(within: TimeInterval = 30 * 60, now: Date = Date(), realMeetingsOnly: Bool = false) async throws -> [MeetingEvent] {
         try await ensureAccess()
-        return events(from: now, to: now.addingTimeInterval(within)).filter { $0.end > now }
+        return events(from: now, to: now.addingTimeInterval(within), realMeetingsOnly: realMeetingsOnly).filter { $0.end > now }
     }
 
     /// Events overlapping `[now - margin, now + margin]`, for attaching to a detected call. Never prompts: without
@@ -110,9 +114,9 @@ public struct CalendarSource: Sendable {
         return all.first { $0.id == id && $0.end >= now } ?? all.first { $0.id == id }
     }
 
-    private func events(from: Date, to: Date) -> [MeetingEvent] {
+    private func events(from: Date, to: Date, realMeetingsOnly: Bool = false) -> [MeetingEvent] {
         backend.entries(from: from, to: to)
-            .filter { !$0.isAllDay }
+            .filter { !$0.isAllDay && (!realMeetingsOnly || RealMeeting.isReal($0)) }
             .sorted { ($0.start, $0.id) < ($1.start, $1.id) }
             .map { e in
                 let link = MeetingLink.extract(url: e.url, location: e.location, notes: e.notes)
