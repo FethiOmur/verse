@@ -509,7 +509,10 @@ public final class VerseController: ObservableObject {
     }
 
     /// Renders only: shows the running state without a runner.
-    func setRunningForPreview(_ on: Bool) { running = on }
+    func setRunningForPreview(_ on: Bool, session: URL? = nil) {
+        running = on
+        runSessionDir = on ? session : nil
+    }
 
     private func runEnded(_ code: Int32) {
         running = false

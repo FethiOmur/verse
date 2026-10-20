@@ -1266,6 +1266,54 @@
         }
       }
     },
+    "A practice run in progress is using this session.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un’esercitazione in corso sta usando questa sessione."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devam eden bir pratik bu oturumu kullanıyor."
+          }
+        }
+      }
+    },
+    "A session named “%@” already exists, so it was not restored.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esiste già una sessione chiamata «%@», quindi non è stata ripristinata."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” adlı bir oturum zaten var, bu yüzden geri yüklenmedi."
+          }
+        }
+      }
+    },
+    "A session that is being recorded can't be moved to the Trash.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una sessione in registrazione non può essere spostata nel Cestino."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydedilen bir oturum Çöp Sepeti’ne taşınamaz."
+          }
+        }
+      }
+    },
     "A spoken mock interview, built from a meeting you prepared or from a job posting.": {
       "localizations": {
         "it": {
@@ -4882,6 +4930,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Şuraya taşı"
+          }
+        }
+      }
+    },
+    "Move to Trash": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sposta nel Cestino"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çöp Sepeti’ne Taşı"
+          }
+        }
+      }
+    },
+    "Moved to Trash": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spostata nel Cestino"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çöp Sepeti’ne taşındı"
           }
         }
       }
@@ -9014,6 +9094,22 @@
         }
       }
     },
+    "This session can't be moved to the Trash.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa sessione non può essere spostata nel Cestino."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu oturum Çöp Sepeti’ne taşınamaz."
+          }
+        }
+      }
+    },
     "This session has no transcript to ask about": {
       "localizations": {
         "it": {
@@ -9126,6 +9222,22 @@
         }
       }
     },
+    "Trash": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cestino"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çöp Sepeti"
+          }
+        }
+      }
+    },
     "Turkish": {
       "localizations": {
         "it": {
@@ -9170,6 +9282,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tür"
+          }
+        }
+      }
+    },
+    "Undo": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annulla"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geri Al"
           }
         }
       }
@@ -9528,6 +9656,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verse beynini bulamadı: %@"
+          }
+        }
+      }
+    },
+    "Verse could not move %lld sessions to the Trash.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse non è riuscito a spostare %lld sessioni nel Cestino."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse %lld oturumu Çöp Sepeti’ne taşıyamadı."
+          }
+        }
+      }
+    },
+    "Verse could not move “%@” to the Trash.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse non è riuscito a spostare «%@» nel Cestino."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse “%@” oturumunu Çöp Sepeti’ne taşıyamadı."
+          }
+        }
+      }
+    },
+    "Verse could not restore “%@”.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse non è riuscito a ripristinare «%@»."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse “%@” oturumunu geri yükleyemedi."
           }
         }
       }
@@ -11136,6 +11312,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "sıra sende"
+          }
+        }
+      }
+    },
+    "“%@” is no longer in the Trash, so it could not be restored.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "«%@» non è più nel Cestino: impossibile ripristinare la sessione."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” artık Çöp Sepeti’nde değil, bu yüzden geri yüklenemedi."
           }
         }
       }

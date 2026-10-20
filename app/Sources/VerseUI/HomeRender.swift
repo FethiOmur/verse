@@ -61,6 +61,15 @@ public enum HomeRender {
                 try await capture(Scene(context: fixtures.context(router: folderRouter, sessions: folderFixtures.sessions), dark: dark, override: nil),
                                   size: canvas, dark: dark, to: folderURL)
                 out.append(folderURL)
+
+                // Move to Trash, the Mail way: a row swiped open on its red Trash action, and the "Moved to Trash · Undo" toast.
+                for (name, state) in [("swipe", SessionsTrashRenderState(swiped: "Harbor Ledger kickoff")), ("toast", SessionsTrashRenderState(toast: true))] {
+                    let url = dir.appendingPathComponent("home-sessions-trash-\(name)-\(dark ? "dark" : "light").png")
+                    var scene = Scene(context: fixtures.context(router: folderRouter, sessions: folderFixtures.sessions), dark: dark, override: nil)
+                    scene.trashRender = state
+                    try await capture(scene, size: canvas, dark: dark, to: url)
+                    out.append(url)
+                }
             }
             // Sessions on a meeting with a transcript (F1): the Transcript tab, and again with a search shown.
             if only?.contains(.sessions) ?? true {
@@ -159,6 +168,8 @@ public enum HomeRender {
         var detailRender: SessionsDetailRenderState?
         /// The Ask panel open over what `chat.jsonl` holds (F2b).
         var askRender: AskRenderState?
+        /// A row with its Trash action revealed, or the toast (Move to Trash).
+        var trashRender: SessionsTrashRenderState?
 
         var body: some View {
             ZStack {
@@ -166,6 +177,7 @@ public enum HomeRender {
                 HomeRoot(context: context, a11yOverride: override ?? HomeA11yOverride(), inWindowGlass: true, meetingsOnly: meetingsOnly)
                     .environment(\.sessionsDetailRender, detailRender)
                     .environment(\.askRender, askRender)
+                    .environment(\.sessionsTrashRender, trashRender)
                     .frame(width: 1100, height: HomeRender.windowHeight)
                     .shadow(color: .black.opacity(dark ? 0.45 : 0.18), radius: 30, y: 16)
             }

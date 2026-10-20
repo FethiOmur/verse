@@ -25,6 +25,8 @@ public struct HomeContext {
         self.conversation = conversation
         let sessionsModel = sessions ?? HomeSessionsModel()
         self.sessions = sessionsModel
+        // Move to Trash asks the window what is running, which session Start uses and which row is shown.
+        sessionsModel.hooks = .window(controller: controller, sim: sim, settings: settings, router: router)
         self.upNext = upNext ?? HomeUpNextModel(
             settings: settings, meeting: controller.meeting.settings, sessions: { controller.sessions },
             onPrepared: { [weak controller] name in

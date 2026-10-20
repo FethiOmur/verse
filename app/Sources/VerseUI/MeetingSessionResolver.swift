@@ -52,4 +52,22 @@ public struct EventSessionMap: Sendable {
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? d.write(to: url, options: .atomic)
     }
+
+    /// Drops every event that points at `session` (the session is gone). Returns the event ids it removed, so an undo can put them
+    /// back. Writes nothing when no event points there.
+    @discardableResult
+    public func forget(session: String) -> [String] {
+        var m = load()
+        let ids = m.filter { $0.value == session }.map(\.key).sorted()
+        guard !ids.isEmpty else { return [] }
+        for id in ids { m[id] = nil }
+        if let d = try? JSONEncoder().encode(m) { try? d.write(to: url, options: .atomic) }
+        return ids
+    }
+
+    /// Puts `eventID` -> `session` back, unless the event has been mapped to a session since.
+    public func restore(eventID: String, session: String) {
+        guard load()[eventID] == nil else { return }
+        remember(eventID: eventID, session: session)
+    }
 }
