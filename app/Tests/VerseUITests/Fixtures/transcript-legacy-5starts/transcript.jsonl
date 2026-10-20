@@ -1,0 +1,18 @@
+{"addressee":"other","kind":"statement","lang":"en","speaker":"me","t_audio_end":6.2,"text":"Hi Lena, thanks for making time today.","turn_id":"m1"}
+{"addressee":"me","kind":"question","lang":"en","speaker":"remote","t_audio_end":31.2,"text":"Of course. Tell me how Harbor Ledger got started and who it is for.","turn_id":"r1"}
+{"addressee":"unknown","kind":"statement","lang":"en","speaker":"me","t_audio_end":58.9,"text":"It began as a month-end tool for small finance teams, and it grew from there into a full close checklist.","turn_id":"m2"}
+{"addressee":"me","kind":"question","lang":"en","speaker":"remote","t_audio_end":59.4,"text":"And what changed for those teams once they adopted it?","turn_id":"r2"}
+{"addressee":"unknown","kind":"statement","lang":"en","speaker":"me","t_audio_end":74.0,"text":"The close went from six days to two.","turn_id":"m3"}
+{"addressee":"me","kind":"question","lang":"en","speaker":"remote","t_audio_end":96.5,"text":"That is a big drop. Who owned the rollout on your side?","turn_id":"r3"}
+{"addressee":"me","kind":"question","lang":"en","speaker":"remote","t_audio_end":12.0,"text":"Welcome back, the connection dropped. Where were we?","turn_id":"r1"}
+{"addressee":"unknown","kind":"statement","lang":"en","speaker":"me","t_audio_end":31.0,"text":"We were on the rollout. I led it with two colleagues.","turn_id":"m1"}
+{"addressee":"me","kind":"question","lang":"en","speaker":"remote","t_audio_end":52.5,"text":"How did you split the work between the three of you?","turn_id":"r2"}
+{"addressee":"unknown","kind":"statement","lang":"en","speaker":"me","t_audio_end":84.0,"text":"One of us owned data, one owned training, and I owned the product decisions.","turn_id":"m2"}
+{"addressee":"me","kind":"question","lang":"en","speaker":"remote","t_audio_end":140.0,"text":"Understood. What would you do differently?","turn_id":"r3"}
+{"addressee":"me","kind":"question","lang":"en","speaker":"remote","t_audio_end":8.0,"text":"Let us pick up with the metrics you mentioned.","turn_id":"r9"}
+{"addressee":"unknown","kind":"statement","lang":"en","speaker":"me","t_audio_end":27.5,"text":"Sure. The two numbers I track are days to close and open reconciliation items.","turn_id":"m9"}
+{"addressee":"me","kind":"question","lang":"en","speaker":"remote","t_audio_end":41.0,"text":"Do you report them weekly?","turn_id":"r10"}
+{"addressee":"unknown","kind":"statement","lang":"en","speaker":"me","t_audio_end":62.0,"text":"Weekly to the finance lead, monthly to the whole company.","turn_id":"m10"}
+{"addressee":"me","kind":"question","lang":"en","speaker":"remote","t_audio_end":60.5,"text":"Last point: what do you need from us to start?","turn_id":"r10"}
+{"addressee":"unknown","kind":"statement","lang":"en","speaker":"me","t_audio_end":84.0,"text":"A sandbox account and one point of contact for the data export.","turn_id":"m11"}
+{"addressee":"me","kind":"statement","lang":"en","speaker":"remote","t_audio_end":101.0,"text":"We can do that this week. Thank you.","turn_id":"r11"}
