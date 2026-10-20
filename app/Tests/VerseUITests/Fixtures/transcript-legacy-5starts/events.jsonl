@@ -1,0 +1,14 @@
+{"ev":"start","lang":"en","mode":"prepared","room_auto":"questions","route":"meeting","t":1792000000.0}
+{"ev":"start","lang":"en","mode":"prepared","room_auto":"questions","route":"meeting","t":1792000600.0}
+{"cue":true,"ev":"turn","kind":"question","lang":"en","speaker":"remote","t":1792000632.5,"text":"Of course. Tell me how Harbor","turn":"r1","words":14}
+{"ev":"card","id":"s0001","kind":"say","t":1792000632.6,"text":"It began as a month-end tool for small finance teams, and it…","tier":"S","turn":"r1"}
+{"ev":"card","id":"f0002","kind":"say","t":1792000634.0,"text":"It began as a month-end tool for small finance teams, and it…","tier":"F","turn":"r1"}
+{"ev":"card","id":"d0003","kind":"point","t":1792000635.1,"text":"Harbor Ledger: built for teams of two to ten people in finan…","tier":"D","turn":"r1"}
+{"ev":"card_suppressed","reason":"fragment","t":1792000660.2,"turn":"r2"}
+{"ev":"start","lang":"en","mode":"prepared","room_auto":"questions","route":"meeting","t":1792000900.0}
+{"ev":"card","id":"f0007","kind":"say","t":1792000954.0,"text":"I led the rollout with two colleagues; we split data, traini…","tier":"F","turn":"r2"}
+{"ev":"card","id":"d0008","kind":"point","t":1792000955.2,"text":"Two colleagues, three roles: data, training, product","tier":"D","turn":"r2"}
+{"ev":"start","lang":"en","mode":"prepared","room_auto":"questions","route":"meeting","t":1792002700.0}
+{"ev":"card","id":"s0011","kind":"say","t":1792002709.1,"text":"Two numbers: days to close and open reconciliation items, re…","tier":"S","turn":"r9"}
+{"ev":"start","lang":"en","mode":"prepared","room_auto":"questions","route":"meeting","t":1792002820.0}
+{"ev":"card","id":"f0015","kind":"say","now":true,"t":1792002910.0,"text":"A sandbox account and one contact for the data export would…","tier":"F","turn":"now-1"}

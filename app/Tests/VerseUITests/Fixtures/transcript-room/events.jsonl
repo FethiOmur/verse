@@ -1,0 +1,10 @@
+{"ev":"start","lang":"en","mode":"unprepared","room_auto":"questions","route":"room","t":1792200000.5}
+{"ev":"room_text","final":true,"label":"room","lang":"en","reason":"no_card","t":1792200007.9,"text":"Hello, can you hear me? Thanks for taking the call.","turn":"w1","words":10}
+{"ev":"room_text","final":true,"label":"room","lang":"en","reason":"no_card","t":1792200016.0,"text":"Could you tell me a little about your background and what you work on now?","turn":"w2","words":15}
+{"ev":"card","id":"f0001","kind":"say","t":1792200016.5,"text":"I build backend systems for small teams and keep them simple…","tier":"F","turn":"w2"}
+{"ev":"card_done","id":"f0001","points":["Harbor Ledger: month-end close","Trailhead: a hiking app"],"say":"I build backend systems for small teams and keep them simple enough to run alone.","t":1792200017.7,"tier":"F","turn":"w2"}
+{"ev":"room_text","final":true,"label":"me","lang":"en","matched":14,"rule":"start","share":0.9,"t":1792200030.9,"text":"Sure, I am a backend engineer with a strong focus on product and on keeping syst…","turn":"w3","words":17}
+{"ev":"room_text","final":true,"label":"split","lang":"en","matched":10,"me_words":10,"rest":"Great, and how would you describe yourself as a team member?","rule":"tail","share":0.5,"t":1792200053.6,"text":"I reduced the monthly close from six days to two. Great, and how would you descr…","turn":"w4","words":21}
+{"ev":"card_done","id":"f0002","points":["Led two colleagues on Trailhead"],"say":"I listen first, decide with the team, then commit fully.","t":1792200056.5,"tier":"F","turn":"w4"}
+{"ev":"room_text","final":true,"label":"split","lang":"en","matched":8,"rule":"tail","share":0.4,"t":1792200071.7,"text":"Okay that works for me, now the next topic. Do you have experience presenting re…","turn":"w5","words":15}
+{"ev":"room_text","final":true,"label":"room","lang":"en","reason":"weak","t":1792200091.5,"text":"Thank you so much for your time today.","turn":"w6","words":8}

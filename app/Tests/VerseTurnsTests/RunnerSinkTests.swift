@@ -197,8 +197,17 @@ final class RunnerSinkTests: XCTestCase {
         let speakers = Set(objs.compactMap { $0[string: "speaker"] })
         XCTAssertEqual(speakers, ["remote", "me"], "both speakers: \(lines)")
         for obj in objs {
-            XCTAssertEqual(Set(obj.keys), ["turn_id", "speaker", "text", "addressee", "kind", "t_audio_end", "lang"])
+            // The original keys are unchanged; `run_start` and `t_wall` (F1) are the only additions.
+            XCTAssertEqual(Set(obj.keys), ["turn_id", "speaker", "text", "addressee", "kind", "t_audio_end", "lang", "run_start", "t_wall"])
+            guard case .number(let runStart)? = obj["run_start"], case .number(let tWall)? = obj["t_wall"], case .number(let end)? = obj["t_audio_end"] else {
+                XCTFail("run_start, t_wall and t_audio_end are numbers: \(obj)"); continue
+            }
+            XCTAssertGreaterThan(runStart, 1_600_000_000, "run_start is Unix seconds")
+            XCTAssertEqual(tWall, runStart + end, accuracy: 0.0015, "t_wall = run_start + t_audio_end")
+            XCTAssertEqual(runStart, (runStart * 1000).rounded() / 1000, accuracy: 1e-6, "3 decimals")
         }
+        let starts = Set(objs.compactMap { o -> Double? in if case .number(let n)? = o["run_start"] { return n }; return nil })
+        XCTAssertEqual(starts.count, 1, "one run, one run_start")
         XCTAssertTrue(objs.contains { ($0[string: "text"] ?? "").lowercased().contains("background") })
         let after = Set(try FileManager.default.contentsOfDirectory(atPath: session.dir.path))
         // The brain writes its final summary.md at stop (F2) and its text-only decision log events.jsonl; the runner adds only the transcript.

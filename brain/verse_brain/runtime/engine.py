@@ -57,7 +57,7 @@ from typing import Callable
 
 from ..prep.model import Usage, spend_usd
 from .embed import PREFIX, Embedder, EmbedPath, EmbedUnavailable, Job, Result
-from .events import CARD_CHARS, EventLog, clip
+from .events import CARD_CHARS, CARD_FULL_CHARS, EventLog, clip
 from .follow import (Covered, Diverged, Ended, FollowMachine, NeedEmbed, Refresh, clean_line, score_matrix)
 from .lines import LineAssembler
 from .own import OwnSpeech
@@ -447,6 +447,7 @@ class Brain:
         self._held: TurnState | None = None      # room route: the card held back while he reads the one on screen (at most one: the newest)
         self._held_task: asyncio.Task | None = None
         self._logged_cards: set[str] = set()
+        self._logged_card_done: set[str] = set()
         self._follow_want = False
         self.turns: list[Turn] = []
         self.ts: dict[str, TurnState] = {}
@@ -970,6 +971,7 @@ class Brain:
                 self.summary_spend += cost
         if call.stop_reason == "refusal" and call.tier in ("S", "F", "D") and not call.buffered and not call.discarded:
             self._status("refusal", f"{call.tier} declined this turn", turn_id=call.turn_id, id=call.id)
+        self._log_card_done(call)
         if call.tier == "R":
             self._rolling_done(call)
         if call.tier == "C":
@@ -1685,6 +1687,8 @@ class Brain:
             return
         if call.say_line or call.points:
             self._log_card(call, "say" if call.say_line else "point", call.say_line or call.points[0])
+        if call.done.is_set():
+            self._log_card_done(call)       # a buffered call that finished before it was released: its card is complete only now
         if call.say_line:
             self._own_card_line(call, "say", call.say_line)
         for pt in call.points:
@@ -1703,6 +1707,20 @@ class Brain:
         self._logged_cards.add(call.id)
         self._ev("card", turn=call.turn_id, tier=call.tier, id=call.id, kind=kind, text=clip(text, CARD_CHARS),
                  probe=call.probe or None, now=call.turn_id.startswith("now-") or None)
+
+    def _log_card_done(self, call: Call) -> None:
+        """events.jsonl `card_done`: a card call that reached the overlay has finished; its whole SAY and points (each line up to
+        CARD_FULL_CHARS) for the app's transcript, which shows the card under the row it answered. `card` keeps the 60-character
+        first line. Nothing for a call that was discarded, never released, or a statement probe (not a card)."""
+        if (call.tier not in ("S", "F", "D", "C") or call.discarded or call.buffered or not call.done.is_set()
+                or (call.probe and call.kind != "question") or call.id in self._logged_card_done):
+            return
+        if not call.say_line and not call.points:
+            return
+        self._logged_card_done.add(call.id)
+        self._ev("card_done", turn=call.turn_id, tier=call.tier, id=call.id,
+                 say=clip(call.say_line, CARD_FULL_CHARS) if call.say_line else None,
+                 points=[clip(p, CARD_FULL_CHARS) for p in call.points])
 
     # ------------------------------------------------------------------ room route: the owner's own voice, told by text
     def _own_card_line(self, call: Call, kind: str, text: str) -> None:
@@ -1761,7 +1779,8 @@ class Brain:
         if final or v.label != prev:
             self._ev("room_text", turn=tid, final=final, lang=lg, label=v.label, rule=v.rule, share=round(v.share, 3), matched=v.matched,
                      content=v.content, card=v.card, reading=v.reading, cursor=v.cursor, own=round(sc, 2), words=len(text.split()), text=clip(text),
-                     rest=clip(v.room_text) if v.label == "split" else None)
+                     rest=clip(v.room_text) if v.label == "split" else None,
+                     me_words=len(v.me_text.split()) if v.label == "split" else None)
         if v.label == "room":
             return None, msg
         if v.label == "split":

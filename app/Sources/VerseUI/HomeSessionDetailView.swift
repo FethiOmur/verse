@@ -1,18 +1,65 @@
 import AppKit
 import SwiftUI
 
-/// The Sessions page's detail: header with actions, then the reading plate (summary, follow up, questions, or a practice report).
+/// Which tab of a session's detail is open. The last choice is remembered app-wide (`sessionsDetailTab`, spec 3.7).
+enum SessionsDetailTab: String, Sendable {
+    case summary, transcript
+}
+
+extension SessionsDetailTab {
+    /// Which tabs a session's detail offers. The switch appears when the session has both a summary and a transcript (a practice
+    /// run shows its report and never a transcript tab); with only one of them, that one shows; `stored` is the remembered choice.
+    static func layout(hasSummary: Bool, hasTranscript: Bool, hasReport: Bool, stored: SessionsDetailTab) -> (showsTabs: Bool, shown: SessionsDetailTab) {
+        if hasReport { return (false, .summary) }
+        if hasSummary, hasTranscript { return (true, stored) }
+        return (false, hasTranscript && !hasSummary ? .transcript : .summary)
+    }
+}
+
+@MainActor
+struct SessionsDetailTabStore {
+    var defaults = Bundle.main.bundleIdentifier == AppSettings.suiteName ? UserDefaults.standard
+        : UserDefaults(suiteName: AppSettings.suiteName) ?? .standard
+
+    var tab: SessionsDetailTab {
+        get { SessionsDetailTab(rawValue: defaults.string(forKey: "sessionsDetailTab") ?? "") ?? .summary }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: "sessionsDetailTab") }
+    }
+}
+
+/// The Sessions page's detail: header with actions, a Summary · Transcript switch when the session has both, then the reading plate
+/// (summary, follow up, questions, the transcript, or a practice report).
 struct HomeSessionDetailView: View {
     var session: HomeSession
     @ObservedObject var controller: VerseController
     @ObservedObject var settings: AppSettings
+    /// Where Ask's citation chips ask the transcript to reveal a row (F2b passes the page's). Without one the view keeps its own.
+    var jump: TranscriptJump?
+    @StateObject private var ownJump = TranscriptJump()
+    @Environment(\.sessionsDetailRender) private var render
     @State private var detail = HomeSessionDetail()
+    /// nil until the files are read, so the plate does not flash its empty state.
+    @State private var transcript: TranscriptDocument?
+    @State private var tab = SessionsDetailTabStore().tab
     @State private var done: Set<String> = []
     @State private var message: String?
     @State private var messageIsError = false
     @State private var contentHeight: CGFloat = .infinity
     @Environment(\.homeInk) private var ink
     private let checklist = HomeChecklistStore()
+
+    private static let tabItems: [(label: LocalizedStringKey, value: SessionsDetailTab)] = [
+        (label: "Summary", value: .summary), (label: "Transcript", value: .transcript),
+    ]
+
+    private var activeJump: TranscriptJump { jump ?? ownJump }
+    private var hasSummary: Bool { session.kind != .practice && session.summaryURL != nil }
+    private var hasTranscript: Bool { session.kind != .practice && session.transcriptURL != nil }
+    private var tabLayout: (showsTabs: Bool, shown: SessionsDetailTab) {
+        SessionsDetailTab.layout(hasSummary: hasSummary, hasTranscript: hasTranscript, hasReport: session.reportURL != nil, stored: render?.tab ?? tab)
+    }
+    private var showsTabs: Bool { tabLayout.showsTabs }
+    private var shownTab: SessionsDetailTab { tabLayout.shown }
 
     private var meta: String {
         var parts = [session.unprepared ? "Unprepared · \(session.kindText)" : (session.kind == .practice ? "Practice" : session.kind.rawValue),
@@ -36,23 +83,35 @@ struct HomeSessionDetailView: View {
                         HomeSecondaryButton("Use for Start") { settings.sessionName = session.name }.disabled(controller.running)
                     }
                 }
-                if let t = session.transcriptURL {
-                    HomeSecondaryButton("Transcript") { NSWorkspace.shared.activateFileViewerSelecting([t]) }
-                } else {
-                    HomeSecondaryButton("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([session.dir]) }
-                }
                 if session.summaryURL != nil, session.kind != .practice {
                     HomePrimaryButton("Save to vault", action: saveToVault)
                 }
+                SessionChromeMenu(symbol: "ellipsis.circle", help: "More") {
+                    Button { NSWorkspace.shared.activateFileViewerSelecting([session.dir]) } label: { Text("Show in Finder", bundle: .module) }
+                }
             }
             if let message { HomeNote(verbatim: message, isError: messageIsError).padding(.top, 8) }
-            plate.padding(.top, 18)
+            if showsTabs {
+                HomeSegmented(Self.tabItems,
+                              selection: Binding(get: { render?.tab ?? tab }, set: { tab = $0; SessionsDetailTabStore().tab = $0 }))
+                    .padding(.top, 16)
+            }
+            plate.padding(.top, showsTabs ? 14 : 18)
         }
         .padding(.leading, 20).padding(.trailing, 28).padding(.top, 26).padding(.bottom, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .task(id: session.name) {
             detail = HomeSessionDetail.load(session)
             done = checklist.done(session: session.name)
+            if hasTranscript {
+                let dir = session.dir, owner = settings.ownerName
+                transcript = await Task.detached { TranscriptDocument.load(sessionDir: dir, ownerName: owner) }.value
+            }
+        }
+        // A citation chip in Ask asks for a row: the transcript is where it lives.
+        .onReceive(activeJump.$serial.dropFirst()) { _ in
+            guard hasTranscript else { return }
+            tab = .transcript
         }
     }
 
@@ -63,6 +122,14 @@ struct HomeSessionDetailView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .clipShape(RoundedRectangle(cornerRadius: VT.Radius.group, style: .continuous))
+        } else if shownTab == .transcript {
+            if let transcript {
+                TranscriptView(document: transcript, title: session.title,
+                               meta: TranscriptDocument.metaLine(date: session.date, kind: session.kindText, turns: transcript.rows.count),
+                               jump: activeJump)
+            } else {
+                HomeGroup(plate: true) { Color.clear }.frame(maxHeight: .infinity)
+            }
         } else {
             HomeGroup(plate: true) {
                 ScrollView {

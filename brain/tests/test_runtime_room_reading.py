@@ -439,3 +439,30 @@ def test_english_fragments_follow_the_same_rules():
     assert o.judge("I chose this school", "en").rule == "start"
     assert o.judge("for its co-op program", "en").label == "me"
     assert o.judge("what did you do there", "en").label == "room"
+
+
+# ---------------------------------------------------------------- me_words on a split room_text (F1: the app relabels the first words as Alex)
+def test_a_split_room_text_logs_how_many_leading_words_are_his(tmp_path, monkeypatch):
+    mixed = "Ledger ha ridotto la chiusura mensile da sei giorni a due. Ottimo, come si descriverebbe come membro di un team"
+
+    async def go():
+        b, t, em, clock, sdir, coro = italian_session(tmp_path, monkeypatch, events=True)
+        await coro
+        await first_card(b, em, clock)
+        for i, frag in enumerate(FRAGMENTS[:7]):
+            await rturn(b, f"f{i}", frag)
+            clock.advance(0.8)
+        await rturn(b, "m1", mixed, kind="question", cue=True, cue_why="come si", cue_strong=True)
+        clock.advance(1.5)
+        await settle(b)
+        return b, sdir
+
+    b, sdir = run(go())
+    rows = events_of(Path(b.session.path), "room_text")
+    split = [r for r in rows if r.get("label") == "split" and r.get("final")]
+    assert len(split) == 1
+    me_turn = next(x for x in b.turns if x.turn_id == "m1m")
+    n = split[0]["me_words"]
+    assert n == len(me_turn.text.split()) > 3                              # the prefix word count, not a guess
+    assert " ".join(mixed.split()[:n]) == me_turn.text.strip()             # and those are exactly the first n words of the room text
+    assert all("me_words" not in r for r in rows if r.get("label") != "split")

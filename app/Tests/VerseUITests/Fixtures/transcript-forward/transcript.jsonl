@@ -1,0 +1,8 @@
+{"addressee":"other","kind":"statement","lang":"en","run_start":1792100000.123,"speaker":"me","t_audio_end":5.0,"t_wall":1792100005.123,"text":"Good morning everyone, thanks for joining.","turn_id":"m1"}
+{"addressee":"me","kind":"question","lang":"en","run_start":1792100000.123,"speaker":"remote","t_audio_end":22.4,"t_wall":1792100022.523,"text":"Good morning. Can you walk us through the route planner you built?","turn_id":"r1"}
+{"addressee":"other","kind":"statement","lang":"en","run_start":1792100000.123,"speaker":"me","t_audio_end":38.0,"t_wall":1792100038.123,"text":"Yes. It plans delivery routes for a small courier fleet.","turn_id":"m2"}
+{"addressee":"me","kind":"fragment","lang":"en","run_start":1792100000.123,"speaker":"remote","t_audio_end":40.0,"t_wall":1792100040.123,"text":"How did you","turn_id":"r2"}
+{"addressee":"me","kind":"question","lang":"en","run_start":1792100000.123,"speaker":"remote","t_audio_end":47.9,"t_wall":1792100048.023,"text":"How did you measure whether the new routes were actually better?","turn_id":"r2"}
+{"addressee":"other","kind":"statement","lang":"en","run_start":1792100000.123,"speaker":"me","t_audio_end":70.5,"t_wall":1792100070.623,"text":"We compared kilometres per delivery before and after, over six weeks.","turn_id":"m3"}
+{"addressee":"me","kind":"question","lang":"en","run_start":1792103600.123,"speaker":"remote","t_audio_end":80.0,"t_wall":1792103680.123,"text":"Welcome back. We lost you for a moment; shall we continue with costs?","turn_id":"r1"}
+{"addressee":"other","kind":"statement","lang":"en","run_start":1792103600.123,"speaker":"me","t_audio_end":125.0,"t_wall":1792103725.123,"text":"Yes please. The infrastructure costs about forty dollars a month.","turn_id":"m1"}

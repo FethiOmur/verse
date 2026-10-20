@@ -1,0 +1,8 @@
+{"ev":"start","lang":"en","mode":"prepared","room_auto":"questions","route":"meeting","t":1792100000.123}
+{"ev":"card","id":"f0001","kind":"say","t":1792100023.723,"text":"The planner builds delivery routes for a small courier fleet…","tier":"F","turn":"r1"}
+{"ev":"card_done","id":"f0001","points":["Fleet of eight vans, one depot","Re-plans in under two seconds"],"say":"The planner builds delivery routes for a small courier fleet and re-plans when an order changes.","t":1792100025.123,"tier":"F","turn":"r1"}
+{"ev":"card_done","id":"d0002","points":["Fleet of eight vans, one depot","Written in Python with OR-Tools"],"t":1792100028.023,"tier":"D","turn":"r1"}
+{"ev":"card","id":"f0003","kind":"say","t":1792100049.023,"text":"We compared kilometres per delivery before and after the cha…","tier":"F","turn":"r2"}
+{"ev":"card_done","id":"f0003","points":["Baseline: the dispatcher's manual routes","Six weeks, 1,200 deliveries"],"say":"We compared kilometres per delivery before and after the change, over six weeks, and the median route got about eleven percent shorter.","t":1792100050.523,"tier":"F","turn":"r2"}
+{"ev":"card_done","id":"f0009","points":["One small server, no per-seat licences"],"say":"Costs are small: the infrastructure is about forty dollars a month.","t":1792103681.823,"tier":"F","turn":"r1"}
+{"ev":"card_done","id":"f0010","points":[],"say":"If asked about scaling: the same design handles a few hundred vans.","t":1792103730.123,"tier":"F","turn":"now-1"}
