@@ -9,30 +9,109 @@ import VerseVoice
 public struct SimSetupView: View {
     @ObservedObject var sim: SimController
     @ObservedObject var meeting: VerseController
+    /// Up next, for the default meeting: the nearest item that has a prepared session.
+    var upNext: HomeUpNextModel?
+    @ObservedObject var router: HomeRouter
     @StateObject private var voiceKeys = HomeVoiceKeys()
     @Environment(\.homeInk) private var ink
 
-    public init(sim: SimController, meeting: VerseController) {
+    public init(sim: SimController, meeting: VerseController, upNext: HomeUpNextModel? = nil, router: HomeRouter = .shared) {
         self.sim = sim
         self.meeting = meeting
+        self.upNext = upNext
+        self.router = router
     }
 
     private var locked: Bool { sim.phase == .preparing || sim.phase == .running }
+    private var fromMeeting: Bool { sim.setup.source == .meeting }
 
     public var body: some View {
         HomeColumnPage {
-            HomePageHeader("Practice", subtitle: "A spoken mock interview, built from the posting.")
-            HomeSectionHeader("Job posting")
-            postingGroup.disabled(locked)
-            HomeFootnote("Read the preview before you confirm it: the interview is built from this text only.")
+            HomePageHeader("Practice", subtitle: "A spoken mock interview, built from a meeting you prepared or from a job posting.")
+            HomeSectionHeader("Practise for")
+            sourceGroup.disabled(locked)
+            if fromMeeting {
+                HomeFootnote("The questions are the likely ones Verse prepared answers for. Your profile joins them when “Use my profile in every session” is on.")
+            } else {
+                HomeSectionHeader("Job posting")
+                postingGroup.disabled(locked)
+                HomeFootnote("Read the preview before you confirm it: the interview is built from this text only.")
+            }
             HomeSectionHeader("Interview")
             interviewGroup.disabled(locked)
-            HomeSectionHeader("Your experience")
-            experienceGroup.disabled(locked)
+            if !fromMeeting {
+                HomeSectionHeader("Your experience")
+                experienceGroup.disabled(locked)
+            }
             runArea.padding(.top, 16)
         }
-        .onAppear { voiceKeys.refresh() }
+        .onAppear {
+            voiceKeys.refresh()
+            sim.refreshMeetings(upNext: upNext?.items.map(\.session) ?? [])
+            takeRequestedMeeting()
+        }
+        .onChange(of: router.practiceSession) { _, _ in takeRequestedMeeting() }
         .accessibilityIdentifier("verse.home.practice")
+    }
+
+    /// Up next's Practise button: select that session as "A meeting", once.
+    private func takeRequestedMeeting() {
+        guard let name = router.practiceSession else { return }
+        router.practiceSession = nil
+        sim.practise(session: name)
+    }
+
+    // MARK: practise for
+
+    private var sourceBinding: Binding<SimSetup.Source> {
+        Binding(get: { sim.setup.source }, set: { sim.chooseSource($0) })
+    }
+
+    private var meetingBinding: Binding<String> {
+        Binding(get: { sim.meetingName ?? "" }, set: { sim.selectMeeting($0.isEmpty ? nil : $0) })
+    }
+
+    private var sourceGroup: some View {
+        HomeGroup {
+            HomeRow("Source") {
+                HomeSegmented([("A meeting", SimSetup.Source.meeting), ("A job posting", .posting)], selection: sourceBinding)
+            }
+            if fromMeeting {
+                HomeRowDivider()
+                if sim.meetings.isEmpty {
+                    HomeRow("Meeting", detail: "No prepared meeting yet. Prepare one first, or practise from a job posting.") {
+                        HomeSecondaryButton("Prepare") { router.page = .prepare }
+                    }
+                } else {
+                    HomeRow("Meeting") {
+                        HomePopup(selection: meetingBinding, options: sim.meetings.map { HomeOption(verbatim: $0.title, $0.name) })
+                    }
+                    if let p = sim.meetingPreview {
+                        HomeRowDivider()
+                        previewRow(p)
+                    }
+                }
+            }
+        }
+    }
+
+    /// "From its prep: 14 likely questions · 9 facts" (singular for one). Built with `L10n.tr`, so it follows the interface language.
+    private func previewText(_ p: PracticeMeetings.Preview) -> String {
+        let q = p.questions == 1 ? L10n.tr("\(p.questions) likely question") : L10n.tr("\(p.questions) likely questions")
+        let f = p.facts == 1 ? L10n.tr("\(p.facts) fact") : L10n.tr("\(p.facts) facts")
+        return L10n.tr("From its prep: \(q) · \(f)")
+    }
+
+    private func previewRow(_ p: PracticeMeetings.Preview) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "text.badge.checkmark").font(.system(size: 13, weight: .medium)).foregroundStyle(ink.tertiary)
+                .frame(width: 18)
+            Text(verbatim: previewText(p)).font(VT.Font.callout).foregroundStyle(ink.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14).frame(minHeight: 40)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("verse.practice.meetingPreview")
     }
 
     // MARK: posting
@@ -127,8 +206,10 @@ public struct SimSetupView: View {
 
     private var interviewGroup: some View {
         HomeGroup {
-            HomeRow("Company") { HomeValueField("read from the posting", text: $sim.setup.company) }
-            HomeRowDivider()
+            if !fromMeeting {
+                HomeRow("Company") { HomeValueField("read from the posting", text: $sim.setup.company) }
+                HomeRowDivider()
+            }
             HomeRow("Type") {
                 HomeSegmented([("Screening", SimSetup.InterviewType.screening), ("Hiring manager", .manager),
                                ("Technical", .technical), ("Mixed", .mixed)], selection: $sim.setup.type)
@@ -170,13 +251,22 @@ public struct SimSetupView: View {
             case .setup:
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 3) {
-                        if !sim.postingConfirmed { HomeNote(text: "Confirm the posting first.") }
+                        if fromMeeting {
+                            if sim.selectedMeeting == nil { HomeNote(text: "Choose a prepared meeting first.") }
+                        } else if !sim.postingConfirmed {
+                            HomeNote(text: "Confirm the posting first.")
+                        }
                         if meeting.running { HomeNote(text: "A meeting is running; stop it first.") }
                         if let n = sim.expectedFolderName { Text(n).font(VT.Font.caption).foregroundStyle(ink.tertiary).lineLimit(1) }
                     }
                     Spacer()
-                    HomePrimaryButton("Prepare interview", hint: "⌘↩", shortcut: KeyboardShortcut(.return, modifiers: .command), action: sim.prepare)
-                        .disabled(!sim.canPrepare)
+                    if fromMeeting {
+                        HomePrimaryButton("Build interview", hint: "⌘↩", shortcut: KeyboardShortcut(.return, modifiers: .command), action: sim.prepare)
+                            .disabled(!sim.canPrepare)
+                    } else {
+                        HomePrimaryButton("Prepare interview", hint: "⌘↩", shortcut: KeyboardShortcut(.return, modifiers: .command), action: sim.prepare)
+                            .disabled(!sim.canPrepare)
+                    }
                 }
                 if let e = sim.prepError { HomeNote(verbatim: e, isError: true) }
             case .preparing:
@@ -197,7 +287,11 @@ public struct SimSetupView: View {
                     HomeGroup {
                         HomeRow("Interview", value: "\(s.company) · \(s.role)")
                         HomeRowDivider()
-                        HomeRow("Plan", value: "\(s.questions) questions · \(s.evidence) evidence items from your sources")
+                        if s.sourceSession != nil {
+                            HomeRow("Plan", value: "\(s.questions) questions · \(s.evidence) evidence items from the prep and your profile")
+                        } else {
+                            HomeRow("Plan", value: "\(s.questions) questions · \(s.evidence) evidence items from your sources")
+                        }
                     }
                     ForEach(s.warnings, id: \.self) { w in
                         Label(w, systemImage: "exclamationmark.triangle").font(VT.Font.callout).foregroundStyle(ink.secondary)

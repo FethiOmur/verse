@@ -205,6 +205,8 @@ struct HomeUpNextGroup: View {
             Spacer(minLength: 12)
             if let session = item.session {
                 Label("Prepared", systemImage: "checkmark").font(VT.Font.callout).foregroundStyle(ink.secondary)
+                HomeSecondaryButton("Practise") { HomeRouter.shared.showPractice(session: session) }
+                    .disabled(meeting.running)
                 HomeSecondaryButton("Open") {
                     if meeting.sessions.contains(session), !meeting.running { settings.sessionName = session }
                     HomeRouter.shared.selectedSession = session

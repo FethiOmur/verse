@@ -30,6 +30,8 @@ public final class HomeRouter: ObservableObject {
     @Published public var page: HomePage = .prepare
     /// The session folder name the Sessions page has selected.
     @Published public var selectedSession: String?
+    /// A prepared session Up next asked Practice to select ("Practise"); the Practice page takes it and clears it.
+    @Published public var practiceSession: String?
 
     private var openAction: (@MainActor (String) -> Void)?
 
@@ -44,6 +46,13 @@ public final class HomeRouter: ObservableObject {
     public func show(_ page: HomePage) {
         self.page = page
         raise()
+    }
+
+    /// Opens Practice with `session` chosen as "A meeting" (the page selects it when it appears). From inside the home
+    /// window, like the other Up next buttons: it changes the page and does not raise the window.
+    public func showPractice(session: String) {
+        practiceSession = session
+        page = .practice
     }
 
     /// Opens Sessions on the practice run whose `report.html` is `url`.
