@@ -133,13 +133,37 @@ public final class HomeSessionsModel: ObservableObject {
     let folders: SessionFolderStore
     private let defaults: UserDefaults
     private var storeChange: AnyCancellable?
+    /// Move to Trash and its undo (`SessionTrash.swift`). The operations are injected so tests never touch the real Trash.
+    let trashOps: SessionTrashOps
+    /// event id -> session, so a trashed session's mapping can go and come back.
+    let eventMap: EventSessionMap
+    /// What the window knows that the model does not: what is running, the Start choice, the selection.
+    var hooks = SessionTrashHooks()
+    /// Rows picked with ⌘-click, in addition to the shown one. Empty means "just the shown session".
+    @Published var marked: Set<String> = []
+    /// The "Moved to Trash · Undo" bar (or a short error); gone after `toastDuration`.
+    @Published var toast: SessionToast?
+    var toastDuration: Duration = .seconds(5)
+    var toastTask: Task<Void, Never>?
+    /// The batch the toast's Undo restores, and the window's undo manager that holds the same action.
+    var toastBatch: TrashBatch?
+    weak var toastUndoManager: UndoManager?
 
     static let modeKey = "sessionsListMode"
     static let collapsedKey = "sessionsCollapsedFolders"
 
     /// `defaults` holds the list mode and the collapsed sections; nil is the app's own suite.
-    public init(root: URL = SessionCatalog.root, defaults: UserDefaults? = nil) {
+    /// `eventMap`: nil is the app's own map for the app's sessions folder and a file inside `root` for any other folder, so a
+    /// scratch folder never reads or writes the real event map.
+    public convenience init(root: URL = SessionCatalog.root, defaults: UserDefaults? = nil) {
+        self.init(root: root, defaults: defaults, trashOps: .live, eventMap: nil)
+    }
+
+    init(root: URL, defaults: UserDefaults?, trashOps: SessionTrashOps, eventMap: EventSessionMap?) {
         self.root = root
+        self.trashOps = trashOps
+        self.eventMap = eventMap ?? (root.standardizedFileURL == SessionCatalog.root.standardizedFileURL
+            ? EventSessionMap() : EventSessionMap(url: root.appendingPathComponent("event-sessions.json")))
         self.defaults = defaults ?? (Bundle.main.bundleIdentifier == AppSettings.suiteName ? UserDefaults.standard
             : UserDefaults(suiteName: AppSettings.suiteName) ?? .standard)
         folders = SessionFolderStore(root: root)
@@ -154,6 +178,8 @@ public final class HomeSessionsModel: ObservableObject {
     public func reload() {
         // The standing general prep is shown on the Me page, not as a session row.
         sessions = SessionCatalog.list(root: root).filter { !GeneralPrep.isGeneral($0) }.map { HomeSession.load(name: $0, root: root) }.sorted { $0.date > $1.date }
+        let names = Set(sessions.map(\.name))
+        if !marked.isSubset(of: names) { marked.formIntersection(names) }
         autoAssignDerived()
     }
 

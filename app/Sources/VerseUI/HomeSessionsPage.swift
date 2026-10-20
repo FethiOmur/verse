@@ -21,6 +21,8 @@ struct HomeSessionsPage: View {
     @State private var documentSession: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.askRender) private var askRender
+    @Environment(\.undoManager) private var undoManager
+    @Environment(\.sessionsTrashRender) private var trashRender
 
     init(model: HomeSessionsModel, router: HomeRouter, controller: VerseController, settings: AppSettings) {
         self.model = model
@@ -43,7 +45,7 @@ struct HomeSessionsPage: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
-            HomeSessionsList(model: model, router: router, selectedName: selected?.name)
+            HomeSessionsList(model: model, router: router, selectedName: selected?.name, onTrash: performTrash)
                 .frame(width: askOpen ? 0 : Self.listWidth, alignment: .leading).clipped()
                 .opacity(askOpen ? 0 : 1)
                 .accessibilityHidden(askOpen)
@@ -51,7 +53,7 @@ struct HomeSessionsPage: View {
                 .transaction(value: askOpen) { if reduceMotion { $0.animation = nil } }
             if let s = selected {
                 HomeSessionDetailView(session: s, controller: controller, settings: settings, jump: jump,
-                                      askAvailability: availability, askOpen: askOpen, onAsk: toggleAsk)
+                                      askAvailability: availability, askOpen: askOpen, onAsk: toggleAsk, trash: trashControl(for: s))
                     .id(s.name)
                     .transaction(value: askOpen) { if reduceMotion { $0.animation = nil } }
                 if askOpen {
@@ -78,10 +80,45 @@ struct HomeSessionsPage: View {
             Button("") { toggleAsk() }.keyboardShortcut("a", modifiers: [.command, .shift])
                 .opacity(0).frame(width: 0, height: 0).accessibilityHidden(true)
         }
+        .overlay(alignment: .bottom) { toastBar }
+        .animation(reduceMotion ? .easeOut(duration: 0.15) : .smooth(duration: 0.28), value: model.toast)
+        .onChange(of: model.toast) { _, t in
+            if let t { AccessibilityNotification.Announcement(t.message).post() }
+        }
         .accessibilityIdentifier("verse.home.sessions")
     }
 
     @Environment(\.homeInk) private var ink
+
+    // MARK: Move to Trash
+
+    /// The single Move to Trash of the page: the swipe, the context menu, ⌫ and ⌘⌫, the detail's Trash button and its More menu
+    /// all call it. No confirmation: the toast and ⌘Z undo it (`HomeSessionsModel.trash`, `restore`).
+    private func performTrash(_ names: [String]) {
+        let targets = model.deletable(names)
+        guard !targets.isEmpty else { return }
+        // The Ask panel (and its brain process) of a session ends before the session leaves.
+        if let shown = selected?.name, targets.contains(shown) { closeAsk() }
+        _ = withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
+            model.trash(targets, undoManager: undoManager)
+        }
+    }
+
+    private func trashControl(for s: HomeSession) -> SessionTrashControl {
+        let targets = model.trashTargets(shown: s.name)
+        let enabled = !model.deletable(targets).isEmpty
+        let help = model.blockReason(for: s.name)?.help ?? L10n.tr("Move to Trash")
+        return SessionTrashControl(enabled: enabled, help: help, action: { performTrash(targets) })
+    }
+
+    @ViewBuilder private var toastBar: some View {
+        let shown = model.toast ?? (trashRender?.toast == true ? SessionToast(message: L10n.tr("Moved to Trash"), undoable: true) : nil)
+        if let shown {
+            SessionToastView(toast: shown, onUndo: { model.undoFromToast() })
+                .padding(.bottom, 20)
+                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+        }
+    }
 
     // MARK: Ask
 

@@ -60,6 +60,9 @@ Apple, Finder) are never translated. Plurals use catalog plural variants (`one` 
 | Start / Stop | Avvia / Interrompi | Başlat / Durdur |
 | Refresh | Aggiorna | Yenile |
 | Show in Finder | Mostra nel Finder | Finder’da Göster |
+| Move to Trash | Sposta nel Cestino | Çöp Sepeti’ne Taşı |
+| Trash (the swipe action, the Finder Trash) | Cestino | Çöp Sepeti |
+| Undo | Annulla | Geri Al |
 | Build (a profile, an interview) | Crea | Oluştur |
 | Today / Yesterday / Tomorrow | Oggi / Ieri / Domani | Bugün / Dün / Yarın |
 | Rate limited | Limite raggiunto | Hız sınırı aşıldı |

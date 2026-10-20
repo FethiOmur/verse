@@ -40,6 +40,8 @@ struct HomeSessionDetailView: View {
     var askAvailability: AskAvailability = .hidden
     var askOpen = false
     var onAsk: () -> Void = {}
+    /// The Trash button and the More menu's Move to Trash act on the selection (`HomeSessionsPage.performTrash`).
+    var trash = SessionTrashControl()
     @StateObject private var ownJump = TranscriptJump()
     @Environment(\.sessionsDetailRender) private var render
     @State private var detail = HomeSessionDetail()
@@ -127,8 +129,12 @@ struct HomeSessionDetailView: View {
         if session.summaryURL != nil, session.kind != .practice {
             HomePrimaryButton("Save to vault", action: saveToVault)
         }
+        SessionTrashButton(control: trash)
         SessionChromeMenu(symbol: "ellipsis.circle", help: "More") {
             Button { NSWorkspace.shared.activateFileViewerSelecting([session.dir]) } label: { Text("Show in Finder", bundle: .module) }
+            Divider()
+            Button(role: .destructive) { trash.action() } label: { Text("Move to Trash", bundle: .module) }
+                .disabled(!trash.enabled)
         }
     }
 

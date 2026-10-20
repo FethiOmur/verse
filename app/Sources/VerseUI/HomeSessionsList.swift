@@ -8,7 +8,11 @@ struct HomeSessionsList: View {
     @ObservedObject var router: HomeRouter
     /// The session shown in the detail (the router's choice, or the first one).
     var selectedName: String?
+    /// Moves sessions to the Trash. Swipe, the context menu and the keyboard all end here (`HomeSessionsPage.performTrash`).
+    var onTrash: ([String]) -> Void = { _ in }
     @Environment(\.homeInk) private var ink
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.sessionsTrashRender) private var trashRender
 
     /// The text field of a new folder (and the session it will hold) or of a rename.
     private struct Draft: Equatable {
@@ -17,7 +21,20 @@ struct HomeSessionsList: View {
         var session: String?
     }
 
-    private enum Field: Hashable { case create, rename }
+    private enum Field: Hashable { case create, rename, list }
+
+    /// The row a two-finger swipe has moved (`offset` is 0 or negative: to the left) and the gesture it belongs to.
+    private struct SwipeState: Equatable {
+        var name: String?
+        var offset: CGFloat = 0
+    }
+
+    /// Which way the trackpad gesture in progress goes; a vertical one is the list's own scroll.
+    private final class SwipeTracker {
+        var horizontal: Bool?
+    }
+
+    private static let rowWidth: CGFloat = 236
 
     @State private var hovered: String?
     @State private var creating: Draft?
@@ -25,6 +42,8 @@ struct HomeSessionsList: View {
     @State private var renameDraft = Draft()
     @State private var pendingDelete: SessionFolder?
     @State private var dropTarget: String?
+    @State private var swipe = SwipeState()
+    @State private var tracker = SwipeTracker()
     @FocusState private var focus: Field?
 
     private static let indent: CGFloat = 8
@@ -56,6 +75,17 @@ struct HomeSessionsList: View {
             }
         }
         .frame(width: 236).padding(.leading, 18).padding(.top, 22)
+        .background { ScrollSwipeCatcher(handler: handleScroll) }
+        // ⌫ and ⌘⌫ move the selection to the Trash while the list has the focus; a text field keeps its own ⌫.
+        .focusable()
+        .focused($focus, equals: .list)
+        .focusEffectDisabled()
+        .onKeyPress(phases: .down) { press in
+            guard focus == .list,
+                  SessionTrashRules.keyActs(on: press.key, modifiers: press.modifiers, editingText: Self.editingText) else { return .ignored }
+            trashSelection()
+            return .handled
+        }
         .onChange(of: focus) { old, new in
             // Clicking away from an empty field cancels it, like Esc.
             if old == .create, new != .create, creating?.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true { creating = nil }
@@ -173,8 +203,10 @@ struct HomeSessionsList: View {
         let folder = model.folder(of: s)
         let suggestion = model.suggestion(for: s)
         let chipShown = suggestion != nil && (hovered == s.name || s.name == selectedName)
-        return ZStack(alignment: .bottomTrailing) {
-            Button { router.selectedSession = s.name } label: {
+        let picked = s.name == selectedName || model.marked.contains(s.name)
+        let offset = swipeOffset(of: s.name)
+        let content = ZStack(alignment: .bottomTrailing) {
+            Button { rowClicked(s.name) } label: {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: s.title).font(VT.Font.bodyEmph).foregroundStyle(ink.primary).lineLimit(1)
                     HStack(spacing: 6) {
@@ -188,7 +220,7 @@ struct HomeSessionsList: View {
                 }
                 .padding(.leading, 10 + indent).padding(.trailing, 10)
                 .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-                .background(s.name == selectedName ? ink.selection : .clear,
+                .background(picked ? ink.selection : .clear,
                             in: RoundedRectangle(cornerRadius: VT.Radius.row, style: .continuous))
                 .contentShape(Rectangle())
             }
@@ -198,10 +230,127 @@ struct HomeSessionsList: View {
                 chip(suggestion, session: s.name, selected: s.name == selectedName).padding(.trailing, 8).padding(.bottom, 6)
             }
         }
+        return ZStack(alignment: .trailing) {
+            if offset < 0 { trashAction(for: s.name, revealed: -offset) }
+            content.offset(x: offset)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: VT.Radius.row, style: .continuous))
         .onHover { inside in
             if inside { hovered = s.name } else if hovered == s.name { hovered = nil }
         }
         .contextMenu { rowMenu(s, folder: folder, suggestion: suggestion) }
+        .accessibilityAction(named: Text("Move to Trash", bundle: .module)) { trash([s.name]) }
+        .transition(.opacity)
+    }
+
+    // MARK: Move to Trash
+
+    /// The one way into a Move to Trash from this list: swipe, context menu and keyboard all come here.
+    private func trash(_ names: [String]) {
+        swipe = SwipeState()
+        onTrash(names)
+    }
+
+    private func trashSelection() {
+        let targets = model.trashTargets(shown: selectedName)
+        if !model.deletable(targets).isEmpty { trash(targets) }
+    }
+
+    private static var editingText: Bool { NSApp.keyWindow?.firstResponder is NSText }
+
+    /// A click selects; ⌘-click adds the row to (or takes it out of) the set a Trash acts on.
+    private func rowClicked(_ name: String) {
+        focus = .list
+        if swipe.name == name, swipe.offset < 0 { closeSwipe(); return }
+        if swipe.name != nil { closeSwipe() }
+        if NSEvent.modifierFlags.contains(.command) {
+            if model.marked.isEmpty, let selectedName { model.marked.insert(selectedName) }
+            if model.marked.contains(name) { model.marked.remove(name) } else { model.marked.insert(name) }
+            router.selectedSession = name
+        } else {
+            model.marked = []
+            router.selectedSession = name
+        }
+    }
+
+    private func swipeOffset(of name: String) -> CGFloat {
+        if trashRender?.swiped == name { return -SessionTrashRules.actionWidth }
+        return swipe.name == name ? swipe.offset : 0
+    }
+
+    /// The red Trash action under a swiped row: the icon stays at the leading edge of the part that is uncovered.
+    private func trashAction(for name: String, revealed: CGFloat) -> some View {
+        Button { trash([name]) } label: {
+            VStack(spacing: 3) {
+                Image(systemName: "trash").font(.system(size: 15, weight: .medium))
+                Text("Trash", bundle: .module).font(VT.Font.caption)
+            }
+            .foregroundStyle(.white)
+            .frame(width: SessionTrashRules.actionWidth)
+            .frame(width: revealed, alignment: .leading).clipped()
+            .frame(maxHeight: .infinity)
+            .background(HomeTrash.red)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .frame(width: revealed)
+        .accessibilityLabel(Text("Move to Trash", bundle: .module))
+        .accessibilityIdentifier("verse.home.sessions.swipeTrash")
+    }
+
+    private func closeSwipe() {
+        settle(to: 0) { swipe = SwipeState() }
+    }
+
+    private func settle(to offset: CGFloat, completion: @escaping () -> Void = {}) {
+        if reduceMotion {
+            swipe.offset = offset
+            completion()
+        } else {
+            withAnimation(.smooth(duration: 0.2)) { swipe.offset = offset } completion: { completion() }
+        }
+    }
+
+    /// A two-finger swipe over the hovered row (the trackpad's horizontal scroll). Returns true when the event was a swipe of ours:
+    /// anything vertical, and anything over a row that cannot be trashed, stays the list's own scroll.
+    private func handleScroll(_ e: NSEvent) -> Bool {
+        if e.phase.contains(.mayBegin) || e.phase.contains(.began) { tracker.horizontal = nil }
+        // Momentum after the fingers left: ours only when the gesture was.
+        if !e.momentumPhase.isEmpty { return tracker.horizontal == true }
+        guard e.hasPreciseScrollingDeltas else { return false }
+        let ended = e.phase.contains(.ended) || e.phase.contains(.cancelled)
+        if tracker.horizontal == nil, !ended {
+            if abs(e.scrollingDeltaX) > abs(e.scrollingDeltaY) { tracker.horizontal = true } else if e.scrollingDeltaY != 0 { tracker.horizontal = false }
+        }
+        guard tracker.horizontal == true else {
+            if ended { tracker.horizontal = nil }
+            return false
+        }
+        guard let name = swipe.name ?? hovered, model.blockReason(for: name) == nil, model.session(named: name) != nil else {
+            if ended { tracker.horizontal = nil }
+            return false
+        }
+        if ended {
+            tracker.horizontal = nil
+            finishSwipe(name)
+            return true
+        }
+        if swipe.name != name { swipe = SwipeState(name: name, offset: 0) }
+        // Fingers moving left give a negative delta with the natural direction; the old direction is the other way round.
+        let dx = e.isDirectionInvertedFromDevice ? e.scrollingDeltaX : -e.scrollingDeltaX
+        swipe.offset = min(0, max(-Self.rowWidth, swipe.offset + dx))
+        return true
+    }
+
+    private func finishSwipe(_ name: String) {
+        switch SessionTrashRules.resolveSwipe(offset: -swipe.offset, rowWidth: Self.rowWidth) {
+        case .full:
+            if reduceMotion { trash([name]) } else { settle(to: -Self.rowWidth) { trash([name]) } }
+        case .reveal:
+            settle(to: -SessionTrashRules.actionWidth)
+        case .close:
+            closeSwipe()
+        }
     }
 
     /// "→ Acme" files the session in a folder that exists, "+ Acme" makes the folder first.
@@ -242,6 +391,11 @@ struct HomeSessionsList: View {
             Divider()
             Button { model.dismiss(suggestion, for: s.name) } label: { Text("Not this folder", bundle: .module) }
         }
+        Divider()
+        Button(role: .destructive) { trash(model.trashTargets(shown: selectedName, clicked: s.name)) } label: {
+            Text("Move to Trash", bundle: .module)
+        }
+        .disabled(model.blockReason(for: s.name) != nil)
     }
 
     // MARK: inline fields
@@ -326,5 +480,50 @@ struct UnpreparedTag: View {
             .padding(.horizontal, 6).frame(height: 16)
             .background(ink.fill, in: RoundedRectangle(cornerRadius: VT.Radius.chip, style: .continuous))
             .fixedSize()
+    }
+}
+
+/// The red of the swipe action: white text on it reads at 4.6:1 (the coral token is too light for white).
+enum HomeTrash {
+    static let red = Color(red: 0.86, green: 0.20, blue: 0.18)
+}
+
+/// Hands the trackpad's horizontal scroll events over the list to `handler` (true = it was a swipe, swallow it). SwiftUI's `List`
+/// has `swipeActions` for this; the Sessions list is a ScrollView with sections, folders and drag and drop, so it listens itself.
+private struct ScrollSwipeCatcher: NSViewRepresentable {
+    var handler: (NSEvent) -> Bool
+
+    func makeNSView(context: Context) -> CatcherView { CatcherView(handler: handler) }
+    func updateNSView(_ view: CatcherView, context: Context) { view.handler = handler }
+    static func dismantleNSView(_ view: CatcherView, coordinator: ()) { view.removeMonitor() }
+
+    final class CatcherView: NSView {
+        var handler: (NSEvent) -> Bool
+        private var monitor: Any?
+
+        init(handler: @escaping (NSEvent) -> Bool) {
+            self.handler = handler
+            super.init(frame: .zero)
+        }
+
+        required init?(coder: NSCoder) { fatalError() }
+
+        override func viewDidMoveToWindow() {
+            removeMonitor()
+            guard window != nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+                guard let self, let window = self.window, event.window === window else { return event }
+                let point = self.convert(event.locationInWindow, from: nil)
+                guard self.bounds.contains(point) else { return event }
+                return self.handler(event) ? nil : event
+            }
+        }
+
+        func removeMonitor() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
     }
 }

@@ -237,6 +237,34 @@ final class SessionFolderStore: ObservableObject {
         try commit(f)
     }
 
+    /// A session was moved to the Trash: its folder assignment and its turned-down suggestions go from the index.
+    func forget(_ sessions: [String]) throws {
+        var f = file
+        var changed = false
+        for s in sessions {
+            if f.assign.removeValue(forKey: s) != nil { changed = true }
+            if f.dismissed.removeValue(forKey: s) != nil { changed = true }
+        }
+        if changed { try commit(f) }
+    }
+
+    /// Undo of `forget`: the assignment (when the folder still exists and the session is unfiled) and the turned-down
+    /// suggestions come back. Not a move by him, so `used_at` stays. Call it after the session folder is back on disk: a write
+    /// drops entries of sessions that are not there.
+    func restoreEntry(_ session: String, folderID: String?, dismissed: [String]) throws {
+        var f = file
+        var changed = false
+        if let id = folderID, f.assign[session] == nil, f.folders.contains(where: { $0.id == id }) {
+            f.assign[session] = id
+            changed = true
+        }
+        if !dismissed.isEmpty, f.dismissed[session] == nil {
+            f.dismissed[session] = dismissed
+            changed = true
+        }
+        if changed { try commit(f) }
+    }
+
     // MARK: write
 
     private func commit(_ new: FoldersFile) throws {
