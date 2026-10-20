@@ -111,7 +111,7 @@ public struct HomeRoot: View {
         case .sessions:
             HomeSessionsPage(model: context.sessions, router: router, controller: context.controller, settings: settings)
         case .practice:
-            SimSetupView(sim: context.sim, meeting: context.controller)
+            SimSetupView(sim: context.sim, meeting: context.controller, upNext: context.upNext, router: context.router)
         case .scripts:
             ScriptEditorView(controller: context.controller)
         case .settings:

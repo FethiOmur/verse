@@ -63,13 +63,28 @@ public struct SimPackSummary: Equatable, Sendable {
     public var questions: Int
     public var evidence: Int
     public var warnings: [String]
+    /// The interview language (`sim.json` `lang`): en, it or tr. Older packs have none (English).
+    public var lang = "en"
+    /// The meeting session the interview was built from (`"source":"session"`); nil for a job posting.
+    public var sourceSession: String?
 
     public static func load(sessionDir: URL) -> SimPackSummary? {
         guard let d = try? Data(contentsOf: sessionDir.appendingPathComponent("sim.json")),
               let o = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
         return SimPackSummary(company: o["company"] as? String ?? "", role: o["role"] as? String ?? "",
                               questions: (o["questions"] as? [Any])?.count ?? 0, evidence: (o["evidence"] as? [Any])?.count ?? 0,
-                              warnings: o["warnings"] as? [String] ?? [])
+                              warnings: o["warnings"] as? [String] ?? [],
+                              lang: Self.supportedLang(o["lang"] as? String),
+                              sourceSession: o["source"] as? String == "session" ? o["source_session"] as? String : nil)
+    }
+
+    /// The interview language of a prepared sim folder (English when `sim.json` has none or cannot be read).
+    public static func lang(sessionDir: URL) -> String { load(sessionDir: sessionDir)?.lang ?? "en" }
+
+    /// `en`, `it` or `tr` for the first of a code such as `it-IT`; anything else is English (the brain's fixed lines do the same).
+    static func supportedLang(_ code: String?) -> String {
+        let c = (code ?? "").lowercased().split(whereSeparator: { $0 == "-" || $0 == "_" }).first.map(String.init) ?? ""
+        return ["en", "it", "tr"].contains(c) ? c : "en"
     }
 }
 
@@ -78,6 +93,14 @@ public struct SimSetup: Equatable, Sendable {
     public enum InterviewType: String, CaseIterable, Sendable { case screening, manager, technical, mixed }
     public enum Difficulty: String, CaseIterable, Sendable { case friendly, standard, tough }
 
+    /// What the interview is built from: a prepared meeting session or a job posting (today's flow).
+    public enum Source: String, CaseIterable, Sendable { case meeting, posting }
+
+    public var source = Source.posting
+    /// `.meeting`: the prepared session folder (its `pack.md` and `bank.jsonl`).
+    public var meetingSession: URL?
+    /// `.meeting`: the profile (`me.md`), only when "Use my profile in every session" is on and the file exists.
+    public var meFile: URL?
     public var postingText: String
     public var postingURL: URL?
     /// Overrides the company prep reads from the posting (prefilled from the fetch).
@@ -117,6 +140,21 @@ public struct SimSetup: Equatable, Sendable {
     }
 }
 
+extension SimSetup {
+    /// The `python -m verse_brain.prep --sim --from-session ...` arguments for a mock interview built from a meeting.
+    /// Paths only: the pack and the profile are read by prep from disk, so no text from either is on the line, and no
+    /// key (prep reads the Anthropic key from the Keychain itself). The language is the session's (`meta.json`), the
+    /// company and role come from the pack, so `--lang`, `--company`, `--posting-*`, `--cv`, `--note` and `--repo`
+    /// are not passed (prep refuses the posting-only ones with `--from-session`).
+    public func prepArguments(sessionDir: URL, out: URL) -> [String] {
+        var a = ["-u", "-m", "verse_brain.prep", "--sim", "--from-session", sessionDir.path]
+        if let meFile { a += ["--me", meFile.path] }
+        a += ["--out", out.path, "--type", type.rawValue, "--difficulty", difficulty.rawValue, "--length", String(lengthMin)]
+        if fake { a.append("--fake") }
+        return a
+    }
+}
+
 /// Runs S1's sim prep as a child process of the brain venv. The posting (and the note) go through a private temp
 /// folder that is removed when prep ends; prep copies the posting into the new session folder as `posting.txt`.
 public final class SimPrep: @unchecked Sendable {
@@ -138,27 +176,41 @@ public final class SimPrep: @unchecked Sendable {
         let fm = FileManager.default
         let python = brainDir.appendingPathComponent(".venv/bin/python")
         guard fm.isExecutableFile(atPath: python.path) else { return .failed("brain python missing: \(python.path)") }
-        let tmp = fm.temporaryDirectory.appendingPathComponent("verse-sim-prep-\(UUID().uuidString)", isDirectory: true)
-        defer { try? fm.removeItem(at: tmp) }
-        let postingFile = tmp.appendingPathComponent("posting.txt")
-        var noteFile: URL?
-        do {
-            try fm.createDirectory(at: tmp, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-            try Data(setup.postingText.utf8).write(to: postingFile)
-            let note = setup.note.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !note.isEmpty {
-                let u = tmp.appendingPathComponent("note.md")
-                try Data(note.utf8).write(to: u)
-                noteFile = u
+        // A job posting goes through a private temp folder; a meeting session is read by prep where it lies.
+        var tmp: URL?
+        defer { if let tmp { try? fm.removeItem(at: tmp) } }
+        let arguments: [String]
+        switch setup.source {
+        case .meeting:
+            guard let session = setup.meetingSession else { return .failed("no meeting is selected") }
+            do { try fm.createDirectory(at: root, withIntermediateDirectories: true) } catch {
+                return .failed("cannot create the sessions folder: \(error.localizedDescription)")
             }
-            try fm.createDirectory(at: root, withIntermediateDirectories: true)
-        } catch {
-            return .failed("cannot write the posting for prep: \(error.localizedDescription)")
+            arguments = setup.prepArguments(sessionDir: session, out: root)
+        case .posting:
+            let dir = fm.temporaryDirectory.appendingPathComponent("verse-sim-prep-\(UUID().uuidString)", isDirectory: true)
+            tmp = dir
+            let postingFile = dir.appendingPathComponent("posting.txt")
+            var noteFile: URL?
+            do {
+                try fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+                try Data(setup.postingText.utf8).write(to: postingFile)
+                let note = setup.note.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !note.isEmpty {
+                    let u = dir.appendingPathComponent("note.md")
+                    try Data(note.utf8).write(to: u)
+                    noteFile = u
+                }
+                try fm.createDirectory(at: root, withIntermediateDirectories: true)
+            } catch {
+                return .failed("cannot write the posting for prep: \(error.localizedDescription)")
+            }
+            arguments = setup.prepArguments(postingFile: postingFile, noteFile: noteFile, out: root)
         }
 
         let out = Pipe(), err = Pipe()
         process.executableURL = python
-        process.arguments = setup.prepArguments(postingFile: postingFile, noteFile: noteFile, out: root)
+        process.arguments = arguments
         process.currentDirectoryURL = brainDir
         process.standardOutput = out
         process.standardError = err
@@ -250,4 +302,76 @@ final class OutputBox: @unchecked Sendable {
     private var data = Data()
     func append(_ d: Data) { lock.withLock { data.append(d) } }
     var text: String { lock.withLock { String(decoding: data, as: UTF8.self) } }
+}
+
+/// A prepared meeting session a mock interview can be built from.
+public struct PreparedMeeting: Identifiable, Equatable, Sendable {
+    public var id: String { name }
+    /// The session folder name.
+    public let name: String
+    /// How the popup shows it (the Sessions list's title for the folder).
+    public let title: String
+    /// The newest of its summary, its prep (`meta.json` `created_at`) and its pack.
+    public let date: Date
+    public let dir: URL
+}
+
+/// Which sessions the Practice page offers for "A meeting", and what it shows about the chosen one. Read-only.
+public enum PracticeMeetings {
+    /// What the pack holds, as the preview row counts it.
+    public struct Preview: Equatable, Sendable {
+        /// Non-empty lines of `bank.jsonl`: the likely questions the prep wrote answers for.
+        public var questions: Int
+        /// `[f…]` lines of the pack's FACTS section.
+        public var facts: Int
+    }
+
+    /// Prepared means a non-empty `pack.md`. The standing general prep, unprepared calls (`adhoc-*`) and practice runs
+    /// (`sim-*`) are not meetings.
+    public static func isEligibleName(_ name: String) -> Bool {
+        !GeneralPrep.isGeneral(name) && !SessionCatalog.isAdhoc(name) && !name.hasPrefix("sim-")
+    }
+
+    /// Prepared meeting sessions under `root`, newest first (ties by name).
+    public static func list(root: URL = SessionCatalog.root) -> [PreparedMeeting] {
+        let fm = FileManager.default
+        func mtime(_ u: URL) -> Date? { (try? fm.attributesOfItem(atPath: u.path))?[.modificationDate] as? Date }
+        return SessionCatalog.list(root: root).filter(isEligibleName).compactMap { name -> PreparedMeeting? in
+            let dir = SessionCatalog.url(name, root: root)
+            let pack = dir.appendingPathComponent("pack.md")
+            guard let size = (try? fm.attributesOfItem(atPath: pack.path))?[.size] as? Int, size > 0 else { return nil }
+            let dates = [mtime(dir.appendingPathComponent("summary.md")), createdAt(dir), mtime(pack)].compactMap { $0 }
+            return PreparedMeeting(name: name, title: HomeSession.title(forFolder: name), date: dates.max() ?? .distantPast, dir: dir)
+        }
+        .sorted { $0.date != $1.date ? $0.date > $1.date : $0.name < $1.name }
+    }
+
+    /// The default pick: the nearest Up next item that has a prepared session in `meetings`, else the newest.
+    /// `upNext` is the Up next items' session names in calendar order (nil for an unprepared item).
+    public static func defaultPick(upNext: [String?], among meetings: [PreparedMeeting]) -> String? {
+        let names = Set(meetings.map(\.name))
+        return upNext.compactMap { $0 }.first(where: names.contains) ?? meetings.first?.name
+    }
+
+    public static func preview(sessionDir: URL) -> Preview {
+        let bank = (try? String(contentsOf: sessionDir.appendingPathComponent("bank.jsonl"), encoding: .utf8)) ?? ""
+        let questions = bank.split(whereSeparator: \.isNewline).filter { !$0.allSatisfy(\.isWhitespace) }.count
+        let pack = (try? String(contentsOf: sessionDir.appendingPathComponent("pack.md"), encoding: .utf8)) ?? ""
+        var inFacts = false
+        var facts = 0
+        for raw in pack.split(whereSeparator: \.isNewline) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("## ") { inFacts = line.dropFirst(3).trimmingCharacters(in: .whitespaces).uppercased() == "FACTS"; continue }
+            if inFacts, line.hasPrefix("[f"), line.contains("]") { facts += 1 }
+        }
+        return Preview(questions: questions, facts: facts)
+    }
+
+    /// `meta.json` `created_at` (ISO 8601), when the prep wrote one.
+    private static func createdAt(_ dir: URL) -> Date? {
+        guard let d = try? Data(contentsOf: dir.appendingPathComponent("meta.json")),
+              let o = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
+              let s = o["created_at"] as? String else { return nil }
+        return ISO8601DateFormatter().date(from: s)
+    }
 }

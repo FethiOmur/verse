@@ -35,6 +35,17 @@ public final class SimController: ObservableObject {
     @Published public private(set) var sessionDir: URL?
     @Published public private(set) var summary: SimPackSummary?
     @Published public private(set) var lastReport: URL?
+    // practice from a meeting
+    /// Prepared meeting sessions, newest first (`refreshMeetings`).
+    @Published public private(set) var meetings: [PreparedMeeting] = []
+    /// The session folder name chosen in the Meeting popup.
+    @Published public var meetingName: String?
+    /// What the chosen meeting's prep holds (the preview row).
+    @Published public private(set) var meetingPreview: PracticeMeetings.Preview?
+    /// The `tts_gap_ms` measurements of the last run (the runner logs them too).
+    @Published public private(set) var lastTTSGaps: [SimRunner.TTSGap] = []
+    /// The user picked the source himself; a refresh then keeps it.
+    private var sourceChosen = false
 
     public let settings: AppSettings
     public let simSettings: SimSettings
@@ -49,10 +60,17 @@ public final class SimController: ObservableObject {
     /// Interviewer lines being assembled for the hint card (sentences of one id).
     private var lineText: [String: String] = [:]
 
-    public init(settings: AppSettings, simSettings: SimSettings, meeting: VerseController) {
+    /// Where the session folders are (the meeting's, so a test or a render that points it elsewhere moves both) and the
+    /// profile folder (`me.md`).
+    public var sessionsRoot: URL { meeting.sessionsRoot }
+    private let meProfile: URL
+
+    public init(settings: AppSettings, simSettings: SimSettings, meeting: VerseController,
+                meProfile: URL = MeProfilePaths.defaultDirectory) {
         self.settings = settings
         self.simSettings = simSettings
         self.meeting = meeting
+        self.meProfile = meProfile
         setup.voice = simSettings.voiceKind
         lastReport = SimSessionFolder.reports().first
     }
@@ -61,6 +79,63 @@ public final class SimController: ObservableObject {
     public var fake: Bool { meeting.fakeBrain }
 
     private func log(_ s: String) { FileLog.shared.write("sim: " + s) }
+
+    // MARK: meeting source
+
+    /// Reads the prepared sessions again (the Practice page does this each time it appears) and keeps or picks the
+    /// selection. `upNext`: the Up next items' session names in calendar order. Until the user picks a source, "A
+    /// meeting" is the default when a prepared session exists, else "A job posting"; with none, a chosen meeting falls back.
+    public func refreshMeetings(upNext: [String?] = []) {
+        guard phase != .preparing, phase != .running else { return }
+        meetings = PracticeMeetings.list(root: sessionsRoot)
+        if meetingName == nil || !meetings.contains(where: { $0.name == meetingName }) {
+            meetingName = PracticeMeetings.defaultPick(upNext: upNext, among: meetings)
+        }
+        updatePreview()
+        if meetings.isEmpty {
+            setup.source = .posting
+        } else if !sourceChosen {
+            setup.source = .meeting
+        }
+    }
+
+    /// The user's choice in the "Practise for" control.
+    public func chooseSource(_ s: SimSetup.Source) {
+        sourceChosen = true
+        guard s != setup.source else { return }
+        setup.source = s
+        if phase == .prepared || phase == .finished { newInterview() }
+    }
+
+    /// The popup's choice (also what Up next's Practise sets).
+    public func selectMeeting(_ name: String?) {
+        guard phase != .preparing, phase != .running else { return }
+        meetingName = name
+        updatePreview()
+        if phase == .prepared || phase == .finished { newInterview() }
+    }
+
+    /// Up next → Practise: "A meeting" with `name` selected. Ignored while a prep or a practice is running, or when
+    /// `name` is not a prepared meeting.
+    @discardableResult
+    public func practise(session name: String) -> Bool {
+        guard phase != .preparing, phase != .running else { return false }
+        meetings = PracticeMeetings.list(root: sessionsRoot)
+        guard meetings.contains(where: { $0.name == name }) else {
+            updatePreview()
+            return false
+        }
+        sourceChosen = true
+        setup.source = .meeting
+        selectMeeting(name)
+        return true
+    }
+
+    private func updatePreview() {
+        meetingPreview = meetings.first { $0.name == meetingName }.map { PracticeMeetings.preview(sessionDir: $0.dir) }
+    }
+
+    public var selectedMeeting: PreparedMeeting? { meetings.first { $0.name == meetingName } }
 
     // MARK: posting
 
@@ -117,6 +192,9 @@ public final class SimController: ObservableObject {
 
     /// Where the session folder will be created (prep may add `-2` when that name is taken).
     public var expectedFolderName: String? {
+        if setup.source == .meeting {
+            return selectedMeeting.map { SimSessionFolder.name(company: $0.name) }
+        }
         guard let p = posting else { return nil }
         let company = setup.company.isEmpty ? (p.company ?? "company") : setup.company
         return SimSessionFolder.name(company: company)
@@ -124,7 +202,10 @@ public final class SimController: ObservableObject {
 
     // MARK: prep
 
-    public var canPrepare: Bool { postingConfirmed && phase != .preparing && phase != .running && !meeting.running }
+    public var canPrepare: Bool {
+        let ready = setup.source == .meeting ? selectedMeeting != nil : postingConfirmed
+        return ready && phase != .preparing && phase != .running && !meeting.running
+    }
 
     public func prepare() {
         guard canPrepare, let brainDir = VerseController.brainDir() else {
@@ -133,6 +214,13 @@ public final class SimController: ObservableObject {
         }
         var s = setup
         s.fake = fake
+        if s.source == .meeting {
+            guard let m = selectedMeeting else { return }
+            s.meetingSession = m.dir
+            // The profile joins the pack when "Use my profile in every session" is on and it has been built.
+            let me = meProfile.appendingPathComponent("me.md")
+            s.meFile = settings.useMeProfile && FileManager.default.fileExists(atPath: me.path) ? me : nil
+        }
         let p = SimPrep()
         prep = p
         phase = .preparing
@@ -141,9 +229,9 @@ public final class SimController: ObservableObject {
         summary = nil
         sessionDir = nil
         prepStartedAt = Date()
-        log("prep start type=\(s.type.rawValue) difficulty=\(s.difficulty.rawValue) length=\(s.lengthMin) cv=\(s.cv != nil) note=\(!s.note.isEmpty) vault=\(s.useVault) repos=\(s.repos.count) fake=\(s.fake)")
+        log("prep start source=\(s.source.rawValue) me=\(s.meFile != nil) type=\(s.type.rawValue) difficulty=\(s.difficulty.rawValue) length=\(s.lengthMin) cv=\(s.cv != nil) note=\(!s.note.isEmpty) vault=\(s.useVault) repos=\(s.repos.count) fake=\(s.fake)")
         Task { @MainActor in
-            let outcome = await p.run(s, brainDir: brainDir, onLine: { [weak self] l in
+            let outcome = await p.run(s, brainDir: brainDir, root: sessionsRoot, onLine: { [weak self] l in
                 FileLog.shared.write("[sim prep] " + l)
                 DispatchQueue.main.async { MainActor.assumeIsolated { self?.prepLines.append(l) } }
             })
@@ -177,12 +265,17 @@ public final class SimController: ObservableObject {
         guard canStart, let dir = sessionDir, let brainDir = VerseController.brainDir() else { return }
         let kind = setup.voice
         let fakeRun = fake
+        // The interview language (`sim.json`): the mic recognizes it and the system voice speaks it. A saved Apple voice
+        // is an English choice, so another language takes the best installed voice for it instead.
+        let lang = SimPackSummary.lang(sessionDir: dir)
+        let appleID = lang == "en" ? simSettings.voiceID(for: .apple) : nil
         let voice: any VoiceEngine
         if kind == .text {
             voice = TextVoice()
         } else {
-            let primary = VoiceFactory.make(kind, voiceID: simSettings.voiceID(for: kind))
-            let fallback = AppleVoice(voiceID: simSettings.voiceID(for: .apple))
+            let primary: any VoiceEngine = kind == .apple ? AppleVoice(voiceID: appleID, lang: lang)
+                : VoiceFactory.make(kind, voiceID: simSettings.voiceID(for: kind))
+            let fallback = AppleVoice(voiceID: appleID, lang: lang)
             voice = FallbackVoice(primary: primary, fallback: fallback, onFallback: { [weak self] _ in
                 DispatchQueue.main.async { MainActor.assumeIsolated { self?.overlay.simApply(.voiceFallback(kind)) } }
             })
@@ -197,7 +290,9 @@ public final class SimController: ObservableObject {
             meeting.showOverlayPanel()
             return
         }
-        let r = SimRunner(transport: brain, voice: voice, mic: ListenSimMic(lang: "en"), sink: { [weak self] e in
+        var config = SimRunner.Config()
+        config.lang = lang
+        let r = SimRunner(transport: brain, voice: voice, mic: ListenSimMic(lang: lang), config: config, sink: { [weak self] e in
             // One FIFO hop to the main thread keeps the runner's order.
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.handle(e) } }
         })
@@ -206,7 +301,7 @@ public final class SimController: ObservableObject {
         runWasFake = fakeRun
         lineText = [:]
         phase = .running
-        log("start \(dir.lastPathComponent) mode=\(setup.mode.rawValue) voice=\(kind.rawValue) hints=\(setup.hints) fake=\(fakeRun)")
+        log("start \(dir.lastPathComponent) lang=\(lang) mode=\(setup.mode.rawValue) voice=\(kind.rawValue) hints=\(setup.hints) fake=\(fakeRun)")
         overlay.simStarting(voice: kind.rawValue, showCaption: simSettings.showCaption)
         overlay.simActions = { [weak self] a in self?.action(a) }
         meeting.showOverlayPanel()
@@ -267,6 +362,7 @@ public final class SimController: ObservableObject {
     }
 
     private func runEnded() {
+        let ended = runner
         runner = nil
         phase = .finished
         overlay.simActions = nil
@@ -276,6 +372,20 @@ public final class SimController: ObservableObject {
         Task { await h?.stop() }
         recordSpend()
         meeting.hideOverlayPanel()
+        if let ended { Task { @MainActor in await self.recordTTSGaps(ended) } }
+    }
+
+    /// The runner's `tts_gap_ms` measurements (line gaps: the wait after JUDGE; sentence gaps: silence inside a line) go
+    /// to the log, one line each, and to `lastTTSGaps`. Numbers and line ids only: no text, no audio.
+    private func recordTTSGaps(_ r: SimRunner) async {
+        let gaps = await r.ttsGaps
+        lastTTSGaps = gaps
+        for g in gaps { log("tts_gap_ms \(g.ms) kind=\(g.kind.rawValue) line=\(g.lineID) prefetched=\(g.prefetched)") }
+        let lines = gaps.filter { $0.kind == .line }
+        if !lines.isEmpty {
+            let prefetched = lines.filter(\.prefetched).map(\.ms)
+            log("tts_gap_ms summary lines=\(lines.count) prefetched=\(prefetched.count) prefetched_ms=\(prefetched)")
+        }
     }
 
     /// The sim brain writes its spend into `sim_results.json` (`usage_usd`); it joins the month's total like meetings.
