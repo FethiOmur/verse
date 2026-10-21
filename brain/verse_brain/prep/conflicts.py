@@ -22,6 +22,21 @@ the review page is read by a human, but a false alarm on every figure would trai
   ("**Date:** 2026-09-25", "Updated: ..."), and citations next to a file name or URL;
 - a single shared word only links two figures when both contexts are short (at most two words each).
 
+Second pass (a live run raised 16 conflicts and nearly all were false). A claim is the same quantity only when its
+key matches: the noun phrase next to the figure plus the unit, and the same scope. So:
+- a total and its breakdown ("$13 in all: $8 to 16 Oct, $1.15 ..., $3.90 ...") are different quantities: the parts of a
+  sentence's total (their sum, or everything smaller than a figure marked "in all/total") never enter a comparison, and a
+  figure marked as a total is not compared with one that is not;
+- a scope marker is part of the key: a date, `n=`, a fraction's denominator, `run 2`, `final run`, `after the fixes`,
+  `baseline`, a statistic (`median`, `p95`) or a CI. Two figures with different scope sets are different measurements;
+- figures of one bullet, paragraph or table row are never compared with each other (the author wrote them together); two
+  lists that each hold several figures are one list when one holds the other's value; a bullet's `Label:` that differs
+  ("Brand spike:" / "Spend at list price:") separates its figures; the word right before a figure must name the same thing;
+- `from X to Y`, `X -> Y`, thresholds (`over 150`, `at least 5`), `n=9`, the level of a CI (`95% CI`) and sub-cent amounts
+  are not claims about a quantity and are skipped; a `for ...` qualifier on one side only separates two figures;
+- the count unit is the noun phrase, not the next word (`9 live turns` is turns), `s` is seconds, and a plural-label count
+  (`Tests: 2,399 + 72`) is read; dates that label a log entry (`DECISIONS 2026-10-16 |`) are not claims.
+
 These rules came from a live run on real vault text, where the first version raised six false conflicts out of six.
 
 Known limits (unconfirmed recall): an entity is identified by the words next to the figure, so a pair whose
@@ -32,7 +47,7 @@ read; roles are matched against a fixed list of one-holder titles (`ROLE` below)
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import TYPE_CHECKING, Iterable
 
@@ -82,13 +97,13 @@ CURRENCY = {"€": "EUR", "eur": "EUR", "euro": "EUR", "euros": "EUR", "$": "USD
 MULT = {"k": 1e3, "thousand": 1e3, "mila": 1e3, "bin": 1e3, "m": 1e6, "mn": 1e6, "mln": 1e6, "million": 1e6,
         "milioni": 1e6, "milyon": 1e6, "bn": 1e9, "billion": 1e9}
 # unit word -> (family, factor): durations convert inside a family and are never compared across families
-TIME = {"second": ("s", 1), "sec": ("s", 1), "saniye": ("s", 1), "minute": ("s", 60), "min": ("s", 60), "minuto": ("s", 60),
+TIME = {"second": ("s", 1), "sec": ("s", 1), "secs": ("s", 1), "s": ("s", 1), "ms": ("s", 0.001), "saniye": ("s", 1), "minute": ("s", 60), "min": ("s", 60), "minuto": ("s", 60),
         "minuti": ("s", 60), "dakika": ("s", 60), "hour": ("s", 3600), "hr": ("s", 3600), "ora": ("s", 3600),
         "ore": ("s", 3600), "saat": ("s", 3600), "day": ("s", 86400), "giorno": ("s", 86400), "giorni": ("s", 86400),
         "gün": ("s", 86400), "week": ("s", 604800), "settimana": ("s", 604800), "settimane": ("s", 604800),
         "hafta": ("s", 604800), "month": ("mo", 1), "mese": ("mo", 1), "mesi": ("mo", 1), "ay": ("mo", 1),
         "year": ("mo", 12), "yr": ("mo", 12), "anno": ("mo", 12), "anni": ("mo", 12), "yıl": ("mo", 12)}
-TIME_NAME = {"sec": "second", "min": "minute", "hr": "hour", "yr": "year"}
+TIME_NAME = {"s": "second", "sec": "second", "secs": "second", "ms": "millisecond", "min": "minute", "hr": "hour", "yr": "year"}
 PERIODS = {"month": "month", "monthly": "month", "mese": "month", "mensile": "month", "aylık": "month",
            "year": "year", "yearly": "year", "annual": "year", "annually": "year", "annum": "year", "anno": "year",
            "annuo": "year", "annua": "year", "yıllık": "year", "week": "week", "weekly": "week", "day": "day",
@@ -109,7 +124,8 @@ _CUR = (r"(?P<cur>€|\$|£|₺|(?<![^\W\d_])(?:EUR|USD|GBP|TRY|TL|euros?|dollar
 _FLAGS = re.I | re.U
 
 
-_RNG = rf"(?:\s?(?:to|and|a|ile|-|–|—)\s?(?P<a2>{_AMT})(?P<s2>{_SUF})?)?"  # optional second amount of a range
+# optional second amount of a range; "$8 to 16 Oct" is a date after "to", not the end of a range
+_RNG = rf"(?:\s?(?:to|and|a|ile|-|–|—)\s?(?P<a2>{_AMT})(?!\d)(?!\s?(?:{_MONTH_RE})(?![^\W\d_]))(?P<s2>{_SUF})?)?"
 
 
 _MONEY_PRE = re.compile(rf"{_CUR}\s?(?P<a1>{_AMT})(?P<s1>{_SUF})?{_RNG}", _FLAGS)
@@ -139,9 +155,10 @@ _PERIOD = re.compile(
 _WORD = re.compile(r"[^\W\d_]+(?:['’-][^\W\d_]+)*", re.U)
 _BULLET = re.compile(r"^\s*(?:[-*•+]|\d+[.)])\s+")
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z\"“(])|;\s+")
-_CLAUSE_SPLIT = re.compile(r",\s+")
+_CLAUSE_SPLIT = re.compile(r",\s+|;\s+")
 
 MAX_QUOTE = 200
+LABELISH = frozenset("decision date log entry note section summary status update changelog history timeline".split())
 
 
 def _num(tok: str) -> float:
@@ -214,6 +231,15 @@ class Mention:
     tags: frozenset[str] = frozenset()  # dates: "q1", "october"; roles: name tokens
     order: int = 0
     snap: str = ""  # date of a time-stamped source (dated note path, commit date); "" for undated sources
+    scope: frozenset[str] = frozenset()  # what the figure was measured on: dates, n=, run N, after-fix, median, CI (sentence wide)
+    qual: frozenset[str] = frozenset()  # words of a "for ..." / "during ..." qualifier next to the figure
+    total: bool = False  # the clause says "in all" / "total": the figure is a sum, not an item
+    part: bool = False  # an item of a sentence whose total is stated in the same sentence
+    mods: frozenset[str] = frozenset()  # counts: the other words of the noun phrase ("unit" in "unit tests")
+    lead: tuple[str, ...] = ()  # the (up to) three content words right before the figure; the last one names it
+    topic: frozenset[str] = frozenset()  # words of the "Label:" the bullet starts with, when the figure comes after it
+    topic_seq: tuple[str, ...] = ()
+    clause: str = ""  # the comma clause the figure sits in
 
     @property
     def sort_key(self):
@@ -225,11 +251,30 @@ class Mention:
         return {"value": self.display, "source_ref": self.ref, "quote": self.quote}
 
 
-def _context(sentence: str, start: int, end: int) -> tuple[frozenset[str], frozenset[str], tuple[str, ...], str, str]:
-    """Words before and after the figure inside its comma clause. Returns (before, after, words, after_prep, clause)."""
+QUAL_PREP = frozenset("for across during on at".split())
+_TOTAL = re.compile(r"(?<![^\W\d_])(?:in\s+(?:all|total)|total|totals|overall|altogether|combined|all\s+told|cumulative|grand\s+total)(?![^\W\d_])", _FLAGS)
+
+
+def _qual(before_words: list[str], after_words: list[str]) -> frozenset[str]:
+    """Stems of the words a `for ...` / `during ...` phrase puts next to the figure ("spend for these tests: $3.90")."""
+    out: set[str] = set()
+    for i, w in enumerate(after_words):
+        if w.casefold() in QUAL_PREP:
+            out |= {_stem(x) for x in after_words[i + 1:i + 5] if x.casefold() not in STOP and len(x) > 1}
+            break
+    for i in range(len(before_words) - 1, -1, -1):
+        if before_words[i].casefold() in QUAL_PREP:
+            out |= {_stem(x) for x in before_words[i + 1:] if x.casefold() not in STOP and len(x) > 1}
+            break
+    return frozenset(out)
+
+
+def _context(sentence: str, start: int, end: int):
+    """Words before and after the figure inside its comma clause. Returns (before, after, words, after_prep, clause, qual, lead)."""
     cs = 0
     for m in _CLAUSE_SPLIT.finditer(sentence, 0, start):
         cs = m.end()
+    cs = max(cs, sentence.rfind("|", 0, start) + 1)  # a table cell never borrows the words of the cell before it
     ce = len(sentence)
     m = _CLAUSE_SPLIT.search(sentence, end)
     if m:
@@ -244,7 +289,8 @@ def _context(sentence: str, start: int, end: int) -> tuple[frozenset[str], froze
     aw_all = [w for w in after_words if w.casefold() not in STOP and len(w) > 1][:3]
     prep = after_words[0].casefold() if after_words and after_words[0].casefold() in WEAK_AFTER_PREP else ""
     words = tuple(w.casefold() for w in bw + aw_all)
-    return frozenset(_stem(w) for w in bw), frozenset(_stem(w) for w in aw_all), words, prep, sentence[cs:ce]
+    return (frozenset(_stem(w) for w in bw), frozenset(_stem(w) for w in aw_all), words, prep, sentence[cs:ce],
+            _qual(before_words, after_words), tuple(_stem(w) for w in bw[-3:]))
 
 
 def _qualifiers(clause: str) -> tuple[str, str]:
@@ -299,10 +345,28 @@ def _units(text: str, per_line: bool) -> list[tuple[str, bool]]:
 def mentions_in(text: str, ref: str, src_kind: str, *, per_line: bool = False, snap: str = "") -> list[Mention]:
     out: list[Mention] = []
     for ui, (unit, heading) in enumerate(_units(text, per_line)):
-        for si, sent in enumerate(_SENT_SPLIT.split(unit)):
+        topic, label_end = _unit_topic(unit)
+        # a table row is one claim: its `;` and `. ` separate figures from the cells that describe them
+        for si, sent in enumerate([unit] if unit.startswith("|") else _SENT_SPLIT.split(unit)):
             if sent.strip():
-                out += _sentence_mentions(sent, ref, src_kind, (ref, ui, si), len(out), heading and si == 0 and src_kind != "prep", snap)
+                out += _sentence_mentions(sent, ref, src_kind, (ref, ui, si), len(out), heading and si == 0 and src_kind != "prep", snap,
+                                          topic, label_end if si == 0 else 0)
     return out
+
+
+GENERIC_LABEL = frozenset("""note notes result results decision decisions number numbers measured measure update summary status
+fyi todo important warning reminder finding findings evidence claim fact facts question answer example quote source fixed
+known limit open done""".split())
+_LABEL = re.compile(r"^\s*(?:\*\*)?(?P<l>[^:|\d]{2,60}?)(?:\*\*)?:\s")
+
+
+def _unit_topic(unit: str) -> tuple[tuple[str, ...], int]:
+    """`Brand spike: 11 sites, 11 credits.` -> ({brand, spike}, end of the label). Generic labels ("Result:") say nothing."""
+    m = _LABEL.match(unit)
+    if not m or len(_WORD.findall(m["l"])) > 8:
+        return (), 0
+    words = [_stem(w) for w in _WORD.findall(m["l"]) if w.casefold() not in STOP and w.casefold() not in GENERIC_LABEL and len(w) > 1]
+    return tuple(words), m.end()
 
 
 def _approx(sentence: str, start: int) -> bool:
@@ -325,24 +389,193 @@ def _label_date(sent: str, a: int, b: int, heading: bool) -> bool:
     before = sent[max(0, a - 40):a]
     if _META_BOLD.search(before) or _META_PLAIN.search(before):
         return True
+    if len(_WORD.findall(sent[:a])) <= 2 and re.match(r"\s*[|:\-–—]", sent[b:b + 6]):
+        return True  # "DECISIONS 2026-10-16 |": the date heads a log entry
     return bool(_CITATION.search(sent[max(0, a - 60):b + 60]))
 
 
+# ---- scope, skip rules, totals (second pass) --------------------------------------------------------
+
+_S_DMON = re.compile(rf"(?<![\d.,/-])(?P<d>\d{{1,2}})(?:st|nd|rd|th)?\s+(?:of\s+)?(?P<mon>{_MONTH_RE})(?![^\W\d_])", _FLAGS)
+_S_MOND = re.compile(rf"(?<![^\W\d_])(?P<mon>{_MONTH_RE})\.?\s+(?P<d>\d{{1,2}})(?:st|nd|rd|th)?(?!\d)", _FLAGS)
+_S_N = re.compile(r"(?<![^\W\d_])n\s?=\s?(\d[\d,]*)", _FLAGS)
+_S_FRAC = re.compile(r"(?<![\d/.,])\d{1,4}/(\d{1,5})(?![\d/])")
+_S_RUN = re.compile(r"(?<![^\W\d_])(run|round|trial|attempt|iteration|sprint|batch|phase|stage|version|v)s?\s?(\d+)(?:\s?[-–]\s?(\d+))?(?!\d)", _FLAGS)
+_S_ORD = re.compile(r"(?<![^\W\d_])(first|second|third|final|last|latest|initial)\s+(run|round|attempt|trial|recording|measurement|pass|"
+                    r"version|release|iteration)s?(?![^\W\d_])", _FLAGS)
+_S_WORD = re.compile(r"(?<![^\W\d_])(baseline|previously|formerly|originally|initially|earlier)(?![^\W\d_])", _FLAGS)
+_S_AFTER = re.compile(r"(?<![^\W\d_])(after|before|since)\s+(?:the\s+|our\s+|my\s+|this\s+|these\s+|those\s+)?(?:[\w'’.-]+\s+){0,3}?"
+                      r"(fix|fixes|change|changes|update|updates|release|refactor|migration|rewrite|patch|launch|deploy|deployment|"
+                      r"incident|merge|run|runs|round|rounds|commit|upgrade|tuning|cutover|optimi[sz]ation)(?![^\W\d_])", _FLAGS)
+_S_STAT = re.compile(r"(?<![^\W\d_])(median|mean|average|avg|p\s?(?:50|75|90|95|99)|minimum|maximum|peak|worst|best)(?![^\W\d_])", _FLAGS)
+_S_CI = re.compile(r"(?<![^\W\d_])(?:ci|confidence\s+interval|interval|wilson|credible)(?![^\W\d_])", _FLAGS)
+
+
+def _scope(sent: str) -> frozenset[str]:
+    """What the figures of a sentence were measured on. Two figures with different scope sets are different measurements."""
+    t: set[str] = set()
+    for rx in (_ISO, _DMY):
+        for m in rx.finditer(sent):
+            t.add(f"d:{int(m['m'])}-{int(m['d'])}")
+    for rx in (_S_DMON, _S_MOND):
+        for m in rx.finditer(sent):
+            t.add(f"d:{MONTHS[m['mon'].casefold()]}-{int(m['d'])}")
+    for m in _MON_Y.finditer(sent):
+        t.add(f"m:{MONTHS[m['mon'].casefold()]}")
+    for m in _QUARTER.finditer(sent):
+        t.add(f"q:{m['q'] or m['q2']}")
+    for m in _HALF.finditer(sent):
+        t.add(f"h:{m['h']}")
+    t |= {f"n:{m.group(1).replace(',', '')}" for m in _S_N.finditer(sent)}
+    t |= {f"n:{m.group(1)}" for m in _S_FRAC.finditer(sent)}
+    for m in _S_RUN.finditer(sent):
+        t.add(f"{m.group(1).casefold()}:{m.group(2)}" + (f"-{m.group(3)}" if m.group(3) else ""))
+    t |= {f"{m.group(1).casefold()}:{_stem(m.group(2))}" for m in _S_ORD.finditer(sent)}
+    t |= {m.group(1).casefold() for m in _S_WORD.finditer(sent)}
+    t |= {f"{m.group(1).casefold()}:{_stem(m.group(2))}" for m in _S_AFTER.finditer(sent)}
+    t |= {"stat:" + re.sub(r"\s", "", m.group(1).casefold()).replace("avg", "average") for m in _S_STAT.finditer(sent)}
+    if _S_CI.search(sent):
+        t.add("ci")
+    return frozenset(t)
+
+
+_HEDGE_PRE = r"(?:about\s+|around\s+|roughly\s+|approximately\s+|approx\.?\s+|~\s?)?"
+_FROM_PRE = re.compile(rf"(?:\bfrom|\binstead of|\brather than|\bup from|\bdown from|\bused to be|\bformerly|\bpreviously)\s+{_HEDGE_PRE}$", _FLAGS)
+_FROM_TO = re.compile(rf"\bfrom\s+(?:\S+\s+){{1,4}}?to\s+{_HEDGE_PRE}$", _FLAGS)
+_ARROW_PRE = re.compile(rf"(?:→|->|=>|⇒)\s*{_HEDGE_PRE}$")
+_ARROW_POST = re.compile(r"^\s*(?:→|->|=>|⇒)")
+_THRESH = re.compile(rf"(?:\bover|\babove|\bunder|\bbelow|\bbeyond|\bexceeding|\bexceeds|\bat least|\bat most|\bmore than|\bless than|"
+                     rf"\bfewer than|\bup to|\bminimum(?: of)?|\bmaximum(?: of)?|\bmin|\bmax|>=|<=|≥|≤|>|<)\s*{_HEDGE_PRE}$", _FLAGS)
+_N_EQ = re.compile(r"(?<![^\W\d_])n\s?=\s?$", _FLAGS)
+_CI_POST = re.compile(r"^\s*(?:ci|confidence|interval|wilson|credible)(?![^\W\d_])", _FLAGS)
+_CI_PRE = re.compile(r"(?<![^\W\d_])(?:ci|confidence|interval)\s*(?:of\s*)?$", _FLAGS)
+_SLASH_POST = re.compile(r"^(?:\s+/\s*|\s*/\s+)[$€£]?\d")
+_SLASH_PRE = re.compile(r"(?:\s/\s*|/\s+)$")
+_TO_SOON = re.compile(r"^\S*(?:\s+\S+){0,3}?\s+to\b", _FLAGS)
+
+
+def _not_a_claim(sent: str, a: int, b: int, kind: str) -> bool:
+    """A figure that is a baseline (`from X to Y`, arrows, `instead of X`), a threshold (`over 150`), a sample size (`n=9`)
+    or the level of a confidence interval (`95% CI`) is not a statement of the quantity itself."""
+    pre, post = sent[max(0, a - 60):a], sent[b:b + 40]
+    if _FROM_TO.search(pre) or _ARROW_PRE.search(pre) or _ARROW_POST.match(post) or _THRESH.search(pre):
+        return True
+    m = _FROM_PRE.search(pre)
+    if m and (not m.group().casefold().startswith("from") or _TO_SOON.match(post)):
+        return True
+    if kind == "count" and _N_EQ.search(pre):
+        return True
+    if _SLASH_POST.match(post) or _SLASH_PRE.search(pre):
+        return True  # "25.2 s / 37.3 s": a series of different statistics, not one claim each
+    if kind == "percent":
+        if _CI_POST.match(post) or _CI_PRE.search(pre):
+            return True
+        if _S_CI.search(sent) and re.search(r"[(\[][^()\[\]]*$", sent[:a]) and re.match(r"[^()\[\]]*[)\]]", sent[b:]):
+            return True  # a bound inside the brackets of a confidence interval
+    return False
+
+
+def _mark_parts(found: list[Mention], sentence_scope: frozenset[str]) -> list[Mention]:
+    """Items of a total stated in the same sentence ("$13 in all: $8 to 16 Oct, $1.15 ..., $3.90 ...") are parts: they are
+    different quantities from the total and from the same wording elsewhere. The total is a figure the clause calls "in all/total"
+    (the largest one) or the figure the others add up to."""
+    from itertools import combinations
+    part: set[int] = set()
+    total: dict[int, set[int]] = {}
+    groups: dict[tuple[str, str], list[int]] = {}
+    for i, m in enumerate(found):
+        if m.kind in ("money", "count", "duration"):
+            groups.setdefault((m.kind, m.unit), []).append(i)
+    for idxs in groups.values():
+        for t in sorted(idxs, key=lambda i: -found[i].hi):
+            T = found[t]
+            smaller = [i for i in idxs if i != t and i not in part and found[i].hi <= T.lo * (1 + 1e-9)]
+            if not smaller:
+                continue
+            if T.total and T.hi >= max(found[i].hi for i in idxs):
+                part |= set(smaller)
+                total[t] = set(smaller)
+                continue
+            for size in range(min(len(smaller), 12), 1, -1):
+                hit = next((c for c in combinations(smaller[:12], size) if _sums_to(T, [found[i] for i in c])), None)
+                if hit:
+                    part |= set(hit)
+                    total[t] = set(hit)
+                    break
+    out = []
+    for i, m in enumerate(found):
+        if i in total:  # the total is not measured on what only its items carry ("$8 to 16 Oct" scopes the item, not the sum)
+            own: set[str] = set()
+            for j in total[i]:
+                own |= _scope(found[j].clause)
+            m = replace(m, scope=(sentence_scope - own) | _scope(m.clause), total=True)
+        out.append(replace(m, part=i in part))
+    return out
+
+
+def _sums_to(t: Mention, items: list[Mention]) -> bool:
+    lo, hi = sum(x.lo for x in items), sum(x.hi for x in items)
+    tol = (0.06 if t.approx or any(x.approx for x in items) else 0.005) * t.hi
+    return lo - tol <= t.hi and t.lo <= hi + tol
+
+
+_PHRASE_NEXT = re.compile(r"[\s-]+([^\W\d_]+)", re.U)
+
+
+def _noun_phrase(sent: str, first: str, pos: int) -> list[str]:
+    """Stems of the noun phrase that follows a number: the unit word plus up to two more, ending at the first plural."""
+    words = [first]
+    while len(words) < 3 and not _plural(words[-1]):
+        m = _PHRASE_NEXT.match(sent, pos)
+        if not m:
+            break
+        w = m.group(1)
+        if w.casefold() in STOP or w.casefold() in CUT_AFTER or w.casefold() in MONTHS or len(w) < 2:
+            break
+        words.append(w)
+        pos = m.end()
+    return [_stem(w) for w in words]
+
+
+def _plural(w: str) -> bool:
+    w = w.casefold()
+    return len(w) > 3 and w.endswith("s") and not w.endswith("ss")
+
+
+_LABEL_COUNT = re.compile(rf"(?:^|[|;(]\s*|[.!?]\s+)(?P<label>[^\W\d_]+(?:[\s-][^\W\d_]+){{0,2}})\s*:\s*(?P<a1>{_AMT})"
+                          rf"(?=\s*(?:$|[+,;)|/]|\.(?:\s|$)))", _FLAGS)
+
+
 def _sentence_mentions(sent: str, ref: str, src_kind: str, sid: tuple[str, int, int], base: int, heading: bool = False,
-                       snap: str = "") -> list[Mention]:
+                       snap: str = "", topic: tuple[str, ...] = (), topic_from: int = 0) -> list[Mention]:
     found: list[Mention] = []
     used: list[tuple[int, int]] = []
 
     def free(a: int, b: int) -> bool:
         return all(b <= s or a >= e for s, e in used)
 
-    def add(kind, a, b, display, lo, hi, raw, unit, tags=frozenset()):
+    sc = _scope(sent)
+
+    def add(kind, a, b, display, lo, hi, raw, unit, tags=frozenset(), mods=frozenset(), labelled=False):
         if kind != "role":
             used.append((a, b))
-        before, after, words, prep, clause = _context(sent, a, b)
+        if kind in ("money", "count", "percent", "duration") and _not_a_claim(sent, a, b, kind):
+            return
+        if kind == "money" and hi < 0.01:
+            return  # sub-cent amounts say nothing comparable
+        before, after, words, prep, clause, qual, lead = _context(sent, a, b)
+        if labelled:
+            after, words = frozenset(), tuple(w for w in words if _stem(w) in before)  # "Tests: 2,399 + 72 in the suite": the label names it, the tail does not
+        tp = topic if a >= topic_from else ()
+        if not lead and tp:  # "Halden spend: $8 to 16 Oct, ..., about $9 in all": the total restates the label's subject
+            before, lead = before | frozenset(tp), tuple(tp[-3:])
+            words = tuple(tp[-3:]) + words
         gn, period = _qualifiers(clause) if kind in ("money", "count", "percent") else ("", "")
+        fig = kind in ("money", "count", "percent", "duration")
         found.append(Mention(kind, src_kind, ref, _quote(sent, a, b), sent[a:b].strip(), display, lo, hi, tuple(raw), unit,
-                             before, after, words, prep, _approx(sent, a), gn, period, sid, frozenset(tags), base + a, snap))
+                             before, after, words, prep, _approx(sent, a), gn, period, sid, frozenset(tags), base + a, snap,
+                             sc if fig else frozenset(), qual if fig else frozenset(), fig and bool(_TOTAL.search(clause)),
+                             False, frozenset(mods), lead if fig else (), frozenset(tp) if fig else frozenset(), tp, clause))
 
     def span_of(y, m1=1, d1=1, m2=12, d2=None):
         return _span(int(y), m1, d1, m2, d2)
@@ -433,15 +666,29 @@ def _sentence_mentions(sent: str, ref: str, src_kind: str, sid: tuple[str, int, 
             add("duration", m.start(), end, f"{_fmt(lo)}{'-' + _fmt(hi) if hi != lo else ''} {u}{'' if lo == hi == 1 else 's'}", lo * f, hi * f,
                 (lo, hi) if hi != lo else (lo,), fam)
         else:
-            u = _stem(unit_w)
+            ph = _noun_phrase(sent, m["unit"], m.end("unit"))
+            u = ph[-1]
             plural = "" if (lo == hi == 1) or u in ("people", "staff") else "s"
-            add("count", m.start(), end, f"{_fmt(lo)}{'-' + _fmt(hi) if hi != lo else ''} {u}{plural}", lo, hi,
-                (lo, hi) if hi != lo else (lo,), f"n:{u}")
+            add("count", m.start(), end, f"{_fmt(lo)}{'-' + _fmt(hi) if hi != lo else ''} {' '.join(ph)}{plural}", lo, hi,
+                (lo, hi) if hi != lo else (lo,), f"n:{u}", mods=ph[:-1])
+
+    # a plural label with a bare number: "Tests: 2,399 + 72"
+    for m in _LABEL_COUNT.finditer(sent):
+        a, b = m.start("a1"), m.end("a1")
+        lw = _WORD.findall(m["label"])
+        tok = m["a1"]
+        if not free(a, b) or not _plural(lw[-1]) or lw[-1].casefold() in STOP or re.fullmatch(r"(?:19|20)\d{2}", tok):
+            continue
+        v = _num(tok)
+        if v < 20 or v >= 1e9:
+            continue
+        head = _stem(lw[-1])
+        add("count", a, b, f"{_fmt(v)} {head}s", v, v, (v,), f"n:{head}", mods=[_stem(w) for w in lw[:-1] if w.casefold() not in STOP], labelled=True)
 
     # role holders -----------------------------------------------------------------------------
     for role, name, a, b in _roles(sent):
         add("role", a, b, re.sub(r"\s+", " ", name), 0.0, 0.0, (), role, set(norm(name).split()))
-    return found
+    return _mark_parts(found, sc)
 
 
 def _role_key(r: str) -> str:
@@ -483,12 +730,22 @@ def _roles(sent: str) -> list[tuple[str, str, int, int]]:
 
 
 def _comparable(a: Mention, b: Mention) -> bool:
-    if a.kind != b.kind or a.sent == b.sent or a.unit != b.unit:
-        return False
+    if a.kind != b.kind or a.sent[:2] == b.sent[:2] or a.unit != b.unit:
+        return False  # figures of one bullet / paragraph were written together: the author's own enumeration
     if a.kind == "role":
         return True
     if a.snap and b.snap and a.snap != b.snap and a.src_kind == b.src_kind:
         return False  # two dated notes (or commits) of the same kind: the figure may have moved between the days
+    if a.part or b.part or a.scope != b.scope or a.total != b.total:
+        return False  # an item of a total, or another run / date / sample / statistic / total-vs-item: not the same quantity
+    if (a.qual or b.qual) and not (a.qual & b.qual):
+        return False  # "spend for these tests" against "spend": a qualifier on one side only separates them
+    if a.kind == "count" and not (a.mods <= b.mods or b.mods <= a.mods):
+        return False
+    if a.topic and b.topic and not (a.topic & b.topic):
+        return False  # "Brand spike: ..." against "Spend at list price: ...": the bullets are about different things
+    if a.lead and b.lead and not (a.lead[-1] == b.lead[-1] or a.lead[-1] in b.lead or b.lead[-1] in a.lead):
+        return False  # the word that names the figure differs: "first email" against "first section"
     if a.gross_net and b.gross_net and a.gross_net != b.gross_net:
         return False
     if a.period and b.period and a.period != b.period:
@@ -496,6 +753,8 @@ def _comparable(a: Mention, b: Mention) -> bool:
     if a.after_prep and a.after_prep == b.after_prep and a.after and b.after and not (a.after & b.after):
         return False  # "... for totals" against "... for line items": two different things
     ca, cb = a.before | a.after, b.before | b.after
+    if a.kind == "date":  # a bare log word ("decisions", "update") does not make two dates the same event
+        ca, cb = ca - LABELISH, cb - LABELISH
     inter = ca & cb
     if not inter:
         return False
@@ -587,11 +846,14 @@ def find_conflicts(book: SourceBook, extra: Iterable[tuple[str, str]] = ()) -> l
             i = parent[i]
         return i
 
+    bysent: dict[tuple, list[Mention]] = {}
+    for m in ms:
+        bysent.setdefault((m.sent, m.kind, m.unit), []).append(m)
     in_conflict: set[int] = set()
     for i in range(len(ms)):
         for j in range(i + 1, len(ms)):
             a, b = ms[i], ms[j]
-            if _comparable(a, b) and not _agree(a, b):
+            if _comparable(a, b) and not _agree(a, b) and not _listed_in_both(a, b, bysent):
                 parent[find(j)] = find(i)
                 in_conflict |= {i, j}
     clusters: dict[int, list[int]] = {}
@@ -604,6 +866,13 @@ def find_conflicts(book: SourceBook, extra: Iterable[tuple[str, str]] = ()) -> l
         kind = {"date": "date", "role": "name"}.get(sides[0].kind, "number")
         out.append(Conflict(f"c{n:03d}", kind, _label(sides), sides))
     return out
+
+
+def _listed_in_both(a: Mention, b: Mention, bysent: dict[tuple, list[Mention]]) -> bool:
+    """Two sentences that each list several figures of this kind: when one sentence also holds the other side's value, the
+    figures are items of the same list ("$0.10-0.12 and $0.16 with a repair" against a row with both), not a contradiction."""
+    sa, sb = bysent.get((a.sent, a.kind, a.unit), []), bysent.get((b.sent, b.kind, b.unit), [])
+    return len(sa) >= 2 and len(sb) >= 2 and (any(_agree(a, c) for c in sb) or any(_agree(b, c) for c in sa))
 
 
 def _label(sides: list[Mention]) -> str:
