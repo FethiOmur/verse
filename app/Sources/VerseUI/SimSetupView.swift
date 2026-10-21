@@ -13,6 +13,8 @@ public struct SimSetupView: View {
     var upNext: HomeUpNextModel?
     @ObservedObject var router: HomeRouter
     @StateObject private var voiceKeys = HomeVoiceKeys()
+    /// "Build interview": focused when another page sent the user here with a meeting chosen (Return then builds).
+    @FocusState private var buildFocused: Bool
     @Environment(\.homeInk) private var ink
 
     public init(sim: SimController, meeting: VerseController, upNext: HomeUpNextModel? = nil, router: HomeRouter = .shared) {
@@ -63,7 +65,9 @@ public struct SimSetupView: View {
     private func takeRequestedMeeting() {
         guard let name = router.practiceSession else { return }
         router.practiceSession = nil
-        sim.practise(session: name)
+        guard sim.practise(session: name) else { return }
+        // The meeting is chosen and every other setting is at its default: the one step left is Build interview.
+        DispatchQueue.main.async { buildFocused = sim.canPrepare }
     }
 
     // MARK: practise for
@@ -286,6 +290,8 @@ public struct SimSetupView: View {
                     if fromMeeting {
                         HomePrimaryButton("Build interview", hint: "⌘↩", shortcut: KeyboardShortcut(.return, modifiers: .command), action: sim.prepare)
                             .disabled(!sim.canPrepare)
+                            .focused($buildFocused)
+                            .accessibilityIdentifier("verse.practice.build")
                     } else {
                         HomePrimaryButton("Prepare interview", hint: "⌘↩", shortcut: KeyboardShortcut(.return, modifiers: .command), action: sim.prepare)
                             .disabled(!sim.canPrepare)

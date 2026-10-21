@@ -105,6 +105,9 @@ public final class SimController: ObservableObject {
     /// Renders only: the "last report" is a fixture file, not the newest report in the user's sessions folder.
     func setLastReportForPreview(_ url: URL?) { lastReport = url }
 
+    /// Renders and tests only: a practice that is preparing or running, without the brain behind it.
+    func setPhaseForPreview(_ p: Phase) { phase = p }
+
     // MARK: meeting source
 
     /// Reads the prepared sessions again (the Practice page does this each time it appears) and keeps or picks the

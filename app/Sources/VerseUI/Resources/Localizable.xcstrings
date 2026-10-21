@@ -6406,6 +6406,22 @@
         }
       }
     },
+    "Practise this meeting": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esercitati su questa riunione"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu toplantı için pratik yap"
+          }
+        }
+      }
+    },
     "Prepare": {
       "localizations": {
         "it": {
