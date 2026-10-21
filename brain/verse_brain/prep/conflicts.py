@@ -29,6 +29,9 @@ key matches: the noun phrase next to the figure plus the unit, and the same scop
   figure marked as a total is not compared with one that is not;
 - a scope marker is part of the key: a date, `n=`, a fraction's denominator, `run 2`, `final run`, `after the fixes`,
   `baseline`, a statistic (`median`, `p95`) or a CI. Two figures with different scope sets are different measurements;
+- figures of one bullet, paragraph or table row are never compared with each other (the author wrote them together); two
+  lists that each hold several figures are one list when one holds the other's value; a bullet's `Label:` that differs
+  ("Brand spike:" / "Spend at list price:") separates its figures; the word right before a figure must name the same thing;
 - `from X to Y`, `X -> Y`, thresholds (`over 150`, `at least 5`), `n=9`, the level of a CI (`95% CI`) and sub-cent amounts
   are not claims about a quantity and are skipped; a `for ...` qualifier on one side only separates two figures;
 - the count unit is the noun phrase, not the next word (`9 live turns` is turns), `s` is seconds, and a plural-label count
