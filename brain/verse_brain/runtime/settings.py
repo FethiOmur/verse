@@ -174,3 +174,14 @@ class Config:
     local_recycle_tokens: int = 6400          # rebuild the conversation (cold prefill, between questions) past this KV size
     local_first_token_s: float = 30.0         # no first token this long after the message is sent = Gemma failed (cold p5k ~20 s)
     local_total_s: float = 60.0
+
+
+# Memory index and search (docs/specs/2026-10-21-verse-memory-package-design.md 2.1-2.2; memory/index.py, memory/search.py).
+MEMORY_CHUNK_ROWS = 8               # a turn chunk: at most this many consecutive transcript rows...
+MEMORY_CHUNK_CHARS = 1_200          # ...and this many characters (a longer row is a chunk of its own); prep chunks share the cap
+MEMORY_CANDIDATES = 60              # top-N of the BM25 list and of the cosine list that go into the rank fusion
+MEMORY_RRF_K = 60                   # reciprocal rank fusion: score = sum of 1 / (K + rank)
+MEMORY_SOURCE_WEIGHTS = {"turn": 1.0, "summary": 1.2, "prep": 0.6, "chat": 0.5}
+MEMORY_EXCERPT_TOKENS = 16_000      # the excerpts of one question, estimated with ask.est_tokens
+MEMORY_SESSION_EXCERPT_TOKENS = 6_000   # ...of which one session may take this much
+MEMORY_EMBED_BATCH = 32             # chunks embedded per batch in phase 2 of the index run
