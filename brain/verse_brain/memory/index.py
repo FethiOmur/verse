@@ -313,6 +313,9 @@ class MemoryIndex:
                 else:
                     con.execute("SELECT 1 FROM sessions LIMIT 1")
                     con.execute("SELECT 1 FROM chunks_fts LIMIT 1")
+                # FTS5 secure-delete (SQLite >= 3.42): a delete removes the terms from the segment b-trees instead of leaving
+                # tombstones next to the old postings. Persistent and idempotent, so it is set on every open.
+                con.execute("INSERT INTO chunks_fts(chunks_fts, rank) VALUES('secure-delete', 1)")
                 return cls(con, path, readonly=False, rebuilt_from=aside)
             except sqlite3.DatabaseError:
                 con.close()
@@ -411,6 +414,8 @@ class MemoryIndex:
                     (name, c.source, c.ord, c.stamp, c.stamp_end, c.row_first, c.row_last, c.label, c.text, est_tokens(c.text)))
                 self.con.execute("INSERT INTO chunks_fts(rowid, body) VALUES(?,?)",
                                  (cur.lastrowid, fold(index_text(c.label, c.text))))
+        if have:        # replaced text must not linger in the WAL either (same as drop)
+            self.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         return PutResult(key, len(chunks))
 
     def drop(self, names: Iterable[str]) -> None:
@@ -423,6 +428,7 @@ class MemoryIndex:
             for n in names:
                 self._clear_session_chunks(n)
                 self.con.execute("DELETE FROM sessions WHERE name=?", (n,))
+            self.con.execute("INSERT INTO chunks_fts(chunks_fts) VALUES('optimize')")
         self.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         log.info("dropped %d sessions", len(names))
 
