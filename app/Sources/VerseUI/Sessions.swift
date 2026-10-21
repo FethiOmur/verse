@@ -22,7 +22,8 @@ public struct SpendLedger: Sendable {
     public struct Run: Codable, Sendable, Equatable {
         public var startedAt: Date
         public var costUSD: Double
-        /// `"ask"` for the cost of a panel opening of Ask this meeting (spec 3.1); nil is a call run.
+        /// `"ask"` for the cost of a panel opening of Ask this meeting (spec 3.1), `"brief"` for a pre-meeting brief (memory spec 2.4);
+        /// nil is a call run.
         public var kind: String?
         enum CodingKeys: String, CodingKey { case startedAt = "started_at", costUSD = "cost_usd", kind }
 
@@ -69,13 +70,21 @@ public struct SpendLedger: Sendable {
         try? d.write(to: sessionDir.appendingPathComponent("spend.json"), options: .atomic)
     }
 
-    /// The total of every session's runs in the calendar month of `now`.
+    /// The total of every session's runs in the calendar month of `now`. For the app's own sessions folder it also counts the briefs
+    /// that belong to no session (`memory/spend.json`); a scratch `root` never reads the real memory folder.
     public static func thisMonth(root: URL = SessionCatalog.root, now: Date = Date(), calendar: Calendar = .current) -> Double {
+        let live = root.standardizedFileURL == SessionCatalog.root.standardizedFileURL
+        return thisMonth(root: root, now: now, calendar: calendar, extraDirs: live ? [MemoryPaths.live.spendDir] : [])
+    }
+
+    /// As above, plus the runs in `extraDirs`: folders with a `spend.json` of their own (the memory folder).
+    static func thisMonth(root: URL, now: Date, calendar: Calendar, extraDirs: [URL]) -> Double {
         let fm = FileManager.default
-        guard let names = try? fm.contentsOfDirectory(atPath: root.path) else { return 0 }
+        var dirs = ((try? fm.contentsOfDirectory(atPath: root.path)) ?? []).map { root.appendingPathComponent($0) }
+        dirs.append(contentsOf: extraDirs)
         var total = 0.0
-        for n in names {
-            for r in runs(sessionDir: root.appendingPathComponent(n)) where calendar.isDate(r.startedAt, equalTo: now, toGranularity: .month) {
+        for d in dirs {
+            for r in runs(sessionDir: d) where calendar.isDate(r.startedAt, equalTo: now, toGranularity: .month) {
                 total += r.costUSD
             }
         }

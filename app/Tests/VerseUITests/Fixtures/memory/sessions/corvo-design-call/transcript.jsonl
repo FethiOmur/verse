@@ -1,0 +1,3 @@
+{"addressee": "other", "kind": "statement", "lang": "it", "run_start": 1792400000.0, "speaker": "me", "t_audio_end": 5.0, "t_wall": 1792400005.0, "text": "Buongiorno Giulia, grazie per esserci.", "turn_id": "m1"}
+{"addressee": "me", "kind": "statement", "lang": "it", "run_start": 1792400000.0, "speaker": "remote", "t_audio_end": 19.0, "t_wall": 1792400019.0, "text": "Buongiorno. Vorrei vedere le bozze entro martedì, per favore.", "turn_id": "r1"}
+{"addressee": "other", "kind": "statement", "lang": "it", "run_start": 1792400000.0, "speaker": "me", "t_audio_end": 33.0, "t_wall": 1792400033.0, "text": "Perfetto, ve le mando lunedì sera.", "turn_id": "m2"}

@@ -76,9 +76,11 @@ struct SessionTrashHooks {
 
 extension SessionTrashHooks {
     /// The home window's hooks: the recording call and the practice run block their session, the Start choice is
-    /// `settings.sessionName`, the selection is the router's, and a change refreshes the menu's list and Practice's meetings.
+    /// `settings.sessionName`, the selection is the router's, and a change refreshes the menu's list and Practice's meetings and
+    /// syncs Verse's memory (a trashed session leaves the index, an undone one comes back).
     @MainActor
-    static func window(controller: VerseController, sim: SimController?, settings: AppSettings, router: HomeRouter) -> SessionTrashHooks {
+    static func window(controller: VerseController, sim: SimController?, settings: AppSettings, router: HomeRouter,
+                       memory: MemoryService? = nil) -> SessionTrashHooks {
         SessionTrashHooks(
             block: { [weak controller, weak sim] name in
                 if controller?.recordingSessionName == name { return .recording }
@@ -88,9 +90,10 @@ extension SessionTrashHooks {
             },
             startSession: { settings.sessionName },
             setStartSession: { settings.sessionName = $0 },
-            sessionsChanged: { [weak controller, weak sim] in
+            sessionsChanged: { [weak controller, weak sim, weak memory] in
                 controller?.refreshSessions()
                 sim?.refreshMeetings()
+                memory?.requestSync(.sessionsChanged)
             },
             selected: { router.selectedSession },
             select: { router.selectedSession = $0 })

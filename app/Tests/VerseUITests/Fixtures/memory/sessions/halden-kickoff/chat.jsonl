@@ -1,0 +1,2 @@
+{"id": "q1", "model": "sonnet", "text": "Who owns the depot side?", "type": "q"}
+{"citations": ["1:03"], "cost_usd": 0.01, "id": "a1", "model": "claude-sonnet-5-5", "q": "q1", "text": "Joe Arkwright owns the depot side [1:03].", "type": "a"}
