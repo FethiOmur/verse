@@ -53,7 +53,8 @@ struct HomeSessionsPage: View {
                 .transaction(value: askOpen) { if reduceMotion { $0.animation = nil } }
             if let s = selected {
                 HomeSessionDetailView(session: s, controller: controller, settings: settings, jump: jump,
-                                      askAvailability: availability, askOpen: askOpen, onAsk: toggleAsk, trash: trashControl(for: s))
+                                      askAvailability: availability, askOpen: askOpen, onAsk: toggleAsk,
+                                      onPractice: { router.showPractice(session: s.name) }, trash: trashControl(for: s))
                     .id(s.name)
                     .transaction(value: askOpen) { if reduceMotion { $0.animation = nil } }
                 if askOpen {

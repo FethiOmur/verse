@@ -40,6 +40,9 @@ struct HomeSessionDetailView: View {
     var askAvailability: AskAvailability = .hidden
     var askOpen = false
     var onAsk: () -> Void = {}
+    /// The Practise button, its More item and the prepared card's call to action: they open Practice on this session
+    /// (`HomeSessionsPage` passes `router.showPractice(session:)`).
+    var onPractice: () -> Void = {}
     /// The Trash button and the More menu's Move to Trash act on the selection (`HomeSessionsPage.performTrash`).
     var trash = SessionTrashControl()
     @StateObject private var ownJump = TranscriptJump()
@@ -64,6 +67,10 @@ struct HomeSessionDetailView: View {
     private var hasTranscript: Bool { session.kind != .practice && session.transcriptURL != nil }
     private var tabLayout: (showsTabs: Bool, shown: SessionsDetailTab) {
         SessionsDetailTab.layout(hasSummary: hasSummary, hasTranscript: hasTranscript, hasReport: session.reportURL != nil, stored: render?.tab ?? tab)
+    }
+    /// nil: no Practise button (a practice run, an unprepared call, no pack, or the session being recorded).
+    private var practiceStyle: PracticeFromSession.Style? {
+        PracticeFromSession.style(for: session, recordingSession: controller.recordingSessionName)
     }
     private var showsTabs: Bool { tabLayout.showsTabs }
     private var shownTab: SessionsDetailTab { tabLayout.shown }
@@ -126,11 +133,26 @@ struct HomeSessionDetailView: View {
                 .help(askHelp)
                 .accessibilityIdentifier("verse.home.sessions.ask")
         }
+        if let style = practiceStyle {
+            switch style {
+            case .prominent:
+                HomePrimaryButton("Practise", symbol: PracticeFromSession.symbol, action: onPractice)
+                    .accessibilityIdentifier("verse.home.sessions.practise")
+            case .secondary:
+                HomeSecondaryButton("Practise", symbol: PracticeFromSession.symbol, action: onPractice)
+                    .accessibilityIdentifier("verse.home.sessions.practise")
+            }
+        }
         if session.summaryURL != nil, session.kind != .practice {
             HomePrimaryButton("Save to vault", action: saveToVault)
         }
         SessionTrashButton(control: trash)
         SessionChromeMenu(symbol: "ellipsis.circle", help: "More") {
+            if practiceStyle != nil {
+                Button(action: onPractice) {
+                    Label { Text("Practise this meeting", bundle: .module) } icon: { Image(systemName: PracticeFromSession.symbol) }
+                }
+            }
             Button { NSWorkspace.shared.activateFileViewerSelecting([session.dir]) } label: { Text("Show in Finder", bundle: .module) }
             Divider()
             Button(role: .destructive) { trash.action() } label: { Text("Move to Trash", bundle: .module) }
@@ -195,6 +217,10 @@ struct HomeSessionDetailView: View {
                  ? L10n.tr("Prepared, not used in a meeting yet. Pick it with “Use for Start” and press Start in the menu, or open a meeting that matches it.")
                  : L10n.tr("Nothing was written for this session."))
                 .font(VT.Font.body).foregroundStyle(ink.secondary).lineSpacing(4)
+            if session.kind == .prepared, practiceStyle != nil {
+                HomeSecondaryButton("Practise this meeting", symbol: PracticeFromSession.symbol, action: onPractice)
+                    .accessibilityIdentifier("verse.home.sessions.practiseCard")
+            }
         }
         ForEach(detail.sections) { section in
             Text(Self.heading(section.title)).font(VT.Font.title).foregroundStyle(ink.primary).padding(.top, section.id == detail.sections.first?.id ? 0 : 4)

@@ -69,21 +69,24 @@ struct HomePressStyle: ButtonStyle {
 /// The page's one primary action: mint fill, `onMint` label, 9 pt radius, 30 pt tall.
 struct HomePrimaryButton: View {
     var title: HomeText
+    var symbol: String?
     /// A key hint such as "⌘↩": symbols, not words, so it is never looked up.
     var hint: String?
     var shortcut: KeyboardShortcut?
     var action: () -> Void
     @Environment(\.isEnabled) private var enabled
 
-    init(_ title: LocalizedStringKey, hint: String? = nil, shortcut: KeyboardShortcut? = nil, action: @escaping () -> Void) {
+    init(_ title: LocalizedStringKey, symbol: String? = nil, hint: String? = nil, shortcut: KeyboardShortcut? = nil, action: @escaping () -> Void) {
         self.title = HomeText(title)
+        self.symbol = symbol
         self.hint = hint
         self.shortcut = shortcut
         self.action = action
     }
 
-    init(verbatim title: String, hint: String? = nil, shortcut: KeyboardShortcut? = nil, action: @escaping () -> Void) {
+    init(verbatim title: String, symbol: String? = nil, hint: String? = nil, shortcut: KeyboardShortcut? = nil, action: @escaping () -> Void) {
         self.title = HomeText(verbatim: title)
+        self.symbol = symbol
         self.hint = hint
         self.shortcut = shortcut
         self.action = action
@@ -92,6 +95,7 @@ struct HomePrimaryButton: View {
     var body: some View {
         let button = Button(action: action) {
             HStack(spacing: 6) {
+                if let symbol { Image(systemName: symbol) }
                 title.text.lineLimit(1).fixedSize()
                 if let hint { Text(verbatim: hint).opacity(0.55) }
             }
