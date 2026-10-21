@@ -1,0 +1,52 @@
+[
+ {
+  "stamp": "0:04",
+  "speaker": "Emre",
+  "text": "Merhaba Dana, ben Emre Kaya. Tarla Labs'te tarım sensörleri için yazılım geliştiriyoruz."
+ },
+ {
+  "stamp": "0:26",
+  "speaker": "Dana",
+  "text": "Merhaba Emre, tanıştığımıza memnun oldum. Ekibiniz nerede çalışıyor?"
+ },
+ {
+  "stamp": "0:51",
+  "speaker": "Emre",
+  "text": "Ekibimizin çoğu İstanbul ofisinde, iki kişi de İzmir'den uzaktan çalışıyor."
+ },
+ {
+  "stamp": "1:18",
+  "speaker": "Dana",
+  "text": "Anladım. Şu an en büyük sorununuz nedir?"
+ },
+ {
+  "stamp": "1:45",
+  "speaker": "Emre",
+  "text": "Sensör verilerini toplayan servisimiz yoğun sezonda gecikiyor ve müşteriler panoda eski veri görüyor."
+ },
+ {
+  "stamp": "2:14",
+  "speaker": "Dana",
+  "text": "Gecikme kuyrukta mı yoksa veritabanında mı oluşuyor, bunu ölçtünüz mü?"
+ },
+ {
+  "stamp": "2:42",
+  "speaker": "Emre",
+  "text": "Henüz ölçmedik. Mavi ahtapot protokolü için imzalı ek gerekiyor, o yüzden yeni bir bağlantı kuramıyoruz."
+ },
+ {
+  "stamp": "3:10",
+  "speaker": "Dana",
+  "text": "O zaman önce ölçüm için küçük bir keşif çalışması yapalım. Bir haftada sonuç çıkarabilirim."
+ },
+ {
+  "stamp": "3:38",
+  "speaker": "Emre",
+  "text": "Güzel. Bütçe olarak ilk keşif için beş bin avro ayırabiliriz."
+ },
+ {
+  "stamp": "4:05",
+  "speaker": "Dana",
+  "text": "Tamam, cuma gününe kadar kısa bir teklif göndereceğim."
+ }
+]

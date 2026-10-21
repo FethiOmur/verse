@@ -54,6 +54,16 @@ ASK_CONTROL_ACTIONS = {"cancel", "stop", "reset"}
 ASK_MODELS = ("haiku", "sonnet", "opus")
 ASK_ERROR_KINDS = {"credit_exhausted", "offline", "rate_limited", "overloaded", "auth", "refusal", "bad_request", "error"}
 IN_TYPES |= ASK_IN_TYPES
+# Memory index (docs/specs/2026-10-21-verse-memory-package-design.md 3.3), additive. A process whose first message is
+# `memory_index_start{db,embed}` is the short-lived writer of the memory index (memory/indexer.py). Swift -> brain: `sync{sessions:
+# [{name,fp,labels}]}`, `put{name,dir,fp,title,date,kind,lang,labels,rows}`, `drop{names}`, `end`. Brain -> Swift: `status` (ready with
+# `context{sessions,chunks,vectors,embed}`, busy, done), `sync_plan{need,dropped,relabelled}`, `put_done{name,key,chunks,ms}`,
+# `embed_progress{done,total}`, `index_error{name,kind,message}`. The meeting Brain ignores these types.
+MEMORY_INDEX_IN_TYPES = {"memory_index_start", "sync", "put", "drop", "end"}
+MEMORY_INDEX_OUT_TYPES = {"sync_plan", "put_done", "embed_progress", "index_error"}
+MEMORY_INDEX_STATES = {"ready", "busy", "done"}
+INDEX_ERROR_KINDS = {"unreadable", "bad_request", "db"}
+IN_TYPES |= MEMORY_INDEX_IN_TYPES
 
 
 class Emitter:

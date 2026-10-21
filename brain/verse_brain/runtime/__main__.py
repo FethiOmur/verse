@@ -2,7 +2,9 @@
 
 One process serves one session, and its first message decides which: `start` runs the meeting runtime (engine.Brain),
 `sim_start` the interview simulation (sim.SimRuntime, plan S2), `ask_start` the chat about one past session (ask.AskRuntime; its own
-Anthropic client, built from the Keychain key by ask.make_client). `--budget-usd` and the embedding matcher apply to
+Anthropic client, built from the Keychain key by ask.make_client), `memory_index_start` the writer of the memory index
+(memory.indexer.IndexRuntime: no model calls; `--fake` embeds with the hash stand-in, `--no-embed` skips phase 2, and
+`--no-api` serves only this mode without reading the Keychain). `--budget-usd` and the embedding matcher apply to
 meetings only.
 
 Reads Swift -> brain JSON lines on stdin, writes brain -> Swift JSON lines on stdout (flushed per line), logs to
@@ -45,8 +47,43 @@ async def _stdin_lines():
         yield line.decode("utf-8", errors="replace")
 
 
+def _index_runtime(args, emitter):
+    from ..memory.indexer import IndexRuntime
+
+    cfg = Config()
+    return IndexRuntime(emitter, fake=args.fake, no_embed=args.no_embed, embed_model=cfg.embed_model,
+                        embed_backend=cfg.embed_backend)
+
+
+async def _amain_index_only(args, emitter) -> int:
+    """`--no-api`: a process that only writes the memory index. No Keychain read, no API client; any other first message is ignored."""
+    runtime = None
+    try:
+        async for raw in _stdin_lines():
+            try:
+                msg = parse_line(raw)
+            except (ValueError, json.JSONDecodeError) as e:
+                logging.getLogger("verse.runtime").warning("bad input line: %s", type(e).__name__)
+                continue
+            if msg is None:
+                continue
+            if runtime is None:
+                if msg.get("type") != "memory_index_start":
+                    continue
+                runtime = _index_runtime(args, emitter)
+            await runtime.handle(msg)
+            if runtime.stopped.is_set():
+                break
+    finally:
+        if runtime is not None:
+            await runtime.shutdown()
+    return 0
+
+
 async def amain(args) -> int:
     emitter = Emitter(sys.stdout)
+    if args.no_api:
+        return await _amain_index_only(args, emitter)
     key = None
     sim_fault = None
     if not args.fake:
@@ -103,6 +140,8 @@ async def amain(args) -> int:
                     except KeychainError as e:
                         emitter.status("error", str(e))
                         return 2
+                elif msg.get("type") == "memory_index_start":
+                    runtime = _index_runtime(args, emitter)
                 else:
                     brain_transport, brain_emitter = transport, emitter
                     if not args.fake and cfg.fallback_enabled:   # G1: Gemma as the degraded-mode brain (meetings only)
@@ -131,6 +170,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-fallback", action="store_true", help="never switch to local Gemma (G1 degraded mode)")
     ap.add_argument("--local-prewarm", action="store_true",
                     help="load Gemma and prime the pack at session start even when the API is healthy (also VERSE_LOCAL_PREWARM=1)")
+    ap.add_argument("--no-api", action="store_true",
+                    help="serve only memory_index_start: no Keychain read, no API client (the memory index writer needs neither)")
     ap.add_argument("--log-level", default="WARNING")
     args = ap.parse_args(argv)
     logging.basicConfig(stream=sys.stderr, level=args.log_level, format="%(asctime)s %(name)s %(levelname)s %(message)s")

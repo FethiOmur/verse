@@ -1,0 +1,112 @@
+[
+ {
+  "stamp": "0:04",
+  "speaker": "Marta",
+  "text": "Thanks for making the time, Dana. Halden Works runs the cold-chain network for three regional grocers."
+ },
+ {
+  "stamp": "0:21",
+  "speaker": "Dana",
+  "text": "Happy to be here. I read your brief on the sensor pilot last night."
+ },
+ {
+  "stamp": "0:48",
+  "speaker": "Marta",
+  "text": "We want sensors on forty trucks by the end of November. Could you send the pilot plan by Friday?"
+ },
+ {
+  "stamp": "1:12",
+  "speaker": "Dana",
+  "text": "Yes, I will send the pilot plan by Friday with the staffing and the timeline."
+ },
+ {
+  "stamp": "1:40",
+  "speaker": "Joe",
+  "text": "On our side the data team needs the API schema before they start any integration work."
+ },
+ {
+  "stamp": "2:05",
+  "speaker": "Dana",
+  "text": "I will include the schema in the same email, together with the sample payloads."
+ },
+ {
+  "stamp": "2:31",
+  "speaker": "Marta",
+  "text": "The budget is capped at sixty thousand euros for the pilot phase, travel included."
+ },
+ {
+  "stamp": "2:58",
+  "speaker": "Dana",
+  "text": "Understood. Sixty thousand covers the sensors, the install crew and three months of monitoring."
+ },
+ {
+  "stamp": "3:24",
+  "speaker": "Joe",
+  "text": "One risk is the depot in Rovigo. The cellular signal inside the cold room is poor."
+ },
+ {
+  "stamp": "3:52",
+  "speaker": "Dana",
+  "text": "Then we should test two gateway options there before we commit to the forty trucks."
+ },
+ {
+  "stamp": "4:20",
+  "speaker": "Marta",
+  "text": "Agreed. Joe will arrange access to the Rovigo depot for the week of the ninth."
+ },
+ {
+  "stamp": "4:47",
+  "speaker": "Joe",
+  "text": "I can do the ninth. I need the names of your installers a week before."
+ },
+ {
+  "stamp": "5:13",
+  "speaker": "Dana",
+  "text": "I will send the installer names with the pilot plan."
+ },
+ {
+  "stamp": "5:40",
+  "speaker": "Marta",
+  "text": "Who signs the data processing agreement on your side?"
+ },
+ {
+  "stamp": "6:02",
+  "speaker": "Dana",
+  "text": "Our finance lead signs. I will ask her to send the draft to Joe this week."
+ },
+ {
+  "stamp": "6:30",
+  "speaker": "Joe",
+  "text": "Good. Our legal team needs five working days to review it."
+ },
+ {
+  "stamp": "6:55",
+  "speaker": "Marta",
+  "text": "Let us meet again on the twenty-sixth to review the plan together."
+ },
+ {
+  "stamp": "7:18",
+  "speaker": "Dana",
+  "text": "The twenty-sixth works. I will send an invite after this call."
+ },
+ {
+  "stamp": "7:41",
+  "speaker": "Marta",
+  "text": "Last point. Please keep the pilot plan to two pages. The board reads it."
+ },
+ {
+  "stamp": "8:03",
+  "speaker": "Dana",
+  "text": "Two pages, with the risks on the first page."
+ },
+ {
+  "stamp": "8:26",
+  "speaker": "Marta",
+  "text": "Perfect. Thank you both."
+ },
+ {
+  "stamp": "8:30",
+  "speaker": "Joe",
+  "text": "Thanks everyone."
+ }
+]

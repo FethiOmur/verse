@@ -1,0 +1,5 @@
+{"type": "q", "id": "q1", "t": "2026-10-19T19:00:00Z", "text": "Old question before the reset about invoices"}
+{"type": "a", "id": "a1", "q": "q1", "t": "2026-10-19T19:00:04Z", "text": "Old answer about invoices that must not be indexed.", "citations": []}
+{"type": "reset", "t": "2026-10-19T19:05:00Z"}
+{"type": "q", "id": "q2", "t": "2026-10-19T19:06:00Z", "text": "Who arranges the Rovigo depot access?"}
+{"type": "a", "id": "a2", "q": "q2", "t": "2026-10-19T19:06:05Z", "text": "Joe arranges access for the week of the ninth [4:20].", "citations": ["4:20"]}
