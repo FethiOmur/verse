@@ -311,16 +311,32 @@ class MemoryIndex:
                 if ver == 0:
                     con.executescript(_SCHEMA + f"PRAGMA user_version = {SCHEMA_VERSION};")
                 else:
-                    con.execute("SELECT 1 FROM sessions LIMIT 1")
-                    con.execute("SELECT 1 FROM chunks_fts LIMIT 1")
-                # FTS5 secure-delete (SQLite >= 3.42): a delete removes the terms from the segment b-trees instead of leaving
-                # tombstones next to the old postings. Persistent and idempotent, so it is set on every open.
-                con.execute("INSERT INTO chunks_fts(chunks_fts, rank) VALUES('secure-delete', 1)")
+                    try:
+                        con.execute("SELECT 1 FROM sessions LIMIT 1")
+                        con.execute("SELECT 1 FROM chunks_fts LIMIT 1")
+                    except sqlite3.OperationalError as e:
+                        if "no such" in str(e):         # a table is missing: the file is not our index
+                            raise sqlite3.DatabaseError(str(e)) from None
+                        raise
+                cls._ensure_fts_secure_delete(con)
                 return cls(con, path, readonly=False, rebuilt_from=aside)
+            except sqlite3.OperationalError:
+                # locked or busy: transient, never a reason to set the index aside (that would leave its text in a copy)
+                con.close()
+                raise
             except sqlite3.DatabaseError:
                 con.close()
                 aside = cls._set_aside(path)
         raise sqlite3.DatabaseError("the index could not be created")     # unreachable in practice
+
+    @staticmethod
+    def _ensure_fts_secure_delete(con: sqlite3.Connection) -> None:
+        """FTS5 secure-delete (SQLite >= 3.42): a delete removes the terms from the segment b-trees instead of leaving
+        tombstones next to the old postings. The option persists in the index; setting it is idempotent."""
+        if sqlite3.sqlite_version_info < (3, 42, 0):
+            log.warning("SQLite %s has no FTS5 secure-delete; deletes rely on optimize + secure_delete pragma", sqlite3.sqlite_version)
+            return
+        con.execute("INSERT INTO chunks_fts(chunks_fts, rank) VALUES('secure-delete', 1)")
 
     @staticmethod
     def _set_aside(path: Path) -> Path:
@@ -414,7 +430,8 @@ class MemoryIndex:
                     (name, c.source, c.ord, c.stamp, c.stamp_end, c.row_first, c.row_last, c.label, c.text, est_tokens(c.text)))
                 self.con.execute("INSERT INTO chunks_fts(rowid, body) VALUES(?,?)",
                                  (cur.lastrowid, fold(index_text(c.label, c.text))))
-        if have:        # replaced text must not linger in the WAL either (same as drop)
+        if have:        # replaced text must not linger in old segments or the WAL either (same as drop)
+            self.con.execute("INSERT INTO chunks_fts(chunks_fts) VALUES('optimize')")
             self.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         return PutResult(key, len(chunks))
 

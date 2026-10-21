@@ -258,6 +258,46 @@ def test_secure_delete_leaves_no_text_in_the_file_or_the_wal(tmp_path):
     assert b"sixty thousand euros" in blob
 
 
+def test_secure_delete_inside_a_merged_segment(tmp_path):
+    # the dropped session's terms sit in one large merged segment together with the others' terms
+    path = tmp_path / "memory" / "index.sqlite"
+    ix = MemoryIndex.open(path)
+    put_all(ix)
+    ix.con.execute("INSERT INTO chunks_fts(chunks_fts) VALUES('optimize')")
+    ix.con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    ix.close()
+    ix = MemoryIndex.open(path)
+    ix.drop([CALENDAR])
+    assert ix.con.execute("SELECT count(*) FROM chunks_fts WHERE chunks_fts MATCH 'ahtapot'").fetchone()[0] == 0
+    ix.close()
+    blob = path.read_bytes()
+    wal = path.with_name(path.name + "-wal")
+    if wal.exists():
+        blob += wal.read_bytes()
+    assert "ahtapot".encode() not in blob
+    assert SECRET_SENTENCE.encode() not in blob
+    assert b"sixty thousand euros" in blob
+
+
+def test_a_locked_index_is_not_set_aside(tmp_path):
+    # a busy/locked file is transient: it must raise, not be renamed aside with its text still inside
+    path = tmp_path / "memory" / "index.sqlite"
+    ix = MemoryIndex.open(path)
+    put_all(ix)
+    ix.close()
+    holder = sqlite3.connect(path, isolation_level=None)
+    holder.execute("PRAGMA locking_mode=EXCLUSIVE")
+    holder.execute("BEGIN EXCLUSIVE")
+    try:
+        with pytest.raises(sqlite3.OperationalError):
+            MemoryIndex.open(path)
+    finally:
+        holder.execute("ROLLBACK")
+        holder.close()
+    assert path.exists()
+    assert not list(path.parent.glob("*.unreadable-*"))
+
+
 # ---------------------------------------------------------------- vectors
 def test_vectors_pending_store_and_new_model(index):
     put_fixture(index, "halden-kickoff")
