@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "entity": "e-3k9xq2ma",
+  "name": "Marta Velin",
+  "made_at": "2026-10-21T09:12:00Z",
+  "lang": "en",
+  "model": "claude-sonnet-5-5",
+  "newest_session": "halden-pilot-review",
+  "for_session": "halden-weekly-prep",
+  "sessions": [
+    {"name": "halden-pilot-review", "key": "sp0m2vx", "title": "Halden Pilot Review", "date": "2026-10-24T10:00:00+02:00"},
+    {"name": "halden-kickoff", "key": "sk3f9qa", "title": "Halden Kickoff", "date": "2026-10-19T17:00:00+02:00"}
+  ],
+  "sections": [
+    {"id": "discussed", "points": [
+      {"text": "The pilot covers two teams, not four", "cites": [
+        {"key": "sk3f9qa", "session": "halden-kickoff", "kind": "turn", "stamp": "0:24"}]}]},
+    {"id": "promised_owner", "points": [
+      {"text": "Send the revised budget with the pilot plan by Friday", "cites": [
+        {"key": "sk3f9qa", "session": "halden-kickoff", "kind": "turn", "stamp": "0:41"},
+        {"key": "sk3f9qa", "session": "halden-kickoff", "kind": "summary", "stamp": null}]}]},
+    {"id": "promised_them", "points": []},
+    {"id": "open", "points": []},
+    {"id": "tone", "points": [
+      {"text": "Short written summaries in English, no slides", "cites": [
+        {"key": "sk3f9qa", "session": "halden-kickoff", "kind": "turn", "stamp": "1:36"}]}]}
+  ],
+  "usage": {"input": 18420, "output": 612, "cache_read": 0, "cache_write": 0},
+  "cost_usd": 0.048,
+  "dropped_uncited": 1
+}

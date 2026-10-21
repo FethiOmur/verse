@@ -406,18 +406,21 @@ public final class HomeUpNextModel: ObservableObject {
     private let eventMap: EventSessionMap
     private let prepare: @Sendable (MeetingEvent, String) async throws -> URL
     private let onPrepared: @MainActor (String) -> Void
+    private let afterPrepare: @MainActor (MeetingEvent, String) -> Void
     static let window: TimeInterval = 36 * 3600
 
     public init(settings: AppSettings, meeting: MeetingSettings, sessions: @escaping () -> [String],
                 calendar: CalendarSource = CalendarSource(), eventMap: EventSessionMap = EventSessionMap(),
                 prepare: (@Sendable (MeetingEvent, String) async throws -> URL)? = nil,
-                onPrepared: @escaping @MainActor (String) -> Void = { _ in }) {
+                onPrepared: @escaping @MainActor (String) -> Void = { _ in },
+                afterPrepare: @escaping @MainActor (MeetingEvent, String) -> Void = { _, _ in }) {
         self.settings = settings
         self.meeting = meeting
         self.sessions = sessions
         self.calendar = calendar
         self.eventMap = eventMap
         self.onPrepared = onPrepared
+        self.afterPrepare = afterPrepare
         let brainDir = VerseController.brainDir()
         self.prepare = prepare ?? EventPrep.prepare(brainDir: brainDir)
     }
@@ -467,6 +470,7 @@ public final class HomeUpNextModel: ObservableObject {
         let dir = try await prepare(event, lang)
         eventMap.remember(eventID: event.id, session: dir.lastPathComponent)
         onPrepared(dir.lastPathComponent)
+        afterPrepare(event, dir.lastPathComponent)
         return dir
     }
 

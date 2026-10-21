@@ -14,10 +14,20 @@ public struct HomeContext {
     /// The Me page's profile (anytime calls).
     public let me: MeModel
     public let router: HomeRouter
+    /// Verse's memory: the index of past sessions and the brief runner. It starts nothing in tests and renders (see `init`).
+    let memory: MemoryService
 
     public init(settings: AppSettings, controller: VerseController, simSettings: SimSettings, sim: SimController,
                 conversation: ConversationController, sessions: HomeSessionsModel? = nil, upNext: HomeUpNextModel? = nil,
                 me: MeModel? = nil, router: HomeRouter = .shared) {
+        self.init(settings: settings, controller: controller, simSettings: simSettings, sim: sim, conversation: conversation,
+                  sessions: sessions, upNext: upNext, me: me, router: router, memory: nil)
+    }
+
+    /// `memory` nil builds the app's own service (live paths, the real brain), enabled only inside the app.
+    init(settings: AppSettings, controller: VerseController, simSettings: SimSettings, sim: SimController,
+         conversation: ConversationController, sessions: HomeSessionsModel?, upNext: HomeUpNextModel?,
+         me: MeModel?, router: HomeRouter, memory: MemoryService?) {
         self.settings = settings
         self.controller = controller
         self.simSettings = simSettings
@@ -25,8 +35,17 @@ public struct HomeContext {
         self.conversation = conversation
         let sessionsModel = sessions ?? HomeSessionsModel()
         self.sessions = sessionsModel
+        // Only the app itself indexes: a test or render process builds a context too and must not start the brain.
+        let memoryService = memory ?? MemoryService(
+            ownerName: { settings.ownerName },
+            makeBrain: { [weak controller] in try MemoryService.makeBrainProcess(fake: controller?.fakeBrain ?? false) },
+            makeIndexBrain: { [weak controller] in try MemoryService.makeBrainProcess(fake: controller?.fakeBrain ?? false, indexOnly: true) },
+            enabled: Bundle.main.bundleIdentifier == AppSettings.suiteName)
+        self.memory = memoryService
+        memoryService.recordingSession = { [weak controller] in controller?.recordingSessionName }
+        memoryService.attach(controller: controller)
         // Move to Trash asks the window what is running, which session Start uses and which row is shown.
-        sessionsModel.hooks = .window(controller: controller, sim: sim, settings: settings, router: router)
+        sessionsModel.hooks = .window(controller: controller, sim: sim, settings: settings, router: router, memory: memoryService)
         self.upNext = upNext ?? HomeUpNextModel(
             settings: settings, meeting: controller.meeting.settings, sessions: { controller.sessions },
             onPrepared: { [weak controller] name in
