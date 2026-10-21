@@ -194,6 +194,88 @@ def test_realistic_notes_have_no_false_conflicts():
         assert find_conflicts(SourceBook(prep_lines=lines)) == [], name
 
 
+# ---------------------------------------------------------------------------------------------- false positives (live run: 16 of 16)
+# All fixtures are fictional ("Halden"); each mirrors the shape of a pattern seen on a real session, not its text.
+
+
+def _no_conflict(b):
+    found = find_conflicts(b)
+    assert found == [], [(c.label, c.entries) for c in found]
+
+
+def test_total_and_its_breakdown_are_different_quantities():
+    _no_conflict(book([
+        "- Spend on the Halden build: about $13 in all: about $8 to 16 Oct, $1.15 of load tests on 20 Oct and about $3.90 of staging runs.",
+        "- About $13 hosting spend in total, gross = net.",
+        "- Spend for the staging runs: about $3.90.",
+        "- Spend for the load tests: $1.152.",
+        "| about $13 (gross = net) | Total hosting spend: about $8 to 16 Oct + $1.15 of load tests + about $3.90 of staging runs |",
+    ]))
+
+
+def test_range_and_a_value_inside_it_agree_and_a_value_outside_needs_its_own_scope():
+    _no_conflict(book(["- A first report costs $0.06-0.12 and takes 22-43 s."],
+                      ["A first report costs about $0.07 and takes 25 s."]))
+    # the value outside the range is a different measurement: it says "after the fixes"
+    _no_conflict(book(["- A first report costs $0.06-0.12."], ["After the 16 Oct fixes a first report costs $0.16."]))
+
+
+def test_scoped_measurements_are_not_contradictions():
+    _no_conflict(book([
+        "- 16 Oct median report cost $0.070 (n=10).",
+        "- On 20 Oct, n=9 reports: median cost $0.045.",
+        "- After the fixes the median report cost is $0.16.",
+        "| $0.033 median, $0.063 p95 | Intake, 16 Oct | n=11 |",
+        "| $0.044 median, $0.071 p95 | Export, 20 Oct | n=14 |",
+    ]))
+    # the same two lists seen from both sides are the same list, not a contradiction
+    _no_conflict(book(["- After the 16 Oct fixes reports cost $0.10-0.12 (n=2) and $0.16 with a repair."],
+                      ["| $0.10-0.12; $0.16 | Report after the 16 Oct fixes; with a repair | n=2 |"]))
+
+
+def test_before_after_statements_are_not_claims():
+    _no_conflict(book(["- Your cost per report went from $0.07 to $0.12.", "- Latency moved 8 s -> 5 s."],
+                      ["Cost per report is $0.10.", "Latency is 6 s."]))
+    _no_conflict(book(["- Free shipping now starts at EUR 150 instead of EUR 50."], ["Free shipping on orders over EUR 80."]))
+
+
+def test_unit_parsing_junk_does_not_collide_unrelated_numbers():
+    _no_conflict(book([
+        "- The first section waits at most 5 s for the lookup.",
+        "- Lookup latency was 0.8-1.6 s in all 12 live turns of runs 1-2.",
+        "- First report 22-43 s (n=9 live turns, 20 Oct).",
+        "- Interval check: 0/36 one-offs learned (95% CI 0-9.6%) and 35/36 lasting rules (86-99.5%).",
+        "- The Halden spike used 11 sites and 11 export credits.",
+        "- Cost for these tests is $0.0056 and $0.007 for the other.",
+        "- Widths: the preview is 600 px and 375 px.",
+        "| 12 KB; 100 KB; 12 sections; 600 px; 14 px | Section size; page size; sections; width; min text | same |",
+    ], ["Brand spike: 11 sites and 11 export credits.", "Spend at list price (gross = net): about 45 export credits.",
+        "Live turns: 18 live turns of runs 1-3.", "Runs: 6 live turns, n=6."]))
+
+
+def test_decision_log_dates_are_labels_not_claims():
+    _no_conflict(book(["| DECISIONS 2026-10-16 | pilot scope |", "| DECISIONS 2026-10-20 | pilot scope |"]))
+
+
+def test_still_flags_unscoped_test_counts_that_differ():
+    b = book(["- Tests: 2,399 + 72 in the Halden suite."], ["Tests: 2,622 + 72, all green."])
+    found = find_conflicts(b)
+    assert len(found) == 1 and found[0].kind == "number"
+    assert values(found[0]) == {"2,399 tests", "2,622 tests"}
+    both = book(["- The suite has 2,399 unit tests and 72 table tests."], ["There are 2,622 unit tests and 72 table tests."])
+    assert [values(c) for c in find_conflicts(both)] == [{"2,399 unit tests", "2,622 unit tests"}]
+
+
+def test_still_flags_the_same_total_cost_stated_differently():
+    b = book(["- Halden build spend: about $8 to 16 Oct and $1.15 on 20 Oct, about $9.20 in all."],
+             ["Halden build spend is $12 in all, gross = net."])
+    found = find_conflicts(b)
+    assert len(found) == 1, [(c.label, c.entries) for c in found]
+    assert values(found[0]) == {"USD 9.2", "USD 12"} and "spend" in found[0].label
+    plain = book(["- Total hosting cost is $400 in total."], ["Hosting cost came to $450 in total."])
+    assert len(find_conflicts(plain)) == 1
+
+
 def test_detection_is_deterministic_and_order_independent_for_ids():
     kw = dict(prep=["- The pilot budget is EUR 42,000.", "- The pilot is planned for Q1 2027."],
               vault=["Pilot budget now EUR 45,000. The pilot starts in Q2 2027."])
