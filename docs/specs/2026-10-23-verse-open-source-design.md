@@ -56,13 +56,19 @@ Acceptance: files present, README renders on GitHub, links resolve, `swift build
 
 1. Tagged releases with changelogs; a short demo video in the README.
 2. `good first issue` labels on real small tasks (e.g. strings, docs, small UI polish).
-3. Codex wired into maintenance (PR review and issue triage on this repo), so the Codex application describes a
-   workflow that already runs.
+3. Codex gets a real, visible role in maintenance now, within the owner's current ChatGPT plan: second-opinion review of
+   PRs (`codex exec` review posted as a PR comment), issue triage drafts, release-note drafts, and occasional
+   parallel implementation packages. Each use leaves a trace in the repo (PR comments, `Co-authored-by` lines), so the
+   application describes a workflow that already runs. Claude Code stays the main orchestrator and executor.
 4. Track real numbers monthly: stars, clones, release downloads, external PRs merged, issues closed.
 
 ## Phase D: applications
 
 - Codex for OSS: public profile and repo, OpenAI Organization ID, two ≤ 500-character answers from real numbers.
+  Honest framing (Alex, 2026-10-23): today most PRs are opened and reviewed with Claude Code because Codex use is
+  capped by his current plan; Codex already reviews and runs some packages (with links as evidence). With ChatGPT Pro
+  and the credits, Codex agents would take a large share of the work in every phase: PR review on every PR, issue
+  triage, release automation, and parallel implementation packages. No claim beyond what the repo shows.
 - Claude for OSS: the "apply anyway" door with the maintenance and contributor evidence.
 - Alex decides when; drafts are written from the Phase C numbers only.
 
