@@ -1,0 +1,42 @@
+name: Bug report
+description: Something does not work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not paste API keys, audio, or real meeting transcripts. Describe or invent sample text instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what you saw.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "26.0"
+    validations:
+      required: true
+  - type: input
+    id: chip
+    attributes:
+      label: Mac model or chip
+      placeholder: "Apple M2"
+  - type: input
+    id: version
+    attributes:
+      label: Verse version or commit
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Remove any secrets and personal content first.
