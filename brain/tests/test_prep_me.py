@@ -80,7 +80,7 @@ def test_build_keeps_verified_lines_and_drops_the_rest(tmp_path):
     md = (prof / "me.md").read_text(encoding="utf-8")
     heads = [l for l in md.splitlines() if l.startswith("## ")]
     assert heads == ["## WHO I AM", "## EXPERIENCE", "## PROJECTS", "## SKILLS", "## NUMBERS", "## STORIES", "## LOOKING FOR",
-                     "## MY NOTES"]
+                     "## ALEX RIVERA'S NOTES"]
     # the src of a line is rewritten from what was verified: a real reference with the line number
     assert got["m001"].src == "file:dana_profile.md#L3"
     assert got["m405"].src.startswith("vault:Harbor Ledger.md#L")
@@ -219,7 +219,7 @@ def test_refresh_keeps_an_edited_line_and_a_deleted_id_and_skips_unchanged_sourc
     def human(md: str) -> str:
         md = md.replace("Owns the claims-triage model and its serving stack.", "Owns the claims-triage model (my own wording).")
         md = "\n".join(l for l in md.splitlines() if not l.startswith("[m301]"))             # he deletes the Python skill
-        return md.replace("## STORIES", "[m320] Rust | side projects at weekends | user\n## STORIES")  # ...and adds a line
+        return md.replace("## STORIES", "[m320] Rust | side projects at weekends | alex-rivera\n## STORIES")  # ...and adds a line
 
     edit_md(prof, human)
     # nothing changed in the sources: refresh does nothing and spends nothing
@@ -238,7 +238,7 @@ def test_refresh_keeps_an_edited_line_and_a_deleted_id_and_skips_unchanged_sourc
     assert "Owns the claims-triage model (my own wording)." in after["m102"].text                 # the edit survived
     assert "m301" not in after and "m309" not in after                                           # a deleted id stays deleted
     assert not any(l.fields and l.fields[0] == "Python" for l in after.values())                 # not under another id either
-    assert after["m320"].text == "[m320] Rust | side projects at weekends | user"              # his own line, verbatim
+    assert after["m320"].text == "[m320] Rust | side projects at weekends | alex-rivera"              # his own line, verbatim
     assert "m303" in after and after["m303"].fields[0] == "Rust"                                 # new generated lines come in
     assert after["m101"].text == before["m101"].text                                             # an untouched line is still there
     meta = json.loads((prof / "me.meta.json").read_text(encoding="utf-8"))
@@ -254,15 +254,15 @@ def test_notes_are_kept_never_regenerated_and_a_deleted_note_stays_deleted(tmp_p
     model = ScriptedModel(OUTPUT)
     build(prof, vault, model)
     notes = M.parse_md((prof / "me.md").read_text(encoding="utf-8"))[M.NOTES]
-    assert [l.text for l in notes] == ["[m701] I prefer calls in the morning. | user", "[m702] My notice period is 30 days. | user"]
+    assert [l.text for l in notes] == ["[m701] I prefer calls in the morning. | alex-rivera", "[m702] My notice period is 30 days. | alex-rivera"]
     assert "I prefer calls in the morning." in model.users[0]      # the notes are a source for the other sections too
-    edit_md(prof, lambda md: md.replace("[m702] My notice period is 30 days. | user", "[m702] My notice period is 60 days. | user")
-            .replace("[m701] I prefer calls in the morning. | user\n", ""))
+    edit_md(prof, lambda md: md.replace("[m702] My notice period is 30 days. | alex-rivera", "[m702] My notice period is 60 days. | alex-rivera")
+            .replace("[m701] I prefer calls in the morning. | alex-rivera\n", ""))
     (prof / "me.notes.md").write_text("- I prefer calls in the morning.\n- My notice period is 30 days.\n- I speak Portuguese.\n",
                                       encoding="utf-8")
     build(prof, vault, ScriptedModel(OUTPUT), refresh=True)
     notes = M.parse_md((prof / "me.md").read_text(encoding="utf-8"))[M.NOTES]
-    assert [l.text for l in notes] == ["[m702] My notice period is 60 days. | user", "[m703] I speak Portuguese. | user"]
+    assert [l.text for l in notes] == ["[m702] My notice period is 60 days. | alex-rivera", "[m703] I speak Portuguese. | alex-rivera"]
 
 
 def test_a_full_build_moves_the_old_file_aside(tmp_path):

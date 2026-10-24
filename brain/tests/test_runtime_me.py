@@ -1,4 +1,4 @@
-"""The me layer at run time: the ABOUT ME block and its cache layout, conflicts with the pack, library retrieval on the
+"""The me layer at run time: the ABOUT ALEX RIVERA block and its cache layout, conflicts with the pack, library retrieval on the
 embedding thread (F never waits, D waits at most 150 ms), the golden request without the layer, and the local fallback prompt.
 
 Fictional person (Dana Reyes) only; the embedder is a fake whose cosines are set exactly."""
@@ -168,7 +168,7 @@ def test_without_the_layer_requests_are_what_they_were(tmp_path):
         assert len(got["F1"]["system"]) == 1 and bp_count(got["F1"]) == 1
 
 
-# ---------------------------------------------------------------- the ABOUT ME block and the cache layout
+# ---------------------------------------------------------------- the ABOUT ALEX RIVERA block and the cache layout
 def test_about_block_is_the_second_system_block_and_every_request_shares_it(tmp_path):
     async def go():
         b, t, em, _ = make(tmp_path, embedder=False)
@@ -192,9 +192,9 @@ def test_about_block_is_the_second_system_block_and_every_request_shares_it(tmp_
     # the system text of a route is one string for the whole session, and S/F (and the pre-warm of Haiku) share it
     for route in ("F", "D"):
         assert len({bytes_of(c.request["system"]) for c in t.by_route(route)}) == 1
-    assert "ABOUT ME" in reqs[0]["system"][0]["text"] and "MEETING PACK wins" in reqs[0]["system"][0]["text"]
+    assert "ABOUT ALEX RIVERA" in reqs[0]["system"][0]["text"] and "MEETING PACK wins" in reqs[0]["system"][0]["text"]
     assert "[m401]" in about and "Harbor Ledger processed about 41,000" in about
-    # 3 breakpoints with a pack: ABOUT ME, the pack block and a finalized turn (after 4 turns)
+    # 3 breakpoints with a pack: ABOUT ALEX RIVERA, the pack block and a finalized turn (after 4 turns)
     late = t.by_route("F")[-1].request
     assert bp_count(late) == 3
     # the ready status says what the layer is
@@ -337,7 +337,7 @@ def test_top_chunks_above_the_floor_reach_the_tail_in_score_order(tmp_path):
     assert m["hits"] == 2 and m["ids"] == ["c1a0001", "c1a0003"] and m["top"] == pytest.approx(0.93, abs=1e-3) and m["ms"] >= 0
     f = t.by_route("F")[0]
     assert hits_in(f.tail) == ["c1a0001", "c1a0003"]                       # below the floor (0.70): not there
-    assert "FROM USER'S FILES" in f.tail and f.tail.splitlines()[-1].startswith("CURRENT QUESTION")
+    assert "FROM ALEX RIVERA'S FILES" in f.tail and f.tail.splitlines()[-1].startswith("CURRENT QUESTION")
     assert "[lib:c1a0001] (Harbor Ledger.md)" in f.tail
     assert emb.threads and all(n.startswith("verse-embed") for n in emb.threads)                                  # on the embedding thread, never on the loop
 
@@ -354,7 +354,7 @@ def test_a_speculative_call_fired_after_the_first_retrieval_carries_the_chunks(t
         return t
 
     s = run(go()).by_route("S")
-    assert len(s) == 2 and "FROM USER'S FILES" not in s[0].tail and hits_in(s[1].tail) == ["c1a0001", "c1a0003"]
+    assert len(s) == 2 and "FROM ALEX RIVERA'S FILES" not in s[0].tail and hits_in(s[1].tail) == ["c1a0001", "c1a0003"]
 
 
 def test_prepared_sessions_get_two_chunks_and_unprepared_three(tmp_path):
@@ -402,13 +402,13 @@ def test_f_never_waits_for_retrieval_and_d_waits_at_most_150_ms(tmp_path):
 
     # slow retrieval (0.6 s): F had nothing and did not wait; D gave up after ~150 ms and also has nothing
     f, d, d_at, em, _, f_at = run(go(0.6))
-    assert f_at < 0.05 and "FROM USER'S FILES" not in f.tail and "FROM USER'S FILES" not in d.tail
+    assert f_at < 0.05 and "FROM ALEX RIVERA'S FILES" not in f.tail and "FROM ALEX RIVERA'S FILES" not in d.tail
     assert 0.14 <= d_at < 0.5
     w = em.of("metric", stage="me_final_wait")[0]
     assert w["got"] is False and 140 <= w["ms"] < 400
     # fast retrieval (50 ms): F still had nothing (it fires at the endpoint), D waited for it and has the chunks
     f, d, d_at, em, _, f_at = run(go(0.05))
-    assert f_at < 0.04 and "FROM USER'S FILES" not in f.tail
+    assert f_at < 0.04 and "FROM ALEX RIVERA'S FILES" not in f.tail
     assert hits_in(d.tail) == ["c1a0001", "c1a0003"] and 0.04 <= d_at < 0.15
     assert em.of("metric", stage="me_final_wait")[0]["got"] is True
 
@@ -450,7 +450,7 @@ def test_without_an_embedder_the_core_still_works(tmp_path):
         return b, t
 
     b, t = run(go())
-    assert b.lib is None and "FROM USER'S FILES" not in t.by_route("F")[0].tail and len(t.by_route("F")[0].request["system"]) == 2
+    assert b.lib is None and "FROM ALEX RIVERA'S FILES" not in t.by_route("F")[0].tail and len(t.by_route("F")[0].request["system"]) == 2
 
 
 def test_follow_card_tail_names_the_me_layer_as_grounding_only_when_it_is_on():
@@ -458,16 +458,16 @@ def test_follow_card_tail_names_the_me_layer_as_grounding_only_when_it_is_on():
 
     args = ("what did you build?", "en", "I built a service", ["SAY: x", "- y"], [], None, "diverged")
     off, on = follow_tail(*args), follow_tail(*args, me_on=True)
-    assert follow_tail(*args, me_on=False) == off and "ABOUT ME" not in off
-    for sentence in ("must come from the meeting pack (bank, facts, evidence), ABOUT ME or FROM USER'S FILES",
-                     "the meeting pack and ABOUT ME have nothing grounded", "When none of them has anything for his topic"):
+    assert follow_tail(*args, me_on=False) == off and "ABOUT ALEX RIVERA" not in off
+    for sentence in ("must come from the meeting pack (bank, facts, evidence), ABOUT ALEX RIVERA or FROM ALEX RIVERA'S FILES",
+                     "the meeting pack and ABOUT ALEX RIVERA have nothing grounded", "When none of them has anything for his topic"):
         assert sentence in on, sentence
     assert "the pack cannot support" not in on and "a point they cannot support" in on
 
 
 # ---------------------------------------------------------------- the G1 fallback prompt
 def big_about(sections: dict[str, int]) -> str:
-    """A me.md-shaped ABOUT ME block with `n` long lines per section (ids m0xx, m1xx, ... as in me.md)."""
+    """A me.md-shaped ABOUT ALEX RIVERA block with `n` long lines per section (ids m0xx, m1xx, ... as in me.md)."""
     out = []
     for i, (name, n) in enumerate(sections.items()):
         out.append(f"## {name}")
@@ -527,13 +527,13 @@ def test_gemma_gets_the_me_layer_inside_the_9500_char_prefix():
     run(go())
     assert len(be.convs) == 2                                               # another frozen prefix: another conversation
     first = be.sent[0]
-    assert first.startswith("ABOUT ME") and len(first.split(ll.PACK_HEADER)[0]) <= 3002
+    assert first.startswith("ABOUT ALEX RIVERA") and len(first.split(ll.PACK_HEADER)[0]) <= 3002
     assert len(first.split(ll.TRANSCRIPT_HEADER)[0]) <= 9500
     second = be.sent[1]
-    assert second.startswith("ABOUT ME") and "(none: unprepared call)" in second
+    assert second.startswith("ABOUT ALEX RIVERA") and "(none: unprepared call)" in second
     assert len(second.split(ll.PACK_HEADER)[0]) <= 9500 + 2
     parts = ll.split_request(build_request("F", route_params("F"), pack, [], "tail", block))
-    assert parts.me == block and parts.system.startswith("You are Verse") and "ABOUT ME" in parts.system
+    assert parts.me == block and parts.system.startswith("You are Verse") and "ABOUT ALEX RIVERA" in parts.system
     assert ll.split_request(build_request("F", route_params("F"), pack, [], "tail")).me == ""
 
 

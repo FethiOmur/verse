@@ -4,6 +4,6 @@ Dana Reyes is a backend and machine-learning engineer in Lisbon with six years i
 ## PROJECTS
 Harbor Ledger: payments reconciliation at Northwind Freight, about 41,000 payments a month.
 
-## MY NOTES
+## ALEX RIVERA'S NOTES
 Lead with Harbor Ledger.
 Say what was not tested.

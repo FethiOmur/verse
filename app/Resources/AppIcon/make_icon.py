@@ -1,6 +1,6 @@
-"""Verse app icon (option A1, chosen by Alex 2026-10-14): one thin geometric V, flat terminals and a sharp vertex,
+"""Verse app icon (option A1, chosen by the owner 2026-10-14): one thin geometric V, flat terminals and a sharp vertex,
 in the spirit of Jaguar's 2024 identity (slim monoline, geometric, symmetric). Constructed here, not taken from
-Jaguar's proprietary typeface. Colours are northwind.example's: #eae5ec on #050405.
+Jaguar's proprietary typeface. Colours are the owner's site palette: #eae5ec on #050405.
 Usage: python3 make_icon.py   (writes verse-mark-{dark,light}-1024.png, verse-icon-{dark,light}-1024.png, AppIcon.icns)"""
 import math, os, subprocess, tempfile
 from PIL import Image, ImageDraw

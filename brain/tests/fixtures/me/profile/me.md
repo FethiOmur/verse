@@ -18,4 +18,4 @@
 [m501] Double-posted payments | In March 2021 a nightly job posted 300 payments twice. Dana found the missing idempotency key within an hour, shipped a replay-safe fix the same day and added a reconciliation check that has caught every duplicate since. | file:dana_profile.md#L24
 ## LOOKING FOR
 [m601] Senior machine-learning engineer role in Lisbon or remote in Europe, available from January 2027. | file:dana_profile.md#L28
-## MY NOTES
+## ALEX RIVERA'S NOTES

@@ -4,7 +4,7 @@ import subprocess
 import pytest
 
 from verse_brain.prep import vault as vault_mod
-from verse_brain.prep.vault import BeyinVault, VaultError, parse_context
+from verse_brain.prep.vault import ScriptVault, VaultError, parse_context
 
 SAMPLE = {
     "records": [
@@ -16,8 +16,8 @@ SAMPLE = {
 
 
 def test_command_is_read_only_and_context_only(tmp_path):
-    (tmp_path / "beyin.py").write_text("")
-    v = BeyinVault(tmp_path, python="/usr/bin/python3", audience="public")
+    (tmp_path / "find.py").write_text("")
+    v = ScriptVault(tmp_path, python="/usr/bin/python3", audience="public", script_name="find.py")
     cmd = v.command("Lantern pricing", 3, 1500)
     assert "--no-sync" in cmd
     assert cmd[cmd.index("--vault") + 1] == str(tmp_path)
@@ -27,7 +27,7 @@ def test_command_is_read_only_and_context_only(tmp_path):
 
 
 def test_search_runs_the_command_and_parses(tmp_path, monkeypatch):
-    (tmp_path / "beyin.py").write_text("")
+    (tmp_path / "find.py").write_text("")
     seen = {}
 
     def fake_run(cmd, **kw):
@@ -35,19 +35,19 @@ def test_search_runs_the_command_and_parses(tmp_path, monkeypatch):
         return subprocess.CompletedProcess(cmd, 0, stdout=json.dumps(SAMPLE), stderr="")
 
     monkeypatch.setattr(vault_mod.subprocess, "run", fake_run)
-    recs = BeyinVault(tmp_path, python="py").search("q")
+    recs = ScriptVault(tmp_path, python="py", script_name="find.py").search("q")
     assert "--no-sync" in seen["cmd"]
     assert [r.record_id for r in recs] == ["md-1"] and recs[0].source == "300-Projects/X/Y.md"
 
 
 def test_failures_raise_vault_error(tmp_path, monkeypatch):
     with pytest.raises(VaultError):
-        BeyinVault(tmp_path).search("q")  # no beyin.py
-    (tmp_path / "beyin.py").write_text("")
+        ScriptVault(tmp_path, script_name="find.py").search("q")  # no script
+    (tmp_path / "find.py").write_text("")
     monkeypatch.setattr(vault_mod.subprocess, "run",
                         lambda cmd, **kw: subprocess.CompletedProcess(cmd, 2, stdout="", stderr="boom"))
     with pytest.raises(VaultError):
-        BeyinVault(tmp_path).search("q")
+        ScriptVault(tmp_path, script_name="find.py").search("q")
     with pytest.raises(VaultError):
         parse_context("not json")
     assert parse_context(json.dumps({"abstained": True, "records": [{"id": "x", "source": "s", "text": "t"}]})) == []
