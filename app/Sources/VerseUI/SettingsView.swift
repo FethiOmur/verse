@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
+import VerseAudio
 import VerseVoice
 
 /// A key row group: status, a secure field, Save / Replace / Remove. The key is never shown back, only "saved" and its
@@ -90,7 +91,8 @@ struct APIKeySection: View {
                         save: { try KeychainStore.save($0) },
                         remove: { try KeychainStore.remove() })
         }
-        HomeFootnote("Uses your Anthropic API key. Kept only in the login Keychain; the brain reads it there.")
+        HomeFootnote(verbatim: ([OwnerProfile.current.apiKeyNote, L10n.tr("Kept only in the login Keychain; the brain reads it there.")]
+            .compactMap { $0 }).joined(separator: " "))
     }
 }
 
@@ -173,9 +175,9 @@ public struct SettingsView: View {
 
             HomeSectionHeader("You")
             HomeGroup {
-                HomeRow("Name") { HomeValueField("Alex", text: $settings.ownerName) }
+                HomeRow("Name") { HomeValueField(verbatim: OwnerProfile.current.named ? OwnerProfile.current.displayName : L10n.tr("Your name"), text: $settings.ownerName) }
                 HomeRowDivider()
-                HomeRow("Other spellings") { HomeValueField("e.g. Fetti, Fati", text: $settings.ownerAliases) }
+                HomeRow("Other spellings") { HomeValueField("e.g. Alix, Alec", text: $settings.ownerAliases) }
                 HomeRowDivider()
                 HomeRow("Other participants") { HomeValueField("e.g. Marco, Ingrid Solberg", text: $settings.otherParticipants) }
                 HomeRowDivider()

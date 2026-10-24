@@ -8,7 +8,7 @@ figure (same currency / unit / role) and their contexts say they are about the s
 whose values do not agree become a conflict; connected disagreements form one cluster.
 
 Agreement rules (they keep the false-positive rate low, a missed conflict costs less than a false alarm because
-the review page is read by a human, but a false alarm on every figure would train Alex to ignore the page):
+the review page is read by a human, but a false alarm on every figure would train the owner to ignore the page):
 - the same value in another format agrees: `€42K` = `42,000 EUR` = `EUR 42.000`; `22 October 2026` = `2026-10-22`;
   `14%` = `14 percent` = `%14`; `10 weeks` = `70 days`;
 - dates agree when their spans overlap (`Q1 2027` and `March 2027` agree, `Q1 2027` and `Q2 2027` do not);

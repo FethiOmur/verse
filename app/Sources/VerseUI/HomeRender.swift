@@ -1,6 +1,7 @@
 import AppKit
 import ScreenCaptureKit
 import SwiftUI
+import VerseAudio
 import VersePrompter
 import VerseTurns
 
@@ -244,7 +245,7 @@ public enum HomeRender {
         let root: URL
         let sessions: HomeSessionsModel
         let selectedSession = "Tideline Studio first call"
-        private let suite = "dev.fethiverse.verse.render-folders-\(UUID().uuidString)"
+        private let suite = "\(AppIdentity.bundleID).render-folders-\(UUID().uuidString)"
 
         init() throws {
             let fm = FileManager.default
@@ -330,7 +331,7 @@ public enum HomeRender {
             root = fm.temporaryDirectory.appendingPathComponent("verse-render-home-\(UUID().uuidString)", isDirectory: true)
             let sessionsRoot = root.appendingPathComponent("sessions", isDirectory: true)
             try fm.createDirectory(at: sessionsRoot, withIntermediateDirectories: true)
-            let suite = "dev.fethiverse.verse.render-\(UUID().uuidString)"
+            let suite = "\(AppIdentity.bundleID).render-\(UUID().uuidString)"
             let defaults = UserDefaults(suiteName: suite) ?? .standard
             defaults.removePersistentDomain(forName: suite)
             settings = AppSettings(defaults: defaults)
@@ -427,9 +428,9 @@ public enum HomeRender {
         [m501] Double-posted payments | In March 2021 a nightly job posted 300 payments twice. Dana found the missing idempotency key within an hour and shipped a replay-safe fix the same day. | file:dana_profile.md#L24
         ## LOOKING FOR
         [m601] Senior machine-learning engineer role in Lisbon or remote in Europe, available from January 2027. | file:dana_profile.md#L28
-        ## MY NOTES
-        [m701] Prefers short sentences and says what was measured. | owner
-        [m702] Available for calls after 16:00 Lisbon time. | owner
+        ## \(MeSection.notes.rawValue)
+        [m701] Prefers short sentences and says what was measured. | \(OwnerProfile.current.sourceTag)
+        [m702] Available for calls after 16:00 Lisbon time. | \(OwnerProfile.current.sourceTag)
 
         """
 
@@ -499,7 +500,7 @@ public enum HomeRender {
             let r1 = 1_792_000_000.0, r2 = r1 + 1_260.0
             typealias Line = (run: Double, id: String, speaker: String, end: Double, text: String)
             let lines: [Line] = [
-                (r1, "r1", "remote", 14.0, "Thanks for joining, Alex. I'm Lena, I lead platform at Brightwave. Before we dive in, can you tell me what you built at your last company?"),
+                (r1, "r1", "remote", 14.0, "Thanks for joining, Dana. I'm Lena, I lead platform at Brightwave. Before we dive in, can you tell me what you built at your last company?"),
                 (r1, "m1", "me", 41.0, "Sure. I built a route planner for a small courier fleet, then a month-end close tool for finance teams. Both were one-engineer products, so I owned everything from the data model to the on-call rota."),
                 (r1, "m2", "me", 58.0, "The close tool is the one I'm proudest of: it took the monthly close from six days to two."),
                 (r1, "r2", "remote", 80.0, "Six days to two is a big claim. How did you measure it, and what was the baseline?"),
@@ -510,7 +511,7 @@ public enum HomeRender {
                 (r1, "m5", "me", 281.0, "I write down what would change my mind, and then we try the smaller option first. Last year that meant a nightly matching job instead of a real-time one, and nobody missed the real-time version."),
                 (r2, "r1", "remote", 20.0, "Sorry, my connection dropped. Where were we? Right, disagreement. One last thing: what would you need in your first month?"),
                 (r2, "m1", "me", 47.0, "A sandbox account, one person who owns the data export, and the last two post-mortems. I would rather read how things broke than how they are meant to work."),
-                (r2, "r2", "remote", 66.0, "That is easy to arrange. Thank you, Alex, we will come back to you by Friday."),
+                (r2, "r2", "remote", 66.0, "That is easy to arrange. Thank you, Dana, we will come back to you by Friday."),
             ]
             let transcript = lines.map { l -> String in
                 #"{"addressee":"\#(l.speaker == "me" ? "other" : "me")","kind":"\#(l.speaker == "me" ? "statement" : "question")","lang":"en","run_start":\#(l.run),"speaker":"\#(l.speaker)","t_audio_end":\#(l.end),"t_wall":\#(l.run + l.end),"text":"\#(l.text)","turn_id":"\#(l.id)"}"#
@@ -613,7 +614,7 @@ public enum HomeRender {
         // prepare
 
         private func fillPrepare() {
-            conversation.thread = "Mara Castellan · 14 Oct\nHi Alex, thanks for the call last week. We'd like to go deeper on the internal tools: the shift planner and the reminder agent are the two we'd turn into a SaaS first. Could you walk us through how you'd scope a v1?"
+            conversation.thread = "Mara Castellan · 14 Oct\nHi Dana, thanks for the call last week. We'd like to go deeper on the internal tools: the shift planner and the reminder agent are the two we'd turn into a SaaS first. Could you walk us through how you'd scope a v1?"
             conversation.postingLink = "linkedin.com/jobs/view/0000000000"
             conversation.companyURL = "northwindlabs.com"
             conversation.note = "Ask who owns pricing and the SaaS roadmap"

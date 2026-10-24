@@ -1,6 +1,7 @@
 import AppKit
 import ScreenCaptureKit
 import SwiftUI
+import VerseAudio
 import VersePrompter
 
 /// Renders the overlay states to PNG for review (`Verse --render-screens DIR`).
@@ -187,7 +188,7 @@ public enum ScreenRenderer {
         i6b.sim = sim6b
         var i8 = idle
         i8.status = .creditExhausted("Max API credit is used up until 1 December. Verse keeps transcribing on this Mac; answers pause.")
-        let page7 = PrompterModel(settings: PrompterSettings(defaults: .init(suiteName: "dev.fethiverse.verse.render")!))
+        let page7 = PrompterModel(settings: PrompterSettings(defaults: .init(suiteName: "\(AppIdentity.bundleID).render")!))
         page7.presentForPreview(page: PromptPage(text: "Northwind Labs keeps shops on the first screen. I build the tools that turn that into a product your team can sell without me in the room."),
                                 state: { var st = PrompterState(); st.pageCount = 5; st.pageIndex = 1; st.wordCount = 28; st.wordPosition = 14.2
                                     st.isPaused = false; st.isSpeaking = true; st.mode = .voicePaced; st.requestedMode = .voicePaced; return st }())
@@ -315,7 +316,7 @@ public enum ScreenRenderer {
         if let renderLanguage { L10nState.shared.apply(renderLanguage) }
         let shots = shots ?? sampleShots()
         var out: [URL] = []
-        let suite = "dev.fethiverse.verse.render"
+        let suite = "\(AppIdentity.bundleID).render"
         defer { UserDefaults.standard.removePersistentDomain(forName: suite) }
         // VERSE_RENDER_FILTER=island-4,island-7 keeps only shots whose name starts with one of those.
         let only = (ProcessInfo.processInfo.environment["VERSE_RENDER_FILTER"] ?? "").split(separator: ",").map(String.init)

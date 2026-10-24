@@ -230,7 +230,7 @@ struct SayLine: View {
     }
 }
 
-/// The line above the SAY: the heard question, or "Following you" (the card continues what Alex is saying; it does not
+/// The line above the SAY: the heard question, or "Following you" (the card continues what the owner is saying; it does not
 /// answer the question). 13 medium, one line, tail-truncated.
 struct CardLead: View {
     var text: String
@@ -352,7 +352,7 @@ struct CardView: View {
     var scale: CGFloat
     /// Room for the body under the band. nil: as tall as the content (previews).
     var maxHeight: CGFloat?
-    /// Whole words of the SAY line Alex has already said (`CardReading`).
+    /// Whole words of the SAY line the owner has already said (`CardReading`).
     var spokenWords = 0
     /// The said words by index, when the reading jumped (`CardReading.struck`).
     var struck: IndexSet?

@@ -5,29 +5,30 @@ Everything before the tail is a pure function of (system, pack, finalized turns)
 their prefix byte for byte. The tail (question, shown opener, bank candidate, language) is never cached.
 
 Anytime calls (docs/specs/2026-10-16-verse-anytime-calls-design.md 2.2): with the me layer on, the system array gets a
-second block, ABOUT OWNER (`me.md`, plus the STYLE GUIDE when the pack has none), carrying breakpoint 0. The system
-text of that session also names ABOUT OWNER as grounding and says the meeting pack wins on conflict. An unprepared call
+second block, ABOUT <OWNER> (`me.md`, plus the STYLE GUIDE when the pack has none), carrying breakpoint 0. The system
+text of that session also names ABOUT <OWNER> as grounding and says the meeting pack wins on conflict. An unprepared call
 has an empty pack: its pack block is the fixed line `(none: unprepared call)`. Retrieved chunks of his files go into
-the uncached tail as FROM USER'S FILES. With the me layer off and a real pack, every byte is what it was before.
+the uncached tail as FROM <OWNER>'S FILES. With the me layer off and a real pack, every byte is what it was before.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..owner import OWNER
 from ..prep.voice import VOICE_HEADING, render_voice_section
 
 BP2_EVERY = 4
 EPHEMERAL = {"type": "ephemeral"}
 
-SYSTEM_FAST = """You are Verse, a live meeting assistant for Alex. Alex is on a call (an interview or a meeting). \
+SYSTEM_FAST = OWNER.fill("""You are Verse, a live meeting assistant for {owner}. {Owner} is on a call (an interview or a meeting). \
 Someone asked him a question; you give him words he can say right now.
 
 You get a MEETING PACK (facts, glossary, a prepared answer bank with ids, snippets), the transcript so far, and \
 the current question. The question comes from live speech recognition and may be unfinished.
 
 Write exactly these lines in plain text and nothing else:
-SAY: <one short sentence Alex can say at once, first person, spoken style, at most 20 words>
+SAY: <one short sentence {owner} can say at once, first person, spoken style, at most 20 words>
 - <a concrete supporting point, at most 18 words>
 - <a second point, at most 18 words>
 BANK: <the id of the answer-bank entry that answers this question, or none>
@@ -49,9 +50,9 @@ ACTION: <owner> — <what they committed or were asked to do later, by when if s
 OPEN: <a question or topic that was raised and is still unresolved, at most 25 words>
 What one person merely said or answered is not a decision, and a question that was answered is not open. Record \
 only what was actually said, never invent. Skip everything listed under ALREADY RECORDED. If a kind has no items, \
-write no line of that kind. If there is nothing new at all, write NONE."""
+write no line of that kind. If there is nothing new at all, write NONE.""")
 
-SYSTEM_DEEP = """You are the deep tier of Verse, a live meeting assistant for Alex. Alex is on a call. A short \
+SYSTEM_DEEP = OWNER.fill("""You are the deep tier of Verse, a live meeting assistant for {owner}. {Owner} is on a call. A short \
 opener has already been shown to him for the current question; you add detail points he can read and say.
 
 You get a MEETING PACK (facts, glossary, a prepared answer bank with ids, snippets), the transcript so far, the \
@@ -85,7 +86,7 @@ what the pack says (source ref, e.g. f001)>
 Merge duplicates, drop notes the transcript does not support, keep every real commitment with its owner. Every line \
 stands alone: never comment on the draft notes or on your own edits. If a kind \
 has no items, write no line of that kind: for example, write a CONFLICT line only for a real disagreement with \
-the pack."""
+the pack.""")
 
 SYSTEMS = {"S": SYSTEM_FAST, "F": SYSTEM_FAST, "C": SYSTEM_FAST, "D": SYSTEM_DEEP}   # C shares F's system prompt: one cache entry
 
@@ -93,23 +94,23 @@ NO_PACK_LINE = "(none: unprepared call)"
 
 # The me layer changes two rules of the base prompts (where numbers may come from, how D cites) and adds the conflict rule.
 # Done by exact replacement, so an edit of the base text that breaks a rule fails at import, not silently in a call.
-_ME_RULES = """
+_ME_RULES = OWNER.fill("""
 
-ABOUT OWNER is the second block of this system prompt: his permanent profile (experience, projects, skills, numbers, \
+ABOUT {OWNER} is the second block of this system prompt: his permanent profile (experience, projects, skills, numbers, \
 stories, what he is looking for), one line per item with an id like [m412]. It grounds your answers like the meeting \
-pack does. When ABOUT OWNER and the MEETING PACK disagree, the MEETING PACK wins: it was built and checked for this \
+pack does. When ABOUT {OWNER} and the MEETING PACK disagree, the MEETING PACK wins: it was built and checked for this \
 meeting. When the MEETING PACK is the line "(none: unprepared call)", nothing was prepared for this call: answer from \
-ABOUT OWNER, from FROM USER'S FILES (excerpts of his own notes, shown before the current question when there are \
-any) and from the transcript, and write BANK: none. Never invent a fact about Alex that none of them states.
+ABOUT {OWNER}, from FROM {OWNER}'S FILES (excerpts of his own notes, shown before the current question when there are \
+any) and from the transcript, and write BANK: none. Never invent a fact about {owner} that none of them states.
 
-No line may talk about the preparation or the grounding: never write "the pack", "the notes", "the profile", "the prep", "not stated" or "no stated reason", and never tell Alex what to do ("say what is true"). A line, a SAY line and a point alike, is something he can say aloud. When the grounding lacks something, write fewer points, or one short, true, general line in his own voice; never write a line about what is missing."""
+No line may talk about the preparation or the grounding: never write "the pack", "the notes", "the profile", "the prep", "not stated" or "no stated reason", and never tell {owner} what to do ("say what is true"). A line, a SAY line and a point alike, is something he can say aloud. When the grounding lacks something, write fewer points, or one short, true, general line in his own voice; never write a line about what is missing.""")
 
-_UNPREPARED_RULES = """
+_UNPREPARED_RULES = OWNER.fill("""
 
 When the MEETING PACK is the line "(none: unprepared call)", nothing was prepared for this call: answer from the \
-transcript and write BANK: none. Never invent a fact about Alex.
+transcript and write BANK: none. Never invent a fact about {owner}.
 
-No line may talk about the preparation or the grounding: never write "the pack", "the notes", "the profile", "the prep", "not stated" or "no stated reason", and never tell Alex what to do ("say what is true"). A line, a SAY line and a point alike, is something he can say aloud. When the grounding lacks something, write fewer points, or one short, true, general line in his own voice; never write a line about what is missing."""
+No line may talk about the preparation or the grounding: never write "the pack", "the notes", "the profile", "the prep", "not stated" or "no stated reason", and never tell {owner} what to do ("say what is true"). A line, a SAY line and a point alike, is something he can say aloud. When the grounding lacks something, write fewer points, or one short, true, general line in his own voice; never write a line about what is missing.""")
 
 
 def _swap(text: str, old: str, new: str) -> str:
@@ -120,36 +121,36 @@ def _swap(text: str, old: str, new: str) -> str:
 SYSTEM_FAST_ME = _swap(
     SYSTEM_FAST,
     "- Use numbers, dates and names only when they appear in the meeting pack. Never invent them.",
-    "- Use numbers, dates and names only when they appear in the meeting pack, in ABOUT OWNER or in FROM THE OWNER'S "
-    "FILES. Never invent them.") + _ME_RULES
+    OWNER.fill("- Use numbers, dates and names only when they appear in the meeting pack, in ABOUT {OWNER} or in FROM {OWNER}'S "
+               "FILES. Never invent them.")) + _ME_RULES
 SYSTEM_DEEP_ME = _swap(
     SYSTEM_DEEP,
     "- Use numbers, dates and names only when they appear in the meeting pack, and cite where they come from. If the "
     "pack does not support a claim, leave it out.",
-    "- Use numbers, dates and names only when they appear in the meeting pack, in ABOUT OWNER or in FROM USER'S FILES, "
-    "and cite where they come from (a pack id like f010 or b003, me:m412 for ABOUT OWNER, lib:<id> for FROM THE OWNER'S "
-    "FILES). If none of them supports a claim, leave it out.") + _ME_RULES
+    OWNER.fill("- Use numbers, dates and names only when they appear in the meeting pack, in ABOUT {OWNER} or in FROM {OWNER}'S FILES, "
+               "and cite where they come from (a pack id like f010 or b003, me:m412 for ABOUT {OWNER}, lib:<id> for FROM {OWNER}'S "
+               "FILES). If none of them supports a claim, leave it out.")) + _ME_RULES
 SYSTEMS_ME = {"S": SYSTEM_FAST_ME, "F": SYSTEM_FAST_ME, "C": SYSTEM_FAST_ME, "D": SYSTEM_DEEP_ME}
 SYSTEMS_UNPREPARED = {"S": SYSTEM_FAST + _UNPREPARED_RULES, "F": SYSTEM_FAST + _UNPREPARED_RULES,
                       "C": SYSTEM_FAST + _UNPREPARED_RULES, "D": SYSTEM_DEEP + _UNPREPARED_RULES}
 
-# the owner's own notes lead the ABOUT OWNER block under this heading (runtime/me.py puts them there). A session whose block has it
+# The owner's own notes lead the ABOUT <OWNER> block under this heading (runtime/me.py puts them there). A session whose block has it
 # gets one more rule in the system prompt; a block without it (no notes) keeps the system text it always had.
 PRIORITIES_HEADING = "PRIORITIES (follow these when choosing what to mention)"
 
-_PRIORITY_RULES = """
+_PRIORITY_RULES = OWNER.fill("""
 
-The part of ABOUT OWNER headed PRIORITIES holds the owner's own notes on what to lead with. Follow them whenever you choose \
+The part of ABOUT {OWNER} headed PRIORITIES holds {owner}'s own notes on what to lead with. Follow them whenever you choose \
 which project, job or example to mention. For a question about himself, his background or his experience, lead with what \
-PRIORITIES name; without a hint there, prefer the PROJECTS lines (his recent work) to the oldest EXPERIENCE line."""
+PRIORITIES name; without a hint there, prefer the PROJECTS lines (his recent work) to the oldest EXPERIENCE line.""")
 
 SYSTEMS_ME_PRIORITIES = {k: v + _PRIORITY_RULES for k, v in SYSTEMS_ME.items()}
 
-ABOUT_HEADER = ("ABOUT OWNER (his permanent profile; cite a line as me:<id>, for example me:m412. The MEETING PACK wins "
-                "when it disagrees with this)")
+ABOUT_HEADER = OWNER.fill("ABOUT {OWNER} (his permanent profile; cite a line as me:<id>, for example me:m412. The MEETING PACK wins "
+                          "when it disagrees with this)")
 
 
-SPEAKER_LABEL = {"remote": "Other side", "me": "Alex", "room": "Room"}
+SPEAKER_LABEL = {"remote": "Other side", "me": OWNER.display_name, "room": "Room"}
 PACK_HEADER = "MEETING PACK\n\n"
 TRANSCRIPT_HEADER = "\n## TRANSCRIPT SO FAR (finalized turns follow, one block each)\n"
 
@@ -186,7 +187,7 @@ def build_messages(pack: str, turns: list[Turn], tail: str) -> list[dict]:
 
 
 def render_about_block(core: str, voice: str | None = None) -> str:
-    """The ABOUT OWNER system block: `me.md` as is, then the STYLE GUIDE when the caller passes the voice profile (only
+    """The ABOUT <OWNER> system block: `me.md` as is, then the STYLE GUIDE when the caller passes the voice profile (only
     when the pack has none). A pure function of its inputs: the same files give the same bytes in every session."""
     text = ABOUT_HEADER + "\n\n" + core.strip() + "\n"
     if voice:
@@ -199,7 +200,7 @@ def pack_has_style_guide(pack: str) -> bool:
 
 
 def system_blocks(route: str, about: str | None = None, unprepared: bool = False) -> list[dict]:
-    """The frozen system prompt. With `about` (the me layer on) the text names ABOUT OWNER and a second block carries it,
+    """The frozen system prompt. With `about` (the me layer on) the text names ABOUT <OWNER> and a second block carries it,
     with breakpoint 0. Without it and with a real pack, the result is what it always was."""
     if about is not None:
         systems = SYSTEMS_ME_PRIORITIES if PRIORITIES_HEADING in about else SYSTEMS_ME
@@ -213,7 +214,7 @@ def system_blocks(route: str, about: str | None = None, unprepared: bool = False
 LANG_NAME = {"en": "English", "it": "Italian", "tr": "Turkish"}
 
 
-FILES_HEADER = "FROM USER'S FILES (excerpts of his own notes; cite a chunk as lib:<id>):"
+FILES_HEADER = OWNER.fill("FROM {OWNER}'S FILES (excerpts of his own notes; cite a chunk as lib:<id>):")
 
 
 def files_block(chunks: list[tuple[str, str, str]]) -> str:
@@ -238,25 +239,25 @@ def card_now_tail(text: str, lang: str, final: bool, files: str = "") -> str:
     kind, addressee) are skipped, so the instruction says so; the answer format of the system prompt stays."""
     state = "finished" if final else "still being spoken, may be cut off"
     return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}"
-            "CARD NOW. Alex pressed the card key: he wants something to say to the words below at once, even when they "
-            "are not phrased as a question. If they are a remark or a request, give him what he can say next. The answer "
-            "format above applies: SAY, two \"- \" lines, BANK.\n"
+            + OWNER.fill("CARD NOW. {Owner} pressed the card key: he wants something to say to the words below at once, even when they "
+                         "are not phrased as a question. If they are a remark or a request, give him what he can say next. The answer "
+                         "format above applies: SAY, two \"- \" lines, BANK.\n") +
             f"CURRENT QUESTION ({state}): {' '.join(text.split())}")
 
 
 STATEMENT_SAY_WORDS = 12
 
 
-ROOM_STATEMENT_CHECK = (
+ROOM_STATEMENT_CHECK = OWNER.fill(
     "STATEMENT CHECK (ROOM MICROPHONE). The turn below comes from the one microphone of a room: it hears the other person, "
-    "Alex himself (for example reading an answer card aloud) and anybody else. The answer format above does not apply "
+    "{owner} himself (for example reading an answer card aloud) and anybody else. The answer format above does not apply "
     "until you have decided what the turn is. Write as the first line either KIND: question or KIND: statement.\n"
-    "KIND: question only when the words ask or invite OWNER to explain, describe, justify or tell something, even "
+    "KIND: question only when the words ask or invite {OWNER} to explain, describe, justify or tell something, even "
     "indirectly and without a question mark (\"I'm interested in why you ...\", \"I would like to hear how ...\", "
     "\"tell me about ...\", \"walk me through ...\", \"help me understand ...\"). Then continue with the normal answer "
     "lines: SAY, two \"- \" lines, BANK.\n"
     "A yes/no question has no question word, and a transcript often has no question mark: it is the plain statement word "
-    "order, in the language of the turn, that asks whether OWNER has done, knows, can do or wants something. That is "
+    "order, in the language of the turn, that asks whether {OWNER} has done, knows, can do or wants something. That is "
     "KIND: question too, whatever the language. Italian: \"Ha avuto esperienza nel presentare i risultati delle analisi\", "
     "\"Conosce Kubernetes\", \"È disponibile a viaggiare\". Turkish, with the question particle (mı, mi, mu, mü and their "
     "person endings) or without it: \"Ekip yönetme deneyiminiz oldu mu\", \"Bu projeyi tek başınıza mı yaptınız\", \"Daha "
@@ -264,7 +265,7 @@ ROOM_STATEMENT_CHECK = (
     "asks about his experience, skills, plans or choices; a line of the same shape that only tells something about the "
     "speaker or the company is a statement.\n"
     "KIND: statement for everything else: small talk, a greeting, a remark, an announcement, thanks, a setup that only "
-    "leads into a question not asked yet (\"one of the big decisions is which school to attend\"), and the owner's own "
+    "leads into a question not asked yet (\"one of the big decisions is which school to attend\"), and {owner}'s own "
     "sentences (an answer, a card read aloud). Then write the single word NONE: nothing is shown for a statement.\n")
 
 
@@ -285,7 +286,7 @@ def room_card_block(card: list[tuple[str, str]] | None) -> str:
 def statement_tail(text: str, lang: str, files: str = "", room: bool = False, card: list[tuple[str, str]] | None = None) -> str:
     """F call for a turn Swift classified as a statement. The instructions live in the tail (never cached), so the
     system prompt and the cached prefix stay byte-identical to the question path. `room`: the room route's one microphone
-    (the speaker is not known); a statement then gets no acknowledgement, only a question for Alex gets a card."""
+    (the speaker is not known); a statement then gets no acknowledgement, only a question for the owner gets a card."""
     if room:
         return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}{ROOM_STATEMENT_CHECK}{room_card_block(card)}"
                 f"CURRENT TURN (finished): {' '.join(text.split())}")
@@ -293,41 +294,41 @@ def statement_tail(text: str, lang: str, files: str = "", room: bool = False, ca
         f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}"
         "STATEMENT CHECK. The turn below is probably not a question. The answer format above does not apply until "
         "you have decided what the turn is. Write as the first line either KIND: question or KIND: statement.\n"
-        "KIND: question when the speaker asks or invites Alex to explain, describe or tell something, even without "
-        "a question mark (\"tell me about ...\", \"walk me through ...\", \"I would like to hear how ...\"). Then "
-        "continue with the normal answer lines: SAY, two \"- \" lines, BANK.\n"
-        "KIND: statement for everything else: a greeting, a pleasantry, an announcement, a remark, thanks, small talk. "
-        f"Then write one line only: SAY: <a brief acknowledgement Alex can say, first person, at most "
-        f"{STATEMENT_SAY_WORDS} words>, or the single word NONE. Write NONE unless the speaker expects a reply "
+        + OWNER.fill("KIND: question when the speaker asks or invites {owner} to explain, describe or tell something, even without "
+                     "a question mark (\"tell me about ...\", \"walk me through ...\", \"I would like to hear how ...\"). Then "
+                     "continue with the normal answer lines: SAY, two \"- \" lines, BANK.\n"
+                     "KIND: statement for everything else: a greeting, a pleasantry, an announcement, a remark, thanks, small talk. "
+                     "Then write one line only: SAY: <a brief acknowledgement {owner} can say, first person, at most ")
+        + f"{STATEMENT_SAY_WORDS} words>, or the single word NONE. Write NONE unless the speaker expects a reply "
         "(a greeting, a thank-you, a request for permission, a how-are-you). No points, no BANK line.\n"
         f"CURRENT TURN (finished): {' '.join(text.split())}")
 
 
 def follow_tail(question: str, lang: str, his_words: str, card: list[str], said: list[str], now_card: list[str] | None,
                 reason: str, me_on: bool = False) -> str:
-    """C call (follow my answer). Alex is answering in his own direction; write the card he needs next. The instructions
+    """C call (follow my answer). The owner is answering in his own direction; write the card he needs next. The instructions
     live in the tail (never cached), so the system prompt and the cached prefix stay byte-identical to F's.
 
     `card`: the original card as lines ("SAY: ...", "- ..."); `said`: the card points he has already covered (they are not
     to be repeated); `now_card`: the follow card on screen at a refresh (None at the first switch)."""
     lines = [
         f"Language: {LANG_NAME.get(lang, lang)}",
-        "FOLLOW MY ANSWER. Alex is answering the question below in his own direction, not by reading the card. Do not "
-        "answer the question again. Continue HIS line. The answer format above changes: write exactly these lines and "
-        "nothing else (no BANK line):",
+        OWNER.fill("FOLLOW MY ANSWER. {Owner} is answering the question below in his own direction, not by reading the card. Do not "
+                   "answer the question again. Continue HIS line. The answer format above changes: write exactly these lines and "
+                   "nothing else (no BANK line):"),
         "SAY: <ONE sentence that picks up exactly where his last words stopped and carries his line one step further, first "
         "person, spoken style, at most 20 words>",
         "- <a point he has not said yet and fits his topic, at most 18 words>   (2 or 3 such lines; fewer, or none, when the "
         "meeting pack has nothing grounded for his topic)",
-        "Rules: never contradict what he said. Stay on his topic. Every number, date and name in a point must come from "
-        "the meeting pack (bank, facts, evidence); a point the pack cannot support is left out. When the pack has "
-        "nothing for his topic, write the SAY line alone, with no invented fact. Never offer something he has already "
-        "said, not even in other words: read WHAT OWNER HAS SAID SO FAR first and write only what is new. Start the SAY "
-        "with the content, not with a reaction word (no \"Right\", \"Yes\", \"Exactly\", \"Well\"). Follow the "
-        "STYLE GUIDE for tone. No comment on the card, on the question or on him, and no line about the pack, the notes "
-        "or the profile or about what is missing from them.",
+        OWNER.fill("Rules: never contradict what he said. Stay on his topic. Every number, date and name in a point must come from "
+                   "the meeting pack (bank, facts, evidence); a point the pack cannot support is left out. When the pack has "
+                   "nothing for his topic, write the SAY line alone, with no invented fact. Never offer something he has already "
+                   "said, not even in other words: read WHAT {OWNER} HAS SAID SO FAR first and write only what is new. Start the SAY "
+                   "with the content, not with a reaction word (no \"Right\", \"Yes\", \"Exactly\", \"Well\"). Follow the "
+                   "STYLE GUIDE for tone. No comment on the card, on the question or on him, and no line about the pack, the notes "
+                   "or the profile or about what is missing from them."),
         f"CURRENT QUESTION (finished): {' '.join(question.split())}",
-        f"WHAT OWNER HAS SAID SO FAR: {' '.join(his_words.split()) or '(nothing yet)'}",
+        f"WHAT {OWNER.display_name.upper()} HAS SAID SO FAR: {' '.join(his_words.split()) or '(nothing yet)'}",
         "THE CARD HE DID NOT FOLLOW:",
         *(card or ["(none)"]),
     ]
@@ -339,8 +340,8 @@ def follow_tail(question: str, lang: str, his_words: str, card: list[str], said:
     lines.append("Reason for this card: " + ("he went off the card" if reason == "diverged" else "he has said more since the last follow card"))
     text = "\n".join(lines)
     if me_on:    # the me layer is grounding too (system prompt): the sentences about the pack name it as well
-        text = text.replace("the meeting pack has nothing grounded for his topic", "the meeting pack and ABOUT OWNER have nothing grounded for his topic")
-        text = text.replace("must come from the meeting pack (bank, facts, evidence)", "must come from the meeting pack (bank, facts, evidence), ABOUT OWNER or FROM USER'S FILES")
+        text = text.replace("the meeting pack has nothing grounded for his topic", OWNER.fill("the meeting pack and ABOUT {OWNER} have nothing grounded for his topic"))
+        text = text.replace("must come from the meeting pack (bank, facts, evidence)", OWNER.fill("must come from the meeting pack (bank, facts, evidence), ABOUT {OWNER} or FROM {OWNER}'S FILES"))
         text = text.replace("When the pack has nothing for his topic", "When none of them has anything for his topic")
         text = text.replace("a point the pack cannot support", "a point they cannot support")
     return text

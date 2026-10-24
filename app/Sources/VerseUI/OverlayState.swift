@@ -45,10 +45,10 @@ public struct OverlayCard: Equatable, Sendable {
     public var chips: [OverlayChip] = []
     /// Sonnet's detail points, under the divider.
     public var deepPoints: [String] = []
-    /// "Follow my answer": Alex went his own way and `say`/`bullets` are the C tier's continuation of his line, not the
+    /// "Follow my answer": The owner went his own way and `say`/`bullets` are the C tier's continuation of his line, not the
     /// answer to the question. The view marks the card "following you".
     public var following = false
-    /// Indices into `bullets` that Alex has already said (the brain's `covered`); the view strikes them through.
+    /// Indices into `bullets` that the owner has already said (the brain's `covered`); the view strikes them through.
     public var struck: Set<Int> = []
 
     public init(turnID: String, question: String) {
@@ -336,7 +336,7 @@ public struct OverlayReducer: Sendable {
         var shownFollowID: String?
         /// ... every follow card id announced for the turn (the rest of `covered` belongs to the original card) ...
         var followIDs: Set<String> = []
-        /// ... and the points Alex covered, by card id (`covered.card_id` -> point indices).
+        /// ... and the points the owner covered, by card id (`covered.card_id` -> point indices).
         var covered: [String: Set<Int>] = [:]
 
         /// A new remote question: nothing of the follow state carries over.
@@ -687,7 +687,7 @@ public struct OverlayReducer: Sendable {
             turns[tid] = info
             if state.card?.turnID == tid { refreshCard(now: now) }
         case "follow":
-            // Alex left the card: a new card version (the C deltas of `card_id`) replaces the visible text. Only the open
+            // The owner left the card: a new card version (the C deltas of `card_id`) replaces the visible text. Only the open
             // card's turn counts; a late message for an earlier question changes nothing.
             guard let tid = o[string: "turn_id"], let cid = o[string: "card_id"], !cid.isEmpty, state.card?.turnID == tid else { return }
             var info = turns[tid, default: TurnInfo()]

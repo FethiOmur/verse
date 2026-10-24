@@ -1,4 +1,5 @@
 import Foundation
+import VerseAudio
 import os
 import VerseSpeech
 import VerseVoice
@@ -209,7 +210,7 @@ public actor SimRunner {
     public private(set) var ttsGaps: [TTSGap] = []
     private var arrivedAt: [String: Date] = [:]
     private var lastPlayEnd: (lineID: String, at: Date)?
-    private static let log = Logger(subsystem: "dev.fethiverse.verse", category: "sim")
+    private static let log = Logger(subsystem: AppIdentity.bundleID, category: "sim")
 
     public init(transport: any SimBrainTransport, voice: any VoiceEngine, mic: any SimMic, config: Config = Config(),
                 sink: @escaping @Sendable (SimEvent) -> Void) {

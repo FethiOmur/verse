@@ -34,6 +34,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from ..owner import OWNER
 from .conversation_model import (DEFAULT_MAX_FETCHES, DEFAULT_MAX_SEARCHES, SEARCH_USD, AnthropicConversationModel, ConversationModel,
                                  FakeConversationModel, Page, ResearchOutput, describe_error)
 from .conversation_prompt import EXTRACT_SYSTEM, RESEARCH_SYSTEM, extract_user, research_user
@@ -42,7 +43,7 @@ from .model import PREP_MODEL, PRICES, ModelOutput, PrepError, Usage, spend_usd
 from .pipeline import build_async
 from .sim import slugify
 from .sources import norm
-from .vault import DEFAULT_VAULT, BeyinVault, Vault
+from .vault import DEFAULT_VAULT, Vault, make_vault
 from .voice import DEFAULT_VOICE_PATH
 
 MAX_THREAD_CHARS = 60_000
@@ -216,7 +217,7 @@ def _host(url: str) -> str:
 
 def verify_facts(raw: list[dict], research: ResearchOutput) -> list[Fact]:
     """A fact is sourced only when it carries a URL that the search or fetch tool returned (or cited). No URL, `none`, or
-    a URL the tools never returned (a guessed address) makes it "unverified"; the text is kept so Alex can still read it.
+    a URL the tools never returned (a guessed address) makes it "unverified"; the text is kept so the owner can still read it.
     Two more checks: an `entity` fact (legal entity, headquarters, founding) cannot rest on a social, review or directory
     page, and when the page was fetched the fact's evidence quote must really be in the page text."""
     retrieved: dict[str, Page] = {}
@@ -437,7 +438,7 @@ def _usd(model: str, u: Usage) -> float:
 
 async def run_async(
     thread: str, *, out: Path, model: ConversationModel, prep_model, posting: str | None = None,
-    posting_url: str | None = None, company_url: str | None = None, note: str | None = None, owner: str = "Alex",
+    posting_url: str | None = None, company_url: str | None = None, note: str | None = None, owner: str = OWNER.display_name,
     company: str | None = None, repos: list[Path] | None = None, langs: list[str] | None = None, max_questions: int = 40,
     vault: Vault | None = None, voice_path: Path | None = None, budget_usd: float = 1.0,
     max_searches: int = DEFAULT_MAX_SEARCHES, max_fetches: int = DEFAULT_MAX_FETCHES, now: datetime | None = None,
@@ -550,7 +551,7 @@ def conversation_main(argv: list[str], default_out: Path) -> int:
     ap.add_argument("--posting-url", help="where the posting came from")
     ap.add_argument("--company-url", help="the company's website")
     ap.add_argument("--note", type=Path, help="a free note from the user (.txt/.md)")
-    ap.add_argument("--me", default="Alex", help="the name of the thread's owner (default Alex)")
+    ap.add_argument("--me", default=OWNER.display_name, help=f"the name of the thread's owner (default {OWNER.display_name})")
     ap.add_argument("--company", help="override the company read from the thread")
     ap.add_argument("--repo", type=Path, action="append", default=[])
     ap.add_argument("--lang", default="en")
@@ -590,7 +591,7 @@ def conversation_main(argv: list[str], default_out: Path) -> int:
         else:
             key = read_api_key()  # only to scrub error text; the model client reads its own copy
             model = prep_model = AnthropicConversationModel(key, PREP_MODEL, progress=True)
-            vault = None if a.no_vault else BeyinVault(a.vault, audience=a.vault_audience)
+            vault = None if a.no_vault else make_vault(a.vault, audience=a.vault_audience)
 
         async def go():
             try:

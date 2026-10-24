@@ -1,6 +1,6 @@
 """Turn parsed model output into validated records. Every point and fact must carry >= 1 verified source.
 
-Dropped items are kept (with a reason) so review.md can show Alex what was thrown away.
+Dropped items are kept (with a reason) so review.md can show the owner what was thrown away.
 """
 
 from __future__ import annotations

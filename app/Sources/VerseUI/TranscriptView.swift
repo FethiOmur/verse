@@ -280,7 +280,7 @@ struct TranscriptView: View {
         var type: UTType { self == .markdown ? (UTType(filenameExtension: "md") ?? .plainText) : .plainText }
     }
 
-    /// Writes the transcript where Alex picks, nowhere else.
+    /// Writes the transcript where the owner picks, nowhere else.
     private func export(_ format: ExportFormat) {
         let panel = NSSavePanel()
         let safe = title.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")

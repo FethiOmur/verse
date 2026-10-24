@@ -1,6 +1,6 @@
 """The session event log: `events.jsonl` in the session folder (docs/specs/2026-10-16-verse-anytime-calls-design.md 2.1).
 
-A live call decides many things silently: whether a room text was Alex reading his card or the other person, whether it was a
+A live call decides many things silently: whether a room text was the owner reading his card or the other person, whether it was a
 question and why (a cue, the statement probe, nothing), which cards were shown and which were held or dropped. Before this log
 the session folder held only `transcript.jsonl` and `spend.json`, so a card that came at the wrong moment, or did not come, could
 not be explained afterwards. One JSON object per line, flushed per line, text only (the first 80 characters of a transcript text,

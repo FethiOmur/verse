@@ -1,4 +1,5 @@
 import Foundation
+import VerseAudio
 
 /// "New session from a conversation": the inputs the window collects, the folder rule and the process that runs
 /// `python -m verse_brain.prep conversation`. The pasted thread reaches the process through a private temp file
@@ -11,7 +12,7 @@ public struct ConversationSetup: Equatable, Sendable {
     public var companyURL = ""
     public var note = ""
     /// The thread owner's name (Settings › owner), so prep can tell who wrote what.
-    public var owner = "Alex"
+    public var owner = OwnerProfile.current.addresseeName
     /// Canned model output, no key, no network (the app's "Fake brain" testing switch).
     public var fake = false
 

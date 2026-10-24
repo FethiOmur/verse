@@ -1,4 +1,4 @@
-"""review.md: the human-readable bank, for Alex to read and correct before the call."""
+"""review.md: the human-readable bank, for the owner to read and correct before the call."""
 
 from __future__ import annotations
 

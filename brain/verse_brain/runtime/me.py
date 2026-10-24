@@ -4,7 +4,7 @@
 
 - `load_me(spec)`: `me.md` (the core), its meta, the NUMBERS facts, the library chunks and, when they match the embedding
   model, their vectors. `None` when `me.md` is missing (the session then runs without the layer, with a `me_missing` notice).
-- `MeLayer.about_block(pack)`: the ABOUT OWNER system block. A pure function of the files and of whether the pack has a
+- `MeLayer.about_block(pack)`: the ABOUT <OWNER> system block. A pure function of the files and of whether the pack has a
   style guide of its own, so every request of a session, and every session started with the same files, shares its bytes.
 - `conflicts(me_facts, pack)`: me NUMBERS that disagree with the pack's FACTS (the pack wins; this only reports).
 - `LibraryPath`: retrieval of the top chunks for a remote turn on the brain's embedding thread. It never blocks the loop
@@ -27,6 +27,7 @@ from operator import mul
 from pathlib import Path
 from typing import Callable
 
+from ..owner import OWNER
 from ..prep.sources import numbers_in
 from ..prep.voice import load_voice
 from .embed import PREFIX, EmbedPath, EmbedUnavailable, Embedder, unit
@@ -64,7 +65,7 @@ class MeLayer:
     emb_path: Path | None = None
 
     def about_block(self, pack: str) -> str:
-        """ABOUT OWNER. His notes (MY NOTES) lead the block under PRIORITIES; without notes the core is used as it is. The
+        """ABOUT <OWNER>. His notes (<OWNER>'S NOTES) lead the block under PRIORITIES; without notes the core is used as it is. The
         STYLE GUIDE (voice.md) goes in only when the pack has none."""
         return render_about_block(priorities_first(self.core), None if pack_has_style_guide(pack) else self.voice)
 
@@ -72,11 +73,11 @@ class MeLayer:
         return {"tokens": self.tokens, "built_at": self.built_at}
 
 
-_NOTES_HEADING = "owner's notes"
+_NOTES_HEADING = OWNER.notes_heading.casefold()
 
 
 def priorities_first(core: str) -> str:
-    """`me.md` with the lines of its `## MY NOTES` section moved to the front, under the PRIORITIES heading, and the
+    """`me.md` with the lines of its `## <OWNER>'S NOTES` section moved to the front, under the PRIORITIES heading, and the
     section itself taken out (each note appears once). A pure function of `core`: the same text gives the same bytes. A core
     whose notes section is missing or empty comes back untouched, so a profile without notes renders exactly as before."""
     notes: list[str] = []

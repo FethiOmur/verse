@@ -3786,22 +3786,6 @@
         }
       }
     },
-    "Alex": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alex"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alex"
-          }
-        }
-      }
-    },
     "File": {
       "localizations": {
         "it": {
@@ -3958,22 +3942,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Samimi"
-          }
-        }
-      }
-    },
-    "Uses your Anthropic API key. Kept only in the login Keychain; the brain reads it there.": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dall’organizzazione individuale di Alex (credito API Max). Conservata solo nel portachiavi di login; il cervello la legge da lì."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alex’nin Bireysel Kurumundan (Max API kredisi). Yalnızca oturum açma anahtar zincirinde tutulur; beyin onu oradan okur."
           }
         }
       }
@@ -4386,6 +4354,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "En sona git"
+          }
+        }
+      }
+    },
+    "Kept only in the login Keychain; the brain reads it there.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conservata solo nel portachiavi di login; il cervello la legge da lì."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yalnızca oturum açma anahtar zincirinde tutulur; beyin onu oradan okur."
           }
         }
       }
@@ -10258,6 +10242,22 @@
         }
       }
     },
+    "Your name": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il tuo nome"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adınız"
+          }
+        }
+      }
+    },
     "Your profile (%@); the meeting pack (%@) gives a different number. The pack wins in the call.": {
       "localizations": {
         "en": {
@@ -10596,18 +10596,18 @@
         }
       }
     },
-    "e.g. Fetti, Fati": {
+    "e.g. Alix, Alec": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "es. Fetti, Fati"
+            "value": "es. Alix, Alec"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "ör. Fetti, Fati"
+            "value": "ör. Alix, Alec"
           }
         }
       }

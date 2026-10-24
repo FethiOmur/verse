@@ -74,7 +74,7 @@ ANSWER_FALLBACK = "That's a good question. I'd rather not guess, so I'll make su
 FIXED_LINES: dict[str, dict[str, str]] = {
     "en": {"silence": SILENCE_LINE, "candidate_q": CANDIDATE_Q_LINE, "close": CLOSE_LINE, "close_early": CLOSE_LINE_EARLY,
            "answer_fallback": ANSWER_FALLBACK},
-    # Italian uses "tu"; Turkish the polite "siz" (an interviewer speaking to a candidate). Written by the executor: Alex reviews.
+    # Italian uses "tu"; Turkish the polite "siz" (an interviewer speaking to a candidate). Written by the executor: the owner reviews.
     "it": {"silence": "Prenditi pure il tempo che ti serve. Vuoi che ripeta la domanda?",
            "candidate_q": "Da parte mia è tutto. Hai qualche domanda per noi?",
            "close": "Grazie per il tuo tempo, mi è piaciuta la nostra conversazione. Il colloquio finisce qui.",

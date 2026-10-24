@@ -5,7 +5,7 @@ import Foundation
 public enum Channel: String, Sendable, Codable, CaseIterable {
     /// The meeting app's audio (the other participants).
     case remote
-    /// the owner's microphone.
+    /// The owner's microphone.
     case me
 }
 
