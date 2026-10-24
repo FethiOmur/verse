@@ -239,7 +239,7 @@
 | = | for someone else | başkası için | OverlayState.swift |
 | = | for you | senin için | OverlayState.swift, OverlayView.swift, ScreenRenderer.swift |
 | = | Friendly | Samimi | SimSession.swift |
-| = | Uses your Anthropic API key. Kept only in the login Keychain; the brain reads it there. | the owner’nin Bireysel Kurumundan (Max API kredisi). Yalnızca oturum açma anahtar zincirinde tutulur; beyin onu oradan okur. | SettingsView.swift |
+| = | Kept only in the login Keychain; the brain reads it there. | Yalnızca oturum açma anahtar zincirinde tutulur; beyin onu oradan okur. | SettingsView.swift |
 | From its prep: %@ · %@ | From its prep: %1$@ · %2$@ | Hazırlıktan: %1$@ · %2$@ | SimSetupView.swift |
 | = | From the brain's per-call cost; each session's total is kept in its spend.json. | Beynin çağrı başına maliyetinden; her oturumun toplamı kendi spend.json dosyasında tutulur. | SettingsView.swift |
 | = | From the last session. Nothing is rewritten on its own: fix the line here if the pack is the one that is wrong. | Son oturumdan. Hiçbir şey kendiliğinden yeniden yazılmaz: yanlış olan paketse satırı burada düzelt. | MePage.swift |

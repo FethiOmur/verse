@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .. import extensions
 from ..owner import OWNER
 from ..prep.voice import VOICE_HEADING, render_voice_section
 
@@ -51,6 +52,7 @@ OPEN: <a question or topic that was raised and is still unresolved, at most 25 w
 What one person merely said or answered is not a decision, and a question that was answered is not open. Record \
 only what was actually said, never invent. Skip everything listed under ALREADY RECORDED. If a kind has no items, \
 write no line of that kind. If there is nothing new at all, write NONE.""")
+SYSTEM_FAST = extensions.with_addenda("live_fast", SYSTEM_FAST)
 
 SYSTEM_DEEP = OWNER.fill("""You are the deep tier of Verse, a live meeting assistant for {owner}. {Owner} is on a call. A short \
 opener has already been shown to him for the current question; you add detail points he can read and say.
@@ -87,6 +89,7 @@ Merge duplicates, drop notes the transcript does not support, keep every real co
 stands alone: never comment on the draft notes or on your own edits. If a kind \
 has no items, write no line of that kind: for example, write a CONFLICT line only for a real disagreement with \
 the pack.""")
+SYSTEM_DEEP = extensions.with_addenda("live_deep", SYSTEM_DEEP)
 
 SYSTEMS = {"S": SYSTEM_FAST, "F": SYSTEM_FAST, "C": SYSTEM_FAST, "D": SYSTEM_DEEP}   # C shares F's system prompt: one cache entry
 

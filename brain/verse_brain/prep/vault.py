@@ -1,28 +1,35 @@
-"""Vault retrieval through the vault's own retrieval script (`<vault>/<script> context`). Read-only by construction.
+"""Vault retrieval: find notes that help prepare a meeting. Read-only by construction, prep time only (never live).
 
-The vault, the script name and the interpreter come from the owner profile (`owner.py`). Without a configured vault
-there is no retrieval: `DEFAULT_VAULT` is None and callers skip the vault.
+The interface is `Vault.search(query, limit, budget_chars) -> list[VaultRecord]`. Two things implement it:
 
-Rules (spec 5.2): retrieval happens only at prep, never live; the command always carries `--no-sync`, which
-(verified with --help and by a before/after mtime check) reads the existing index without writing to the vault
-or the runtime state. Only the `context` subcommand is ever run.
+  - `MarkdownFolderVault`, the built-in: a plain keyword search over the `.md` files of the folder named by `vault_path` in the
+    owner profile (owner.py). No index, no network, no write. Without `vault_path` there is no retrieval at all.
+  - a vault provider registered by an owner extension (`registry.set_vault_provider`, docs/extensions.md). When one is registered
+    it replaces the built-in.
+
+Callers never see the difference: they call `make_vault(path, audience)`, get a `Vault` or None, and catch `VaultError`.
 """
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
+import hashlib
+import inspect
+import logging
+import math
+import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Iterable, Protocol
 
-from ..owner import DEFAULT_VAULT_PYTHON, OWNER
+from .. import extensions
+from ..owner import OWNER
+
+log = logging.getLogger("verse.extensions")
 
 DEFAULT_VAULT: Path | None = OWNER.vault_path
-DEFAULT_PYTHON = OWNER.vault_python or DEFAULT_VAULT_PYTHON
-VAULT_PYTHON_ENV = "VERSE_VAULT_PYTHON"
 MAX_RECORD_CHARS = 1500
+MAX_FILES = 5000                  # the built-in search reads at most this many notes
+MAX_FILE_CHARS = 200_000          # ...and at most this much of each
 
 
 class VaultError(RuntimeError):
@@ -32,7 +39,7 @@ class VaultError(RuntimeError):
 @dataclass(frozen=True)
 class VaultRecord:
     record_id: str
-    source: str  # vault-relative path, e.g. "300-Projects/X/Y.md"
+    source: str  # vault-relative path, e.g. "Projects/Alpha/Notes.md"
     text: str
 
 
@@ -40,64 +47,149 @@ class Vault(Protocol):
     def search(self, query: str, limit: int = 3, budget_chars: int = 2500) -> list[VaultRecord]: ...
 
 
-class ScriptVault:
-    def __init__(self, vault_path: Path | str | None = DEFAULT_VAULT, python: str | None = None, audience: str = "internal",
-                 timeout: float = 60.0, script_name: str | None = None) -> None:
-        if vault_path is None:
-            raise VaultError("no vault is configured (vault_path in the owner profile)")
-        self.vault_path = Path(vault_path).expanduser()
-        self.python = python or os.environ.get(VAULT_PYTHON_ENV) or DEFAULT_PYTHON
-        self.audience = audience
-        self.timeout = timeout
-        self.script_name = script_name or OWNER.vault_script
-        self.script = self.vault_path / self.script_name if self.script_name else self.vault_path
+# ---------------------------------------------------------------- the built-in provider
+_WORD = re.compile(r"\w+", re.UNICODE)
+_STOP = frozenset("the and for with that this from have what when where which about into your you are was were not but can will "
+                  "how why who our out has had its they them their then than there here also just very more some any all".split())
 
-    def command(self, query: str, limit: int, budget_chars: int) -> list[str]:
-        cmd = [
-            self.python, str(self.script), "--vault", str(self.vault_path),
-            "context", query, "--no-sync", "--audience", self.audience,
-            "--limit", str(limit), "--budget-chars", str(budget_chars),
-        ]
-        assert "--no-sync" in cmd  # never run without the read-only flag
-        return cmd
+
+def _terms(query: str) -> list[str]:
+    seen: dict[str, None] = {}
+    for w in _WORD.findall(query.casefold()):
+        if len(w) >= 3 and w not in _STOP:
+            seen.setdefault(w, None)
+    return list(seen)
+
+
+class MarkdownFolderVault:
+    """Keyword search over a folder of markdown notes. Deterministic; skips hidden folders and `forbidden_vault_folders`."""
+
+    def __init__(self, folder: Path | str, forbidden: Iterable[str] | None = None) -> None:
+        self.folder = Path(folder).expanduser()
+        self.forbidden = {f.casefold() for f in (OWNER.forbidden_vault_folders if forbidden is None else forbidden)}
+
+    def _notes(self) -> list[Path]:
+        out: list[Path] = []
+        for p in sorted(self.folder.rglob("*.md")):
+            rel = p.relative_to(self.folder).parts
+            if any(part.startswith(".") or part.casefold() in self.forbidden for part in rel[:-1]) or p.name.startswith("."):
+                continue
+            if p.is_file():
+                out.append(p)
+            if len(out) >= MAX_FILES:
+                break
+        return out
 
     def search(self, query: str, limit: int = 3, budget_chars: int = 2500) -> list[VaultRecord]:
-        if not self.script_name:
-            raise VaultError("no vault script is configured (vault_script in the owner profile)")
-        if not self.script.exists():
-            raise VaultError(f"the vault script not found at {self.script}")
+        terms = _terms(query)
+        if not terms:
+            return []
+        if not self.folder.is_dir():
+            raise VaultError("the vault folder was not found")
+        scored: list[tuple[float, str, str]] = []          # (score, relative path, snippet)
+        for note in self._notes():
+            try:
+                body = note.read_text(encoding="utf-8", errors="replace")[:MAX_FILE_CHARS]
+            except OSError:
+                continue
+            rel = note.relative_to(self.folder).as_posix()
+            low = body.casefold()
+            title = rel.casefold()
+            score = 0.0
+            for t in terms:
+                n = low.count(t)
+                if n:
+                    score += 1.0 + math.log1p(n)
+                if t in title:
+                    score += 2.0
+            if score > 0:
+                scored.append((score, rel, body))
+        scored.sort(key=lambda s: (-s[0], s[1]))
+        per_record = max(200, min(MAX_RECORD_CHARS, budget_chars // max(1, limit)))
+        out: list[VaultRecord] = []
+        for _, rel, body in scored[:max(0, limit)]:
+            snippet = _best_snippet(body, terms, per_record)
+            if snippet:
+                out.append(VaultRecord("md-" + hashlib.sha256(f"{rel}\n{snippet}".encode()).hexdigest()[:24], rel, snippet))
+        return out
+
+
+def _best_snippet(body: str, terms: list[str], cap: int) -> str:
+    """The run of paragraphs that mentions the most query terms, cut to `cap` characters."""
+    paras = [p.strip() for p in re.split(r"\n\s*\n", body) if p.strip()]
+    if not paras:
+        return ""
+    hits = [sum(p.casefold().count(t) for t in terms) for p in paras]
+    best = max(range(len(paras)), key=lambda i: (hits[i], -i))
+    text, i = paras[best], best + 1
+    while len(text) < cap and i < len(paras):
+        text += "\n\n" + paras[i]
+        i += 1
+    return text[:cap]
+
+
+# ---------------------------------------------------------------- extension providers
+def _field(rec: Any, *names: str) -> Any:
+    for n in names:
+        v = rec.get(n) if isinstance(rec, dict) else getattr(rec, n, None)
+        if v:
+            return v
+    return None
+
+
+def _records(raw: Any) -> list[VaultRecord]:
+    try:
+        items = list(raw or [])
+    except TypeError:
+        raise VaultError("the vault provider returned no list of records") from None
+    out: list[VaultRecord] = []
+    for rec in items:
+        text = str(_field(rec, "text") or "").strip()
+        src = str(_field(rec, "source") or "")
+        if not text or not src:
+            continue
+        out.append(VaultRecord(str(_field(rec, "id", "record_id") or src), src, text[:MAX_RECORD_CHARS]))
+    return out
+
+
+class ProviderVault:
+    """Wraps an extension's provider: passes only the arguments its `search` accepts, normalises the records and turns every
+    failure into `VaultError` (what the prep stages already catch)."""
+
+    def __init__(self, provider: Any) -> None:
+        self.provider = provider
+        try:
+            params = inspect.signature(provider.search).parameters
+            wide = any(p.kind is p.VAR_KEYWORD for p in params.values())
+            self._kw = {k for k in ("limit", "budget_chars") if wide or k in params}
+        except (TypeError, ValueError):
+            self._kw = set()
+
+    def search(self, query: str, limit: int = 3, budget_chars: int = 2500) -> list[VaultRecord]:
         q = query.strip()
         if not q:
             return []
+        kw = {k: v for k, v in (("limit", limit), ("budget_chars", budget_chars)) if k in self._kw}
         try:
-            r = subprocess.run(self.command(q, limit, budget_chars), capture_output=True, text=True,
-                               timeout=self.timeout)
+            raw = self.provider.search(q, **kw)
+        except VaultError:
+            raise
         except Exception as e:  # noqa: BLE001
-            raise VaultError(f"the vault script failed: {type(e).__name__}") from None
-        if r.returncode != 0:
-            raise VaultError(f"the vault script exit {r.returncode}: {r.stderr.strip()[:200]}")
-        return parse_context(r.stdout)
+            raise VaultError(f"the vault provider failed: {type(e).__name__}: {str(e)[:200]}") from None
+        return _records(raw)[:max(0, limit)]
 
 
-def make_vault(path: Path | str | None, audience: str = "internal") -> ScriptVault | None:
-    """The vault for a prep run, or None when no vault and retrieval script are configured (the feature is off)."""
-    if path is None or not OWNER.vault_script:
+def make_vault(path: Path | str | None, audience: str = "internal") -> Vault | None:
+    """The vault for a prep run: the extension's provider when one is registered, else the built-in search over `path`, else
+    None (no vault configured: the feature is off)."""
+    provider = extensions.registry().vault_provider
+    if provider is not None:
+        try:
+            bind = getattr(provider, "bind", None)
+            bound = bind(Path(path).expanduser() if path is not None else None, audience) if callable(bind) else provider
+            return None if bound is None else ProviderVault(bound)     # bind() -> None: this provider has nothing to search
+        except Exception as e:  # noqa: BLE001
+            log.warning("the vault provider could not be set up (%s); using the built-in search", type(e).__name__)
+    if path is None:
         return None
-    return ScriptVault(path, audience=audience)
-
-
-def parse_context(stdout: str) -> list[VaultRecord]:
-    try:
-        data = json.loads(stdout)
-    except json.JSONDecodeError:
-        raise VaultError("the vault script returned non-JSON output") from None
-    if data.get("abstained"):
-        return []
-    out: list[VaultRecord] = []
-    for rec in data.get("records") or []:
-        text = (rec.get("text") or "").strip()
-        src = rec.get("source") or ""
-        if not text or not src:
-            continue
-        out.append(VaultRecord(record_id=str(rec.get("id") or src), source=src, text=text[:MAX_RECORD_CHARS]))
-    return out
+    return MarkdownFolderVault(path)

@@ -22,6 +22,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .. import extensions
 from .model import PRICES, PrepError, Usage, spend_usd
 from .voice import DEFAULT_VOICE_PATH, VOICE_HEADING, load_voice
 
@@ -59,6 +60,7 @@ cue such as [add the figure] instead of inventing one. No invented biography, em
 - Length: the number of spoken words (cues are not counted) is the target given in the request, within 10 percent. \
 Count before you answer.
 """
+SYSTEM = extensions.with_addenda("script", SYSTEM)
 
 USE_RULES = {
     "recording": """Use: a short video recorded to camera (Shorts, YouTube, a pitch clip).

@@ -21,7 +21,7 @@ teleprompter mode and an iOS app are later specs (section 10).
 | Meetings | Online (Google Meet, Zoom, Teams); English, Italian, Turkish |
 | What it shows | Reminders from own notes; answer points for questions asked; live summary and actions; term explanations |
 | Trigger | Fully automatic (no hotkey needed) |
-| Knowledge sources | knowledge-vault vault via `beyin.py`; a per-meeting prep note; commit history of repos chosen per meeting |
+| Knowledge sources | notes vault via its retrieval script; a per-meeting prep note; commit history of repos chosen per meeting |
 | Brain | **Claude, paid only from the Claude API membership's monthly API credit** (Personal API Org API key). No local-model fallback for generation |
 | Speed | First words almost immediately; Haiku opener first, Sonnet 5.5 (effort medium) continues (2026-10-14) |
 | Stack | Swift (not Rust, not a Textream fork) |
@@ -49,7 +49,7 @@ teleprompter mode and an iOS app are later specs (section 10).
 
 | Option | Verdict | Reason |
 |---|---|---|
-| **Swift app + Python brain sidecar** | **Chosen** | Native audio, speech and overlay APIs; the official Anthropic Python SDK; `beyin.py` is Python; fast prompt iteration |
+| **Swift app + Python brain sidecar** | **Chosen** | Native audio, speech and overlay APIs; the official Anthropic Python SDK; the vault's retrieval script is Python; fast prompt iteration |
 | All Swift | Later | No official Anthropic Swift SDK (raw HTTP); slower prompt iteration. Port the brain once prompts are stable |
 | Rust core | Rejected | Liquid Glass, notch panel, ScreenCaptureKit and SpeechAnalyzer are Swift/ObjC APIs; FFI cost. Revisit only for Windows |
 | Textream fork / Director demo | Rejected | The files that would change are its largest and most coupled; the demo would be thrown away |
@@ -87,7 +87,7 @@ The overlay never waits for D. On a strong bank hit, D is skipped or reduced to 
 
 ### 5.2 Before the meeting: Prep stage
 
-From the prep note, the vault (`beyin.py context`) and the selected repos' commits, Claude Sonnet 5.5 (effort high,
+From the prep note, the vault (the retrieval script's `context` command) and the selected repos' commits, Claude Sonnet 5.5 (effort high,
 not latency-bound) builds:
 
 - **An answer bank.** 40–120 likely questions. Each entry has a canonical question, at least 3 paraphrases per
@@ -96,9 +96,9 @@ not latency-bound) builds:
 - **A glossary.** One line per term.
 - **A snippet set.** Top-k vault snippets per bank entry and glossary term [B8].
 
-**Grounding rule: no live `beyin.py` calls during the meeting** [B8]. All retrieval happens here, so the live
+**Grounding rule: no live retrieval-script calls during the meeting** [B8]. All retrieval happens here, so the live
 tiers state facts only from the fact sheet, the prep note and the snippet set. This also removes the vault
-writes and the 0.3–0.45 s subprocess cost from the live path. `beyin.py` runs with `--no-sync` even at prep.
+writes and the 0.3–0.45 s subprocess cost from the live path. The retrieval script runs with `--no-sync` even at prep.
 
 the owner can read and correct the bank before the call.
 
@@ -289,7 +289,7 @@ fixed:
   silent failure.
 - **Brain process crash:** Swift restarts it once with the same pack; on a second crash it stops and saves the
   transcript.
-- **`beyin.py` or `git` failure at prep:** start anyway with the sources that worked, and list the missing
+- **Retrieval-script or `git` failure at prep:** start anyway with the sources that worked, and list the missing
   ones in the overlay.
 
 ## 8. Test cases

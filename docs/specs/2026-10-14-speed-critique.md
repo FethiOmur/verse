@@ -9,7 +9,7 @@ Local measurements made for this review (this Mac, 2026-10-14):
   95–162 ms, first byte at 262–340 ms on a cold connection. On a **reused** HTTP/2 connection the request took
   **164–168 ms**. ICMP RTT to the edge (160.79.104.10) averaged 35.5 ms. So the edge is close, and about 130 ms of each
   request is spent behind it. The inference path may differ (see section 4).
-- `python3 beyin.py context --no-sync --json "<query>"`: **0.26–0.43 s** wall time per subprocess (3 runs). The default
+- `python3 <retrieval-script> context --no-sync --json "<query>"`: **0.26–0.43 s** wall time per subprocess (3 runs). The default
   mode, without `--no-sync`, also syncs the vault and writes to vault and runtime state. I did not run it, so its time
   is not measured.
 - Local `httpx` 0.28.1 sets `keepalive_expiry` to 5.0 s by default. The local `anthropic` 0.54 sets
@@ -139,7 +139,7 @@ Measure hit rate **and** wrong-hit rate per language at the chosen threshold. Me
 ### B8. Live retrieval breaks the grounding rule and costs 0.3–0.45 s through a subprocess (§5.2 vs §5.3/§5.4, §11)
 **Why it fails.**
 - §5.2 says the live tiers may state only facts from the fact sheet or the prep note. §5.3/§5.4 feed D "retrieved
-  snippets" from `beyin.py context` at meeting time. Either those snippets cannot be used (wasted latency), or the
+  snippets" from the retrieval script's `context` command at meeting time. Either those snippets cannot be used (wasted latency), or the
   rule is broken.
 - The subprocess cost is measured at 0.26–0.43 s even in `--no-sync` mode.
 - The default mode syncs the vault, which writes to the vault and runtime state during the meeting.
@@ -147,7 +147,7 @@ Measure hit rate **and** wrong-hit rate per language at the chosen threshold. Me
 - When speculation did not fire, D waits for retrieval after t = 0.
 
 **How to show it.** Time D with and without retrieval in replay, and check where D's cited sources come from.
-**Fix.** No live `beyin.py` calls. At prep, pull a broader snippet set (top-k per bank entry and per glossary term)
+**Fix.** No live retrieval-script calls. At prep, pull a broader snippet set (top-k per bank entry and per glossary term)
 into the cached meeting pack. At runtime, retrieve in-process from the pack: Python BM25 over a few hundred snippets
 takes well under 10 ms. If live vault retrieval stays, import the engine in-process with `read_only=True` (the CLI's
 `--no-sync` path). Then widen the rule to "pack + retrieved snippets, each with a source id", and show snippet ids as

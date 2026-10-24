@@ -25,6 +25,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from .. import extensions
 from ..owner import OWNER
 from .model import MAX_OUTPUT_TOKENS, PRICES, PrepError, PrepModel, Usage, spend_usd
 
@@ -107,6 +108,7 @@ from facts in the source. Do not write the question or any tag in front of it: j
 
 Hard limits: at most 650 words in total (headings included), spoken English at B1-B2, no emojis, no markdown other \
 than the headings and "- " bullets."""
+SYSTEM = extensions.with_addenda("voice", SYSTEM)
 
 FAKE_PROFILE = """### Tone
 - Relaxed, direct and friendly. Says what he thinks, kindly.

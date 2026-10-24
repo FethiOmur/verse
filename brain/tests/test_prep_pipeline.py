@@ -186,7 +186,7 @@ def test_missing_vault_still_builds_and_says_so(tmp_path):
 
     class DeadVault:
         def search(self, *a, **k):
-            raise VaultError("beyin.py exit 1")
+            raise VaultError("the vault script exit 1")
 
     session, _, _ = _build(tmp_path, vault=DeadVault())
     meta = json.loads((session / "meta.json").read_text(encoding="utf-8"))

@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import AsyncIterator, Callable, Protocol
 
+from .. import extensions
 from ..owner import OWNER
 from ..prep.keychain import read_api_key
 from ..prep.model import PRICES, PREP_MODEL, Usage, spend_usd
@@ -66,6 +67,7 @@ SYSTEM_TEMPLATE = (
     "profile)\". 6) Answer in the language of the question. Answer directly first, then at most five \"- \" bullets. Plain "
     "text, no headings, no tables."
 )
+SYSTEM_TEMPLATE = extensions.with_addenda("ask", SYSTEM_TEMPLATE)
 
 
 def system_text(owner: str) -> str:

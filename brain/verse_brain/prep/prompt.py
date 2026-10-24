@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .. import extensions
 from ..owner import OWNER
 from .git_digest import Commit
 from .vault import VaultRecord
@@ -61,6 +62,7 @@ Coverage: cover what a person in this meeting would plausibly ask {owner}: exper
 trade-offs, recent work (from the commits), weaknesses and how he handles them, and questions he may ask back. \
 Prefer questions the material can answer well. Order entries from most to least likely. Emit the @FACT and @TERM \
 blocks first, then the @BANK blocks.""")
+SYSTEM = extensions.with_addenda("prep", SYSTEM)
 
 
 def render_prep_note(lines: list[str] | list[tuple[int, str]]) -> str:

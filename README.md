@@ -78,7 +78,7 @@ What does not:
 
 ## Known limitations today
 
-- Owner-specific paths and prompts remain in the code and docs; they are being turned into settings.
+- Personal values live in a local `owner.json`, and personal features in an optional extensions folder (see [docs/extensions.md](docs/extensions.md)). The design documents under `docs/` were written for the original author's setup and still mention it here and there.
 - The local Nemotron speech model is set up by hand (it is not downloaded by the app).
 - Builds are unsigned (ad-hoc signed) until the signed release lands.
 
@@ -90,7 +90,7 @@ What does not:
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues as described in [SECURITY.md](SECURITY.md). The previous owner-specific README is kept in [docs/owner-setup.md](docs/owner-setup.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues as described in [SECURITY.md](SECURITY.md).
 
 ## Licence
 

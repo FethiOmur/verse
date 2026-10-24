@@ -1,12 +1,12 @@
 {
   "display_name": "Alex Rivera",
   "vault_path": "~/Notes/AcmeVault",
-  "vault_script": "retrieve.py",
-  "vault_python": "/usr/bin/python3",
   "profile_source": "~/Downloads/ALEX_PROFILE.md",
   "projects_folder": "Work",
   "projects_index": "Index.md",
   "private_project_folders": ["Scratch"],
   "forbidden_vault_folders": ["Journal", "Health"],
-  "api_key_note": "From Alex's personal API org."
+  "api_key_note": "From Alex's personal API org.",
+  "extensions_path": "~/Notes/AcmeExtensions",
+  "harbor_setting": "on"
 }
