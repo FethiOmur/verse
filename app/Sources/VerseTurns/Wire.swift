@@ -3,7 +3,7 @@ import Foundation
 public enum Speaker: String, Sendable, Codable, Equatable {
     case remote, me
     /// Room route (anytime calls, phase A): the one microphone feeds the remote pipeline, so the other person and the
-    /// room are not told apart from Alex. The brain treats it like `remote` with the addressee always `unknown`.
+    /// room are not told apart from the owner. The brain treats it like `remote` with the addressee always `unknown`.
     case room
 }
 
@@ -188,7 +188,7 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
 
     /// The same line with `"cue_why"` / `"cue_strong"` on a `partial` or `turn` whose text set a question cue: which words set it and
     /// whether it is unambiguous. The brain's session event log records them, and its room-route card hold waits for a weak cue
-    /// while Alex reads the card on screen. nil leaves the line as `jsonLine(lang:)` makes it.
+    /// while the owner reads the card on screen. nil leaves the line as `jsonLine(lang:)` makes it.
     public func jsonLine(lang: String?, cue: CueMatch?) -> String {
         guard lang != nil || cue != nil else { return jsonLine() }
         let e = JSONEncoder()

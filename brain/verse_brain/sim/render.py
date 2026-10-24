@@ -18,7 +18,7 @@ LENGTH_WORDS = {"short": "shorter than the target", "on_target": "on target", "l
 
 # The page's own words (headings, labels, short captions) follow the app's interface language (`sim_start.ui_lang`, copied into
 # `sim_results.json`). The interview itself, the grades and the notices keep the interview language / English. Italian uses
-# "tu"; Turkish avoids direct address (spec 2.5). Executor-written: Alex reviews.
+# "tu"; Turkish avoids direct address (spec 2.5). Executor-written: the owner reviews.
 UI_LANGS = ("en", "it", "tr")
 TEXT: dict[str, dict[str, str]] = {
     "en": {

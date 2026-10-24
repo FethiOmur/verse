@@ -25,7 +25,7 @@ func usage() -> Never {
                           once, the "before" arm of the me-turn-split measurements)
       --no-mic            live: remote audio only
       --bundle-ids a,b    apps whose audio is the remote channel (default Brave, Comet, Zoom, Teams)
-      --owner NAME        your name for the addressee check (default Alex); --alias a,b adds spellings the
+      --owner NAME        your name for the addressee check (default: the owner profile's display name); --alias a,b adds spellings the
                           recognizer produces; --others a,b names other participants
       --cue-ms N          endpoint wait after a finished question (default 300)
       --plain-ms N        endpoint wait otherwise (default 600)

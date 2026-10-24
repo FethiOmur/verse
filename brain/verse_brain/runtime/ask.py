@@ -3,7 +3,7 @@
 A process whose first message is `ask_start` runs this mode (runtime/__main__.py). It is never a command inside a live meeting's
 brain: that process is latency-critical. One process serves one session's panel.
 
-- Grounding: ONE cached user block, in this order: MEETING line, ABOUT <OWNER> (me.md, MY NOTES first; only when Swift sends
+- Grounding: ONE cached user block, in this order: MEETING line, ABOUT <OWNER> (me.md, <OWNER>'S NOTES first; only when Swift sends
   `me`), MEETING PREP (pack.md without its STYLE GUIDE), SUMMARY, TRANSCRIPT. Rows come from Swift (`TranscriptDocument`); this module
   never recomputes stamps. The block is a pure function of its inputs, so every request of the chat shares its bytes.
 - Prompt layout: frozen `system` -> messages[0] user = [grounding (cache_control)] + [question 1] -> answer 1 -> question 2 ... plus the
@@ -13,7 +13,7 @@ brain: that process is latency-critical. One process serves one session's panel.
   mode. Above: chunked mode. The cached block then holds a TRANSCRIPT INDEX and each question carries TRANSCRIPT EXCERPTS, chunks of
   about 6k tokens cut on turn boundaries and ranked by BM25 over accent-folded words of the question plus the previous question. No
   extra model call.
-- Billing: the key is read by `make_client()` through `prep.keychain.read_api_key()` (the Keychain item, Individual Org key) and
+- Billing: the key is read by `make_client()` through `prep.keychain.read_api_key()` (the Keychain item) and
   nowhere else; no other credential source is read in this file (a test greps it). The key is never put in an event, a log or the
   chat file.
 - `chat.jsonl` is written by this runtime only: the question when received, the answer (or the error) when it ends, a `reset` line on
@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import AsyncIterator, Callable, Protocol
 
+from ..owner import OWNER
 from ..prep.keychain import read_api_key
 from ..prep.model import PRICES, PREP_MODEL, Usage, spend_usd
 from ..prep.voice import strip_voice
@@ -469,7 +470,7 @@ class AskRuntime:
         self.stopped = asyncio.Event()
         self.started = False
         self.session_dir: Path | None = None
-        self.owner = "Alex"
+        self.owner = OWNER.display_name
         self.rows: list[Row] = []
         self.stamps: frozenset[str] = frozenset()
         self.grounding = ""
@@ -528,7 +529,7 @@ class AskRuntime:
             self.emitter.status("error", "cannot read the session folder")
             return
         self.session_dir = Path(sd).expanduser()
-        self.owner = " ".join(str(msg.get("owner_name") or "Alex").split()) or "Alex"
+        self.owner = " ".join(str(msg.get("owner_name") or OWNER.display_name).split()) or OWNER.display_name
         self.model_key = msg.get("model") if msg.get("model") in ASK_MODELS else DEFAULT_MODEL
         self.rows = parse_rows(msg.get("transcript"))
         self.stamps = frozenset(r.stamp for r in self.rows)

@@ -1,3 +1,4 @@
+import VerseAudio
 import VersePrompter
 
 extension ScreenRenderer {
@@ -6,7 +7,7 @@ extension ScreenRenderer {
     static func prompterSample(_ idle: OverlayState) -> (reading: PrompterModel, lost: PrompterModel, fallback: PrompterModel) {
         let page = PromptPage(text: "Interviews in a second language are hard. Not because I don't know my work, but because my mind goes blank at the wrong moment. [pause] I got tired of that, so I built Verse. It is a Mac app that listens to my call and shows me the next sentence, right under the camera.")
         func model(_ configure: (inout PrompterState) -> Void) -> PrompterModel {
-            let m = PrompterModel(settings: PrompterSettings(defaults: .init(suiteName: "dev.fethiverse.verse.render")!))
+            let m = PrompterModel(settings: PrompterSettings(defaults: .init(suiteName: "\(AppIdentity.bundleID).render")!))
             var s = PrompterState()
             s.pageCount = 3
             s.wordCount = page.wordCount

@@ -1,10 +1,10 @@
-"""the owner's own voice in the room route, told by text (docs/specs/2026-10-16-verse-anytime-calls-design.md 2.1).
+"""The owner's own voice in the room route, told by text (docs/specs/2026-10-16-verse-anytime-calls-design.md 2.1).
 
 The room route has one microphone and no speaker separation before phase D, so the owner's own sentences arrive labelled
 `room`, next to the interviewer's. The commonest own speech in a live call is the card itself: he reads the SAY line and
 the points aloud. While a card is on screen, a room partial or turn whose words line up with that card, in order, is his
 voice: it is relabelled `me` before anything else looks at it. It then never fires a card, it moves follow mode's
-coverage (struck-through points) and it sits in the transcript as `[Alex]`. Text that does not line up stays `room`.
+coverage (struck-through points) and it sits in the transcript as `[<name>]`. Text that does not line up stays `room`.
 
 Three rules decide it, all on one in-order path through the lines of the card (at most `max_gap` card words skipped between
 two matched ones):
@@ -38,9 +38,9 @@ tokenizer only knows a-z, which cuts Italian accents and Turkish letters out of 
 Unicode letters, accent-folded, and Italian and Turkish have their own short stopword lists and stemmers (Italian: trailing
 vowel and the first six letters; Turkish: the first five letters, spec 2.5). The follow detector's own lexical rule
 (a word matches when a second stem of the same line is within +-3 words) is order-blind; it would let an interviewer who
-restates a card's words ("why you chose accounting as a major") look like Alex, and here that is the failure to avoid.
+restates a card's words ("why you chose accounting as a major") look like the owner, and here that is the failure to avoid.
 
-This is an interim rule until phase D separates the voices by embedding. It cannot know that Alex paraphrases the card
+This is an interim rule until phase D separates the voices by embedding. It cannot know that the owner paraphrases the card
 (that text stays `room`), and it cannot tell another person reading the same words.
 """
 
@@ -487,7 +487,7 @@ class OwnSpeech:
 
     def judge(self, text: str, lang: str = "en", already: bool = False, now: float | None = None,
               turn_id: str | None = None, final: bool = False) -> Verdict:
-        """Is this room text Alex reading his card? `me`, `room`, or `split` (a prefix of his reading, then another voice).
+        """Is this room text the owner reading his card? `me`, `room`, or `split` (a prefix of his reading, then another voice).
         `turn_id`: the partials and the final of one turn are judged from the cursor the turn started at."""
         now = self.clock() if now is None else now
         if not self.has_card():

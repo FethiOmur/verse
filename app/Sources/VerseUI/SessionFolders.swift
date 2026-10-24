@@ -408,7 +408,7 @@ enum FolderSuggester {
         return s
     }
 
-    /// `[f019] name | The live portfolio site is northwind.example. | northwind.example | prep:L85` -> the text and value of the
+    /// `[f019] name | The live portfolio site is example.dev. | example.dev | prep:L85` -> the text and value of the
     /// first 40 `name` lines in the FACTS section.
     static func factNames(pack url: URL) -> [String] {
         guard let text = try? String(contentsOf: url, encoding: .utf8) else { return [] }

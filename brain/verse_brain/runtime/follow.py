@@ -33,7 +33,7 @@ What is measured (every number lives in `FollowParams`; the evidence for the val
   `refresh_gap_s`, only with `refresh_new_words` new content words since the last C call (words that match a card that is not
   on screen, the original or the bank, are not news), and once every point on the card is covered only with that many new
   words said after the last point was covered.
-* End: a new remote question (`new_turn`), or `end_silence_s` of silence from Alex after the remote spoke again.
+* End: a new remote question (`new_turn`), or `end_silence_s` of silence from the owner after the remote spoke again.
 """
 
 from __future__ import annotations
@@ -82,7 +82,7 @@ class FollowParams:
     pause_s: float = 0.7             # no new words this long = sentence end
     refresh_gap_s: float = 4.0
     refresh_new_words: int = 4
-    end_silence_s: float = 4.0       # Alex silent this long after the remote spoke again ends follow mode
+    end_silence_s: float = 4.0       # the owner silent this long after the remote spoke again ends follow mode
     min_gap_after_fail_s: float = 4.0
     carry_back_s: float = 1.0        # his turn that began this long before the question's last word still counts as an answer to it
 
@@ -532,7 +532,7 @@ class FollowMachine:
         return self._toks_cache
 
     def on_me(self, turn_id: str, text: str, final: bool = False, now: float | None = None) -> None:
-        """the owner's text for his turn `turn_id` (cumulative within the turn; a revision replaces the changed tail)."""
+        """The owner's text for his turn `turn_id` (cumulative within the turn; a revision replaces the changed tail)."""
         if self.turn_id is None or self.ended or turn_id in self._stale_turns:
             return
         now = self.clock() if now is None else now

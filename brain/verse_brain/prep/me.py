@@ -4,7 +4,7 @@
 `~/Library/Application Support/Verse/profile/`:
 
   me.md            the core, human-readable and editable: ## WHO I AM, EXPERIENCE, PROJECTS, SKILLS, NUMBERS, STORIES,
-                   LOOKING FOR, MY NOTES; one line per item with an id like [m412]
+                   LOOKING FOR, <OWNER>'S NOTES; one line per item with an id like [m412]
   me.meta.json     model, spend, built_at, token count, per-source sha256, the hash of every generated line, deleted ids
   me.sources.json  the source list (he adds and removes sources)
   me.notes.md      free notes he types
@@ -16,7 +16,7 @@ Build: one Sonnet call (the prep tuple) over the core sources. Every line carrie
 number in a line: it has to be in the quote. Refresh: rebuilds only when a source changed, keeps every line he edited
 (its hash differs from the generated one) or added, and never brings back a line he deleted.
 
-The vault is read with plain file reads, never through `beyin.py`, and only the folders this module names. Keys come from
+The vault is read with plain file reads, never through the vault's retrieval script, and only the folders this module names. Keys come from
 the Keychain as everywhere in prep; nothing here prints or logs them.
 """
 
@@ -40,15 +40,18 @@ from .ground import _value_supported
 from .keychain import KeychainError, read_api_key, redact
 from .model import MAX_OUTPUT_TOKENS, PRICES, PrepError, PrepModel, Usage, spend_usd
 from .sources import MAX_QUOTE_CHARS, MIN_QUOTE_CHARS, SourceBook, norm, numbers_supported
+from ..owner import OWNER
 from .vault import DEFAULT_VAULT
 
 PROFILE_DIR = Path("~/Library/Application Support/Verse/profile")
 SESSIONS_DIR = Path("~/Library/Application Support/Verse/sessions")
-DOWNLOADS_PROFILE = Path("~/Downloads/ENGINEERING_PROFILE.md")
-PROJECTS_FOLDER = "🏰 300-Projects"
-PROJECTS_INDEX = "Projects.md"
-SKIP_PROJECT_FOLDERS = ("AgentLogs", "Archive-Private")      # 1.35 MB of agent output; ArchiveApp never leaves the machine
-FORBIDDEN_VAULT_FOLDERS = ("400-Private", "700-Health", "800-Journal", "850-Notes", "daily", "receipts", "Inbox")
+# From the owner profile (owner.py). Without one: no profile file, no vault, nothing forbidden or skipped.
+DOWNLOADS_PROFILE: Path | None = OWNER.profile_source
+PROJECTS_FOLDER = OWNER.projects_folder
+PROJECTS_INDEX = OWNER.projects_index
+SKIP_PROJECT_FOLDERS = OWNER.private_project_folders      # listed private repos never leave the machine
+FORBIDDEN_VAULT_FOLDERS = OWNER.forbidden_vault_folders
+OWNER_TAG = OWNER.source_tag                              # the `src` of a line the user wrote himself
 
 CAP_TOKENS = 3500
 MAX_CORE_CHARS = 80_000          # about 20k tokens of core sources; later sources become library-only
@@ -58,7 +61,7 @@ MIN_CHUNK_CHARS = 30
 MAX_PER_SECTION = {"WHO I AM": 5, "EXPERIENCE": 8, "PROJECTS": 10, "SKILLS": 20, "NUMBERS": 40, "STORIES": 8, "LOOKING FOR": 5}
 
 WHO, EXPERIENCE, PROJECTS, SKILLS, NUMBERS, STORIES, LOOKING, NOTES = (
-    "WHO I AM", "EXPERIENCE", "PROJECTS", "SKILLS", "NUMBERS", "STORIES", "LOOKING FOR", "MY NOTES")
+    "WHO I AM", "EXPERIENCE", "PROJECTS", "SKILLS", "NUMBERS", "STORIES", "LOOKING FOR", OWNER.notes_heading)
 SECTIONS = (WHO, EXPERIENCE, PROJECTS, SKILLS, NUMBERS, STORIES, LOOKING, NOTES)
 N_FIELDS = {WHO: 1, EXPERIENCE: 4, PROJECTS: 5, SKILLS: 2, NUMBERS: 3, STORIES: 2, LOOKING: 1, NOTES: 1}
 KEY_FIELDS = {WHO: (0,), EXPERIENCE: (1, 2), PROJECTS: (0,), SKILLS: (0,), NUMBERS: (1,), STORIES: (0,), LOOKING: (0,), NOTES: (0,)}
@@ -103,8 +106,10 @@ class Paths:
 
 
 # ---------------------------------------------------------------- sources
-def forbidden_vault_path(path: Path, vault: Path = DEFAULT_VAULT) -> bool:
+def forbidden_vault_path(path: Path, vault: Path | None = DEFAULT_VAULT) -> bool:
     """True for a path inside the vault's private folders. Read nothing from such a path, whoever asks."""
+    if vault is None:
+        return False
     try:
         rel = path.expanduser().resolve().relative_to(vault.expanduser().resolve())
     except ValueError:
@@ -113,7 +118,7 @@ def forbidden_vault_path(path: Path, vault: Path = DEFAULT_VAULT) -> bool:
     return any(f.casefold() in parts for f in FORBIDDEN_VAULT_FOLDERS)
 
 
-def default_sources(vault: Path = DEFAULT_VAULT, downloads_profile: Path = DOWNLOADS_PROFILE,
+def default_sources(vault: Path | None = DEFAULT_VAULT, downloads_profile: Path | None = DOWNLOADS_PROFILE,
                     sessions: Path = SESSIONS_DIR) -> list[dict]:
     """The sources of a first build (spec 2.2). Only paths that exist are listed."""
     out: list[dict] = []
@@ -121,11 +126,11 @@ def default_sources(vault: Path = DEFAULT_VAULT, downloads_profile: Path = DOWNL
     def add(kind: str, path: Path, label: str) -> None:
         out.append({"id": f"s{len(out) + 1}", "kind": kind, "path": str(path), "label": label, "enabled": True})
 
-    prof = downloads_profile.expanduser()
-    if prof.is_file():
+    prof = downloads_profile.expanduser() if downloads_profile else None
+    if prof is not None and prof.is_file():
         add("file", prof, prof.name)
-    proj = vault.expanduser() / PROJECTS_FOLDER
-    if proj.is_dir():
+    proj = vault.expanduser() / PROJECTS_FOLDER if vault else None
+    if proj is not None and proj.is_dir():
         idx = proj / PROJECTS_INDEX
         if idx.is_file():
             add("vault", idx, f"{PROJECTS_FOLDER}/{PROJECTS_INDEX}")
@@ -206,7 +211,7 @@ def session_facts_text(sessions: Path) -> str:
     return "\n\n".join(blocks)
 
 
-def read_sources(paths: Paths, sources: list[dict], vault: Path = DEFAULT_VAULT) -> tuple[list[Doc], list[str]]:
+def read_sources(paths: Paths, sources: list[dict], vault: Path | None = DEFAULT_VAULT) -> tuple[list[Doc], list[str]]:
     """The enabled sources as documents (handles S1.. in list order). Returns (docs, warnings). A source that is missing
     is skipped with a warning; one inside a private vault folder is refused."""
     docs: list[Doc] = []
@@ -228,12 +233,15 @@ def read_sources(paths: Paths, sources: list[dict], vault: Path = DEFAULT_VAULT)
             text = _read_text(p)
             if kind == "vault":
                 try:
+                    if vault is None:
+                        raise ValueError
                     rel = p.resolve().relative_to(vault.expanduser().resolve())
-                    ref = "vault:" + str(rel).split("🏰 ", 1)[-1]
+                    top, *rest = rel.parts           # the top folder may carry a leading emoji ("📁 Projects"): dropped
+                    ref = "vault:" + "/".join([re.sub(r"^\W+\s+", "", top), *rest])
                 except ValueError:
                     ref = f"vault:{p.name}"
             elif kind == "notes":
-                ref = "owner"
+                ref = OWNER_TAG
             else:
                 ref = f"file:{p.name}"
         if not text.strip():
@@ -243,7 +251,7 @@ def read_sources(paths: Paths, sources: list[dict], vault: Path = DEFAULT_VAULT)
     if notes.is_file() and not any(d.kind == "notes" for d in docs):
         text = notes.read_text(encoding="utf-8")
         if text.strip():
-            docs.append(Doc(f"S{len(docs) + 1}", "notes", "notes", "owner", "me.notes.md", text))
+            docs.append(Doc(f"S{len(docs) + 1}", "notes", "notes", OWNER_TAG, "me.notes.md", text))
     used = 0
     for d in docs:            # sources over the budget stay library-only: the call must stay about 15-20k tokens
         used += len(d.text)
@@ -346,7 +354,7 @@ def count_lines(sections: dict[str, list[MLine]]) -> dict[str, int]:
 
 
 # ---------------------------------------------------------------- the model call
-SYSTEM = """You are the profile stage of Verse, a live call assistant. Verse shows Alex short lines to say out loud, \
+SYSTEM = OWNER.fill("""You are the profile stage of Verse, a live call assistant. Verse shows {owner} short lines to say out loud, \
 and it must always know who he is. From the source documents you get (his engineering profile, project notes, facts \
 from earlier meeting preps, his own notes) you write his permanent profile.
 
@@ -367,7 +375,7 @@ heading or after the last line:
 [m501] <short title> | <situation, action and result in at most 60 words> | SRC: ...
 ## LOOKING FOR
 [m601] <what he is looking for: role, location, availability> | SRC: ...
-## MY NOTES
+## {NOTES_HEADING}
 (leave this section empty: his notes are added by the program)
 
 Rules:
@@ -376,7 +384,7 @@ Rules:
 A line without a quote that can be found in its document is thrown away.
 - Write the lines in English, also when the source is in another language. Facts only: no "I" and no "he", no \
 opinions of yours, no advice.
-- Only facts about Alex himself: his work, his projects, his numbers. Facts in the session documents that are about \
+- Only facts about {owner} himself: his work, his projects, his numbers. Facts in the session documents that are about \
 another company or person are not his: leave them out.
 - Never invent anything. A number is written as the source gives it. The value in NUMBERS is the bare value: digits \
 only for a number (38000), YYYY-MM-DD for a date, the name itself for a name.
@@ -386,7 +394,7 @@ LOOKING FOR 5. The whole answer stays under 3,000 tokens: pick what a person on 
 - Ids are m001 and up in WHO I AM, m101 in EXPERIENCE, m201 in PROJECTS, m301 in SKILLS, m401 in NUMBERS, m501 in \
 STORIES, m601 in LOOKING FOR. When a PREVIOUS PROFILE is given, keep the id of every line that is still true (you may \
 improve its wording), and give new items ids that are free: not used there and not in RESERVED IDS.
-- No markdown other than the headings, no blank lines inside a section, no emojis."""
+- No markdown other than the headings, no blank lines inside a section, no emojis.""")
 
 
 def render_user(docs: list[Doc], previous: str = "", reserved: list[str] | None = None) -> str:
@@ -478,7 +486,7 @@ def verify_line(raw: RawLine, docs: dict[str, Doc], book: SourceBook) -> tuple[M
     elif not numbers_supported(raw.body, [quote]):
         return None, "number_not_in_quote"
     ln = _line_no(d.text, quote)
-    ref = d.ref + (f"#L{ln}" if ln and d.kind in ("file", "vault", "notes") and d.ref != "owner" else "")
+    ref = d.ref + (f"#L{ln}" if ln and d.kind in ("file", "vault", "notes") and d.ref != OWNER_TAG else "")
     line = make_line(raw.section, raw.id, parts, ref, {"kind": d.kind, "ref": ref, "quote": quote})
     return line, ""
 
@@ -585,7 +593,7 @@ def merge(prev_md: str | None, meta: dict, generated: list[MLine], notes: list[s
         if i is None:
             break
         used.add(i)
-        line = make_line(NOTES, i, [n], "owner")
+        line = make_line(NOTES, i, [n], OWNER_TAG)
         m.sections[NOTES].append(line)
         m.protected.add(i)
     for g in generated:
@@ -645,7 +653,7 @@ def facts_records(sections: dict[str, list[MLine]]) -> list[dict]:
         if not l.id or len(l.fields) != 3 or l.fields[0] not in FACT_KINDS:
             continue
         kind, text, value = l.fields
-        src = l.quote or {"kind": "owner", "ref": "me.md", "quote": text}
+        src = l.quote or {"kind": OWNER_TAG, "ref": "me.md", "quote": text}
         out.append({"id": l.id, "kind": kind, "text": text, "value": value, "sources": [src]})
     return out
 
@@ -916,7 +924,7 @@ def show(profile_dir: Path, vault: Path = DEFAULT_VAULT) -> str:
 # ---------------------------------------------------------------- CLI
 def me_main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(prog="python -m verse_brain.prep me", description=(
-        "the owner's permanent profile (the me layer): build it from his sources, refresh it, or show its state."))
+        "The owner's permanent profile (the me layer): build it from his sources, refresh it, or show its state."))
     ap.add_argument("action", choices=["build", "refresh", "show"])
     ap.add_argument("--fake", action="store_true", help="offline: a fake model and a hashing embedder; no network, no key, no spend")
     ap.add_argument("--budget-usd", type=float, default=0.5, help="hard cap used to size max_tokens")

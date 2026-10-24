@@ -116,7 +116,7 @@ class Config:
     final_max_tokens: int = 1500        # the Sonnet merge writes a whole summary; 600 (D) would truncate it
     final_timeout_s: float = 45.0       # `control stop` waits this long for the merge, then closes with the draft
     # spend
-    budget_usd: float | None = None    # None = no cap (Alex: the Max credit pays, no limits)
+    budget_usd: float | None = None    # None = no cap (the owner: the Max credit pays, no limits)
     # F3 paraphrase matcher (EmbeddingGemma 2 text 270M, LiteRT-LM) next to Swift's n-gram matcher. Every gate is
     # required: the F3 bench showed 10-12 % wrong ids and premature locks on short prefixes without them.
     embed_enabled: bool = True
@@ -142,7 +142,7 @@ class Config:
     me_retrieval_k_prepared: int = 2   # ...and in a prepared one (the pack carries most of it)
     me_retrieval_min_words: int = 5    # words in the partial (the bank matcher's gate)
     me_retrieval_final_wait_s: float = 0.150   # D waits this long for the final-text retrieval; F never waits
-    me_files_max_chars: int = 4800     # FROM USER'S FILES in the tail: about 1,200 tokens
+    me_files_max_chars: int = 4800     # FROM <OWNER>'S FILES in the tail: about 1,200 tokens
     room_min_words: int = 6            # room route: an automatic card needs a question cue and this many words
     room_probe_min_words: int = 5      # room route: a statement of at least this many words gets the (silent unless it is a question) statement probe (was 8: Italian yes/no questions without a wh-word, "ha avuto esperienza con ...", are 5-7 words and went unanswered)
     room_hold_s: float = 1.2           # room route: a card held back while he reads the one on screen fires after this long without reading

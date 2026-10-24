@@ -107,7 +107,7 @@ public enum Cues {
     /// The question signal of a text and what it was: the words that set it (`why`, for the session event log and for the brain to
     /// see whether the cue lies in the part of a text it splits off) and whether it is `strong`, an unambiguous multi-word or
     /// otherwise distinctive cue. A weak cue (a bare question word that is also an ordinary word) still makes the turn a question,
-    /// but the room route's card hold waits with it while Alex is reading the card on screen.
+    /// but the room route's card hold waits with it while the owner is reading the card on screen.
     public static func cueMatch(_ text: String, lang: String = "en") -> CueMatch? {
         let w = Text.words(text, lang: lang)
         guard let last = w.last, !isHesitation(last.text, lang: lang) else { return nil }
