@@ -1,7 +1,7 @@
-"""Follow my answer, the detector (runtime/follow.py): divergence on the owner's speech against the card of the open question.
+"""Follow my answer, the detector (runtime/follow.py): divergence on the user's speech against the card of the open question.
 
 Pure and deterministic: fake clock, concept embedder, speech delivered one word per 0.4 s. The cases that matter to
-Alex: reading the card verbatim triggers nothing, a paraphrase triggers nothing (the embedding path is what holds it), a
+the owner: reading the card verbatim triggers nothing, a paraphrase triggers nothing (the embedding path is what holds it), a
 new topic diverges within five content words, fillers are nothing, and going back to the card does not flip anything."""
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ def diverged(r):
 
 VERBATIM = ("Sure, I'll give you the short version. I built it mostly solo. Lantern cut manual data entry from eleven "
             "minutes to two minutes per invoice.")
-NEW_PROJECT = ("Actually the thing I'm most proud of is a running app for the marathon, it is called Trailhead and it "
+NEW_PROJECT = ("Actually the thing I'm most proud of is a running app for the marathon, it is called TrailHead and it "
                "is on the App Store.")
 
 

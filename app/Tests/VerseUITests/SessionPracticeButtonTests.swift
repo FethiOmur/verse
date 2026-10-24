@@ -32,7 +32,7 @@ private func makeSession(_ name: String, in root: URL, pack: String? = "## FACTS
 
 @MainActor
 private func makeSim(root: URL) -> (SimController, VerseController, AppSettings) {
-    let defaults = UserDefaults(suiteName: "dev.fethiverse.verse.test-\(UUID().uuidString)")!
+    let defaults = UserDefaults(suiteName: "dev.example.verse.test-\(UUID().uuidString)")!
     let settings = AppSettings(defaults: defaults)
     settings.useMeProfile = false
     let controller = VerseController(settings: settings, launch: LaunchOptions(arguments: []))

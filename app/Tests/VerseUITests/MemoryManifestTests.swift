@@ -48,7 +48,7 @@ final class MemoryManifestTests: XCTestCase {
     }
 
     func testTheOwnerNameChangesItBecauseSpeakerLabelsDependOnIt() {
-        XCTAssertNotEqual(fp(owner: "Dana"), fp(owner: "Alex"))
+        XCTAssertNotEqual(fp(owner: "Dana"), fp(owner: "the owner"))
     }
 
     func testAFileOutsideTheSixDoesNotChangeIt() throws {

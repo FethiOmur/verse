@@ -91,7 +91,7 @@ final class GateDoubleTalkTests: XCTestCase {
         return (events.filter { $0.channel == .me }, session.gateDecisions, session.droppedEchoEvents)
     }
 
-    /// Alex talks while the remote speaker talks and the two envelopes correlate (the same syllable rhythm). His voice is
+    /// the owner talks while the remote speaker talks and the two envelopes correlate (the same syllable rhythm). His voice is
     /// as loud at the mic as the remote is in the tap, with the speaker echo underneath. The gate used to drop this at the
     /// first correlation of 0.6 or more; it must pass it on to the text guard.
     func testDoubleTalkWithCorrelatedEnvelopeIsKept() async throws {

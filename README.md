@@ -18,7 +18,7 @@ The design documents are in [docs/specs](docs/specs/). Start with the [v1 design
 
 ## Status
 
-Verse is built by one person for his own meetings and interviews. It is being generalised for other users. Expect rough edges.
+Verse is built by one person for the owner's own meetings and interviews. It is being generalised for other users. Expect rough edges.
 
 ## Requirements
 

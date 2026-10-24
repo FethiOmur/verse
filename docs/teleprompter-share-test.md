@@ -1,6 +1,6 @@
 # Verse panel: hide-from-share test (manual, on your Mac)
 
-Covers the meeting cards too (Alex, 2026-10-15: cards hide by default, same as the prompter); also check that a
+Covers the meeting cards too (the owner, 2026-10-15: cards hide by default, same as the prompter); also check that a
 live answer card is invisible on the other side.
 
 Goal: find out, per app, whether the prompter panel is invisible to the other side of a screen share while

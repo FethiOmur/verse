@@ -1,10 +1,10 @@
 # Verse: follow my answer
 
-Status: decided 2026-10-16 (Alex). His rule applies: after a spec, build.
+Status: decided 2026-10-16 (the owner). His rule applies: after a spec, build.
 
 ## 1. Goal
 
-Verse keeps working exactly as today: a question arrives and the card shows a suggested answer (SAY plus points). Alex
+Verse keeps working exactly as today: a question arrives and the card shows a suggested answer (SAY plus points). the owner
 doesn't always read the card. Something else may come to mind, and he may start talking about it. That will usually
 still be on the question. When that happens, Verse notices at once, understands what he is talking about (from his
 words and the question), and updates the card in his direction:
@@ -13,7 +13,7 @@ words and the question), and updates the card in his direction:
 - **points still to make**: 2–3 short points on his topic that he hasn't said yet (numbers, projects, posting
   competencies from the pack). Each one is struck through as he says it.
 
-If he reads the card, nothing changes. Alex: "Sapmayı fark etmeyi düzgün oturttuğumuzda harika bir program olmuş olacak."
+If he reads the card, nothing changes. the owner: "Sapmayı fark etmeyi düzgün oturttuğumuzda harika bir program olmuş olacak."
 Divergence detection is the core of this spec.
 
 ## 2. Decisions
@@ -28,16 +28,16 @@ Divergence detection is the core of this spec.
 | Refresh | After a follow card, refresh at his sentence ends only (final result or ≥ 700 ms pause), at most once every 4 s, and only when he has said ≥ 4 new content words since the last C. The card never changes mid-sentence. |
 | Coverage | Every point on the current card (original or follow) is checked against his speech with the same match rule. Covered points are sent as `covered` and struck through. When all points are covered and he has stopped for ≥ 1.5 s, the card shows nothing new; Verse doesn't push him to keep talking. |
 | Back on card | If after a follow card his words match the *original* card again, mark those points covered and don't switch back. Avoid flicker. |
-| End | A new remote question, or Alex silent for ≥ 4 s after the remote speaks again, ends follow mode for that turn. |
+| End | A new remote question, or the owner silent for ≥ 4 s after the remote speaks again, ends follow mode for that turn. |
 | Toggle | Settings → Meetings: "Follow my answer" (default **on**). The brain gets it in `start`. |
 | Teleprompter | When the meeting-card prompter is on, a follow card calls `replaceUnread(with:)` with the new SAY, so the read prefix stays. |
-| Cost | One Haiku call per divergence plus refreshes. No cap (Alex). Report the count per meeting in `summary.md` metrics. |
+| Cost | One Haiku call per divergence plus refreshes. No cap (the owner). Report the count per meeting in `summary.md` metrics. |
 | Fallback | When degraded (G1 local Gemma), C runs on Gemma the same way as F does. If Gemma can't, no follow card and the original stays. |
 
 Rejected:
 - **Detection in Swift.** Swift has no semantic matcher and no card meaning, and duplicating the embedder would cost RAM.
-- **Updating continuously per word.** It distracts and costs more; Alex asked for an immediate switch, not churn.
-- **Asking Alex to tap.** It must be hands-free.
+- **Updating continuously per word.** It distracts and costs more; the owner asked for an immediate switch, not churn.
+- **Asking the owner to tap.** It must be hands-free.
 
 ## 3. Protocol (additive; meeting messages unchanged)
 
@@ -79,8 +79,8 @@ Rejected:
 - Refresh: never mid-sentence, at most once every 4 s, needs ≥ 4 new content words.
 - Engine with a fake transport: divergence → one C call → `follow` + C deltas; a new remote question ends follow mode.
 - Two-track replay (`eval/twotrack`, fake brain plus fake embedder, then one live run):
-  - t02, Alex reads the card → 0 follow calls.
-  - t03, Alex goes off-card on a pack topic → follow card; record the detection ms and the first-sentence ms.
+  - t02, the owner reads the card → 0 follow calls.
+  - t03, the owner goes off-card on a pack topic → follow card; record the detection ms and the first-sentence ms.
   - t04, off-card on a non-pack topic → follow card with ≤ 1 point, no invented facts.
 - Swift: reducer states and settings persistence, plus one offscreen render per state, looked at.
 
@@ -92,5 +92,5 @@ grounded in the pack and sounds like the STYLE GUIDE.
 
 ## 7. Later (not this spec)
 
-Calendar and Notes support (Alex, 2026-10-16: "ileride takvim ve notes desteği"). F5 calendar prep exists already;
+Calendar and Notes support (the owner, 2026-10-16: "ileride takvim ve notes desteği"). F5 calendar prep exists already;
 Notes would be a prep source.

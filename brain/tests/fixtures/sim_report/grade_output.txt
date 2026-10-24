@@ -19,7 +19,7 @@ Here is the grading.
        {"sentence": "Entry time per document dropped from 11 minutes to 2 minutes.", "evidence_ids": ["e2"]},
        {"sentence": "Corrections fell by 40 percent after the second prompt.", "evidence_ids": ["e2"]},
        {"sentence": "We ran 4 ad experiments on the same pipeline.", "evidence_ids": ["e2"]},
-       {"sentence": "I ran 4 ad experiments for Trailhead.", "evidence_ids": ["e3", "e99"]}]},
+       {"sentence": "I ran 4 ad experiments for TrailHead.", "evidence_ids": ["e3", "e99"]}]},
     {"q_id": "q3", "strong": [], "missing": ["Skipped."], "better_answer": []},
     {"q_id": "q4", "strong": ["Streaming the first sentence."], "missing": ["No measured latency."],
      "better_answer": [{"sentence": "In Verse I stream the first sentence as soon as it is complete.", "evidence_ids": ["e1"]}]}

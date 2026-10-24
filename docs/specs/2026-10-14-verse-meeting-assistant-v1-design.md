@@ -1,19 +1,19 @@
 # Verse v1: meeting assistant (design)
 
-Status: draft for the owner's review, 2026-10-14. Implementation starts after approval.
+Status: draft for the user's review, 2026-10-14. Implementation starts after approval.
 Sources: `~/Workspace/Textream_Analiz/textream_architecture_and_rebuild.md`,
 `~/Workspace/Textream_Analiz/model_login_options.md`, brainstorming answers on 2026-10-14.
 
 ## 1. Goal and audience
 
 Verse is a native macOS app that listens to an online meeting and, without being asked, shows short,
-source-backed help in a notch overlay. It suggests answer points for questions put to Alex, recalls facts from
+source-backed help in a notch overlay. It suggests answer points for questions put to the user, recalls facts from
 his own notes and recent work, keeps a live list of decisions and actions, and explains unfamiliar terms.
 
-v1 is for the owner's own daily use on his MacBook (macOS 26, Apple Silicon). Distribution to other users, a
+v1 is for the owner's own daily use on the owner's MacBook (macOS 26, Apple Silicon). Distribution to other users, a
 teleprompter mode and an iOS app are later specs (section 10).
 
-## 2. What Alex decided (2026-10-14)
+## 2. What the owner decided (2026-10-14)
 
 | Topic | Decision |
 |---|---|
@@ -22,20 +22,20 @@ teleprompter mode and an iOS app are later specs (section 10).
 | What it shows | Reminders from own notes; answer points for questions asked; live summary and actions; term explanations |
 | Trigger | Fully automatic (no hotkey needed) |
 | Knowledge sources | knowledge-vault vault via `beyin.py`; a per-meeting prep note; commit history of repos chosen per meeting |
-| Brain | **Claude, paid only from the Claude Max membership's monthly API credit** (Individual Org API key). No local-model fallback for generation |
+| Brain | **Claude, paid only from the Claude API membership's monthly API credit** (Personal API Org API key). No local-model fallback for generation |
 | Speed | First words almost immediately; Haiku opener first, Sonnet 5.5 (effort medium) continues (2026-10-14) |
 | Stack | Swift (not Rust, not a Textream fork) |
 | Name | Verse |
 
 ## 3. Constraints
 
-- **Max membership, sanctioned route only.** Calls use an API key from "Personal API Org", which draws on
-  the Max monthly API credit. No Claude.ai/Max OAuth, no Max plan credentials in the app: the Claude Code legal page
+- **API membership, sanctioned route only.** Calls use an API key from "Personal API Org", which draws on
+  the Anthropic API credit. No Claude.ai/Max OAuth, no API plan credentials in the app: the Claude Code legal page
   says Anthropic does not permit third-party apps to offer Claude.ai login or route requests through Free, Pro or
   Max credentials (read 2026-10-14). The org has no payment method, so spend stops when the credit runs out.
 - **No audio is stored.** Audio stays in memory long enough to transcribe it. Transcripts and suggestions are
   saved locally only (`~/Library/Application Support/Verse/sessions/`). At the end of a meeting a summary is written to
-  the vault only if Alex confirms.
+  the vault only if the owner confirms.
 - **What leaves the Mac:** transcript turns, the meeting pack (prep note, retrieved vault snippets, commit
   summaries) and prompts go to the Anthropic API. Nothing else.
 - **Positioning:** a meeting assistant, not marketed as undetectable. Use in job interviews or exams is not a
@@ -54,7 +54,7 @@ teleprompter mode and an iOS app are later specs (section 10).
 | Rust core | Rejected | Liquid Glass, notch panel, ScreenCaptureKit and SpeechAnalyzer are Swift/ObjC APIs; FFI cost. Revisit only for Windows |
 | Textream fork / Director demo | Rejected | The files that would change are its largest and most coupled; the demo would be thrown away |
 | Max OAuth login | Not allowed | Anthropic policy above |
-| Hotkey-only trigger | Rejected by Alex | Chose fully automatic |
+| Hotkey-only trigger | Rejected by the owner | Chose fully automatic |
 
 ## 5. Speed architecture (the core of v1)
 
@@ -100,7 +100,7 @@ not latency-bound) builds:
 tiers state facts only from the fact sheet, the prep note and the snippet set. This also removes the vault
 writes and the 0.3–0.45 s subprocess cost from the live path. `beyin.py` runs with `--no-sync` even at prep.
 
-Alex can read and correct the bank before the call.
+the owner can read and correct the bank before the call.
 
 ### 5.3 Matching the bank [B7]
 
@@ -128,7 +128,7 @@ Alex can read and correct the bank before the call.
 - **Volatile text, not final text** [B4]: reuse checks and D's input use the latest volatile transcript with
   its `audioTimeRange`. Finalized text arrives later and only corrects the transcript log.
 - **Barge-in:** if the other person keeps talking, S calls already in flight keep running but are not shown. If
-  Alex starts speaking (verified mic speech, see 5.7), the turn is over.
+  the owner starts speaking (verified mic speech, see 5.7), the turn is over.
 
 ### 5.5 Who is the question for? [B12]
 
@@ -136,7 +136,7 @@ The remote channel mixes everyone, so the assistant checks the addressee:
 - the owner's name,
 - second-person forms (`sen/siz`, `tu/Lei`, `you`),
 - a question directly after the owner's own turn,
-- a pause held open for Alex.
+- a pause held open for the user.
 
 Questions for someone else get a small "for others" style with no SAY line and no D call. Per-voice clustering
 is a later option.
@@ -201,7 +201,7 @@ is a later option.
 ```
 
 Text appears without entrance animations, because a spring adds 150–300 ms of perceived delay. Later the
-teleprompter's voice-activated scroll follows the owner's voice through this text.
+teleprompter's voice-activated scroll follows the user's voice through this text.
 
 ### 5.10 Units and interfaces
 
@@ -232,7 +232,7 @@ teleprompter's voice-activated scroll follows the owner's voice through this tex
 | Sonnet deep points, first words (thinking off) | ≤ 2.0 s | ≤ 3.0 s |
 
 The speculation target was ≤ 0.3 / 0.5 s until 2026-10-14. P1-6 measured 0.67 / 1.22 s: the 300 ms endpoint wait is
-inside the path, so Alex moved the target to ≤ 0.7 / 1.3 s (he judged the live result "very fast").
+inside the path, so the owner moved the target to ≤ 0.7 / 1.3 s (he judged the live result "very fast").
 
 Stage estimates from the critique, partly measured on this Mac:
 - request floor on a reused connection: ~165 ms (measured);
@@ -249,10 +249,10 @@ Stage estimates from the critique, partly measured on this Mac:
 
 If any target is out of reach, the spec is revised with the measured numbers before building on.
 
-Estimated cost (critique, unmeasured): about $2–4 per meeting including prep, against the $200 monthly credit.
+Estimated cost (critique, unmeasured): about $2–4 per meeting including prep, against the monthly credit.
 
 
-### 6.1 Phase 0 outcome (2026-10-14, accepted by Alex)
+### 6.1 Phase 0 outcome (2026-10-14, accepted by the owner)
 
 Measured in `bench/RESULTS.md`. The F target was revised from 1.1 / 1.8 s to **2.0 / 2.8 s**: the measured sum is
 ASR lag 0.3–0.8 s + endpoint 0.3 s + Haiku first line 1.1 s. P and S remain the paths that beat it. Decisions now
@@ -271,7 +271,7 @@ fixed:
 - **Turkish** uses DictationTranscriber with `.frequentFinalization` (SpeechTranscriber has no tr_TR on this Mac),
   unless the WhisperKit bench wins.
 - **Remote audio:** a Core Audio process tap matched by bundle ID; Brave's audio comes from a helper process.
-- **Billing:** org `00000000-0000-0000-0000-000000000000`, confirmed by Alex as "Personal API Org".
+- **Billing:** org `00000000-0000-0000-0000-000000000000`, confirmed by the owner as "Personal API Org".
 
 ## 7. Error handling
 
@@ -305,10 +305,10 @@ Unit:
 - Bleed gate: remote audio played into the mic → no `me` turn.
 
 Replay harness (main evaluation): feed recorded two- and three-speaker audio instead of live capture.
-- Material: dialogues Alex records himself or generates with TTS, in en/it/tr, with labelled questions. No
+- Material: dialogues the owner records or generates with TTS, in en/it/tr, with labelled questions. No
   third-party recordings without consent.
 - Measures: latency per step (section 6); question-detection precision and recall; whether each answer point is
-  supported by its cited source (checked by an independent model plus spot checks by Alex); API cost per 30
+  supported by its cited source (checked by an independent model plus spot checks by the owner); API cost per 30
   minutes.
 
 Live:
@@ -317,13 +317,13 @@ Live:
 ## 9. Done means (v1 spike, ~1 week)
 
 - In replay and in one live Meet call per language, the targets in section 6 are met, or the measured numbers are
-  recorded and accepted by Alex.
+  recorded and accepted by the owner.
 - On a **blind** paraphrase set (written by a person or model that never saw the bank), the bank hit rate is
   measured per language with a wrong-hit rate ≤ 5 % at the chosen threshold; Turkish is reported separately.
 - Questions addressed to other participants trigger no SAY line in ≥ 90 % of cases on 3-speaker replays.
 - Played through the MacBook speakers, the replay produces no false "me" turns from mic bleed.
 - Question detection reaches ≥ 80 % precision and recall on the labelled replay set, counting only questions
-  addressed to Alex.
+  addressed to the user.
 - No suggestion states a number, date or fact that is absent from its cited source in the replay set.
 - No audio file is written anywhere (checked by a filesystem watch during a session).
 - The API key never appears in logs or files (grep check).

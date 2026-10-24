@@ -97,7 +97,7 @@ private func makeRig(root: URL, calendar: FakeCalendar, useCalendar: Bool = true
                           struct NotInTests: Error {}
                           throw NotInTests()
                       }) -> Rig {
-    let defaults = UserDefaults(suiteName: "dev.fethiverse.verse.test-\(UUID().uuidString)")!
+    let defaults = UserDefaults(suiteName: "dev.example.verse.test-\(UUID().uuidString)")!
     let settings = AppSettings(defaults: defaults)
     settings.useMeProfile = false
     settings.fakeBrain = fakeBrain

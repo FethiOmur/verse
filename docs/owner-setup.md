@@ -1,4 +1,4 @@
-Owner's own setup (Alex). Kept for reference.
+Owner's own setup (the owner). Kept for reference.
 
 # Verse
 
@@ -9,5 +9,5 @@ Native macOS meeting assistant and teleprompter (Swift + Python brain). Private.
 - Plan: `docs/plans/2026-10-14-verse-v1.md`
 - Phase 0 measurements: `bench/RESULTS.md`
 
-The brain runs only on Claude via an API key from the owner's Individual Org (Max monthly API credit), read from
+The brain runs only on Claude via an API key from the owner's Individual Org (Anthropic monthly API credit), read from
 the macOS Keychain item `verse-anthropic`. No keys, audio or meeting transcripts are ever committed.

@@ -113,7 +113,7 @@ def test_grade_parse_and_number_check():
     assert kept == [
         "At Lantern I added an LLM extraction step with a human review screen.",     # no number
         "Entry time per document dropped from 11 minutes to 2 minutes.",             # 11 and 2 are in e2
-        "I ran 4 ad experiments for Trailhead.",                                     # 4 is in e3; e99 is not an evidence id
+        "I ran 4 ad experiments for TrailHead.",                                     # 4 is in e3; e99 is not an evidence id
     ]
     # the uncited 40 and the 4 cited against e2 (which does not contain it) were dropped
     assert q2["better_answer"][2]["evidence_ids"] == ["e3"]
@@ -271,7 +271,7 @@ def test_no_evidence_is_flagged(tmp_path):
     assert "No experience source was provided." in html
     # without evidence every sentence containing a number is dropped
     assert "dropped from 11 minutes" not in html
-    assert "I ran 4 ad experiments for Trailhead." not in html
+    assert "I ran 4 ad experiments for TrailHead." not in html
 
 
 def test_missing_sim_results_raises(tmp_path):

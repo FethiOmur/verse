@@ -4,7 +4,7 @@ import VerseTurns
 import XCTest
 
 /// "Follow my answer", overlay side: the reducer turns the brain's `follow` / C deltas / `covered` lines into a card that
-/// follows Alex, and leaves every card without them exactly as it was. The brain's lines are scripted JSON, as it writes them.
+/// follows the owner, and leaves every card without them exactly as it was. The brain's lines are scripted JSON, as it writes them.
 @MainActor
 final class FollowOverlayTests: XCTestCase {
 

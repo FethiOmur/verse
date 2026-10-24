@@ -23,7 +23,7 @@ COMMON_CAPS = {
     "happy", "good", "great", "thanks", "thank", "now", "then", "also", "one", "two", "three", "for", "in", "on", "at", "to", "of", "with",
     "as", "if", "not", "is", "are", "was", "were", "do", "did", "does", "have", "has", "had", "can", "could", "would", "should", "will",
     "let", "let's", "mostly", "first", "second", "third", "because", "since", "while", "after", "before", "most", "some", "all", "any",
-    "llm", "llms", "ai", "eur", "gross", "q1", "q2", "q3", "q4", "ceo", "cto", "vp", "ci", "api", "ml", "sql", "eta", "owner",
+    "llm", "llms", "ai", "eur", "gross", "q1", "q2", "q3", "q4", "ceo", "cto", "vp", "ci", "api", "ml", "sql", "eta", "user",
     "english", "italian", "turkish", "european",
 }
 

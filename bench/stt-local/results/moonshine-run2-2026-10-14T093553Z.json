@@ -3,7 +3,7 @@
   "engine" : "moonshine",
   "fixtures" : {
     "deletedAt" : "2026-10-14T09:36:17Z",
-    "directory" : "\/Users\/user\/Desktop\/ProjectExamples\/CursorExamples\/Verse\/bench\/stt-local\/fixtures\/run-2026-10-14T093553Z",
+    "directory" : "\/Users\/example-user\/Desktop\/ProjectExamples\/CursorExamples\/Verse\/bench\/stt-local\/fixtures\/run-2026-10-14T093553Z",
     "directoryAbsentAfterDelete" : true,
     "filesCreated" : 40,
     "filesDeleted" : 40

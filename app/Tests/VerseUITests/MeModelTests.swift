@@ -32,7 +32,7 @@ final class MeModelTests: XCTestCase {
     [m601] Senior machine-learning engineer role in Lisbon or remote in Europe, available from January 2027. | file:dana_profile.md#L28
 
     ## MY NOTES
-    [m701] Prefers to answer in short sentences. | owner
+    [m701] Prefers to answer in short sentences. | user
 
     """
 
@@ -77,7 +77,7 @@ final class MeModelTests: XCTestCase {
         XCTAssertEqual(exp.source, "file:dana_profile.md#L8")
         XCTAssertEqual(exp.text, "2022-now · Machine-learning engineer · Larkspur Health · Owns the claims-triage model and its serving stack.")
         XCTAssertEqual(exp.editable, "2022-now | Machine-learning engineer | Larkspur Health | Owns the claims-triage model and its serving stack.")
-        XCTAssertEqual(m.line(id: "m701")?.source, "owner")
+        XCTAssertEqual(m.line(id: "m701")?.source, "user")
         XCTAssertEqual(m.lines(.projects).first?.fields.count, 5)
     }
 
@@ -187,7 +187,7 @@ final class MeModelTests: XCTestCase {
         let line = try XCTUnwrap(m.line(id: "m704"))
         XCTAssertEqual(line.section, .notes)
         XCTAssertEqual(line.fields, ["Prefers mornings for interviews"])
-        XCTAssertEqual(line.raw, "[m704] Prefers mornings for interviews | owner")
+        XCTAssertEqual(line.raw, "[m704] Prefers mornings for interviews | user")
         XCTAssertEqual(m.lines(.notes).map(\.id), ["m701", "m704"])
         XCTAssertEqual(m.addNote("").failure, .empty)
     }

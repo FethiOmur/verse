@@ -24,7 +24,7 @@ R2 = ("DECISION: we ship the pilot on friday.\nACTION: Tomas - Send the deck by 
 FINAL = ("SUMMARY: The team agreed to ship the pilot on Friday and left the budget owner open.\n"
          "DECISION: Ship the pilot on Friday\n"
          "ACTION: Tomas — send the deck by Monday\n"
-         "ACTION: Alex — share the pilot plan\n"
+         "ACTION: the owner — share the pilot plan\n"
          "OPEN: Who owns the budget?\n"
          "CONFLICT: Said the pilot cut entry to 3 minutes; the fact sheet says 2 minutes (f001)")
 
@@ -337,13 +337,13 @@ def test_stop_writes_summary_md(tmp_path):
     assert "# Meeting summary" in md
     assert "The team agreed to ship the pilot on Friday" in md
     assert "- Ship the pilot on Friday" in md
-    assert "- Tomas — send the deck by Monday" in md and "- Alex — share the pilot plan" in md
+    assert "- Tomas — send the deck by Monday" in md and "- the owner — share the pilot plan" in md
     assert "- Who owns the budget?" in md
     assert "## Conflicts with the fact sheet" in md and "fact sheet says 2 minutes (f001)" in md
     assert "DRAFT" not in md
     ev = em.of("summary")[-1]
     assert ev["final"] is True and ev["path"] == str(sess / "summary.md")
-    assert ev["actions"] == ["Tomas — send the deck by Monday", "Alex — share the pilot plan"]
+    assert ev["actions"] == ["Tomas — send the deck by Monday", "the owner — share the pilot plan"]
     assert ev["conflicts"] and em.of("actions")[-1]["items"] == ev["actions"]
     assert not any(e["type"] == "delta" and e["tier"] in ("A", "R") for e in em.events)
 
@@ -426,7 +426,7 @@ def test_rolling_failure_is_silent(tmp_path):
 
 
 def test_no_cap_by_default(tmp_path):
-    """Alex (2026-10-14): no spend limits; the Max credit pays. A large spend must not halt the brain."""
+    """the owner (2026-10-14): no spend limits; the Anthropic API credit pays. A large spend must not halt the brain."""
     async def go():
         b, t, em = make(responder_for())
         await start(b, session_copy(tmp_path))

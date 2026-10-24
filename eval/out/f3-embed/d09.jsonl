@@ -458,8 +458,8 @@
 {"wall":1792000278.2943,"line":{"type":"metric","turn_id":"","stage":"fire","t":1792000278.294223,"id":"r0014","tier":"R","words":0,"hedge_after_s":null}}
 {"wall":1792000279.3268,"line":{"type":"metric","turn_id":"","stage":"first_byte","t":1792000279.326556,"id":"r0014","tier":"R","lane":1,"new_connection":false}}
 {"wall":1792000279.327,"line":{"type":"metric","turn_id":"","stage":"first_delta","t":1792000279.326845,"id":"r0014","tier":"R"}}
-{"wall":1792000279.4573,"line":{"type":"actions","items":["Alex — Pull up the evaluation notes once the other side has them."]}}
-{"wall":1792000279.4574,"line":{"type":"summary","decisions":["Thursday 22 October 2026 at 15:00 CEST interview on Google Meet is the scheduled meeting time."],"actions":["Alex — Pull up the evaluation notes once the other side has them."],"open":[]}}
+{"wall":1792000279.4573,"line":{"type":"actions","items":["the owner — Pull up the evaluation notes once the other side has them."]}}
+{"wall":1792000279.4574,"line":{"type":"summary","decisions":["Thursday 22 October 2026 at 15:00 CEST interview on Google Meet is the scheduled meeting time."],"actions":["the owner — Pull up the evaluation notes once the other side has them."],"open":[]}}
 {"wall":1792000279.4574,"line":{"type":"metric","turn_id":"","stage":"done","t":1792000279.45679,"id":"r0014","tier":"R","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":66,"cache_read_input_tokens":4538,"input_tokens":83,"output_tokens":76},"hedged":false,"winner_lane":1,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.0001}}
 {"wall":1792000286.8949,"line":{"type":"metric","turn_id":"","stage":"fire","t":1792000286.89469,"id":"a0015","tier":"A","words":0,"hedge_after_s":null}}
 {"wall":1792000288.1558,"line":{"type":"metric","turn_id":"","stage":"first_byte","t":1792000288.1546218,"id":"a0015","tier":"A","lane":1,"new_connection":false}}

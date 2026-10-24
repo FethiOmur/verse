@@ -149,7 +149,7 @@ final class TranscriptDocumentTests: XCTestCase {
         XCTAssertEqual(d.rows[0].speaker, .me)
         XCTAssertEqual(d.rows[1].speaker, .other)
         XCTAssertEqual(d.name(of: .room), "Room")
-        XCTAssertEqual(load("transcript-legacy-5starts", owner: "Alex").name(of: .me), "Alex")
+        XCTAssertEqual(load("transcript-legacy-5starts", owner: "the owner").name(of: .me), "the owner")
     }
 
     func testRoomRowsAreRelabelledFromTheFinalRoomTextEvents() {

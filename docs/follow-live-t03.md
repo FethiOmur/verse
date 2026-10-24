@@ -2,7 +2,7 @@
 
 Fixture `eval/twotrack/t03.json`, run with `eval/run_follow.py --live` on a scratch copy of the sample-interview session whose
 pack carries the owner's STYLE GUIDE section (`prep.voice.with_voice`; the copy is not in the repo). Question b001 ("Can you tell me
-about yourself and your background?"); Alex says the opening of the card and then leaves it for another topic of the pack:
+about yourself and your background?"); the owner says the opening of the card and then leaves it for another topic of the pack:
 
 > Sure, I'll give you the short version. What I'm happiest about is the accuracy of Lantern. On the held out set we got ninety six
 > point four percent on totals, and the evaluation set was a frozen set of four hundred invoices.

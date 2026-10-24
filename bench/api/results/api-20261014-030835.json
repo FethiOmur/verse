@@ -798,7 +798,7 @@
      "output_tokens": 123
     },
     "text_chars": 367,
-    "text_head": "SAY: Let me check and come back to you.\n- The question is only \"warmup question\" with no specific topic, so the pack does not show what Alex needs to answer.\n- The transcript covers the pilot results, Q3 budget and depo",
+    "text_head": "SAY: Let me check and come back to you.\n- The question is only \"warmup question\" with no specific topic, so the pack does not show what the owner needs to answer.\n- The transcript covers the pilot results, Q3 budget and depo",
     "cost_usd": 0.000844,
     "out_tok_per_s": 185.4
    },

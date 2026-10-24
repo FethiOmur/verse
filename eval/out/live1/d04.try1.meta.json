@@ -12,7 +12,7 @@
   },
   {
    "index": 1,
-   "speaker": "Alex",
+   "speaker": "the owner",
    "t_start": 14.18,
    "t_end": 20.68,
    "silent": true
@@ -26,7 +26,7 @@
   },
   {
    "index": 3,
-   "speaker": "Alex",
+   "speaker": "the owner",
    "t_start": 27.72,
    "t_end": 36.12,
    "silent": true
@@ -40,7 +40,7 @@
   },
   {
    "index": 5,
-   "speaker": "Alex",
+   "speaker": "the owner",
    "t_start": 41.26,
    "t_end": 48.36,
    "silent": true
@@ -61,7 +61,7 @@
   },
   {
    "index": 8,
-   "speaker": "Alex",
+   "speaker": "the owner",
    "t_start": 57.0,
    "t_end": 64.4,
    "silent": true
@@ -75,7 +75,7 @@
   },
   {
    "index": 10,
-   "speaker": "Alex",
+   "speaker": "the owner",
    "t_start": 68.802,
    "t_end": 75.602,
    "silent": true
@@ -105,7 +105,7 @@
   "folders": [
    "/var/folders/th/cqlllcvs5g9d857_y87xzf0w0000gn/T/verse-eval-audio-3bk_7v62/session",
    "/Users/user/Library/Application Support/Verse/sessions",
-   "/Users/user/Desktop/ProjectExamples/CursorExamples/Verse/brain/tests/out"
+   "<repo>/brain/tests/out"
   ],
   "polls": 325,
   "audio_files_found": [],

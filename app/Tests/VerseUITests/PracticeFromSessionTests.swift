@@ -51,7 +51,7 @@ private func makeSession(_ name: String, in root: URL, pack: String? = "## FACTS
 
 @MainActor
 private func makeSim(root: URL, useMe: Bool = true, meProfile: URL? = nil) -> (SimController, VerseController, AppSettings) {
-    let defaults = UserDefaults(suiteName: "dev.fethiverse.verse.test-\(UUID().uuidString)")!
+    let defaults = UserDefaults(suiteName: "dev.example.verse.test-\(UUID().uuidString)")!
     let settings = AppSettings(defaults: defaults)
     settings.useMeProfile = useMe
     let controller = VerseController(settings: settings, launch: LaunchOptions(arguments: []))
@@ -218,7 +218,7 @@ final class PracticeFromSessionTestsController: XCTestCase {
         try makeSession("ironwood-lena", in: root, created: "2026-10-18T09:00:00+00:00")
         try makeSession("mara-northwindlabs", in: root, created: "2026-10-19T09:00:00+00:00")
         let (sim, _, settings) = makeSim(root: root)
-        let defaults = UserDefaults(suiteName: "dev.fethiverse.verse.test-\(UUID().uuidString)")!
+        let defaults = UserDefaults(suiteName: "dev.example.verse.test-\(UUID().uuidString)")!
         let upNext = HomeUpNextModel(settings: settings, meeting: MeetingSettings(defaults: defaults), sessions: { [] })
         upNext.setItems([HomeUpNextItem(id: "a", title: "Intro", meta: "Today", session: nil),
                          HomeUpNextItem(id: "b", title: "Lena", meta: "Tomorrow", session: "ironwood-lena")])

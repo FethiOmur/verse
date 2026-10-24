@@ -59,7 +59,7 @@ under `bench/`.
 
 ## Open items
 
-- Alex: confirm that org `00000000-0000-0000-0000-000000000000` is "Personal API Org" (Console → Settings).
+- the owner: confirm that org `00000000-0000-0000-0000-000000000000` is "Personal API Org" (Console → Settings).
 - Optional: is output billed after a cancel? Compare `req_000000000000000000000000` (cancelled) and
   `req_000000000000000000000000` (control) in the Console logs.
 - Not yet tested: the mic-bleed test on speakers, silence while paused, the bundle-ID tap route, and the

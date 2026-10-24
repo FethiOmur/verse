@@ -259,7 +259,7 @@ final class ListenSwapTests: XCTestCase {
     nonisolated(unsafe) private static var languageSwap: SwapOutcome?
 
     /// Room -> meeting. Leg 0 (room, English): one finished question, then a sentence that is still growing when the swap
-    /// cuts in. Leg 1 (meeting, English): the other side asks a question, then Alex answers on the `me` channel.
+    /// cuts in. Leg 1 (meeting, English): the other side asks a question, then the owner answers on the `me` channel.
     private func roomToMeeting() async throws -> SwapOutcome {
         if let o = Self.roomToMeeting { return o }
         let rig = SwapRig()

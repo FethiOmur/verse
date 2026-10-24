@@ -1,6 +1,6 @@
 """The room route's two live failures of 16 Oct (one Mac mic, a phone interview on speaker, unprepared, AUTO language):
 
-(A) while Alex read the card aloud, a NEW card replaced it: the recognizer delivered his reading as many finals of 2-6 words, most
+(A) while the owner read the card aloud, a NEW card replaced it: the recognizer delivered his reading as many finals of 2-6 words, most
     of them stayed `room` (the strict own-voice rule needs 5 content words), and one of them ("... come questo") carried the
     Italian cue `come` and fired F;
 (B) some interviewer questions got no card: Italian yes/no questions have no question word, and nothing recorded what the probe said.
@@ -441,7 +441,7 @@ def test_english_fragments_follow_the_same_rules():
     assert o.judge("what did you do there", "en").label == "room"
 
 
-# ---------------------------------------------------------------- me_words on a split room_text (F1: the app relabels the first words as Alex)
+# ---------------------------------------------------------------- me_words on a split room_text (F1: the app relabels the first words as the owner)
 def test_a_split_room_text_logs_how_many_leading_words_are_his(tmp_path, monkeypatch):
     mixed = "Ledger ha ridotto la chiusura mensile da sei giorni a due. Ottimo, come si descriverebbe come membro di un team"
 

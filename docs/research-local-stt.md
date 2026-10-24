@@ -1,7 +1,7 @@
 # Local streaming STT for Apple Silicon: research and benchmark shortlist
 
 Date: 2026-10-14. Research only: nothing downloaded or installed (HF file sizes read from the public HF API metadata, GitHub via `gh api`, pages via firecrawl).
-Priority from Alex: **English first, Italian second, Turkish last (list only)**.
+Priority from the owner: **English first, Italian second, Turkish last (list only)**.
 Baseline to beat (Apple SpeechTranscriber/DictationTranscriber, `bench/speech/RESULTS_speech.md`): en last-word lag p50 0.28 s / p90 0.83 s, WER 0.5 % (Samantha); it 0.79 / 1.11 s, WER 0 % (Alice); tr 0.52 / 0.65 s, WER 18 % (Yelda, Dictation).
 
 ## How to read the numbers

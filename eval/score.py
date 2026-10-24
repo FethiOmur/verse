@@ -222,8 +222,8 @@ def aggregate(dialogue_scores: list[dict], metas: dict[str, dict], suite: str = 
     qs_me = [r for r in steady if r["is_question"] and r["addressee"] == "me"]
     qs_other = [r for r in steady if r["is_question"] and r["addressee"] == "other"]
 
-    # --- question detection (only questions to Alex count as positives). A turn is "predicted positive" when the
-    # runner would send it to the brain as a question for Alex: kind question and not addressed to someone else.
+    # --- question detection (only questions to the user count as positives). A turn is "predicted positive" when the
+    # runner would send it to the brain as a question for the user: kind question and not addressed to someone else.
     pred_turns = 0
     for d in dialogue_scores:
         if "rows" in d:
@@ -347,7 +347,7 @@ def aggregate(dialogue_scores: list[dict], metas: dict[str, dict], suite: str = 
     cost["total_usd"] = round(cost["total_usd"], 5)
     cost["replay_minutes"] = round(mins, 2)
     cost["usd_per_30_min"] = None if not mins else round(cost["total_usd"] / mins * 30, 4)
-    return {"questions_to_owner": len(qs_me), "excluded_warmup_utterances": excluded, "detection": detection, "addressee": addressee,
+    return {"questions_to_user": len(qs_me), "excluded_warmup_utterances": excluded, "detection": detection, "addressee": addressee,
             "bank": bank, "latency": latency, "other": other_cats, "cost": cost}
 
 
@@ -389,7 +389,7 @@ def main() -> int:
     res["grounding"] = run_grounding(res, Path(a.session), judge=a.judge, budget_usd=a.judge_budget_usd, run=a.run, passes=a.judge_passes)
     (run_dir / ("scores_ngram.json" if a.ngram_only else "scores.json")).write_text(json.dumps(res, indent=1, ensure_ascii=False) + "\n")
     ag = res["aggregate"]
-    print(json.dumps({k: ag[k] for k in ("questions_to_owner", "detection", "addressee", "latency")}, indent=1)[:3000])
+    print(json.dumps({k: ag[k] for k in ("questions_to_user", "detection", "addressee", "latency")}, indent=1)[:3000])
     return 0
 
 

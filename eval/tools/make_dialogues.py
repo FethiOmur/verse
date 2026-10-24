@@ -2,7 +2,7 @@
 
 Run once (audio goes to a temp dir and is deleted): python tools/make_dialogues.py
 The questions come from the sample session's bank (exact), bench/embed/blind_set.json (blind paraphrases) and a few
-off-bank questions on the same topics. Participants: Ingrid (interviewer 1), Tomas (interviewer 2); Alex never speaks
+off-bank questions on the same topics. Participants: Ingrid (interviewer 1), Tomas (interviewer 2); the owner never speaks
 on the remote channel (his answers are silence).
 """
 
@@ -28,7 +28,7 @@ for ln in (SESSION / "bank.jsonl").read_text().splitlines():
         r = json.loads(ln)
         BANK[r["id"]] = r["question"]
 
-OWNER = "Alex"
+OWNER = "the owner"
 I, T = "Ingrid", "Tomas"
 
 # Entries: ("exact", bank_id) | ("para", bank_id, index) | ("off", text) | ("st", speaker, text) | ("frag", speaker, text)
@@ -36,7 +36,7 @@ I, T = "Ingrid", "Tomas"
 # A plain tuple's speaker comes first when it is not the dialogue's default interviewer: ("exact", "b001", T).
 SCRIPTS = {
     "d01": dict(voices={I: "Samantha"}, entries=[
-        ("st", I, "Hi Alex, thanks for making the time today."),
+        ("st", I, "Hi the owner, thanks for making the time today."),
         ("exact", "b001"), ("para", "b002", 0),
         ("st", I, "Okay, that's helpful."),
         ("off", "What was the hardest part of building Lantern?"),
@@ -48,7 +48,7 @@ SCRIPTS = {
         ("off", "Which programming languages do you use day to day?"),
         ("exact", "b005"), ("para", "b012", 0), ("frag", I, "And then the")]),
     "d03": dict(voices={I: "Kathy"}, entries=[
-        ("st", I, "Thanks for joining us today, Alex."),
+        ("st", I, "Thanks for joining us today, the owner."),
         ("para", "b001", 0), ("exact", "b008"),
         ("off", "How big is the team you currently work in?"),
         ("para", "b009", 0), ("exact", "b014")]),
@@ -68,10 +68,10 @@ SCRIPTS = {
         ("exact", "b018"), ("frag", I, "Um, so, and the"),
         ("para", "b015", 0), ("off", "What did the courier pilot teach you about live traffic?")]),
     "d07": dict(voices={I: "Samantha", T: "Mara"}, entries=[
-        ("st", I, "Welcome Alex. Tomas and I will take turns with the questions today."),
+        ("st", I, "Welcome the owner. Tomas and I will take turns with the questions today."),
         ("exact", "b001"), ("para", "b003", 0, T),
         ("oth", I, "Tomas, can you share the roadmap slide with everyone?"), ("rep", T, "Sure, sharing it now."),
-        ("off", "Alex, how did you handle invoices in different languages?", T),
+        ("off", "the owner, how did you handle invoices in different languages?", T),
         ("oth", T, "Ingrid, do you want to cover the team structure now?"), ("rep", I, "Yes, in a moment."),
         ("exact", "b016", I)]),
     "d08": dict(voices={I: "Karen", T: "Rishi"}, entries=[
@@ -98,7 +98,7 @@ SCRIPTS = {
         ("st", I, "We are running about ten minutes behind schedule.")]),
     "d11": dict(voices={I: "Tessa", T: "Mara"}, entries=[
         ("para", "b018", 0, T),
-        ("st", I, "Alex, take your time with this one."),
+        ("st", I, "the owner, take your time with this one."),
         ("off", "Where do you see yourself in five years?", I),
         ("oth", I, "Tomas, are you still on the line?"), ("rep", T, "Yes, I'm here."),
         ("exact", "b004", T), ("para", "b020", 1, T),
@@ -193,7 +193,7 @@ def main() -> None:
         (labels.DIALOGUES_DIR / f"{did}.json").write_text(json.dumps(d, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
         nq = sum(1 for u in utts if u["is_question"] and u["addressee"] == "me")
         no = sum(1 for u in utts if u["is_question"] and u["addressee"] == "other")
-        print(f"{did}: {len(participants) + 1} speakers, {rend.duration:.0f} s, {nq} questions to Alex, {no} to the other interviewer", flush=True)
+        print(f"{did}: {len(participants) + 1} speakers, {rend.duration:.0f} s, {nq} questions to the user, {no} to the other interviewer", flush=True)
 
 
 if __name__ == "__main__":

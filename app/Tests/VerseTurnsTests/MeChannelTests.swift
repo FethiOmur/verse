@@ -56,9 +56,9 @@ final class MeChannelTests: XCTestCase {
         return try PCMClip.read(f.file)
     }
 
-    /// Alex answers the question: his speech is a `me` turn, the question is answered once, and nothing is ever attached
+    /// the owner answers the question: his speech is a `me` turn, the question is answered once, and nothing is ever attached
     /// to a me turn.
-    func testAlexLandsAsMeTurnAndNeverGetsAnAnswer() async throws {
+    func testUserLandsAsMeTurnAndNeverGetsAnAnswer() async throws {
         let remote = try clip("Samantha", "Can you tell me about yourself and your background? [[slnc 9000]]")
         let me = try clip("Mara", "[[slnc 5200]] Sure, I build data pipelines and route planners.")
         let r = try await run(remote: remote, me: me, gate: true, guardOn: true)

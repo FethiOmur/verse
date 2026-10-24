@@ -174,7 +174,7 @@ def started():
 
 def test_a_new_remote_question_ends_the_turn():
     m, drv, clock, fx = started()
-    speak(m, drv, clock, fx, "Actually the thing I'm most proud of is a running app for the marathon called Trailhead", 0.0)
+    speak(m, drv, clock, fx, "Actually the thing I'm most proud of is a running app for the marathon called TrailHead", 0.0)
     assert any(isinstance(e, Diverged) for e in fx)
     m.new_turn("q2")
     assert m.turn_id == "q2" and not m.cards and m.mode == "watch" and not m.toks()

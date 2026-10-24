@@ -83,7 +83,7 @@ def test_a2_without_the_embedder_nothing_diverges():
     m.new_turn("q1")
     m.add_line("orig-q1", "F", "say", "I built it mostly solo.")
     fx = feed(m, PARAPHRASE)
-    fx += feed(m, "Actually the thing I am most proud of is a running app for the marathon called Trailhead on the App Store "
+    fx += feed(m, "Actually the thing I am most proud of is a running app for the marathon called TrailHead on the App Store "
                   "with thousands of weekly users and a long list of new features", t0=20.0)
     assert not any(isinstance(e, Diverged) for e in fx)
     for i in range(1, 100):                       # and no timer path either
@@ -251,7 +251,7 @@ def test_n1_engine_a_partial_that_precedes_the_question_turn_is_not_lost():
         assert any(e["turn_id"] == "q2" for e in fol), ("early" if early else "control", fol)
 
 
-PROBE = "KIND: question\nSAY: Outside of work I am building a running app called Trailhead.\n- It is live on the App Store."
+PROBE = "KIND: question\nSAY: Outside of work I am building a running app called TrailHead.\n- It is live on the App Store."
 
 
 def test_n1_escalation_keeps_the_probe_card_when_kind_and_say_arrive_in_one_chunk():
@@ -276,7 +276,7 @@ def test_n1_escalation_keeps_the_probe_card_when_kind_and_say_arrive_in_one_chun
     b, t, em, cards = asyncio.run(go())
     assert b.follow.turn_id == "q2"
     lines = cards.get("orig-q2", [])
-    assert ("say", "Outside of work I am building a running app called Trailhead.") in lines
+    assert ("say", "Outside of work I am building a running app called TrailHead.") in lines
     assert ("point", "It is live on the App Store.") in lines
 
 

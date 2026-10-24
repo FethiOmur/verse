@@ -1,7 +1,7 @@
 {
  "id": "d09",
  "lang": "en",
- "owner": "Alex",
+ "owner": "the owner",
  "participants": [
   "Ingrid",
   "Tomas"
@@ -42,7 +42,7 @@
    "gap_before": 1.36
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -65,7 +65,7 @@
    "gap_before": 1.15
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -110,7 +110,7 @@
    "gap_before": 0.94
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -155,7 +155,7 @@
    "gap_before": 0.98
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,

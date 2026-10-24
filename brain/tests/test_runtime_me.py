@@ -1,4 +1,4 @@
-"""The me layer at run time: the ABOUT OWNER block and its cache layout, conflicts with the pack, library retrieval on the
+"""The me layer at run time: the ABOUT ME block and its cache layout, conflicts with the pack, library retrieval on the
 embedding thread (F never waits, D waits at most 150 ms), the golden request without the layer, and the local fallback prompt.
 
 Fictional person (Dana Reyes) only; the embedder is a fake whose cosines are set exactly."""
@@ -168,7 +168,7 @@ def test_without_the_layer_requests_are_what_they_were(tmp_path):
         assert len(got["F1"]["system"]) == 1 and bp_count(got["F1"]) == 1
 
 
-# ---------------------------------------------------------------- the ABOUT OWNER block and the cache layout
+# ---------------------------------------------------------------- the ABOUT ME block and the cache layout
 def test_about_block_is_the_second_system_block_and_every_request_shares_it(tmp_path):
     async def go():
         b, t, em, _ = make(tmp_path, embedder=False)
@@ -192,9 +192,9 @@ def test_about_block_is_the_second_system_block_and_every_request_shares_it(tmp_
     # the system text of a route is one string for the whole session, and S/F (and the pre-warm of Haiku) share it
     for route in ("F", "D"):
         assert len({bytes_of(c.request["system"]) for c in t.by_route(route)}) == 1
-    assert "ABOUT OWNER" in reqs[0]["system"][0]["text"] and "MEETING PACK wins" in reqs[0]["system"][0]["text"]
+    assert "ABOUT ME" in reqs[0]["system"][0]["text"] and "MEETING PACK wins" in reqs[0]["system"][0]["text"]
     assert "[m401]" in about and "Harbor Ledger processed about 41,000" in about
-    # 3 breakpoints with a pack: ABOUT OWNER, the pack block and a finalized turn (after 4 turns)
+    # 3 breakpoints with a pack: ABOUT ME, the pack block and a finalized turn (after 4 turns)
     late = t.by_route("F")[-1].request
     assert bp_count(late) == 3
     # the ready status says what the layer is
@@ -458,16 +458,16 @@ def test_follow_card_tail_names_the_me_layer_as_grounding_only_when_it_is_on():
 
     args = ("what did you build?", "en", "I built a service", ["SAY: x", "- y"], [], None, "diverged")
     off, on = follow_tail(*args), follow_tail(*args, me_on=True)
-    assert follow_tail(*args, me_on=False) == off and "ABOUT OWNER" not in off
-    for sentence in ("must come from the meeting pack (bank, facts, evidence), ABOUT OWNER or FROM USER'S FILES",
-                     "the meeting pack and ABOUT OWNER have nothing grounded", "When none of them has anything for his topic"):
+    assert follow_tail(*args, me_on=False) == off and "ABOUT ME" not in off
+    for sentence in ("must come from the meeting pack (bank, facts, evidence), ABOUT ME or FROM USER'S FILES",
+                     "the meeting pack and ABOUT ME have nothing grounded", "When none of them has anything for his topic"):
         assert sentence in on, sentence
     assert "the pack cannot support" not in on and "a point they cannot support" in on
 
 
 # ---------------------------------------------------------------- the G1 fallback prompt
 def big_about(sections: dict[str, int]) -> str:
-    """A me.md-shaped ABOUT OWNER block with `n` long lines per section (ids m0xx, m1xx, ... as in me.md)."""
+    """A me.md-shaped ABOUT ME block with `n` long lines per section (ids m0xx, m1xx, ... as in me.md)."""
     out = []
     for i, (name, n) in enumerate(sections.items()):
         out.append(f"## {name}")
@@ -527,13 +527,13 @@ def test_gemma_gets_the_me_layer_inside_the_9500_char_prefix():
     run(go())
     assert len(be.convs) == 2                                               # another frozen prefix: another conversation
     first = be.sent[0]
-    assert first.startswith("ABOUT OWNER") and len(first.split(ll.PACK_HEADER)[0]) <= 3002
+    assert first.startswith("ABOUT ME") and len(first.split(ll.PACK_HEADER)[0]) <= 3002
     assert len(first.split(ll.TRANSCRIPT_HEADER)[0]) <= 9500
     second = be.sent[1]
-    assert second.startswith("ABOUT OWNER") and "(none: unprepared call)" in second
+    assert second.startswith("ABOUT ME") and "(none: unprepared call)" in second
     assert len(second.split(ll.PACK_HEADER)[0]) <= 9500 + 2
     parts = ll.split_request(build_request("F", route_params("F"), pack, [], "tail", block))
-    assert parts.me == block and parts.system.startswith("You are Verse") and "ABOUT OWNER" in parts.system
+    assert parts.me == block and parts.system.startswith("You are Verse") and "ABOUT ME" in parts.system
     assert ll.split_request(build_request("F", route_params("F"), pack, [], "tail")).me == ""
 
 

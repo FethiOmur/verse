@@ -42,7 +42,7 @@ Count rule N unmatched content words in the last 8, or a run of unmatched words 
 
 So the lexical test only raises suspicion; it cannot decide. Paraphrases routinely carry five or more words that match nothing
 ("typing", "went down", "spent", "invoice data"). A first version shipped an 11 words / 4 s fallback for when the embedder is
-unavailable; review showed it flips legitimate paraphrases (12 of 46), the failure Alex named, so it is gone: **while the
+unavailable; review showed it flips legitimate paraphrases (12 of 46), the failure the owner named, so it is gone: **while the
 embedder is not available (model missing, still loading, failed) nothing diverges and the card stays; coverage (striking points
 through) keeps working**. A divergence check whose embedding does not come in `embed_wait_s` is asked again, never decided
 without it. The brain says so once per change (`follow_embed_state` metric).
@@ -96,7 +96,7 @@ score is at least `sem_mark` 0.88; mark 0.82 missed 5 and flipped one paraphrase
 
 Faster settings exist and are one parameter away: N=4, T=1.0 s with two-word runs, floor 0.80, margin 0.04 gave a 2.8 s median
 with 3 false divergences and 2 misses in an earlier sweep (before `sem_mark`); N=3 gave the same 2.8 s with 2 to 4 false. The
-default prefers zero false divergences, because a card that flips while Alex reads it is the failure he named.
+default prefers zero false divergences, because a card that flips while the owner reads it is the failure he named.
 
 ## Coverage
 

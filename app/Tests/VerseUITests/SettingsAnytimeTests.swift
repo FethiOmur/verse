@@ -45,7 +45,7 @@ final class SettingsAnytimeTests: XCTestCase {
     func testOtherSettingsAreUntouched() {
         let s = AppSettings(defaults: defaults())
         XCTAssertEqual(s.language, "en")
-        XCTAssertEqual(s.ownerName, "Alex")
+        XCTAssertEqual(s.ownerName, "the owner")
         XCTAssertEqual(s.matchThreshold, 0.55)
     }
 

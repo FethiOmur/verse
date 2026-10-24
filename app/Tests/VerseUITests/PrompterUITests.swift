@@ -38,7 +38,7 @@ func tempDirectory() throws -> URL {
 
 @MainActor
 func scratchDefaults() -> UserDefaults {
-    let suite = "dev.fethiverse.verse.tests.\(UUID().uuidString)"
+    let suite = "dev.example.verse.tests.\(UUID().uuidString)"
     return UserDefaults(suiteName: suite)!
 }
 

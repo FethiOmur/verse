@@ -4,7 +4,7 @@ Date: 2026-10-14. No benchmark was run. The brief says to stop and report when T
 
 ## What was looked for
 
-TypeWhisper's own code (`WhisperKitPlugin.swift`) stores WhisperKit models under `<pluginDataDirectory>/models/models/argmaxinc/whisperkit-coreml/<variant>` (older versions: `~/Library/Application Support/TypeWhisper[-Dev]/models/...`). The default for the owner's install records `plugin.com.typewhisper.whisperkit.loadedModel = openai_whisper-large-v3-turbo`.
+TypeWhisper's own code (`WhisperKitPlugin.swift`) stores WhisperKit models under `<pluginDataDirectory>/models/models/argmaxinc/whisperkit-coreml/<variant>` (older versions: `~/Library/Application Support/TypeWhisper[-Dev]/models/...`). The default for the user's install records `plugin.com.typewhisper.whisperkit.loadedModel = openai_whisper-large-v3-turbo`.
 
 ## Paths and searches checked (all negative)
 
@@ -27,8 +27,8 @@ Conclusion: the plugin that owned the WhisperKit model is no longer installed an
 
 Pick one, then I can run the bench (WhisperKit is MIT, our bench code is written from scratch under `bench/whisper/`):
 
-1. Alex reinstalls the WhisperKit plugin in TypeWhisper and downloads `Large v3 Turbo` (the plugin lists it as about 3.2 GB), or
-2. Alex approves a download of `argmaxinc/whisperkit-coreml` variant `openai_whisper-large-v3_turbo` (about 3.2 GB per the plugin's catalog; a smaller `distil-whisper_distil-large-v3_turbo`, about 1.5 GB, is also in the catalog) into `bench/whisper/models/` (to be git-ignored), or
+1. the owner reinstalls the WhisperKit plugin in TypeWhisper and downloads `Large v3 Turbo` (the plugin lists it as about 3.2 GB), or
+2. the owner approves a download of `argmaxinc/whisperkit-coreml` variant `openai_whisper-large-v3_turbo` (about 3.2 GB per the plugin's catalog; a smaller `distil-whisper_distil-large-v3_turbo`, about 1.5 GB, is also in the catalog) into `bench/whisper/models/` (to be git-ignored), or
 3. A different model that is already on disk is named.
 
 ## Comparison table (to be filled once unblocked)

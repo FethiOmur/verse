@@ -219,7 +219,7 @@ def test_refresh_keeps_an_edited_line_and_a_deleted_id_and_skips_unchanged_sourc
     def human(md: str) -> str:
         md = md.replace("Owns the claims-triage model and its serving stack.", "Owns the claims-triage model (my own wording).")
         md = "\n".join(l for l in md.splitlines() if not l.startswith("[m301]"))             # he deletes the Python skill
-        return md.replace("## STORIES", "[m320] Rust | side projects at weekends | owner\n## STORIES")  # ...and adds a line
+        return md.replace("## STORIES", "[m320] Rust | side projects at weekends | user\n## STORIES")  # ...and adds a line
 
     edit_md(prof, human)
     # nothing changed in the sources: refresh does nothing and spends nothing
@@ -238,7 +238,7 @@ def test_refresh_keeps_an_edited_line_and_a_deleted_id_and_skips_unchanged_sourc
     assert "Owns the claims-triage model (my own wording)." in after["m102"].text                 # the edit survived
     assert "m301" not in after and "m309" not in after                                           # a deleted id stays deleted
     assert not any(l.fields and l.fields[0] == "Python" for l in after.values())                 # not under another id either
-    assert after["m320"].text == "[m320] Rust | side projects at weekends | owner"              # his own line, verbatim
+    assert after["m320"].text == "[m320] Rust | side projects at weekends | user"              # his own line, verbatim
     assert "m303" in after and after["m303"].fields[0] == "Rust"                                 # new generated lines come in
     assert after["m101"].text == before["m101"].text                                             # an untouched line is still there
     meta = json.loads((prof / "me.meta.json").read_text(encoding="utf-8"))
@@ -254,15 +254,15 @@ def test_notes_are_kept_never_regenerated_and_a_deleted_note_stays_deleted(tmp_p
     model = ScriptedModel(OUTPUT)
     build(prof, vault, model)
     notes = M.parse_md((prof / "me.md").read_text(encoding="utf-8"))[M.NOTES]
-    assert [l.text for l in notes] == ["[m701] I prefer calls in the morning. | owner", "[m702] My notice period is 30 days. | owner"]
+    assert [l.text for l in notes] == ["[m701] I prefer calls in the morning. | user", "[m702] My notice period is 30 days. | user"]
     assert "I prefer calls in the morning." in model.users[0]      # the notes are a source for the other sections too
-    edit_md(prof, lambda md: md.replace("[m702] My notice period is 30 days. | owner", "[m702] My notice period is 60 days. | owner")
-            .replace("[m701] I prefer calls in the morning. | owner\n", ""))
+    edit_md(prof, lambda md: md.replace("[m702] My notice period is 30 days. | user", "[m702] My notice period is 60 days. | user")
+            .replace("[m701] I prefer calls in the morning. | user\n", ""))
     (prof / "me.notes.md").write_text("- I prefer calls in the morning.\n- My notice period is 30 days.\n- I speak Portuguese.\n",
                                       encoding="utf-8")
     build(prof, vault, ScriptedModel(OUTPUT), refresh=True)
     notes = M.parse_md((prof / "me.md").read_text(encoding="utf-8"))[M.NOTES]
-    assert [l.text for l in notes] == ["[m702] My notice period is 60 days. | owner", "[m703] I speak Portuguese. | owner"]
+    assert [l.text for l in notes] == ["[m702] My notice period is 60 days. | user", "[m703] I speak Portuguese. | user"]
 
 
 def test_a_full_build_moves_the_old_file_aside(tmp_path):
@@ -276,8 +276,8 @@ def test_a_full_build_moves_the_old_file_aside(tmp_path):
 # ---------------------------------------------------------------- sources and the vault
 def test_default_sources_follow_the_spec_and_skip_private_folders(tmp_path):
     vault = tmp_path / "vault"
-    proj = vault / "🏰 300-Projects"
-    for rel in ("Projects.md", "TrailheadX/TrailheadX.md", "YouTube/A.md", "YouTube/B.md", "AgentLogs/agent-output.md", "Archive-Private/t.md",
+    proj = vault / "📁 300-Projects"
+    for rel in ("Projects.md", "TrailHeadX/TrailHeadX.md", "YouTube/A.md", "YouTube/B.md", "AgentLogs/agent-output.md", "Archive-Private/t.md",
                 "../800-Journal/secret.md", "../700-Health/b.md", "../400-Private/v.md", "../daily/d.md", "../receipts/r.md", "../Inbox/i.md"):
         f = proj / rel
         f.parent.mkdir(parents=True, exist_ok=True)
@@ -288,8 +288,8 @@ def test_default_sources_follow_the_spec_and_skip_private_folders(tmp_path):
     sessions.mkdir()
     srcs = M.default_sources(vault, dl, sessions)
     paths = [Path(s["path"]).relative_to(tmp_path).as_posix() if Path(s["path"]).is_relative_to(tmp_path) else s["path"] for s in srcs]
-    assert paths == ["ENGINEERING_PROFILE.md", "vault/🏰 300-Projects/Projects.md", "vault/🏰 300-Projects/TrailheadX/TrailheadX.md",
-                     "vault/🏰 300-Projects/YouTube/A.md", "vault/🏰 300-Projects/YouTube/B.md", "sessions"]
+    assert paths == ["ENGINEERING_PROFILE.md", "vault/📁 300-Projects/Projects.md", "vault/📁 300-Projects/TrailHeadX/TrailHeadX.md",
+                     "vault/📁 300-Projects/YouTube/A.md", "vault/📁 300-Projects/YouTube/B.md", "sessions"]
     assert [s["kind"] for s in srcs] == ["file", "vault", "vault", "vault", "vault", "sessions"]
     assert all(s["enabled"] for s in srcs)
     for bad in ("800-Journal/secret.md", "700-Health/b.md", "400-Private/v.md", "daily/d.md", "receipts/r.md", "Inbox/i.md", "850-Notes/x.md"):

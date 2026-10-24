@@ -7,13 +7,13 @@ import json
 import sys
 from pathlib import Path
 
-CONDS = {"A": "-25 dB, 40 ms, noise -55", "C": "-30 dB, 80 ms, noise -50", "D": "-30 dB, 20 ms, noise -45", "O": "-25 dB, 40 ms, noise -55, Alex talking"}
+CONDS = {"A": "-25 dB, 40 ms, noise -55", "C": "-30 dB, 80 ms, noise -50", "D": "-30 dB, 20 ms, noise -45", "O": "-25 dB, 40 ms, noise -55, the owner talking"}
 DEF = {"none": "none", "gate": "envelope gate (today)", "guard": "text guard only", "both": "gate + text guard"}
 
 
 def main() -> None:
     d = Path(sys.argv[1])
-    print("| condition | defenses | questions answered once | remote turns | me turns (false) | me events at engine | gate / guard dropped | wrong triggers | Alex landed as me |")
+    print("| condition | defenses | questions answered once | remote turns | me turns (false) | me events at engine | gate / guard dropped | wrong triggers | the owner landed as me |")
     print("|---|---|---|---|---|---|---|---|---|")
     for c in CONDS:
         for k in DEF:

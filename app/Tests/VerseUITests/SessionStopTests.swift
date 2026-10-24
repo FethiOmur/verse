@@ -34,7 +34,7 @@ final class SessionStopTests: XCTestCase {
     }
 
     func testControllerMirrorsStoppingIntoTheOverlayAndWiresStop() {
-        let suite = "dev.fethiverse.verse.test-stop-\(UUID().uuidString)"
+        let suite = "dev.example.verse.test-stop-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let c = VerseController(settings: AppSettings(defaults: defaults))

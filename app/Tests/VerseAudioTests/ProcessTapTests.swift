@@ -4,7 +4,7 @@ import os
 import VerseAudio
 import XCTest
 
-/// Live Core Audio checks without Alex: a child `verse-listen --emit-test-tone` (bundle ID dev.verse.listen)
+/// Live Core Audio checks without the owner: a child `verse-listen --emit-test-tone` (bundle ID dev.verse.listen)
 /// plays a quiet tone generated in memory, and the tap is created with `muteBehavior = .muted`, so nothing is
 /// heard on the speakers or AirPods. Both routes are started BEFORE the child exists, which is the case the
 /// bundle-ID route (process restore) and the PID route's process-list refresh exist for.

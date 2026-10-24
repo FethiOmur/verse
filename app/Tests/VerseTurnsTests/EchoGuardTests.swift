@@ -58,19 +58,19 @@ final class EchoGuardTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(drops.count, 1)
     }
 
-    /// Alex really talking over the interviewer, with other words, is kept and closes the question as before.
+    /// the owner really talking over the interviewer, with other words, is kept and closes the question as before.
     func testOwnSpeechOverTheInterviewerIsKept() async {
         let engine = TurnEngine(config: TurnConfig(), bank: .empty, facts: .empty)
         _ = await engine.ingestTimed(ev("What are your salary expectations", at: 5.0, start: 3.0))
         let out = await engine.ingestTimed(ev("Between seventy and eighty thousand", at: 5.2, channel: .me, start: 4.6))
-        XCTAssertEqual(out.turns.map(\.id), ["r1"], "the question closes when Alex starts")
+        XCTAssertEqual(out.turns.map(\.id), ["r1"], "the question closes when the owner starts")
         let later = await engine.advance(to: 8.0)
         XCTAssertEqual(later.turns.filter { $0.speaker == .me }.first?.text, "Between seventy and eighty thousand")
         let drops = await engine.takeEchoDrops()
         XCTAssertTrue(drops.isEmpty)
     }
 
-    /// Alex repeating a word or two of the question as he starts his answer is not an echo: most of his words are new.
+    /// the owner repeating a word or two of the question as he starts his answer is not an echo: most of his words are new.
     func testAnswerThatRepeatsAFewQuestionWordsIsKept() async {
         let engine = TurnEngine(config: TurnConfig(), bank: .empty, facts: .empty)
         _ = await engine.ingestTimed(ev("Can you tell me about the Lantern project", at: 5.0, start: 3.0))
@@ -97,7 +97,7 @@ final class EchoGuardTests: XCTestCase {
         let engine = TurnEngine(config: TurnConfig(), bank: .empty, facts: .empty)
         _ = await engine.ingestTimed(ev("Can you tell me about yourself", at: 5.0, start: 3.0))
         _ = await engine.advance(to: 7.0)
-        // 30 s later Alex says the same words: far outside the window
+        // 30 s later the owner says the same words: far outside the window
         _ = await engine.ingestTimed(ev("Can you tell me about yourself", at: 40.0, channel: .me, start: 37.0))
         let drops = await engine.takeEchoDrops()
         XCTAssertTrue(drops.isEmpty)

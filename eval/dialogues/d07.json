@@ -1,7 +1,7 @@
 {
  "id": "d07",
  "lang": "en",
- "owner": "Alex",
+ "owner": "the owner",
  "participants": [
   "Ingrid",
   "Tomas"
@@ -21,7 +21,7 @@
  "utterances": [
   {
    "speaker": "Ingrid",
-   "text": "Welcome Alex. Tomas and I will take turns with the questions today.",
+   "text": "Welcome the owner. Tomas and I will take turns with the questions today.",
    "category": "statement",
    "is_question": false,
    "addressee": null,
@@ -42,7 +42,7 @@
    "gap_before": 1.27
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -65,7 +65,7 @@
    "gap_before": 1.01
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -100,7 +100,7 @@
   },
   {
    "speaker": "Tomas",
-   "text": "Alex, how did you handle invoices in different languages?",
+   "text": "the owner, how did you handle invoices in different languages?",
    "category": "offbank",
    "is_question": true,
    "addressee": "me",
@@ -110,7 +110,7 @@
    "gap_before": 1.12
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -155,7 +155,7 @@
    "gap_before": 1.12
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
