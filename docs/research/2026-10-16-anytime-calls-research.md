@@ -148,7 +148,7 @@ Findings:
   exists.** The V1 voice profile is text style only.
 - `ENGINEERING_PROFILE.md`: about 21.5k characters, 12 sections (engineering mindset, AI design preferences,
   project context, communication).
-- knowledge-vault `📁 300-Projects`: `Projects.md` plus one top note per project. The `AgentLogs/` subtree is 165 notes and
+- the notes vault `📁 300-Projects`: `Projects.md` plus one top note per project. The `AgentLogs/` subtree is 165 notes and
   1.35 MB of agent output. Other top folders (Body, Mind, Vault, daily, receipts, Companion) are personal and are not
   me-layer sources. Contents were not read beyond sizes and headings.
 - Meeting packs are 9.7–29.6 KB, about 2.5k–7.5k tokens; the cap is 12k tokens (`prep/pack.py`).

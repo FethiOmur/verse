@@ -40,6 +40,7 @@ from .ground import _value_supported
 from .keychain import KeychainError, read_api_key, redact
 from .model import MAX_OUTPUT_TOKENS, PRICES, PrepError, PrepModel, Usage, spend_usd
 from .sources import MAX_QUOTE_CHARS, MIN_QUOTE_CHARS, SourceBook, norm, numbers_supported
+from .. import extensions
 from ..owner import OWNER
 from .vault import DEFAULT_VAULT
 
@@ -49,7 +50,7 @@ SESSIONS_DIR = Path("~/Library/Application Support/Verse/sessions")
 DOWNLOADS_PROFILE: Path | None = OWNER.profile_source
 PROJECTS_FOLDER = OWNER.projects_folder
 PROJECTS_INDEX = OWNER.projects_index
-SKIP_PROJECT_FOLDERS = OWNER.private_project_folders      # listed private repos never leave the machine
+SKIP_PROJECT_FOLDERS = (*OWNER.private_project_folders, *extensions.private_projects())   # private repos never leave the machine
 FORBIDDEN_VAULT_FOLDERS = OWNER.forbidden_vault_folders
 OWNER_TAG = OWNER.source_tag                              # the `src` of a line the user wrote himself
 
@@ -129,6 +130,9 @@ def default_sources(vault: Path | None = DEFAULT_VAULT, downloads_profile: Path 
     prof = downloads_profile.expanduser() if downloads_profile else None
     if prof is not None and prof.is_file():
         add("file", prof, prof.name)
+    for extra in extensions.profile_sources():                  # files an owner extension adds (docs/extensions.md)
+        if extra.is_file() and all(s["path"] != str(extra) for s in out):
+            add("file", extra, extra.name)
     proj = vault.expanduser() / PROJECTS_FOLDER if vault else None
     if proj is not None and proj.is_dir():
         idx = proj / PROJECTS_INDEX
@@ -395,6 +399,7 @@ LOOKING FOR 5. The whole answer stays under 3,000 tokens: pick what a person on 
 STORIES, m601 in LOOKING FOR. When a PREVIOUS PROFILE is given, keep the id of every line that is still true (you may \
 improve its wording), and give new items ids that are free: not used there and not in RESERVED IDS.
 - No markdown other than the headings, no blank lines inside a section, no emojis.""")
+SYSTEM = extensions.with_addenda("profile", SYSTEM)
 
 
 def render_user(docs: list[Doc], previous: str = "", reserved: list[str] | None = None) -> str:

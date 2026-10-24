@@ -51,7 +51,9 @@ def no_template_tokens(text: str) -> bool:
 def test_profile_fixture_is_read():
     o = load_owner(FIXTURE)
     assert o.display_name == "Alex Rivera" and o.named
-    assert o.vault_script == "retrieve.py" and o.vault_path == Path("~/Notes/AcmeVault").expanduser()
+    assert o.vault_path == Path("~/Notes/AcmeVault").expanduser()
+    assert o.extensions_path == Path("~/Notes/AcmeExtensions").expanduser()
+    assert o.raw["harbor_setting"] == "on"          # unknown keys are kept for the extensions
     assert o.profile_source == Path("~/Downloads/ALEX_PROFILE.md").expanduser()
     assert o.projects_folder == "Work" and o.projects_index == "Index.md"
     assert o.private_project_folders == ("Scratch",) and o.forbidden_vault_folders == ("Journal", "Health")
@@ -66,7 +68,7 @@ def test_missing_or_broken_profile_is_generic(tmp_path, content):
         p.write_text(content)
     o = load_owner(p)
     assert o == Owner() and o.display_name == GENERIC_NAME and not o.named
-    assert o.vault_path is None and o.vault_script is None and o.profile_source is None
+    assert o.vault_path is None and o.extensions_path is None and o.profile_source is None
     assert o.private_project_folders == () and o.forbidden_vault_folders == ()
     assert o.source_tag == "owner" and o.notes_heading == "MY NOTES"
 
@@ -164,17 +166,6 @@ def test_vault_layout_comes_from_the_profile(tmp_path):
     r = subprocess.run([sys.executable, "-I", "-c", f"import sys; sys.path.insert(0, {str(BRAIN)!r}); exec({code!r})"],
                        capture_output=True, text=True, env=env, cwd=str(BRAIN), timeout=60)
     assert r.returncode == 0 and r.stdout.strip() == "ok", r.stderr[-600:]
-
-
-def test_script_vault_uses_the_profile_script_name(tmp_path, monkeypatch):
-    from verse_brain.prep.vault import ScriptVault, VaultError
-    (tmp_path / "find.py").write_text("")
-    v = ScriptVault(tmp_path, python="py", script_name="find.py")
-    assert v.script == tmp_path / "find.py" and v.command("q", 2, 100)[1] == str(tmp_path / "find.py")
-    with pytest.raises(VaultError):
-        ScriptVault(None)
-    with pytest.raises(VaultError):
-        ScriptVault(tmp_path, script_name="missing.py").search("q")
 
 
 def test_keychain_account_is_the_current_user_at_runtime(monkeypatch):
