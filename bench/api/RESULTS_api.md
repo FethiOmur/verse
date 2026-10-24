@@ -28,7 +28,7 @@ Reading the table:
   With n = 3..15 the p90 is basically "second-worst call"; treat it as indicative. Max is shown because single stalls matter here.
 - `cold_haiku` removes the cache-warm confound: the 5-minute cache stays warm, only the TCP+TLS+HTTP/2 setup is new.
   It was not a real >6 min idle (that is the separate idle ladder below). One of its 10 calls failed to connect (see "Fresh connections").
-- All 100+ calls negotiated HTTP/2. Edge colo in `cf-ray` is `FRA`.
+- All 100+ calls negotiated HTTP/2. Edge colo in `cf-ray` is `FRA` (Frankfurt).
 - Output speed (median, tokens/s after first token): Haiku ~246, Sonnet ~125.
 - Pack: one user message, blocks = meeting pack (breakpoint 1) + 6 finalized turns (breakpoint 2 on the newest) + the
   question after the last breakpoint; frozen system before them. 6,204 tokens total with `count_tokens` (identical on

@@ -57,7 +57,7 @@ final class MeTurnHoldTests: XCTestCase {
         XCTAssertTrue(out.turns.filter { $0.speaker == .me }.isEmpty)
     }
 
-    /// Alex really interrupts with a word that is also in the question ("and"), then goes on: the second word closes the
+    /// the owner really interrupts with a word that is also in the question ("and"), then goes on: the second word closes the
     /// remote turn at once (no wait for the hold window).
     func testRealInterruptionWithAmbiguousFirstWordClosesOnTheSecondWord() async {
         let engine = TurnEngine(config: TurnConfig(), bank: .empty, facts: .empty)

@@ -144,11 +144,11 @@ final class VerseRunTests: XCTestCase {
     // MARK: live (opt-in)
 
     /// VERSE_LIVE=1: a spoken question from the P1-1 sample session goes through the real brain (Haiku/Sonnet, paid
-    /// from the Max credit) and S/F text must appear within 3 s of the turn. Prints the timing from the acoustic end.
+    /// from the Anthropic API credit) and S/F text must appear within 3 s of the turn. Prints the timing from the acoustic end.
     func testVerseRunFileEndToEnd() async throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["VERSE_LIVE"] == "1", "set VERSE_LIVE=1 to run against the real API (budget < $0.05)")
         let sessionPath = ProcessInfo.processInfo.environment["VERSE_LIVE_SESSION"]
-            ?? "/private/tmp/claude-501/-Users-user-Desktop-Alex-Rivera/f7e86aa3-9428-4db2-bfe0-2e9473397b22/scratchpad/verse-sessions/20261014-014809-d425d0c3"
+            ?? "/private/tmp/claude-501/-Users-example-user-Desktop-the owner-Rivera/f7e86aa3-9428-4db2-bfe0-2e9473397b22/scratchpad/verse-sessions/20261014-014809-d425d0c3"
         try XCTSkipUnless(FileManager.default.fileExists(atPath: sessionPath + "/pack.md"), "no session folder at \(sessionPath)")
 
         // b004 in the sample bank: "What results did Lantern deliver?"

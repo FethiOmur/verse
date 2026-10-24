@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import VerseAudio
 import os
 
 /// Startup self-clean of the Core ML / ANE compile cache.
@@ -22,7 +23,7 @@ public struct E5BundleCacheCleaner: Sendable {
     /// Verse's own processes: the menu-bar app, `verse-run` and `verse-listen`. Each one has its own cache root (Core ML keys
     /// it by the bundle id embedded in the executable), and each one cleans all of them: the liveness check keeps whatever a
     /// running sibling is compiling.
-    public static let defaultBundleIDs = ["dev.fethiverse.verse", "dev.verse.run", "dev.verse.listen"]
+    public static let defaultBundleIDs = [AppIdentity.bundleID, "dev.verse.run", "dev.verse.listen"]
     /// An abandoned bundle must be at least this old.
     public static let defaultMinAge: TimeInterval = 600
     /// `<root>/<os build>/<key>/<bundle>`: the bundles are three levels below the root.

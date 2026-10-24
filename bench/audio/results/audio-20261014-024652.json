@@ -21,7 +21,7 @@
     "microphone" : "authorized",
     "screenRecordingPreflight" : true
   },
-  "responsibleAppGuess" : "\/Users\/user\/Library\/Application Support\/Claude\/claude-code\/2.1.295\/9d6405864fdc\/claude.app",
+  "responsibleAppGuess" : "\/Users\/user\/Library\/Application Support\/Claude\/claude-code\/claude.app",
   "tests" : {
     "isolation" : {
       "afplayIntervalsSec" : [

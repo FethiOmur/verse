@@ -19,7 +19,7 @@ How a stateless Anthropic request becomes a stateful Gemma conversation (the onl
 - `prime()` does the prefill ahead of time (message ends with "reply READY"), at failure detection or, with
   `local_prewarm`, at session start.
 
-The me layer (anytime calls): the ABOUT OWNER block (the second system block of the request) goes in front of the pack in the
+The me layer (anytime calls): the ABOUT <OWNER> block (the second system block of the request) goes in front of the pack in the
 first message. Next to a pack it is cut to WHO I AM + NUMBERS + PROJECTS in `local_me_chars` (3,000) and the pack gets
 `local_pack_chars_with_me` (6,500), so the prefix stays 9,500 chars; in an unprepared call it is the prefix: the whole core in
 9,500 chars by the build's trim order (STORIES, SKILLS, PROJECTS, EXPERIENCE tails). The STYLE GUIDE section is kept whole.
@@ -119,11 +119,11 @@ class Parts:
     pack: str
     turns: list[str]
     tail: str
-    me: str = ""      # the ABOUT OWNER block (the second system block of a session with the me layer), "" without
+    me: str = ""      # the ABOUT <OWNER> block (the second system block of a session with the me layer), "" without
 
 
 def split_request(request: dict) -> Parts:
-    """The Anthropic request of runtime/prompt.py back into system, ABOUT OWNER, pack, turn blocks and tail."""
+    """The Anthropic request of runtime/prompt.py back into system, ABOUT <OWNER>, pack, turn blocks and tail."""
     sys_blocks = [b.get("text", "") for b in request.get("system", [])]
     system, me = ("".join(sys_blocks), "") if len(sys_blocks) < 2 else (sys_blocks[0], "".join(sys_blocks[1:]))
     blocks = [b.get("text", "") for b in request["messages"][0]["content"]]
@@ -245,7 +245,7 @@ def _sec_name(heading: str) -> str:
 
 
 def trim_me(block: str, max_chars: int, with_pack: bool) -> str:
-    """The ABOUT OWNER block cut for Gemma (spec 2.2, local fallback). Next to a pack: only WHO I AM + NUMBERS + PROJECTS, in
+    """The ABOUT <OWNER> block cut for Gemma (spec 2.2, local fallback). Next to a pack: only WHO I AM + NUMBERS + PROJECTS, in
     `max_chars`. Unprepared: the whole core in `max_chars` by the build's trim order (STORIES, SKILLS, PROJECTS, EXPERIENCE
     tails); the STYLE GUIDE section, when there is one, stays whole and does not count."""
     secs = split_sections(block)
@@ -372,7 +372,7 @@ class LiteRtBackend:
 
 
 def _key(parts: Parts) -> str:
-    """Identity of a conversation's frozen part: the same system, ABOUT OWNER and pack mean the same KV prefix."""
+    """Identity of a conversation's frozen part: the same system, ABOUT <OWNER> and pack mean the same KV prefix."""
     return hashlib.sha1((parts.system + "\x00" + parts.pack + (("\x00" + parts.me) if parts.me else "")).encode()).hexdigest()
 
 

@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import VerseAudio
 import VerseTurns
 
 /// Overlay text size.
@@ -18,10 +19,10 @@ public enum TextScale: String, CaseIterable, Sendable, Identifiable {
 }
 
 /// Everything in Settings except the API key (that lives only in the Keychain). Stored in `UserDefaults` suite
-/// `dev.fethiverse.verse`.
+/// `AppIdentity.bundleID`.
 @MainActor
 public final class AppSettings: ObservableObject {
-    public static let suiteName = "dev.fethiverse.verse"
+    public static let suiteName = AppIdentity.bundleID
     public static let cardWidthRange: ClosedRange<Double> = 420...960
     public static let cardMaxHeightRange: ClosedRange<Double> = 220...720
     /// Island veil floor (UI redesign spec 2.4). 35 % keeps points >= 7:1 over a white page.
@@ -77,10 +78,10 @@ public final class AppSettings: ObservableObject {
     @Published public var testAudioPath: String { didSet { defaults.set(testAudioPath, forKey: "testAudioPath") } }
 
     public init(defaults: UserDefaults? = nil) {
-        // Inside the bundle (id dev.fethiverse.verse) the standard defaults are that suite already.
+        // Inside the bundle (id `AppIdentity.bundleID`) the standard defaults are that suite already.
         let d = defaults ?? (Bundle.main.bundleIdentifier == Self.suiteName ? .standard : UserDefaults(suiteName: Self.suiteName) ?? .standard)
         self.defaults = d
-        ownerName = d.string(forKey: "ownerName") ?? "Alex"
+        ownerName = d.string(forKey: "ownerName") ?? OwnerProfile.current.addresseeName
         ownerAliases = d.string(forKey: "ownerAliases") ?? ""
         otherParticipants = d.string(forKey: "otherParticipants") ?? ""
         language = d.string(forKey: "language") ?? "en"
@@ -123,7 +124,7 @@ public final class AppSettings: ObservableObject {
 
     public var turnConfig: TurnConfig {
         var t = TurnConfig()
-        t.ownerName = ownerName.trimmingCharacters(in: .whitespaces).isEmpty ? "Alex" : ownerName
+        t.ownerName = ownerName.trimmingCharacters(in: .whitespaces).isEmpty ? OwnerProfile.current.addresseeName : ownerName
         t.ownerAliases = Self.list(ownerAliases)
         t.otherNames = Self.list(otherParticipants)
         t.cueEndpointMs = cueEndpointMs

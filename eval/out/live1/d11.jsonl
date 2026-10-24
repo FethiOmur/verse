@@ -267,8 +267,8 @@
 {"wall":1791994126.7831,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":52.29,"text":"What results did","turn_id":"r6","type":"partial"}}
 {"wall":1791994126.7832,"line":{"bank_id":"b004","dir":"to_brain","score":0.666,"turn_id":"r6","type":"bank_hit"}}
 {"wall":1791994127.3492,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":53.09,"text":"What results did Lantern deliver","turn_id":"r6","type":"partial"}}
-{"wall":1791994127.3493,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that Alex led.","turn_id":"r6","type":"chip"}}
-{"wall":1791994127.3493,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.","turn_id":"r6","type":"chip"}}
+{"wall":1791994127.3493,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that the owner led.","turn_id":"r6","type":"chip"}}
+{"wall":1791994127.3493,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.","turn_id":"r6","type":"chip"}}
 {"wall":1791994127.3493,"line":{"bank_id":"b004","dir":"to_brain","score":1,"turn_id":"r6","type":"bank_hit"}}
 {"wall":1791994127.3496,"line":{"type":"metric","turn_id":"r6","stage":"fire","t":1791994127.349524,"id":"s0010","tier":"S","words":5,"hedge_after_s":1.5}}
 {"wall":1791994127.4974,"line":{"addressee":"unknown","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":53.155,"text":"What results did Lantern deliver","turn_id":"r6","type":"turn"}}
@@ -307,7 +307,7 @@
 {"wall":1791994128.8552,"line":{"type":"metric","turn_id":"","stage":"first_byte","t":1791994128.8550029,"id":"r0011","tier":"R","lane":1,"new_connection":false}}
 {"wall":1791994128.8553,"line":{"type":"metric","turn_id":"","stage":"first_delta","t":1791994128.8551629,"id":"r0011","tier":"R"}}
 {"wall":1791994129.2745,"line":{"type":"actions","items":[]}}
-{"wall":1791994129.2746,"line":{"type":"summary","decisions":[],"actions":[],"open":["Where the owner's past work overlaps with routing and logistics was asked and not yet answered.","Where Alex sees himself in five years was asked and not yet answered.","The question about what results Lantern delivered was asked and still needs a full answer."]}}
+{"wall":1791994129.2746,"line":{"type":"summary","decisions":[],"actions":[],"open":["Where the owner's past work overlaps with routing and logistics was asked and not yet answered.","Where the owner sees himself in five years was asked and not yet answered.","The question about what results Lantern delivered was asked and still needs a full answer."]}}
 {"wall":1791994129.2746,"line":{"type":"metric","turn_id":"","stage":"done","t":1791994129.274327,"id":"r0011","tier":"R","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4531,"input_tokens":111,"output_tokens":96},"hedged":false,"winner_lane":1,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000104}}
 {"wall":1791994135.7397,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":61.41,"text":"What is your","turn_id":"r7","type":"partial"}}
 {"wall":1791994136.3392,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":61.97,"text":"What is your habit when","turn_id":"r7","type":"partial"}}

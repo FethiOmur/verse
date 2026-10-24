@@ -1,0 +1,7 @@
+{
+  "display_name": "Alex Rivera",
+  "projects_folder": "📁 300-Projects",
+  "projects_index": "Projects.md",
+  "private_project_folders": ["AgentLogs", "Archive-Private"],
+  "forbidden_vault_folders": ["400-Private", "700-Health", "800-Journal", "850-Notes", "daily", "receipts", "Inbox"]
+}

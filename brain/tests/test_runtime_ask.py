@@ -39,7 +39,7 @@ def session_dir(tmp_path: Path, chat: bool = False) -> Path:
 
 
 def start_msg(d: Path, me: bool = True, model: str = "sonnet", rows: list | None = None) -> dict:
-    return {"type": "ask_start", "session_dir": str(d), "owner_name": "Alex", "title": "Larkspur Health interview",
+    return {"type": "ask_start", "session_dir": str(d), "owner_name": "Alex Rivera", "title": "Larkspur Health interview",
             "date": "2026-10-19T17:00:00+02:00", "me": {"core": str(FIX / "me.md")} if me else None,
             "transcript": ROWS if rows is None else rows, "model": model}
 
@@ -79,12 +79,12 @@ def test_grounding_is_byte_identical_and_ordered(tmp_path):
 
     g1, g2 = run(go())
     assert g1 == g2
-    order = [g1.index(h) for h in ("MEETING: ", "ABOUT OWNER\n", "MEETING PREP\n", "SUMMARY\n", "TRANSCRIPT\n")]
+    order = [g1.index(h) for h in ("MEETING: ", "ABOUT ALEX RIVERA\n", "MEETING PREP\n", "SUMMARY\n", "TRANSCRIPT\n")]
     assert order == sorted(order)
     assert "STYLE GUIDE" not in g1 and "Short sentences. Plain words." not in g1     # the pack comes without its STYLE GUIDE
-    assert g1.index("PRIORITIES") < g1.index("WHO I AM")                              # MY NOTES lead
-    assert "[0:19] Alex: Happy to be here." in g1 and "[0:04] Other: Thanks for joining." in g1
-    assert g1.rstrip().endswith("[19:58] Alex: Thank you Mara. Talk soon.")
+    assert g1.index("PRIORITIES") < g1.index("WHO I AM")                              # ALEX RIVERA'S NOTES lead
+    assert "[0:19] Alex Rivera: Happy to be here." in g1 and "[0:04] Other: Thanks for joining." in g1
+    assert g1.rstrip().endswith("[19:58] Alex Rivera: Thank you Mara. Talk soon.")
 
 
 def test_profile_off_and_empty_prep(tmp_path):
@@ -96,14 +96,14 @@ def test_profile_off_and_empty_prep(tmp_path):
         return rt.grounding
 
     g = run(go())
-    assert "ABOUT OWNER" not in g
+    assert "ABOUT ALEX RIVERA" not in g
     assert "MEETING PREP\n(none: unprepared call)" in g and "SUMMARY\n(none yet)" in g
 
 
 def test_system_prompt_frozen_golden():
     golden = (FIX / "system_prompt.golden.txt").read_text(encoding="utf-8").rstrip("\n")
-    assert system_text("Alex") == golden
-    assert "ABOUT OWNER" in golden and "the owner's questions" in golden
+    assert system_text("Alex Rivera") == golden
+    assert "ABOUT ALEX RIVERA" in golden and "Alex Rivera's questions" in golden
 
 
 def test_request_layout_and_breakpoints(tmp_path):
@@ -121,7 +121,7 @@ def test_request_layout_and_breakpoints(tmp_path):
     assert msgs[1]["content"] == hist[0][1] and msgs[-1]["content"] == "When can Dana start?"
     blob = json.dumps(req)
     assert blob.count('"cache_control"') == 2 and req["cache_control"] == {"type": "ephemeral"}      # <= 4, here 2
-    assert req["system"] == [{"type": "text", "text": system_text("Alex")}]
+    assert req["system"] == [{"type": "text", "text": system_text("Alex Rivera")}]
     assert "betas" in req and req["fallbacks"] == "default"
 
 
@@ -168,7 +168,7 @@ def test_full_to_chunked_switch_at_the_threshold(tmp_path):
     ready = em.of("status", state="ready")[0]
     assert ready["context"] == {"tokens": 180_000, "mode": "full", "rows": 40, "history": 0}
     rt, em = run_with(180_001)
-    assert rt.mode == "chunked" and "TRANSCRIPT INDEX" in rt.grounding and "[19:58] Alex" not in rt.grounding
+    assert rt.mode == "chunked" and "TRANSCRIPT INDEX" in rt.grounding and "[19:58] Alex Rivera" not in rt.grounding
     assert em.of("status", state="ready")[0]["context"]["mode"] == "chunked"
 
 
@@ -183,9 +183,9 @@ def test_count_is_free_and_on_sonnet(tmp_path):
 
 
 def test_bm25_picks_the_chunk_with_the_rare_word_in_time_order():
-    rows = [Row(f"{i}:00", "Other" if i % 2 else "Alex", f"Filler talk about weather and travel number {i} and more filler words here")
+    rows = [Row(f"{i}:00", "Other" if i % 2 else "Alex Rivera", f"Filler talk about weather and travel number {i} and more filler words here")
             for i in range(30)]
-    rows[22] = Row("22:00", "Alex", "We fixed the idempotency key bug in the replay path")
+    rows[22] = Row("22:00", "Alex Rivera", "We fixed the idempotency key bug in the replay path")
     chunks = make_chunks(rows, chunk_tokens=60)
     assert len(chunks) > 5
     sel = select_chunks(chunks, "What about the idempotency key?", budget_tokens=chunks[0].tokens * 2)

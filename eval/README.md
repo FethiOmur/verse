@@ -29,9 +29,9 @@ $PY report.py --run live1                                # writes ../docs/eval-r
 ```
 export VERSE_EVAL_OUT=/some/scratch VERSE_BRAIN_DIR=$PWD/../brain
 cd eval
-python3 run_twotrack.py --fixture t01 --name clean                                   # Ingrid on the remote track, Alex on the me track (fake brain)
+python3 run_twotrack.py --fixture t01 --name clean                                   # Ingrid on the remote track, the owner on the me track (fake brain)
 python3 run_twotrack.py --name b25 --bleed-db 25 --bleed-delay-ms 40 --noise-dbfs -55   # me track = the remote track 25 dB down, 40 ms late, room noise
-python3 run_twotrack.py --name b25own --bleed-db 25 --with-own                          # ... plus Alex talking
+python3 run_twotrack.py --name b25own --bleed-db 25 --with-own                          # ... plus the owner talking
 python3 run_twotrack.py --name b25off --bleed-db 25 --no-bleed-gate --no-echo-guard     # both echo defenses off
 python3 matrix_table.py $VERSE_EVAL_OUT/twotrack                                        # table of runs named m_<A|C|D|O>_<none|gate|guard|both>
 python3 -m pytest tests -q
@@ -54,7 +54,7 @@ PYTHONPATH=../brain ../brain/.venv/bin/python tune_follow.py                    
 ```
 
 `run_follow.py` feeds the Python brain directly (fake brain = canned transport answering from the pack's bank, with the embedding
-model; with `--no-embed` follow cannot diverge, it only strikes points: the embedder is required for a follow card). It exists because `verse-run` has no `--follow` yet and sends no `partial` for the owner's
+model; with `--no-embed` follow cannot diverge, it only strikes points: the embedder is required for a follow card). It exists because `verse-run` has no `--follow` yet and sends no `partial` for the user's
 speech without it; the `say` voices only fix the true start and end of each utterance and the words are delivered like a streaming
 recognizer would (see the module docstring). `score_twotrack.py` adds, per labelled owner utterance, `follow_events`, `detection_ms`
 (first `follow` event after the first off-card word was spoken), `first_sentence_ms` (first complete SAY line of the follow card),

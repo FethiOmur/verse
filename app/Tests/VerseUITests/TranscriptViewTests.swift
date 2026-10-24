@@ -33,7 +33,7 @@ final class TranscriptViewTests: XCTestCase {
     }
 
     func testTheTabChoiceIsRememberedAppWide() {
-        let suite = "dev.fethiverse.verse.test-\(UUID().uuidString)"
+        let suite = "dev.example.verse.test-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let store = SessionsDetailTabStore(defaults: defaults)

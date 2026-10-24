@@ -17,7 +17,7 @@ file exists; --voice-profile PATH points at another file, --no-voice builds the 
 that already exist (old pack kept as <pack>.bak-before-voice-v1):
   python -m verse_brain.prep voice --apply SESSION_DIR [--apply SESSION_DIR...] [--voice-profile PATH]
 
-The me layer (anytime calls, A1): the owner's permanent profile, built from his sources and carried by every session.
+The me layer (anytime calls, A1): The owner's permanent profile, built from his sources and carried by every session.
   python -m verse_brain.prep me build|refresh|show [--fake] [--budget-usd 0.5]
 writes ~/Library/Application Support/Verse/profile/{me.md, me.meta.json, me.sources.json, me.facts.jsonl, me.library.jsonl,
 me.library.emb}; stdout is the profile dir, the token count and the cost go to stderr. `refresh` rebuilds only when a source
@@ -62,7 +62,7 @@ from .keychain import KeychainError, read_api_key, redact
 from .model import PRICES, PrepError, Usage, spend_usd
 from .pipeline import build
 from .sim import DIFFICULTIES, INTERVIEW_TYPES, FakeSimModel, build_sim, build_sim_from_session
-from .vault import DEFAULT_VAULT, BeyinVault
+from .vault import DEFAULT_VAULT, make_vault
 from .voice import (DEFAULT_VOICE_PATH, FakeVoiceModel, distill_async, load_voice, strip_voice, with_voice, write_profile)
 
 SAMPLE = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "prep" / "prep_note.md"
@@ -113,7 +113,7 @@ def _main(argv: list[str]) -> int:
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT, help="sessions root; a <session-id> folder is created in it")
     ap.add_argument("--max-questions", type=int, default=80)
     ap.add_argument("--vault", type=Path, default=DEFAULT_VAULT)
-    ap.add_argument("--no-vault", action="store_true", help="skip beyin.py retrieval")
+    ap.add_argument("--no-vault", action="store_true", help="skip vault retrieval")
     ap.add_argument("--vault-audience", choices=["internal", "public"], default="internal")
     ap.add_argument("--budget-usd", type=float, default=1.0,
                     help="hard cap on the total spend of all section calls: it sizes max_tokens, and no new section starts "
@@ -166,7 +166,7 @@ def _main(argv: list[str]) -> int:
     if a.prep_note is None and a.from_event is None:
         ap.error("--prep-note is required (or use --from-event or --live)")
     langs = [c for c in (a.lang or "en").split(",") if c]
-    vault = None if (a.no_vault or a.fake) else BeyinVault(a.vault, audience=a.vault_audience)
+    vault = None if (a.no_vault or a.fake) else make_vault(a.vault, audience=a.vault_audience)
     key = None
     try:
         voice_path = _resolve_voice(a)
@@ -228,7 +228,7 @@ def _run_sim(a: argparse.Namespace) -> int:
     from_session = a.from_session is not None
     if not from_session:
         lang = lang or "en"
-    vault = None if (a.no_vault or a.fake or from_session) else BeyinVault(a.vault, audience=a.vault_audience)
+    vault = None if (a.no_vault or a.fake or from_session) else make_vault(a.vault, audience=a.vault_audience)
     key = None
     try:
         voice_path = _resolve_voice(a)

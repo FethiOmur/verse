@@ -251,7 +251,7 @@ def test_run_passes_the_search_cap_and_hides_private_terms_from_the_search_model
     assert (max_uses, max_fetches) == (8, 5) and "at most 8 searches" in system and "at most 5 page fetches" in system
     assert "https://www.brightwater-analytics.example" in user
     assert "Brightwater Analytics" in user and "Marta Lindqvist" in user
-    for private in ("450", "EUR", "1 December", "inventing facts", "example"):
+    for private in ("450", "EUR", "1 December", "inventing facts", "northwind"):
         assert private not in user, private
 
 
@@ -262,7 +262,7 @@ def _note(facts=None):
     raw, infers, gaps = parse_facts(RESEARCH_TEXT)
     facts = facts or verify_facts(raw, ResearchOutput("", PAGES))
     ex = parse_extract(json.dumps(EXTRACT), THREAD + POSTING, [])
-    return render_prep_note(ex, facts, gaps, infers, owner="Alex", now=NOW, posting=POSTING, posting_url="https://jobs.example/1",
+    return render_prep_note(ex, facts, gaps, infers, owner="the owner", now=NOW, posting=POSTING, posting_url="https://jobs.example/1",
                             company_url=None, note="Keep it short.\nAsk about the API docs."), facts
 
 

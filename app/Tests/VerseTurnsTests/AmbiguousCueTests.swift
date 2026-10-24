@@ -3,7 +3,7 @@ import VerseSpeech
 import VerseTurns
 import XCTest
 
-/// Live Italian call, 16 Oct (personal, so the sentences here are invented in the same shape): a fragment of the card Alex was
+/// Live Italian call, 16 Oct (personal, so the sentences here are invented in the same shape): a fragment of the card the owner was
 /// reading aloud ended in "... come questo". "come" (as, like) was a single-word Italian question cue, the fragment became a
 /// question and the room route replaced the card he was reading. Question words that are also ordinary words now ask only where
 /// a clause opens, and every cue says what set it and whether it is unambiguous.

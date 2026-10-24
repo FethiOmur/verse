@@ -1,6 +1,6 @@
 # Verse: UI redesign (island + home window)
 
-Status: design draft 2026-10-16, **waiting for the owner's visual approval of the mockups**. The look is his call; once he
+Status: design draft 2026-10-16, **waiting for the user's visual approval of the mockups**. The look is his call; once he
 approves it, his rule "after a spec, build" covers the implementation.
 
 Research: `~/Workspace/Verse_Design_Research/research.md`. Mockup source: `design/mockups/` (this repo).
@@ -19,7 +19,7 @@ Two surfaces replace today's scattered UI:
    background. It replaces the sim setup, prep-from-conversation, script editor, report and settings windows.
 
 Direction in one line: **a calm, native macOS 26 instrument**: system type, one lime accent, glass only where the
-platform puts it, and the line Alex reads is the largest thing on screen.
+platform puts it, and the line the owner reads is the largest thing on screen.
 
 Left out on purpose: purple/blue "AI" gradient blobs, neon glow, heavy drop shadows, opaque cards, chart-heavy
 dashboards, emoji, springy motion on everything, entrance animations on card text, pill-shaped "AI" buttons,
@@ -41,7 +41,7 @@ The values live in `design/mockups/Sources/VerseMockups/Tokens.swift`; implement
 | `amber` | `#FFB547` | Status only: credit, permission. |
 | `coral` | `#FF6B5E` | Status only: errors. |
 | Island text | white 100 / 80 / 56 / 36 % | SAY (said words) / points / meta / struck or hint. |
-| `Island.question` | `mint` (#BEDC4C) at 75 % | The heard question (or "Following you") above the SAY, in the accent at 75 % (Alex, 16 Oct; ≈ 7:1 on the island glass). 55 % was rejected: 4.3:1, under AA for 13 pt. |
+| `Island.question` | `mint` (#BEDC4C) at 75 % | The heard question (or "Following you") above the SAY, in the accent at 75 % (the owner, 16 Oct; ≈ 7:1 on the island glass). 55 % was rejected: 4.3:1, under AA for 13 pt. |
 | SAY unspoken | white 55 % | Words of the SAY line he has not said yet. Increase Contrast: 78 %. |
 | Island fills | white 11 % (chips, secondary), 17 % (secondary button) | |
 | Window text | light: black 86 / 54 / 34 %; dark: white 92 / 58 / 36 % | primary / secondary / tertiary. |
@@ -129,7 +129,7 @@ counted against it. Covered points and follow cards behave as before (the reduce
 Card width is a setting (420–960, the existing range; default 600). Card height follows the content (bottom padding 20 pt); a card never
 grows past 420 pt: older deep points drop first.
 
-Transitions: `1 ↔ 2` on speech, `2 → 3` when a question is addressed to Alex, `3 → 4` on the first streamed token,
+Transitions: `1 ↔ 2` on speech, `2 → 3` when a question is addressed to the user, `3 → 4` on the first streamed token,
 `4 → 5` on divergence (follow spec), `4/5 → 2` on the next turn or dismiss, `0 → 2` on Start, `6 ↔ 6b` per answer,
 `7` replaces 1–5 while the prompter is open, `8` overlays any state and returns to it.
 
@@ -201,7 +201,7 @@ Rejected:
 - **Clear glass on the island.** Over a white page the text falls under 3 : 1 without a heavy dim, and the HIG keeps
   clear glass for media.
 - **A floating glass sidebar over an opaque content pane** (the stock Tahoe layout). It is correct HIG but it is not
-  what Alex asked for (the whole window as glass), and the content pane would be the opaque card he dislikes.
+  what the owner asked for (the whole window as glass), and the content pane would be the opaque card he dislikes.
 - **Light island in light mode.** It loses the hardware-notch illusion and the black camera band.
 - **Tinted glass buttons in the window.** That would be glass on glass; the accent fill gives the same emphasis.
 - **Accent-coloured sidebar selection.** "When every element is tinted, nothing stands out."

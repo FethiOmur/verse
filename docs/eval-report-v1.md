@@ -4,8 +4,8 @@ Generated 2026-10-14 18:34 from run `live1` (worktree at 55b8cca). English only;
 
 ## Setup
 
-- 12 synthetic dialogues made with macOS `say` (6 with two speakers, 6 with three), 59 questions to Alex, 12 questions to the other interviewer, plus statements, fragments and short replies; exact bank questions, blind paraphrases (`bench/embed/blind_set.json`) and off-bank questions. One more dialogue (d13) has six 2-3 word questions, scored apart, to exercise the fresh-Haiku path (speculation cannot fire on fewer than four words). Labels: `eval/dialogues/*.json`. Audio is generated at run time in a temp folder and deleted after each dialogue; each dialogue starts with silence while the English engine loads.
-- Remote channel only: `verse-run --file` plays the mix of interviewers; the owner's answers are silence. Speech recognition: the app's English engine (Nemotron 0.6B, 560 ms chunks) after a lead-in long enough for it to load.
+- 12 synthetic dialogues made with macOS `say` (6 with two speakers, 6 with three), 59 questions to the user, 12 questions to the other interviewer, plus statements, fragments and short replies; exact bank questions, blind paraphrases (`bench/embed/blind_set.json`) and off-bank questions. One more dialogue (d13) has six 2-3 word questions, scored apart, to exercise the fresh-Haiku path (speculation cannot fire on fewer than four words). Labels: `eval/dialogues/*.json`. Audio is generated at run time in a temp folder and deleted after each dialogue; each dialogue starts with silence while the English engine loads.
+- Remote channel only: `verse-run --file` plays the mix of interviewers; the user's answers are silence. Speech recognition: the app's English engine (Nemotron 0.6B, 560 ms chunks) after a lead-in long enough for it to load.
 - Brain: the live runtime (Haiku 5.5 for S/F, Sonnet 5.5 for D) against the P1-1 sample session (`sample-interview`, 22 bank entries).
 - All times are measured from the true acoustic end of each question (known exactly from the generated audio). Machine load average at the start of each dialogue: min 4.3, max 122.0 (end of dialogue: max 38.3). The Mac was shared with other sessions, so latencies are pessimistic and noisy.
 - Time zero: the generated audio is played at real-time pace, so the wall-clock time of every utterance's acoustic end is known to within about 50 ms (the file starts within tens of milliseconds of the session clock; `session_t0` reports the origin as 0).
@@ -20,7 +20,7 @@ Generated 2026-10-14 18:34 from run `live1` (worktree at 55b8cca). English only;
 | 2b | ... Italian, Turkish (Turkish separately) | wrong-hit rate <= 5 % | English only in this package | not measured |
 | 3 | Questions to others get no SAY line (3-speaker replays) | >= 90 % | 12/12 = 100 % (all dialogues: 12/12) | met |
 | 4 | Replay through the MacBook speakers produces no false "me" turns | zero | the me channel and the speaker-bleed test need P1-5 (follow-up) | not measured |
-| 5 | Question detection, questions to Alex | precision and recall >= 80 % | precision 100 % (58/58), recall 98 % (58/59) | met |
+| 5 | Question detection, questions to the user | precision and recall >= 80 % | precision 100 % (58/58), recall 98 % (58/59) | met |
 | 6 | No suggestion states a number, date or fact absent from the pack | zero | 363 lines shown: 357 passed the string check (6 did not); Haiku read all 363 in 2 passes and flagged 15; Sonnet cleared 8, so 7 unsupported (0 not judged) | missed |
 | 7 | No audio file written anywhere | none | filesystem watch (250 ms polls) over the session folder, the app's Verse folder and the brain's output folder during all 13 dialogues: no audio file appeared; temp audio removed after every dialogue | met |
 | 8 | API key never in logs or files | none | 54 files scanned (everything under eval/out (every recorded stdout line, stderr log, metadata and score file, the spend ledger) and this report): exact Keychain key and key-shaped strings not found | met |
@@ -33,8 +33,8 @@ Met today: question detection, addressing of questions to the other interviewer,
 - **Speculation opener is 0.67 s p50 / 1.22 s p90, not 0.3 / 0.5 s.** The speculative reply is held back until the `turn` message, and `turn` itself is sent 0.51 s p50 / 0.72 s p90 after the question's acoustic end (recognizer lag plus the endpoint wait, 300 ms for a finished question). The brain adds about 0.15 s at the median on top. With the endpoint wait as designed, 0.3 s cannot be reached; either the target moves to roughly 0.7 / 1.3 s or the opener is shown before the endpoint.
 - **Outliers.** One Sonnet answer started 9.5 s after the question ended (d05, load average 14); the next slowest was 2.9 s. One Haiku opener took 2.6 s (d11, load average 39). The Mac was shared with other sessions (load average 4 to 122 at dialogue starts), so all latencies lean pessimistic.
 - **Bank hits: exact questions 21/21, blind paraphrases 0/24.** The 3-5-gram matcher at the product thresholds (0.55 / 0.08) never fires on a paraphrase. This matches `bench/embed` (F3: 0 % for the n-gram matcher at these defaults, about 78 % with the embedding matcher). The wrong-hit rate is low (1 of 93 utterances ended on a wrong hit) largely because the matcher hits so rarely. Haiku's `BANK:` check agreed with 18 of the 21 correct hits.
-- **Detection: 58 of 59 questions to Alex found, no false questions.** The miss ("How big is the team you currently work in?") ends on "in", which the fragment rule treats as a cut-off clause. In the short-question dialogue d13, three of six 2-word questions ("Describe Lantern.", "Notice period?", "Why Halden?") were classed as fragments (minimum three words) and got no answer.
-- **Addressing: 12 of 12 questions to the other interviewer were recognised and got no SAY line.** This relied on the recognizer's spelling being passed as a name: it writes "Tomas" as "Thomas" (listed in `--others`), and "Alex" came back as Fethy, Fifty and other variants. Replies between the interviewers ("Yes, in a moment.", "Sure, sharing it now.") have addressee "unknown" and got a short acknowledgement SAY line in 3 of 7 cases; the overlay would show those to Alex.
+- **Detection: 58 of 59 questions to the user found, no false questions.** The miss ("How big is the team you currently work in?") ends on "in", which the fragment rule treats as a cut-off clause. In the short-question dialogue d13, three of six 2-word questions ("Describe Lantern.", "Notice period?", "Why Halden?") were classed as fragments (minimum three words) and got no answer.
+- **Addressing: 12 of 12 questions to the other interviewer were recognised and got no SAY line.** This relied on the recognizer's spelling being passed as a name: it writes "Tomas" as "Thomas" (listed in `--others`), and "the owner" came back as Fethy, Fifty and other variants. Replies between the interviewers ("Yes, in a moment.", "Sure, sharing it now.") have addressee "unknown" and got a short acknowledgement SAY line in 3 of 7 cases; the overlay would show those to the user.
 - **Grounding: no invented number or date, but 7 of 363 shown lines add content that is not in the pack** (Python as his language, a lesson from the courier pilot, what a former manager would say, an extra definition of ETA drift, "notice counted from acceptance"). They are mostly filler answers to off-bank questions. Haiku is not deterministic: two earlier scoring passes of the same run (their output was overwritten) confirmed 8 and 5 lines with different members, including "shadow mode then a small pilot", "slower prompt iteration, but it caught regressions" and "grow into technical leadership". I read all of them: apart from one generic opener that answered a different question, each adds an unsupported claim, so the count over passes is about eleven lines, roughly 3 % of the lines shown.
 - **Cost: $0.43 per 30 minutes of replay.** The dialogues are dense (a question about every 15 s) and include a pre-warm and summary per run, so a real meeting should cost less.
 - **Speech engine.** All 13 reported dialogues ran on the Nemotron engine after the silent lead-in. The first attempt of d04 to d06 ran on the Apple fallback because Nemotron took longer to load than the run under heavy load; those files are kept as `eval/out/live1/*.try1.*` and are not scored.
@@ -51,7 +51,7 @@ Met today: question detection, addressing of questions to the other interviewer,
 | No hit, fresh Haiku, first word (d13 only) | 2.0 / 2.8 s | 1.55 / 1.58 s (n=3) | met |
 | Sonnet deep points, first words | 2.0 / 3.0 s | 1.98 / 2.38 s (n=42) | met |
 
-Stage by stage (all questions to Alex that the system answered):
+Stage by stage (all questions to the user that the system answered):
 
 | Stage | p50 / p90 |
 |---|---|
@@ -65,9 +65,9 @@ Negative numbers mean the item was visible before the question had ended. Fact c
 
 ## Question detection and addressing
 
-- Questions to Alex missed: 1 of 59.
+- Questions to the user missed: 1 of 59.
   - "How big is the team you currently work in?" -> heard "How big is the team you currently work in" kinds ['fragment'] addressee ['me']
-- Statements, replies, fragments or other-addressed questions that were sent on as questions for Alex: 0.
+- Statements, replies, fragments or other-addressed questions that were sent on as questions for the user: 0.
 - Questions to the other interviewer: 12/12 recognised as addressed to someone else; 0 not detected as a turn at all; 0 produced a SAY line.
 - Statements: 10 (7 got a short acknowledgement, 0 were called questions). Fragments: 5 (0 produced output).
 

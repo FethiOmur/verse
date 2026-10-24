@@ -161,8 +161,8 @@
 {"wall":1791994613.9764,"line":{"type":"metric","turn_id":"r2","stage":"done","t":1791994613.976305,"id":"d0004","tier":"D","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4585,"input_tokens":60,"output_tokens":142},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.002457}}
 {"wall":1791994622.1625,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":48.02,"text":"describe lan","turn_id":"r3","type":"partial"}}
 {"wall":1791994622.7165,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":48.26,"text":"describe lantern","turn_id":"r3","type":"partial"}}
-{"wall":1791994622.7166,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that Alex led.","turn_id":"r3","type":"chip"}}
-{"wall":1791994622.7166,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.","turn_id":"r3","type":"chip"}}
+{"wall":1791994622.7166,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that the owner led.","turn_id":"r3","type":"chip"}}
+{"wall":1791994622.7166,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.","turn_id":"r3","type":"chip"}}
 {"wall":1791994623.5351,"line":{"addressee":"unknown","dir":"to_brain","kind":"fragment","speaker":"remote","t_audio_end":48.26,"text":"describe lantern","turn_id":"r3","type":"turn"}}
 {"wall":1791994623.5352,"line":{"since_audio_end_s":1.252,"source":"verse-run","stage":"turn_sent","t":1791994623.535,"t_audio_end":48.26,"t_audio_end_wall":1791994622.283,"turn_id":"r3","type":"metric"}}
 {"wall":1791994623.5355,"line":{"type":"metric","turn_id":"r3","stage":"turn_recv","t":1791994623.5352619,"speaker":"remote","t_audio_end":48.26}}

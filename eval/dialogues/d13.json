@@ -2,7 +2,7 @@
  "id": "d13",
  "suite": "short",
  "lang": "en",
- "owner": "Alex",
+ "owner": "the owner",
  "participants": [
   "Ingrid"
  ],
@@ -30,7 +30,7 @@
    "gap_before": 0.0
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -53,7 +53,7 @@
    "gap_before": 0.91
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -76,7 +76,7 @@
    "gap_before": 0.93
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -99,7 +99,7 @@
    "gap_before": 1.03
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -122,7 +122,7 @@
    "gap_before": 0.94
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -145,7 +145,7 @@
    "gap_before": 1.07
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,

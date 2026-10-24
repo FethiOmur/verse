@@ -11,7 +11,7 @@ Wrong triggers, as defined for P1:
   answer_on_spurious_turn a remote turn that matches no spoken utterance (nobody said it) got an answer
   answer_on_no_answer     a statement/fragment got an answer
   double_answer           one question got answers on two or more turns
-  missed_answer           a question for Alex got no answer (counted apart: a suppressed answer, not a wrong trigger)
+  missed_answer           a question for the user got no answer (counted apart: a suppressed answer, not a wrong trigger)
   false_me_turn           a me turn that matches none of the owner's utterances (his mic heard something he did not say)
 """
 
@@ -79,7 +79,7 @@ def lines_of(deltas: list[tuple[float, dict]]) -> list[tuple[float, str]]:
 def follow_stats(label: dict, events: list[tuple[float, dict]], meta: dict, origin_m: float, wall0: float) -> dict | None:
     """Follow my answer: the follow cards the brain sent, per owner utterance that carries a `follow` label.
 
-    Times are wall-clock ms measured from the moment Alex *spoke* the first off-card word (`off_from_word`, spread evenly over
+    Times are wall-clock ms measured from the moment the owner *spoke* the first off-card word (`off_from_word`, spread evenly over
     the utterance's true speech interval): `detection_ms` until the brain's first `follow` event, `first_sentence_ms` until the
     first complete `SAY:` line of the follow card. `wall0` is the wall time of audio time 0 (`session_t0.t`; exact in
     run_follow.py, an approximation for a verse-run replay)."""
@@ -173,7 +173,7 @@ def score(label: dict, events: list[tuple[float, dict]], meta: dict, ack_text: s
     false_me = []
     for t in me_turns:
         ta = float(t.get("t_audio_end", 0.0))
-        # a run whose me track is bleed only (Alex silent): every me turn is false, whatever the utterance windows say
+        # a run whose me track is bleed only (the owner silent): every me turn is false, whatever the utterance windows say
         cands = [] if meta.get("owner_silent") else [w for w in me_wins if w["s_start"] - ME_MATCH_BEFORE <= ta <= w["s_end"] + ME_MATCH_AFTER]
         if not cands:
             false_me.append(t)
@@ -222,7 +222,7 @@ def score(label: dict, events: list[tuple[float, dict]], meta: dict, ack_text: s
     gate = [o for _, o in events if o.get("type") == "metric" and o.get("stage") == "echo_gate_dropped"]
     guard = [o for _, o in events if o.get("type") == "metric" and o.get("stage") == "echo_guard_dropped"]
     me_ev = trace_me_events(stderr_log)
-    # What the envelope gate dropped while Alex was really speaking (the gate-fix acceptance number). Only meaningful when
+    # What the envelope gate dropped while the owner was really speaking (the gate-fix acceptance number). Only meaningful when
     # his speech is on the me track: with bleed only (owner_silent) nothing he says exists. The dropped event's audio range
     # is on the me channel's clock; overlap with one of his utterance windows counts.
     gate_events = [o for _, o in events if o.get("type") == "metric" and o.get("stage") == "echo_gate_dropped"]

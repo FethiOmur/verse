@@ -1,4 +1,5 @@
 import Foundation
+import VerseAudio
 
 // The Sessions page's transcript (spec 2.1): rows, timestamps, speakers and the cards that fired at that moment, built from the
 // session folder's `transcript.jsonl` and `events.jsonl`. This is the single source of truth for rows and stamps; Ask (F2b)
@@ -77,7 +78,7 @@ struct TranscriptDocument: Equatable, Sendable {
     var hasCards: Bool { rows.contains { $0.card != nil } }
     var isEmpty: Bool { rows.isEmpty }
 
-    static let empty = TranscriptDocument(lines: [], events: [], ownerName: "Alex")
+    static let empty = TranscriptDocument(lines: [], events: [], ownerName: OwnerProfile.current.addresseeName)
 
     // MARK: Loading
 
@@ -245,7 +246,7 @@ struct TranscriptDocument: Equatable, Sendable {
 
     // MARK: Room rows
 
-    /// A `room` row is Alex reading his card when the brain relabelled it (`room_text` final): `me`, or `split` with `me_words`
+    /// A `room` row is the owner reading his card when the brain relabelled it (`room_text` final): `me`, or `split` with `me_words`
     /// leading words that are his and a remainder that stays room. A legacy split (no `me_words`) stays one room row.
     private static func relabelRoom(_ rows: [TranscriptRow], events: [SessionEvent], wallKnown: Bool) -> [TranscriptRow] {
         let finals = events.enumerated().filter { $0.element.ev == "room_text" && $0.element.final == true && $0.element.turn != nil }
@@ -387,7 +388,7 @@ struct TranscriptDocument: Equatable, Sendable {
 
     func name(of speaker: TranscriptSpeaker) -> String {
         switch speaker {
-        case .me: ownerName
+        case .me: ownerName.isEmpty ? L10n.tr("Me") : ownerName
         case .other: L10n.tr("Other")
         case .room: L10n.tr("Room")
         }

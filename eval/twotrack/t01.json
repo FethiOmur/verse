@@ -2,23 +2,23 @@
  "id": "t01",
  "title": "Hand-offs, a fast answer, a talk-over, a follow-up that interrupts the answer, an interrupted question, a backchannel",
  "lang": "en",
- "owner": "Alex",
+ "owner": "the owner",
  "participants": ["Ingrid"],
- "voices": {"Ingrid": "Kathy", "Alex": "Mara"},
+ "voices": {"Ingrid": "Kathy", "the owner": "Mara"},
  "session": "sample-interview",
  "utterances": [
   {"speaker": "Ingrid", "text": "Thanks for joining us today.", "offset_s": 0.0, "expect": "no_answer", "role": "statement"},
   {"speaker": "Ingrid", "text": "Can you tell me about yourself and your background?", "offset_s": 0.8, "expect": "answer", "role": "question, clean hand-off", "bank_id": "b001"},
-  {"speaker": "Alex", "text": "Sure. I lead data engineering at a logistics start up, and I built an invoice extraction pipeline called Lantern.", "offset_s": 0.8, "expect": "me_turn", "role": "answer after a pause"},
+  {"speaker": "the owner", "text": "Sure. I lead data engineering at a logistics start up, and I built an invoice extraction pipeline called Lantern.", "offset_s": 0.8, "expect": "me_turn", "role": "answer after a pause"},
   {"speaker": "Ingrid", "text": "What do you know about our company and product?", "offset_s": 1.0, "expect": "answer", "role": "question after the answer", "bank_id": "b008"},
-  {"speaker": "Alex", "text": "You build dispatch software for freight companies.", "offset_s": 0.15, "expect": "me_turn", "role": "fast answer, 150 ms after the question"},
-  {"speaker": "Ingrid", "text": "What are your salary expectations?", "offset_s": 0.9, "expect": "answer", "role": "question that Alex talks over", "bank_id": "b016"},
-  {"speaker": "Alex", "text": "Between seventy and eighty thousand gross.", "offset_s": -0.6, "expect": "me_turn", "role": "starts 0.6 s before the question ends"},
+  {"speaker": "the owner", "text": "You build dispatch software for freight companies.", "offset_s": 0.15, "expect": "me_turn", "role": "fast answer, 150 ms after the question"},
+  {"speaker": "Ingrid", "text": "What are your salary expectations?", "offset_s": 0.9, "expect": "answer", "role": "question that the owner talks over", "bank_id": "b016"},
+  {"speaker": "the owner", "text": "Between seventy and eighty thousand gross.", "offset_s": -0.6, "expect": "me_turn", "role": "starts 0.6 s before the question ends"},
   {"speaker": "Ingrid", "text": "How did you choose between small and large models?", "offset_s": -1.2, "expect": "answer", "role": "follow-up that interrupts the end of the answer", "bank_id": "b019"},
-  {"speaker": "Alex", "text": "I tested both on a labelled sample and picked the small model for cost.", "offset_s": 0.6, "expect": "me_turn", "role": "answer"},
-  {"speaker": "Ingrid", "text": "Could you walk me through how you would approach building an LLM assisted dispatcher for our four country operation?", "offset_s": 0.9, "expect": "either", "role": "long question that Alex interrupts half way"},
-  {"speaker": "Alex", "text": "Sorry, one second, let me share my screen first.", "offset_s": -3.0, "expect": "me_turn", "role": "interrupts the question"},
+  {"speaker": "the owner", "text": "I tested both on a labelled sample and picked the small model for cost.", "offset_s": 0.6, "expect": "me_turn", "role": "answer"},
+  {"speaker": "Ingrid", "text": "Could you walk me through how you would approach building an LLM assisted dispatcher for our four country operation?", "offset_s": 0.9, "expect": "either", "role": "long question that the owner interrupts half way"},
+  {"speaker": "the owner", "text": "Sorry, one second, let me share my screen first.", "offset_s": -3.0, "expect": "me_turn", "role": "interrupts the question"},
   {"speaker": "Ingrid", "text": "So, a bit about us. We are about two hundred people across four countries, and we ship around ten thousand loads a week.", "offset_s": 1.5, "expect": "no_answer", "role": "long statement"},
-  {"speaker": "Alex", "text": "Mm hmm. Okay.", "offset_s": -4.0, "expect": "either", "role": "backchannel in the middle of the statement"}
+  {"speaker": "the owner", "text": "Mm hmm. Okay.", "offset_s": -4.0, "expect": "either", "role": "backchannel in the middle of the statement"}
  ]
 }

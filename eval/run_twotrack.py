@@ -2,8 +2,8 @@
 """Two-track replay: a remote track and a "me" track side by side through `verse-run --file ... --me-file ...`.
 
     VERSE_EVAL_OUT=/some/scratch python run_twotrack.py --fixture t01 --name clean
-    python run_twotrack.py --fixture t01 --name bleed25 --bleed-db 25 --bleed-delay-ms 40 --noise-dbfs -55      # silent Alex
-    python run_twotrack.py --fixture t01 --name bleed25own --bleed-db 25 --bleed-delay-ms 40 --with-own           # Alex talks too
+    python run_twotrack.py --fixture t01 --name bleed25 --bleed-db 25 --bleed-delay-ms 40 --noise-dbfs -55      # silent the owner
+    python run_twotrack.py --fixture t01 --name bleed25own --bleed-db 25 --bleed-delay-ms 40 --with-own           # the owner talks too
     python run_twotrack.py --fixture t01 --name x --bleed-db 25 --no-bleed-gate --no-echo-guard                  # defenses off
     python run_twotrack.py --fixture t01 --name x --gate-corr-only                                               # gate before the level rule
 

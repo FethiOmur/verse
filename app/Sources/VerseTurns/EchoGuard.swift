@@ -13,7 +13,7 @@ public struct EchoDrop: Sendable, Equatable {
 
 /// Second line of defense against speaker bleed (the first one is the envelope gate in `ListenSession`, VerseSpeech): a
 /// microphone result whose words are, in order, mostly the words the remote channel said at about the same time is the
-/// remote voice coming out of the speakers, not Alex.
+/// remote voice coming out of the speakers, not the owner.
 ///
 /// It works on text and audio times only, so it does not depend on loudness, on the room, or on how well the two envelopes
 /// line up (the gate needs the lag within 80 ms and a clean 10 ms envelope). It remembers the last `retainSeconds` of

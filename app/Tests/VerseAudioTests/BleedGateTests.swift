@@ -78,7 +78,7 @@ final class BleedGateTests: XCTestCase {
         modulatedNoise(seconds: seconds, seed: seed, rate: 4)   // seed % 7 fixes the phase: seeds 1 and 8 share it
     }
 
-    /// Alex talking while the remote speaker talks, in the same rhythm, as loud at the mic as the remote is in the tap.
+    /// the owner talking while the remote speaker talks, in the same rhythm, as loud at the mic as the remote is in the tap.
     /// The correlation alone says "echo" (the old rule dropped it); the level says it is not.
     func testCorrelatedDoubleTalkAsLoudAsTheRemoteIsNotEcho() {
         let remote = modulatedNoise(seconds: 3, seed: 1, rate: 4)
@@ -140,7 +140,7 @@ final class BleedGateTests: XCTestCase {
         XCTAssertGreaterThan(dropped, 0, "the mic recognizer produced nothing, so the gate was not exercised")
     }
 
-    /// Control: Alex talking over the remote speaker (different words, 300 ms later) is kept.
+    /// Control: the owner talking over the remote speaker (different words, 300 ms later) is kept.
     func testBleedGateKeepsOwnSpeech() async throws {
         let remote = Self.pad(try SayFixture.clip(voice: "Samantha", text: "Could you walk me through the deployment schedule for next week?"), lead: 0.5)
         let own = Self.pad(try SayFixture.clip(voice: "Samantha", text: "Sure, the release goes out on Thursday morning."), lead: 0.8)

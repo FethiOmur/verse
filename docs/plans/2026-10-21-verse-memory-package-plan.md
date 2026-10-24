@@ -21,7 +21,7 @@ Global constraints (every package):
   emoji chips, "AI" sparkles, opaque chat bubbles, a second accent.
 - Every UI string goes through `Text(…, bundle: .module)` / `L10n.tr`, with it and tr written in `Localizable.xcstrings` following
   `docs/l10n-glossary.md` and spec 5.7; `python3 scripts/l10n-check.py` must pass.
-- Python: `VERSE_PY=/Users/user/Desktop/ProjectExamples/CursorExamples/Verse/brain/.venv/bin/python` (worktrees have no venv; in
+- Python: `VERSE_PY=<repo>/brain/.venv/bin/python` (worktrees have no venv; in
   the main checkout it is `brain/.venv/bin/python`).
 - Executor hygiene: read only `tail -60` of build and test logs or grep their result and error lines; never run the full test suite; stop
   and report after 5 failed attempts at the acceptance command.
@@ -288,7 +288,7 @@ code); `runtime/ask.py` entirely; `runtime/protocol.py load_session`; `engine.py
 
 Decisions:
 - `MemoryAskRuntime(AskRuntime)`: overrides start (open the index read-only, load `chat` path from the message, scope sessions, catalog
-  grounding with ABOUT OWNER as in `ask.py`, `mode = "memory"`), `chat_path` (the message's `chat`), `build_request` (cached block =
+  grounding with ABOUT ME as in `ask.py`, `mode = "memory"`), `chat_path` (the message's `chat`), `build_request` (cached block =
   catalog; tail = `render_excerpts(search(…))` + `"\n\nQUESTION\n" + question`, the query = question + previous question), history
   (`MEMORY_HISTORY_PAIRS = 6`, skipping pairs whose stored citations name a session not in the index), and `_finish` (citations from
   `resolve_citations`, stored as full objects in the chat `a` line, `excerpt_tokens` in `ask_done`). Streaming, cancel, errors, cost:
@@ -551,7 +551,7 @@ Test cases:
 
 Acceptance: `cd app && swift test --filter 'VerseUITests.AskMemoryScopeTests|VerseUITests.BriefPlacementTests|VerseUITests.MemoryEndToEndTests|VerseUITests.AskSessionTests|VerseUITests.AskPanelTests|VerseUITests.TranscriptViewTests|VerseUITests.HomeWindowTests' && swift build -c release && ./scripts/l10n-sync.sh && python3 scripts/l10n-check.py`
 → all pass (the end-to-end test runs, not skipped, in the main checkout's merged tree); then `swift build && .build/debug/Verse
---render-home <scratch> sessions prepare` with the memory fixtures, and Read the five PNGs. Then, in the bundled app on the owner's real
+--render-home <scratch> sessions prepare` with the memory fixtures, and Read the five PNGs. Then, in the bundled app on the user's real
 sessions, one "Ask all meetings" question in Sonnet whose source opens the right transcript row; the report quotes the shown cost and the
 `memory/spend.json` record.
 Done means: the commands pass, renders match spec 5.2–5.4, and the live question's citation lands on the right row.

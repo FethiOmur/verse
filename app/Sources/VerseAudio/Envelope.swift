@@ -147,7 +147,7 @@ public struct BleedGate: Sendable {
     /// - drop: the envelopes match and the mic is as quiet next to the remote as a speaker echo is (or matches too tightly
     ///   to be anyone else).
     /// - defer: the envelopes match, but the mic is about as loud as the remote or louder, which is a person at the mic
-    ///   (Alex talking over the remote speaker). Passed on; the text guard (`EchoGuard`, in `TurnEngine`) decides on words.
+    ///   (the owner talking over the remote speaker). Passed on; the text guard (`EchoGuard`, in `TurnEngine`) decides on words.
     public enum Verdict: String, Sendable, Equatable { case keep, drop, `defer` }
 
     /// Rule (P1 gate fix). Envelope correlation alone cannot tell an echo from a person talking at the same time: two speech

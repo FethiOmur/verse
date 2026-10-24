@@ -7,9 +7,9 @@ import XCTest
 /// remote event never closes a me turn, and only the first event of a me turn closes the open remote turn.
 final class TurnOverlapTests: XCTestCase {
 
-    /// Alex is still finishing an answer when Ingrid asks the next question; both recognizers deliver volatile results
+    /// the owner is still finishing an answer when Ingrid asks the next question; both recognizers deliver volatile results
     /// alternately. Before the fix every event closed the other side's turn.
-    func testQuestionStaysWholeWhileAlexKeepsTalking() async {
+    func testQuestionStaysWholeWhileUserKeepsTalking() async {
         let engine = TurnEngine(config: TurnConfig(), bank: .empty, facts: .empty)
         var out: [TurnEngine.Timed] = []
         out += await engine.ingestTimed(ev("I tested both on a labelled", at: 10.0, channel: .me, start: 8.0))
@@ -29,8 +29,8 @@ final class TurnOverlapTests: XCTestCase {
         XCTAssertEqual(me.first?.text, "I tested both on a labelled sample and picked the small model")
     }
 
-    /// The same overlap the other way round: Alex talks over the end of a question that is already open.
-    func testAlexTalkingOverTheEndOpensOneMeTurnAndClosesTheQuestionOnce() async {
+    /// The same overlap the other way round: the owner talks over the end of a question that is already open.
+    func testUserTalkingOverTheEndOpensOneMeTurnAndClosesTheQuestionOnce() async {
         let engine = TurnEngine(config: TurnConfig(), bank: .empty, facts: .empty)
         var out: [TurnEngine.Timed] = []
         out += await engine.ingestTimed(ev("What are your salary expectations", at: 5.0, start: 3.0))
@@ -41,11 +41,11 @@ final class TurnOverlapTests: XCTestCase {
         out += await engine.advance(to: 8.0)
         let turns = out.turns
         XCTAssertEqual(turns.map(\.id), ["r1", "m1"], "\(turns.map { "\($0.id): \($0.text)" })")
-        XCTAssertEqual(turns.first?.at ?? 0, 5.1, accuracy: 0.001, "the question closed when Alex started")
+        XCTAssertEqual(turns.first?.at ?? 0, 5.1, accuracy: 0.001, "the question closed when the owner started")
         XCTAssertEqual(turns.last?.text, "Between seventy and eighty thousand")
     }
 
-    /// Alex interrupts a question that is still open and cut off: closed at once, a fragment (nothing to answer).
+    /// the owner interrupts a question that is still open and cut off: closed at once, a fragment (nothing to answer).
     func testInterruptionMidQuestionClosesItAsAFragment() async {
         let engine = TurnEngine(config: TurnConfig(), bank: .empty, facts: .empty)
         _ = await engine.ingestTimed(ev("Could you walk me through how you would approach building an", at: 20.0, start: 17.0))

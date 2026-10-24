@@ -225,7 +225,7 @@
 | = | Faster (+10 wpm) | Più veloce (+10 parole/min) | PrompterHotKeys.swift |
 | = | Feedback | Feedback | SimSetupView.swift |
 | = | Fetch | Recupera | ConversationSetupView.swift, SimSetupView.swift |
-| = | Alex | Alex | SettingsView.swift |
+| = | the owner | the owner | SettingsView.swift |
 | = | File | File | MeModel.swift |
 | = | Folder name | Nome della cartella | HomeSessionsList.swift |
 | = | Folders | Cartelle | HomeSessionsList.swift |
@@ -239,7 +239,7 @@
 | = | for someone else | per qualcun altro | OverlayState.swift |
 | = | for you | per te | OverlayState.swift, OverlayView.swift, ScreenRenderer.swift |
 | = | Friendly | Cordiale | SimSession.swift |
-| = | Uses your Anthropic API key. Kept only in the login Keychain; the brain reads it there. | Dall’organizzazione individuale di Alex (credito API Max). Conservata solo nel portachiavi di login; il cervello la legge da lì. | SettingsView.swift |
+| = | Uses your Anthropic API key. Kept only in the login Keychain; the brain reads it there. | Dall’organizzazione individuale di the owner (credito API Max). Conservata solo nel portachiavi di login; il cervello la legge da lì. | SettingsView.swift |
 | From its prep: %@ · %@ | From its prep: %1$@ · %2$@ | Dalla preparazione: %1$@ · %2$@ | SimSetupView.swift |
 | = | From the brain's per-call cost; each session's total is kept in its spend.json. | Dal costo per chiamata del cervello; il totale di ogni sessione è conservato nel suo spend.json. | SettingsView.swift |
 | = | From the last session. Nothing is rewritten on its own: fix the line here if the pack is the one that is wrong. | Dall’ultima sessione. Niente viene riscritto da solo: correggi la riga qui se a sbagliare è il pacchetto. | MePage.swift |

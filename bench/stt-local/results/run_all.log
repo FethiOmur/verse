@@ -6,7 +6,7 @@ RUN apple en (133 s real time)
   en: last-word 713 / 1415 ms, final 940 / 1564 ms, WER 40.3%, CPU 1%, RTF n/a, peak RSS 61 MB
 RUN apple en-samantha (107 s real time)
   en-samantha: last-word 303 / 824 ms, final 966 / 1256 ms, WER 0.5%, CPU 1%, RTF n/a, peak RSS 61 MB
-wrote /Users/user/Desktop/ProjectExamples/CursorExamples/Verse/bench/stt-local/results/apple-run1-2026-10-14T091256Z.json
+wrote <repo>/bench/stt-local/results/apple-run1-2026-10-14T091256Z.json
 === nemotron run1 11:17:18
 FIXTURES deleted: 40/40, dir absent: true
 LOAD nemotron: 15.63 s (wall 15.63 s)
@@ -14,7 +14,7 @@ RUN nemotron en (133 s real time)
   en: last-word 119 / 386 ms, final 3267 / 3654 ms, WER 12.2%, CPU 3%, RTF 0.046, peak RSS 622 MB
 RUN nemotron en-samantha (107 s real time)
   en-samantha: last-word 153 / 375 ms, final 3145 / 3333 ms, WER 0.0%, CPU 3%, RTF 0.063, peak RSS 622 MB
-wrote /Users/user/Desktop/ProjectExamples/CursorExamples/Verse/bench/stt-local/results/nemotron-run1-2026-10-14T091718Z.json
+wrote <repo>/bench/stt-local/results/nemotron-run1-2026-10-14T091718Z.json
 === moonshine run1 11:21:57
 FIXTURES deleted: 40/40, dir absent: true
 LOAD moonshine: 1.95 s (wall 1.96 s)
@@ -22,7 +22,7 @@ RUN moonshine en (133 s real time)
   en: last-word 647 / 1189 ms, final 843 / 1189 ms, WER 44.4%, CPU 114%, RTF 0.331, peak RSS 1219 MB
 RUN moonshine en-samantha (107 s real time)
   en-samantha: last-word 582 / 2625 ms, final 951 / 2625 ms, WER 0.0%, CPU 90%, RTF 0.383, peak RSS 1219 MB
-wrote /Users/user/Desktop/ProjectExamples/CursorExamples/Verse/bench/stt-local/results/moonshine-run1-2026-10-14T092157Z.json
+wrote <repo>/bench/stt-local/results/moonshine-run1-2026-10-14T092157Z.json
 === apple run2 11:26:38
 FIXTURES deleted: 40/40, dir absent: true
 LOAD apple: per run (wall 0.00 s)
@@ -30,7 +30,7 @@ RUN apple en (133 s real time)
   en: last-word 717 / 1400 ms, final 919 / 1548 ms, WER 40.3%, CPU 1%, RTF n/a, peak RSS 52 MB
 RUN apple en-samantha (107 s real time)
   en-samantha: last-word 306 / 826 ms, final 968 / 1255 ms, WER 0.5%, CPU 1%, RTF n/a, peak RSS 52 MB
-wrote /Users/user/Desktop/ProjectExamples/CursorExamples/Verse/bench/stt-local/results/apple-run2-2026-10-14T092638Z.json
+wrote <repo>/bench/stt-local/results/apple-run2-2026-10-14T092638Z.json
 === nemotron run2 11:31:10
 FIXTURES deleted: 40/40, dir absent: true
 LOAD nemotron: 17.76 s (wall 17.76 s)
@@ -38,7 +38,7 @@ RUN nemotron en (133 s real time)
   en: last-word 127 / 392 ms, final 3264 / 3660 ms, WER 12.2%, CPU 3%, RTF 0.048, peak RSS 620 MB
 RUN nemotron en-samantha (107 s real time)
   en-samantha: last-word 151 / 364 ms, final 3136 / 3346 ms, WER 0.0%, CPU 3%, RTF 0.051, peak RSS 620 MB
-wrote /Users/user/Desktop/ProjectExamples/CursorExamples/Verse/bench/stt-local/results/nemotron-run2-2026-10-14T093110Z.json
+wrote <repo>/bench/stt-local/results/nemotron-run2-2026-10-14T093110Z.json
 === moonshine run2 11:35:53
 FIXTURES deleted: 40/40, dir absent: true
 LOAD moonshine: 1.18 s (wall 1.18 s)
@@ -46,7 +46,7 @@ RUN moonshine en (133 s real time)
   en: last-word 1031 / 3513 ms, final 1162 / 3513 ms, WER 40.3%, CPU 119%, RTF 0.529, peak RSS 1062 MB
 RUN moonshine en-samantha (107 s real time)
   en-samantha: last-word 779 / 3407 ms, final 848 / 3589 ms, WER 0.5%, CPU 92%, RTF 0.491, peak RSS 1062 MB
-wrote /Users/user/Desktop/ProjectExamples/CursorExamples/Verse/bench/stt-local/results/moonshine-run2-2026-10-14T093553Z.json
+wrote <repo>/bench/stt-local/results/moonshine-run2-2026-10-14T093553Z.json
 === moonshine interval 0.2 11:40:19
 FIXTURES deleted: 40/40, dir absent: true
 LOAD moonshine: 1.21 s (wall 1.21 s)
@@ -54,6 +54,6 @@ RUN moonshine en (133 s real time)
   en: last-word 1613 / 7594 ms, final 1613 / 7594 ms, WER 39.3%, CPU 123%, RTF 0.630, peak RSS 978 MB
 RUN moonshine en-samantha (107 s real time)
   en-samantha: last-word 663 / 2931 ms, final 847 / 2931 ms, WER 0.0%, CPU 93%, RTF 0.377, peak RSS 978 MB
-wrote /Users/user/Desktop/ProjectExamples/CursorExamples/Verse/bench/stt-local/results/moonshine-run1-int0.2-2026-10-14T094019Z.json
+wrote <repo>/bench/stt-local/results/moonshine-run1-int0.2-2026-10-14T094019Z.json
 === done 11:45:06
 /dev/disk3s1s1   460Gi    12Gi   9.7Gi    55%    459k  101M    0%   /

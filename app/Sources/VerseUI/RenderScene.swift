@@ -116,7 +116,7 @@ private struct DocPage: View {
                 Text(verbatim: "Q3 delivery review").font(.system(size: 30, weight: .bold)).foregroundStyle(.black)
                 Text(verbatim: "Halden Logistics · Platform team").font(.system(size: 14)).foregroundStyle(.gray)
                 ForEach(0..<16, id: \.self) { i in
-                    Text(String(repeating: "Route planning latency and ETA drift across the Milan depots. ", count: 3))
+                    Text(String(repeating: "Route planning latency and ETA drift across the Lisbon depots. ", count: 3))
                         .font(.system(size: 15)).foregroundStyle(.black.opacity(i % 5 == 0 ? 0.95 : 0.78)).lineLimit(1)
                 }
             }

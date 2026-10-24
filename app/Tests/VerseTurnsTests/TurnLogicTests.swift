@@ -16,7 +16,7 @@ final class TurnLogicTests: XCTestCase {
         XCTAssertTrue(Cues.hasCue("What results did Lantern deliver", lang: "en"))
         XCTAssertTrue(Cues.hasCue("Do you have any questions for us", lang: "en"))
         XCTAssertTrue(Cues.hasCue("Have you worked with route planning", lang: "en"))
-        XCTAssertTrue(Cues.hasCue("Alex, how would you approach this", lang: "en"))
+        XCTAssertTrue(Cues.hasCue("the owner, how would you approach this", lang: "en"))
         XCTAssertTrue(Cues.hasCue("so tell me about the pilot", lang: "en"))
         XCTAssertTrue(Cues.hasCue("I want you to walk me through the design", lang: "en"))
         XCTAssertTrue(Cues.hasCue("Thanks. Why do you want to join", lang: "en"))
@@ -99,7 +99,7 @@ final class TurnLogicTests: XCTestCase {
     func testMeStartsEndsTurn() async {
         let engine = TurnEngine(config: TurnConfig(), bank: .empty, facts: .empty)
         _ = await engine.ingestTimed(ev("Can you walk me through your last project", at: 10.0))
-        // Alex starts talking at 10.1, long before the 300 ms timeout.
+        // the owner starts talking at 10.1, long before the 300 ms timeout.
         let out = await engine.ingestTimed(ev("Sure", at: 10.1, channel: .me, start: 10.0))
         let turns = out.turns
         XCTAssertEqual(turns.count, 1)
@@ -121,7 +121,7 @@ final class TurnLogicTests: XCTestCase {
         let out = await engine.ingestTimed(ev("Okay and what about the cost", at: 1.3, start: 1.0))
         XCTAssertTrue(out.turns.isEmpty, "a remote event leaves the me turn open (it ends by its own quiet)")
         XCTAssertEqual(out.partials.first?.id, "r1")
-        // The question started right after Alex stopped talking: it is for Alex. Both turns close, the me turn by its quiet.
+        // The question started right after the owner stopped talking: it is for the user. Both turns close, the me turn by its quiet.
         let end = await engine.advance(to: 3.0)
         XCTAssertEqual(end.turns.map(\.id).sorted(), ["m1", "r1"])
         XCTAssertEqual(end.turns.first { $0.id == "r1" }?.addressee, .me)
@@ -137,17 +137,17 @@ final class TurnLogicTests: XCTestCase {
     // MARK: addressee
 
     func testAddressee() async {
-        let cfg = TurnConfig(ownerName: "Alex", otherNames: ["Marco"])
+        let cfg = TurnConfig(ownerName: "the owner", otherNames: ["Marco"])
         func addressee(_ text: String) async -> Addressee? {
             let engine = TurnEngine(config: cfg, bank: .empty, facts: .empty)
             _ = await engine.ingestTimed(ev(text, at: 1.0))
             return await engine.advance(to: 3.0).turns.first?.addressee
         }
-        let a1 = await addressee("Alex, how would you approach the migration")
+        let a1 = await addressee("the owner, how would you approach the migration")
         let a2 = await addressee("Marco, can you share the numbers")
         let a3 = await addressee("What is the status of the rollout")
         let a4 = await addressee("What would your first month look like")
-        let a5 = await addressee("Marco and Alex, what do you think")
+        let a5 = await addressee("Marco and the owner, what do you think")
         XCTAssertEqual(a1, .me)
         XCTAssertEqual(a2, .other)
         XCTAssertEqual(a3, .unknown)
@@ -155,7 +155,7 @@ final class TurnLogicTests: XCTestCase {
         XCTAssertEqual(a5, .me, "the owner's name wins when both are named")
 
         // The recognizer's spelling of the name counts through aliases.
-        let aliased = TurnEngine(config: TurnConfig(ownerName: "Alex", ownerAliases: ["Fi", "Festi"]), bank: .empty, facts: .empty)
+        let aliased = TurnEngine(config: TurnConfig(ownerName: "the owner", ownerAliases: ["Fi", "Festi"]), bank: .empty, facts: .empty)
         _ = await aliased.ingestTimed(ev("Fi, what is the plan", at: 1.0))
         let r = await aliased.advance(to: 3.0)
         XCTAssertEqual(r.turns.first?.addressee, .me)
@@ -167,7 +167,7 @@ final class TurnLogicTests: XCTestCase {
         _ = await engine.advance(to: 2.0)                         // the me turn ends at 1.0 (last text change)
         _ = await engine.ingestTimed(ev("What was the hardest part", at: 3.5, start: 3.0))
         let near = await engine.advance(to: 5.0)
-        XCTAssertEqual(near.turns.first?.addressee, .me, "a question 2.5 s after Alex spoke is for Alex")
+        XCTAssertEqual(near.turns.first?.addressee, .me, "a question 2.5 s after the owner spoke is for the user")
 
         let engine2 = TurnEngine(config: TurnConfig(), bank: .empty, facts: .empty)
         _ = await engine2.ingestTimed(ev("That is how we did it", at: 1.0, channel: .me))

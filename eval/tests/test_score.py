@@ -44,7 +44,7 @@ def test_detection_precision_recall(result):
     assert det["predicted_turns"] == 5 and det["true_positive_turns"] == 3
     assert det["precision"] == 0.6
     assert [m["text"] for m in det["missed"]] == ["Where do you live at the moment?"]
-    # a question for Tomas that the runner treated as a question for Alex is a false positive too
+    # a question for Tomas that the runner treated as a question for the user is a false positive too
     assert any(f["category"] == "other" for f in det["false_positives"])
 
 
@@ -96,7 +96,7 @@ def test_warmup_utterances_are_excluded():
     ag = score.aggregate([d], {"dmini": meta})
     # utterances that start before the switch (session time 20.5 s) are not steady state
     assert ag["excluded_warmup_utterances"] == sum(1 for r in d["rows"] if r["warmup"]) > 0
-    assert ag["questions_to_owner"] == 2   # only the questions at 22.5 + 0.5 and later remain: utts 6 and 10
+    assert ag["questions_to_user"] == 2   # only the questions at 22.5 + 0.5 and later remain: utts 6 and 10
 
 
 def test_no_session_clock_is_reported():
@@ -108,6 +108,6 @@ def test_suites_are_aggregated_apart(result):
     d, _ = result
     short = dict(d, suite="short")
     meta = json.loads((FIX / "meta.json").read_text())
-    assert score.aggregate([d, short], {"dmini": meta})["questions_to_owner"] == 4
-    assert score.aggregate([d, short], {"dmini": meta}, "short")["questions_to_owner"] == 4
-    assert score.aggregate([short], {"dmini": meta})["questions_to_owner"] == 0
+    assert score.aggregate([d, short], {"dmini": meta})["questions_to_user"] == 4
+    assert score.aggregate([d, short], {"dmini": meta}, "short")["questions_to_user"] == 4
+    assert score.aggregate([short], {"dmini": meta})["questions_to_user"] == 0

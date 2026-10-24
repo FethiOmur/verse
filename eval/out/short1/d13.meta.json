@@ -12,7 +12,7 @@
   },
   {
    "index": 1,
-   "speaker": "Alex",
+   "speaker": "the owner",
    "t_start": 47.215,
    "t_end": 55.416,
    "silent": true
@@ -26,7 +26,7 @@
   },
   {
    "index": 3,
-   "speaker": "Alex",
+   "speaker": "the owner",
    "t_start": 58.586,
    "t_end": 66.285,
    "silent": true
@@ -40,7 +40,7 @@
   },
   {
    "index": 5,
-   "speaker": "Alex",
+   "speaker": "the owner",
    "t_start": 69.288,
    "t_end": 76.688,
    "silent": true
@@ -54,7 +54,7 @@
   },
   {
    "index": 7,
-   "speaker": "Alex",
+   "speaker": "the owner",
    "t_start": 79.828,
    "t_end": 87.328,
    "silent": true
@@ -68,7 +68,7 @@
   },
   {
    "index": 9,
-   "speaker": "Alex",
+   "speaker": "the owner",
    "t_start": 90.214,
    "t_end": 98.114,
    "silent": true
@@ -82,7 +82,7 @@
   },
   {
    "index": 11,
-   "speaker": "Alex",
+   "speaker": "the owner",
    "t_start": 100.972,
    "t_end": 108.372,
    "silent": true
@@ -134,7 +134,7 @@
   "folders": [
    "/var/folders/th/cqlllcvs5g9d857_y87xzf0w0000gn/T/verse-eval-audio-sfpu5elf/session",
    "/Users/user/Library/Application Support/Verse/sessions",
-   "/Users/user/Desktop/ProjectExamples/CursorExamples/Verse/brain/tests/out"
+   "<repo>/brain/tests/out"
   ],
   "polls": 458,
   "audio_files_found": [],

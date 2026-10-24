@@ -1,13 +1,13 @@
 # Verse interview simulation plan
 
-Goal: a practice-interview mode built from the user's experience and a job posting (spec approved by Alex 2026-10-14).
+Goal: a practice-interview mode built from the user's experience and a job posting (spec approved by the owner 2026-10-14).
 Spec: docs/specs/2026-10-14-verse-interview-sim-design.md
 Approach: extend prep with a sim pack, add a half-duplex `sim` runtime and a report builder to the brain, add a
 Swift voice module and a posting fetcher, then wire a setup window, the practice capsule and the report window
 into the app.
 Global constraints:
 - Brain calls only through the existing Anthropic transport and route tuples in `brain/verse_brain/runtime/settings.py`
-  (Haiku for ask/judge/coach, Sonnet for sim prep and grading). No spend cap (Alex).
+  (Haiku for ask/judge/coach, Sonnet for sim prep and grading). No spend cap (the owner).
 - Keys only from the Keychain: `verse-anthropic` (brain reads it), `verse-elevenlabs`, `verse-openai` (Swift reads them);
   account = login user name. Never logged, printed, written, or passed on a command line.
 - No audio written anywhere. English first; `lang` stays a parameter.

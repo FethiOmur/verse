@@ -66,7 +66,7 @@ final class PracticeUpcomingRender: XCTestCase {
         try makeMeeting("Lantern Health first call", in: root, questions: 9, daysAgo: 7)
         fixtures.controller.sessionsRoot = root
 
-        let defaults = UserDefaults(suiteName: "dev.fethiverse.verse.render-upcoming-\(UUID().uuidString)")!
+        let defaults = UserDefaults(suiteName: "dev.example.verse.render-upcoming-\(UUID().uuidString)")!
         let meetingSettings = MeetingSettings(defaults: defaults)
         meetingSettings.useCalendar = true
         let calendar = Calendar_([

@@ -292,10 +292,11 @@ def test_question_still_selects_speculation_and_skips_d_on_bank_agreement():
 
 # ---------------------------------------------------------------- cache layout
 # sha256 of the prompt constants: any edit to them breaks the cache prefix, so this pin moves only on purpose
-# (V1 replaced the personal-voice style line with a pointer to the pack's STYLE GUIDE section).
+# (V1 replaced the personal-voice style line with a pointer to the pack's STYLE GUIDE section). The prompts carry the owner's
+# name, so the digests are those of the pinned test profile (tests/conftest.py: Alex Rivera); regenerate them from the code.
 PINNED = {
-    "SYSTEM_FAST": "194619b4bf1449d3b76f1c9556155390221e6210585b25f6356db8d718e90164",
-    "SYSTEM_DEEP": "f3054000ff4e9c4cb2e591b576270c83358879980329ae48ef09b8451648193e",
+    "SYSTEM_FAST": "deecf89474c60bb7b0c523354bac133fe6b3590a78f6055b02616d8d86c4c452",
+    "SYSTEM_DEEP": "962f2bea2c7b1ca41c5d9ad11ccd63cd1ba2e85fd976908c48e00de33e9ae281",
     "PACK_HEADER": "f37a145e475c721f232e440f1ad78c8a7705c196eee5b200db0b973bdc18b525",
     "TRANSCRIPT_HEADER": "d33c9a039282727fa1162a84e507311b69d26fe7e13151611cd4d3836c3421a8",
 }

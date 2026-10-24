@@ -1,12 +1,12 @@
 # Verse teleprompter mode: design
 
-Status: draft for the owner's review (2026-10-15). Follows §10 of `2026-10-14-verse-meeting-assistant-v1-design.md`.
+Status: draft for the user's review (2026-10-15). Follows §10 of `2026-10-14-verse-meeting-assistant-v1-design.md`.
 Background: `~/Workspace/Textream_Analiz/textream_architecture_and_rebuild.md` (Textream read 2026-10-14).
 
 ## 1. Goal and audience
 
-Alex reads text in front of the camera and in meetings while keeping his eyes near the lens. Three uses, all
-in scope (Alex, 2026-10-15):
+the owner reads text in front of the camera and in meetings while keeping his eyes near the lens. Three uses, all
+in scope (the owner, 2026-10-15):
 
 1. **Camera recording** (Shorts/YouTube): read a prepared script.
 2. **Meeting:** read Verse's suggested answer card; the card scrolls and marks what he has already said.
@@ -18,12 +18,12 @@ English first; `lang` stays a parameter.
 
 | Topic | Decision | Source |
 |---|---|---|
-| Scroll | Three modes, picked in Settings: **word tracking** (default), **voice-paced** (moves at a set speed while he speaks, stops when he stops), **classic** (timer). | Alex |
-| Surface | The existing hanging notch glass panel (`NotchPanelController`, Moonglade style) grows into the prompter. No floating window in this spec. | Alex |
-| Script sources | **Verse writes it** (topic + target length, in his voice), **from a file** (.md, .txt, PowerPoint speaker notes), **the live meeting card**. | Alex |
-| Editing | A small editor to correct a Verse-written or imported script before reading. Paste works there, but there is no separate "paste" source. | Assumed, Alex approved the summary |
+| Scroll | Three modes, picked in Settings: **word tracking** (default), **voice-paced** (moves at a set speed while he speaks, stops when he stops), **classic** (timer). | the owner |
+| Surface | The existing hanging notch glass panel (`NotchPanelController`, Moonglade style) grows into the prompter. No floating window in this spec. | the owner |
+| Script sources | **Verse writes it** (topic + target length, in his voice), **from a file** (.md, .txt, PowerPoint speaker notes), **the live meeting card**. | the owner |
+| Editing | A small editor to correct a Verse-written or imported script before reading. Paste works there, but there is no separate "paste" source. | Assumed, the owner approved the summary |
 | Screen share | The prompter panel is hidden from screen share by default (`sharingType = .none`), with a Settings toggle. It must be tested on-device against Meet in Comet, Zoom and Teams, because public reports say ScreenCaptureKit capture can ignore the flag on macOS 15+. | Assumed, approved |
-| Recording | Verse does not record the camera. Alex records with his own tool. | Assumed, approved |
+| Recording | Verse does not record the camera. the owner records with his own tool. | Assumed, approved |
 | Build | New module inside Verse, reusing Verse's mic capture and STT; port Textream's MIT matcher with its notice. | Approach A, approved |
 
 ### Rejected
@@ -60,7 +60,7 @@ New Swift module `VersePrompter` (library target). It depends on `VerseSpeech` a
   - *File:* `.md` and `.txt` are read directly. `.pptx` speaker notes are read through a port of Textream's
     `PresentationNotesExtractor` (MIT). Keynote is out of scope.
   - *Verse writes:* a new brain command `script` (JSON line: topic, target seconds, use: recording|talk).
-    It runs on Sonnet over the existing transport, in the owner's voice from the V1 profile
+    It runs on Sonnet over the existing transport, in the user's voice from the V1 profile
     (`~/Library/Application Support/Verse/profile/voice.md`). It returns the text; the app opens it in the editor.
   - *Meeting card:* when the teleprompter is on during a meeting, the SAY text of the current card becomes the
     script. A new card replaces the unread tail and keeps the read prefix, as Textream's `updateText` does.
@@ -98,7 +98,7 @@ T1 can start once S4 is merged (it shares the notch panel and Settings). T3 need
 
 ## 7. Done means
 
-All four phases merged. Alex can (a) have Verse write a 60-second script and read it with word tracking, (b) read
+All four phases merged. the owner can (a) have Verse write a 60-second script and read it with word tracking, (b) read
 a .pptx's notes page by page, and (c) in a test meeting read a card that tracks his voice, with the panel invisible
 in the shared screen (or a written note of which apps still capture it).
 

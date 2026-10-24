@@ -39,7 +39,7 @@ def test_unprepared_question_is_answered_from_the_me_layer_with_no_bank(tmp_path
 
     b, t, em, emb = run(go())
     f = t.by_route("F")[0]
-    assert "ABOUT OWNER" in f.request["system"][0]["text"] and "write BANK: none" in f.request["system"][0]["text"]
+    assert "ABOUT ALEX RIVERA" in f.request["system"][0]["text"] and "write BANK: none" in f.request["system"][0]["text"]
     assert NO_PACK_LINE in blocks_text(f.request) and "[m401]" in f.request["system"][1]["text"]
     assert len(t.by_route("D")) == 1                                      # D runs as in a prepared session
     assert em.of("bank_verdict") == [] and em.of("bank_hit") == []         # no bank, so nothing to confirm or reject

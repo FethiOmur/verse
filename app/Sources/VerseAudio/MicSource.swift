@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 import os
 
-/// the owner's microphone via AVAudioEngine (default input device), delivered through an `AVAudioSinkNode` so each
+/// The owner's microphone via AVAudioEngine (default input device), delivered through an `AVAudioSinkNode` so each
 /// hardware buffer is handed on as it arrives (no tap-size batching). Samples are never stored.
 ///
 /// Voice processing is OFF by default. Measured on 2026-10-14 (see the P1-3 report): with voice processing on,

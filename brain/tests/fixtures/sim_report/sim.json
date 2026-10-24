@@ -18,8 +18,8 @@
      "sources": [{"kind": "commit", "ref": "Verse@main", "quote": "brain: hedged streaming lanes for S/F/D routes"}, {"kind": "note", "ref": "about-me.md", "quote": "Verse is my meeting assistant"}]},
     {"id": "e2", "kind": "metric", "text": "At Lantern, cut invoice entry time from 11 minutes to 2 minutes per document by adding an LLM extraction step with a human review screen.",
      "sources": [{"kind": "cv", "ref": "cv.pdf p1", "quote": "Reduced invoice entry from 11 to 2 minutes"}]},
-    {"id": "e3", "kind": "project", "text": "Published Trailhead, an iOS running and cycling app, on the App Store; wrote the backend and ran 4 ad experiments.",
-     "sources": [{"kind": "cv", "ref": "cv.pdf p1", "quote": "Trailhead, App Store"}]}
+    {"id": "e3", "kind": "project", "text": "Published TrailHead, an iOS running and cycling app, on the App Store; wrote the backend and ran 4 ad experiments.",
+     "sources": [{"kind": "cv", "ref": "cv.pdf p1", "quote": "TrailHead, App Store"}]}
   ],
   "questions": [
     {"id": "q1", "kind": "opener", "text": "Tell me a bit about yourself and what brought you to this role.", "competency_ids": ["c2"], "evidence_ids": ["e1"], "follow_ups": [], "target_s": [60, 120]},

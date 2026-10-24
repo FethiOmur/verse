@@ -2,7 +2,7 @@
   "chunkMs" : 50,
   "fixtures" : {
     "deletedAt" : "2026-10-14T00:41:50Z",
-    "directory" : "\/Users\/user\/Desktop\/ProjectExamples\/Verse\/bench\/speech\/fixtures\/run-2026-10-14T004101Z",
+    "directory" : "\/Users\/example-user\/Desktop\/ProjectExamples\/Verse\/bench\/speech\/fixtures\/run-2026-10-14T004101Z",
     "directoryAbsentAfterDelete" : true,
     "filesCreated" : 80,
     "filesDeleted" : 80

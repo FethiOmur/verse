@@ -185,7 +185,7 @@ final class AskPanelTests: XCTestCase {
                 let session = AskSession(makeBrain: { throw BrainStub.unavailable })
                 session.launchesBrain = false
                 if filled { session.open(ctx) }
-                let view = AskPanel(session: session, settings: AppSettings(defaults: UserDefaults(suiteName: "dev.fethiverse.verse.test-panel")), stamps: Set(doc.rows.map(\.stamp)),
+                let view = AskPanel(session: session, settings: AppSettings(defaults: UserDefaults(suiteName: "dev.example.verse.test-panel")), stamps: Set(doc.rows.map(\.stamp)),
                                     onCitation: { _ in }, onClose: {})
                     .environment(\.homeInk, VT.Window(dark: dark))
                     .environment(\.colorScheme, dark ? .dark : .light)

@@ -18,7 +18,7 @@ Output contract towards Swift (in addition to the plan's event list):
   lane 1, no hedge) runs on `control stop|summarize`, merges everything and writes `summary.md` into the session
   folder; its `summary` event adds `final`, `conflicts`, `text`, `path` (and `draft_reason` when the merge failed and
   summary.md holds the rolling notes only). R and A never emit `delta`, and spend counts in the session budget.
-- Follow my answer (docs/specs/2026-10-16-verse-follow-my-answer-design.md; runtime/follow.py is the state machine). the owner's
+- Follow my answer (docs/specs/2026-10-16-verse-follow-my-answer-design.md; runtime/follow.py is the state machine). The owner's
   own `partial`/`turn` (speaker me) feed a detector that compares his words with the card of the latest remote question. When
   he goes off the card, one tier-C call (Haiku, the S/F tuple and cached prefix) writes the card that continues his line:
   `follow{turn_id,reason,card_id}`, then `delta`s with tier C and `card_id`. Points he says (also in other words) are sent as
@@ -26,15 +26,15 @@ Output contract towards Swift (in addition to the plan's event list):
   sentence ends only. `start.follow` turns it on (Swift sends it; its setting defaults to on; absent means off); it is English only until the thresholds are tuned for
   other languages. C never changes the S/F/D flow: a failed or dropped C leaves the original card on screen.
 - Anytime calls (docs/specs/2026-10-16-verse-anytime-calls-design.md; runtime/me.py is the me layer). `start.me` names the
-  permanent profile: its text goes into the cached ABOUT OWNER system block, its NUMBERS are compared with the pack's FACTS
+  permanent profile: its text goes into the cached ABOUT <OWNER> system block, its NUMBERS are compared with the pack's FACTS
   (`notice me_conflicts`), and chunks of his files are retrieved for remote turns on the embedding thread into the uncached
   tail (F never waits for them; D waits a few ms for the final-text retrieval). `start.mode:"unprepared"` runs on an empty
   pack: no bank, remote statements of >= 4 words go to the statement probe. `speaker:"room"` is the room route's one mic: it
   is treated like `remote`, the addressee is always unknown, and an automatic card needs a question cue and >= 6 words
   (`start.room_auto:"off"` leaves only card-now), or it is a statement of >= 5 words that a silent room probe (the KIND line,
-  no acknowledgements) calls a question for Alex. While a card is on screen, a room text whose words line up with the
+  no acknowledgements) calls a question for the owner. While a card is on screen, a room text whose words line up with the
   card in order (runtime/own.py: the strict rule, the start of the card, or a continuation of the reading cursor inside a reading
-  session) is relabelled `me`: no card, follow coverage, `[Alex]` in the transcript; a text that holds his reading and the next
+  session) is relabelled `me`: no card, follow coverage, `[<name>]` in the transcript; a text that holds his reading and the next
   speaker's words is split (`<id>m` is his part). While he reads, a new automatic card waits (`_hold`): it fires at once only for a
   strong cue or a probe question on a text that shares < 35 % with the card, else after 1.2 s without reading. Every decision goes
   to `events.jsonl` in the session folder (runtime/events.py). `control card_now` answers the latest remote/room turn at once on turn
@@ -77,7 +77,7 @@ log = logging.getLogger("verse.runtime")
 # many seconds of the turn's arrival and no newer turn has started. The paraphrase matcher is the only source of such hits
 # (Swift's n-gram hits precede their turn on the pipe): a job takes ~20 ms on the GPU, up to ~0.6 s on a busy CPU
 # (bench/embed/results/latency_runs.txt), and the first job of a session waits for the bank index (1.6-2.3 s,
-# `index_s` in the same runs). 3 s covers that; an answer later than that comes after Alex has started to talk.
+# `index_s` in the same runs). 3 s covers that; an answer later than that comes after the owner has started to talk.
 LATE_HIT_WINDOW_S = 3.0
 
 _WORD = re.compile(r"[\w']+", re.UNICODE)
@@ -93,7 +93,7 @@ _GLOSS_LINE = re.compile(r"^\[g\d+\]\s+(.*?)\s*(?:\|\s*[^|]*)?$")
 
 def follow_pack_lines(session: Session) -> list[str]:
     """Everything the pack can say, line by line (bank openers and points, facts, glossary): the reference the follow
-    detector's margin looks at to see that Alex is on another topic of the pack."""
+    detector's margin looks at to see that the owner is on another topic of the pack."""
     out: list[str] = []
     for rec in session.bank.values():
         out.append(str(rec.get("opener", "")))
@@ -435,7 +435,7 @@ class Brain:
         self.route_kind = "meeting"              # "meeting" | "phone" | "room"
         self.room_auto = "questions"             # room route: automatic cards for questions only, or "off"
         self.me: MeLayer | None = None
-        self.about: str | None = None            # the ABOUT OWNER system block (None: the layer is off)
+        self.about: str | None = None            # the ABOUT <OWNER> system block (None: the layer is off)
         self.lib: LibraryPath | None = None
         self._bank_embed = False                 # the bank matcher is on for this session's language
         self._snippet_refs: set[str] = set()
@@ -792,7 +792,7 @@ class Brain:
         self.emitter.metric(st.turn_id, "me_final_wait", ms=round((time.monotonic() - t0) * 1000, 1), got=ev.is_set())
 
     def _files(self, st: TurnState) -> str:
-        """FROM USER'S FILES for a tail: the turn's hits, without the chunks the pack already carries as a snippet."""
+        """FROM <OWNER>'S FILES for a tail: the turn's hits, without the chunks the pack already carries as a snippet."""
         if self.lib is None or not st.me_hits:
             return ""
         cfg = self.config
@@ -1363,7 +1363,7 @@ class Brain:
         """(why the card waits or None when it may fire now, the text's own score on the card on screen). While a reading session is
         active (he is reading the card on screen aloud), a new automatic card does not replace it unless the text's own-voice score
         is below `room_hold_score` and either a strong cue made it a question or the statement probe is going to decide (the probe
-        shows a card only when it says the words are a question for Alex). A weak cue ("quanto", a bare wh-word) or a text that
+        shows a card only when it says the words are a question for the owner). A weak cue ("quanto", a bare wh-word) or a text that
         shares a lot with the card waits for the end of the reading."""
         if not self._own.has_card():
             return None, 0.0
@@ -1751,8 +1751,8 @@ class Brain:
 
     def _room_route(self, msg: dict, final: bool) -> tuple[dict | None, dict | None]:
         """A `room` partial or turn: (the part that is his, the part that stays in the room). While a card is on screen, a text whose
-        words line up with it in order (runtime/own.py) is Alex reading the card, so it is relabelled `me`: it goes down the `me` path
-        (follow mode's coverage, the transcript as `[Alex]`) and never fires a card; whatever the room route had started for it is
+        words line up with it in order (runtime/own.py) is the owner reading the card, so it is relabelled `me`: it goes down the `me` path
+        (follow mode's coverage, the transcript as `[<name>]`) and never fires a card; whatever the room route had started for it is
         dropped. A fragment of the card counts too once he is reading it (a reading session, a cursor on the card), and a text that
         holds his reading and then the next speaker's words is split: the prefix is `me` (turn id `<id>m`), the remainder stays `room`
         under the turn's own id and is judged for kind and probe on its own. Anything else stays `room`. A turn keeps its label unless

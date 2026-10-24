@@ -1,4 +1,4 @@
-# Trailhead voice-API findings for Verse (from the Trailhead session, 2026-10-14)
+# TrailHead voice-API findings for Verse (from the TrailHead session, 2026-10-14)
 
 These are voice-to-voice measurements (VoxNote), not STT last-word lag. Small n, taken on the owner's phone.
 

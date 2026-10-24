@@ -2,7 +2,7 @@ import Foundation
 import VersePrompter
 import VerseSpeech
 
-/// How much of the card's SAY line Alex has already said, for the prompter-style answer card (spec 3.2, states 4
+/// How much of the card's SAY line the owner has already said, for the prompter-style answer card (spec 3.2, states 4
 /// and 5: spoken words 100 % white, unspoken 55 %).
 ///
 /// It is the same word tracking the meeting-card prompter mode uses: one `WordTrackingDriver` (the `PromptMatcher`
@@ -11,7 +11,7 @@ import VerseSpeech
 /// selected tier, a follow card replacing the card) starts a fresh driver: nothing is spoken yet, and the speech that
 /// is still open at that moment is not counted against the new line.
 ///
-/// Room route (anytime calls, before speaker separation): the one microphone hears Alex and the other person, and its
+/// Room route (anytime calls, before speaker separation): the one microphone hears the owner and the other person, and its
 /// events arrive as `remote`. With `roomRoute` on, every event of the microphone feeds the matcher. That is safe because
 /// the matcher only advances on words that follow the SAY text in order, so another person's speech rarely moves it; what
 /// it cannot tell apart is another person reading the same words (the interim rule until separation; see the spec, 2.1).

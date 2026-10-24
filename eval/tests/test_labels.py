@@ -29,7 +29,7 @@ def test_mix_of_material():
     assert sum(1 for d in ds if d["speakers"] == 2) == 6 and sum(1 for d in ds if d["speakers"] == 3) == 6
     for d in ds:
         assert 55 <= d["duration_s"] - 0 <= 130, (d["id"], d["duration_s"])
-        # the three-speaker dialogues address the other interviewer and Alex by name
+        # the three-speaker dialogues address the other interviewer and the user by name
         if d["speakers"] == 3:
             assert any(u["addressee"] == "other" for u in d["utterances"]), d["id"]
 
@@ -70,7 +70,7 @@ def test_rejects_non_english_and_spoken_owner(good):
     d["lang"] = "it"
     assert any("English only" in e for e in labels.validate(d))
     d = copy.deepcopy(good)
-    fe = next(u for u in d["utterances"] if u["speaker"] == "Alex")
+    fe = next(u for u in d["utterances"] if u["speaker"] == "the owner")
     del fe["silent_s"]
     assert any("owner's utterances are silent" in e for e in labels.validate(d))
 

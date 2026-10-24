@@ -25,7 +25,7 @@ from verse_brain.runtime.transport import BadRequest
 
 C_CANNED = ("SAY: And that is where I keep the model on a short leash.\n"
             "- Fields below 0.8 confidence go to a human operator.\n- That was about 7 percent of invoices.")
-OFF_CARD = ("Actually the thing I am most proud of is a running app for the marathon, it is called Trailhead and it is on "
+OFF_CARD = ("Actually the thing I am most proud of is a running app for the marathon, it is called TrailHead and it is on "
             "the App Store with thousands of weekly users")
 FAST_PARAMS = FollowParams(pause_s=0.15, refresh_gap_s=0.4, embed_wait_s=0.3, embed_gap_s=0.0, end_silence_s=0.5)
 

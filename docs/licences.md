@@ -134,10 +134,10 @@ meeting or interview assistance. Two points to keep in view:
 1. **Applicability is unclear.** The conversion card and the base card show Apache-2.0 and no standalone policy; the
    policy page I read is Google's Gemma policy page and may be the older Gemma-family text. Verse treats it as applying
    (the stricter reading, as for the NVIDIA licence above).
-2. **Deception clause.** The "mislead ... in order to deceive" wording is about intent. Verse writes words for Alex to
+2. **Deception clause.** The "mislead ... in order to deceive" wording is about intent. Verse writes words for the user to
    say in his own interviews and meetings; the deception reading would only apply if the output is presented to the
    other side as something it is not, which is a question of the interview's own rules, not of this software. Flagged
-   for the owner's judgement; no technical term found forbids this use.
+   for the user's judgement; no technical term found forbids this use.
 
 Nothing found forbids the degraded-mode use. Memory and disk: about 1.7 GB peak RSS (2.2 GB peak memory footprint) while
 loaded and primed; 3.4 GB on disk plus a compiled-model cache (`cache/` next to the model, 2.1 GB measured) created on first load.

@@ -242,8 +242,8 @@
 {"wall":1791999388.016,"line":{"type":"metric","turn_id":"r5","stage":"say_line","t":1791999388.0158908,"id":"s0009","tier":"S"}}
 {"wall":1791999388.1851,"line":{"type":"metric","turn_id":"r5","stage":"first_point","t":1791999388.185014,"id":"s0009","tier":"S"}}
 {"wall":1791999388.2046,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":76.53,"text":"What was the hardest part of building lantern?","turn_id":"r5","type":"partial"}}
-{"wall":1791999388.2046,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that Alex led.","turn_id":"r5","type":"chip"}}
-{"wall":1791999388.2046,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.","turn_id":"r5","type":"chip"}}
+{"wall":1791999388.2046,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that the owner led.","turn_id":"r5","type":"chip"}}
+{"wall":1791999388.2046,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.","turn_id":"r5","type":"chip"}}
 {"wall":1791999388.2351,"line":{"type":"metric","turn_id":"r5","stage":"embed","t":1791999388.234978,"ms":30.15,"wait_ms":0.06,"top":"b004","score":0.8769,"second":0.861,"words":8,"accepted":true}}
 {"wall":1791999388.274,"line":{"type":"metric","turn_id":"r5","stage":"done","t":1791999388.273864,"id":"s0009","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":72,"cache_read_input_tokens":4461,"input_tokens":42,"output_tokens":99},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000107}}
 {"wall":1791999388.3673,"line":{"addressee":"unknown","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":76.53,"text":"What was the hardest part of building lantern?","turn_id":"r5","type":"turn"}}
@@ -372,7 +372,7 @@
 {"wall":1791999401.6768,"line":{"type":"metric","turn_id":"","stage":"first_byte","t":1791999401.6766899,"id":"r0012","tier":"R","lane":1,"new_connection":false}}
 {"wall":1791999401.6769,"line":{"type":"metric","turn_id":"","stage":"first_delta","t":1791999401.676775,"id":"r0012","tier":"R"}}
 {"wall":1791999402.1217,"line":{"type":"actions","items":[]}}
-{"wall":1791999402.1218,"line":{"type":"summary","decisions":["Interview is set for Thursday 22 October 2026 at 15:00 CEST on Google Meet."],"actions":[],"open":["What drew Alex to Halden in the first place, which was asked and not yet answered.","What was the hardest part of building Lantern, which was asked and not yet answered.","Earliest start date if an offer is made, which was asked and not yet answered."]}}
+{"wall":1791999402.1218,"line":{"type":"summary","decisions":["Interview is set for Thursday 22 October 2026 at 15:00 CEST on Google Meet."],"actions":[],"open":["What drew the owner to Halden in the first place, which was asked and not yet answered.","What was the hardest part of building Lantern, which was asked and not yet answered.","Earliest start date if an offer is made, which was asked and not yet answered."]}}
 {"wall":1791999402.1218,"line":{"type":"metric","turn_id":"","stage":"done","t":1791999402.1216981,"id":"r0012","tier":"R","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4532,"input_tokens":116,"output_tokens":135},"hedged":false,"winner_lane":1,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000124}}
 {"wall":1791999411.1684,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":99.41,"text":"right? Okay","turn_id":"r7","type":"partial"}}
 {"wall":1791999412.612,"line":{"addressee":"unknown","dir":"to_brain","kind":"fragment","speaker":"remote","t_audio_end":99.784,"text":"right? Okay","turn_id":"r7","type":"turn"}}
@@ -380,8 +380,8 @@
 {"wall":1791999412.6131,"line":{"type":"metric","turn_id":"r7","stage":"turn_recv","t":1791999412.6125922,"speaker":"remote","t_audio_end":99.784}}
 {"wall":1791999412.6131,"line":{"type":"metric","turn_id":"r7","stage":"fragment_skipped","t":1791999412.61265}}
 {"wall":1791999413.4156,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":101.73,"text":"did lantern","turn_id":"r8","type":"partial"}}
-{"wall":1791999413.4156,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that Alex led.","turn_id":"r8","type":"chip"}}
-{"wall":1791999413.4156,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.","turn_id":"r8","type":"chip"}}
+{"wall":1791999413.4156,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that the owner led.","turn_id":"r8","type":"chip"}}
+{"wall":1791999413.4156,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.","turn_id":"r8","type":"chip"}}
 {"wall":1791999413.9677,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":102.05,"text":"did lantern actually","turn_id":"r8","type":"partial"}}
 {"wall":1791999414.5305,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":102.93,"text":"did lantern actually move the needle?","turn_id":"r8","type":"partial"}}
 {"wall":1791999414.5308,"line":{"type":"metric","turn_id":"r8","stage":"fire","t":1791999414.530689,"id":"s0013","tier":"S","words":6,"hedge_after_s":1.5}}

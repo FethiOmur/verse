@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import VerseAudio
 import VerseTurns
 
 // The Me page's model (anytime-calls spec 2.2, "UI"): the permanent profile in
@@ -12,9 +13,27 @@ import VerseTurns
 // MARK: - Sections and lines
 
 /// The sections of `me.md`, in file order.
-public enum MeSection: String, CaseIterable, Sendable {
-    case who = "WHO I AM", experience = "EXPERIENCE", projects = "PROJECTS", skills = "SKILLS", numbers = "NUMBERS"
-    case stories = "STORIES", looking = "LOOKING FOR", notes = "MY NOTES"
+public enum MeSection: CaseIterable, Sendable, RawRepresentable {
+    case who, experience, projects, skills, numbers, stories, looking, notes
+
+    /// The heading in `me.md`. The notes section is named after the owner (`<NAME>'S NOTES`, `MY NOTES` without a profile).
+    public var rawValue: String {
+        switch self {
+        case .who: "WHO I AM"
+        case .experience: "EXPERIENCE"
+        case .projects: "PROJECTS"
+        case .skills: "SKILLS"
+        case .numbers: "NUMBERS"
+        case .stories: "STORIES"
+        case .looking: "LOOKING FOR"
+        case .notes: OwnerProfile.current.notesHeading
+        }
+    }
+
+    public init?(rawValue: String) {
+        guard let s = Self.allCases.first(where: { $0.rawValue == rawValue }) else { return nil }
+        self = s
+    }
 
     /// What the page calls it.
     public var title: String {
@@ -55,7 +74,7 @@ public struct MeLine: Identifiable, Equatable, Sendable {
     public var hasID: Bool
     public var section: MeSection
     public var fields: [String]
-    /// Where the line came from (`file:dana_profile.md#L13`, `owner`).
+    /// Where the line came from (`file:dana_profile.md#L13`, or the owner's source tag).
     public var source: String
     /// The line exactly as it stands in the file. Rendering uses it, so a line nobody edited is written back byte for byte
     /// (prep tells an edited line from a generated one by the hash of this text).
@@ -487,9 +506,9 @@ public final class MeModel: ObservableObject {
         var used = Set(sections.values.flatMap { $0 }.filter(\.hasID).map(\.id))
         used.formUnion(meta?.usedIDs ?? [])
         guard let id = MeFile.allocate(.notes, used: used) else { return .failure(.noRoom) }
-        let raw = MeFile.compose(id: id, fields: [clean], source: "owner")
+        let raw = MeFile.compose(id: id, fields: [clean], source: OwnerProfile.current.sourceTag)
         var all = sections
-        all[.notes, default: []].append(MeLine(id: id, hasID: true, section: .notes, fields: [clean], source: "owner", raw: raw))
+        all[.notes, default: []].append(MeLine(id: id, hasID: true, section: .notes, fields: [clean], source: OwnerProfile.current.sourceTag, raw: raw))
         switch write(all, touchesNumbers: false) {
         case .success: return .success(id)
         case .failure(let e): return .failure(e)
@@ -520,7 +539,7 @@ public final class MeModel: ObservableObject {
         var out = ""
         for l in numbers.filter(\.hasID).sorted(by: { MeFile.idNumber($0.id) < MeFile.idNumber($1.id) }) {
             guard l.fields.count == 3, ["number", "date", "name"].contains(l.fields[0]) else { continue }
-            let src = quotes[l.id] ?? ["kind": "owner", "ref": "me.md", "quote": l.fields[1]]
+            let src = quotes[l.id] ?? ["kind": OwnerProfile.current.sourceTag, "ref": "me.md", "quote": l.fields[1]]
             let rec: [String: Any] = ["id": l.id, "kind": l.fields[0], "text": l.fields[1], "value": l.fields[2], "sources": [src]]
             let d = try JSONSerialization.data(withJSONObject: rec, options: [.sortedKeys, .withoutEscapingSlashes])
             out += String(decoding: d, as: UTF8.self) + "\n"

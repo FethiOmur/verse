@@ -1,9 +1,10 @@
 import Foundation
+import VerseAudio
 import VerseSpeech
 
 /// Thresholds and names the turn logic needs. Every number is a config value (plan P1-4).
 public struct TurnConfig: Sendable {
-    /// The owner's name and spellings the recognizer is known to produce for it ("Alex" often comes back as "Fi").
+    /// The owner's name and spellings the recognizer is known to produce for it (a short name often comes back as one syllable).
     public var ownerName: String
     public var ownerAliases: [String]
     /// Other participants; a question that names one of them is not for the owner.
@@ -14,7 +15,7 @@ public struct TurnConfig: Sendable {
     public var plainEndpointMs: Int
     /// Quiet time (no result of the microphone recognizer at all) before a me turn is closed. Longer than the remote
     /// endpoint on purpose: the recognizer delivers volatile text in bursts up to ~1.1 s apart while the speaker goes on,
-    /// and a me turn that closed between two bursts made the next burst look like Alex starting to talk again.
+    /// and a me turn that closed between two bursts made the next burst look like the owner starting to talk again.
     public var meEndpointMs: Int
     public var matchThreshold: Double
     public var matchMargin: Double
@@ -102,7 +103,7 @@ public struct TurnConfig: Sendable {
     public var roomAuto: RoomAuto
     public var roomMinWords: Int
 
-    public init(ownerName: String = "Alex", ownerAliases: [String] = [], otherNames: [String] = [],
+    public init(ownerName: String = OwnerProfile.current.addresseeName, ownerAliases: [String] = [], otherNames: [String] = [],
                 cueEndpointMs: Int = 300, plainEndpointMs: Int = 600, meEndpointMs: Int = 1200,
                 matchThreshold: Double = 0.55, matchMargin: Double = 0.08,
                 lang: String = "en", newTurnSilenceMs: Int = 600, meFollowSeconds: Double = 3.0, matchConsecutive: Int = 2,
@@ -347,7 +348,7 @@ public actor TurnEngine {
         now = max(now, t)
         var out: [Timed] = []
         if let held = remoteCloseHeldSince, remote != nil, held + Double(config.meCloseHoldMs) / 1000 <= now {
-            // The me result never became credible speech within the window, yet it is still there: Alex is talking.
+            // The me result never became credible speech within the window, yet it is still there: the owner is talking.
             out += closeRemote(at: held + Double(config.meCloseHoldMs) / 1000)
         }
         if let r = remote, deadline(r, remote: true) <= now {
@@ -464,7 +465,7 @@ public actor TurnEngine {
         if remote == nil {
             remoteCount += 1
             var t = Turn(id: "r\(remoteCount)", startedAt: now, lastChange: now, lastResult: now)
-            // Alex is still talking, or stopped a moment ago: this question follows his speech.
+            // The owner is still talking, or stopped a moment ago: this question follows his speech.
             t.followsMe = remoteSinceMe == 0 && (me != nil || lastMeEnd.map { now - $0 <= config.meFollowSeconds } == true)
             if let p = stripped { t.stripPrefix = p.tokens; t.stripBelow = p.below }
             remote = t
@@ -608,7 +609,7 @@ public actor TurnEngine {
 
     private func ingestMe(_ e: TranscriptEvent, text: String) -> [Timed] {
         var out: [Timed] = []
-        // Speaker bleed: the remote voice in the microphone is not Alex. Dropped before it can open a me turn or close the
+        // Speaker bleed: the remote voice in the microphone is not the owner. Dropped before it can open a me turn or close the
         // remote one; an open me turn that started inside the same echo goes with it.
         if config.echoGuardEnabled,
            let sim = echo.similarity(text: text, start: e.audioStart, end: e.audioEnd, windowSeconds: config.echoWindowSeconds, minWords: config.echoMinWords, lang: config.lang),
@@ -618,7 +619,7 @@ public actor TurnEngine {
             return out
         }
         // The owner starts talking: the remote question is over, right now. Only the first event of a me turn does this;
-        // the later events of the same utterance (Alex talking over the interviewer) leave the remote turn alone.
+        // the later events of the same utterance (the owner talking over the interviewer) leave the remote turn alone.
         // Exception: a result that is mostly words the remote channel said nearby may be the remote voice coming out of the
         // speakers that the guard cannot call yet (one word proves nothing; or the microphone recognizer is ahead of the
         // remote one and the rest of the words has not arrived). The remote turn then stays open for `meCloseHoldMs` at most;

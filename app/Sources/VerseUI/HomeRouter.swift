@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VerseAudio
 
 /// The home window's pages (UI redesign spec 4.2).
 public enum HomePage: String, CaseIterable, Identifiable, Sendable {
@@ -34,7 +35,7 @@ public enum HomePage: String, CaseIterable, Identifiable, Sendable {
 public final class HomeRouter: ObservableObject {
     public static let shared = HomeRouter()
     public nonisolated static let windowID = "home"
-    static let windowIdentifier = NSUserInterfaceItemIdentifier("dev.fethiverse.verse.home")
+    static let windowIdentifier = NSUserInterfaceItemIdentifier("\(AppIdentity.bundleID).home")
 
     @Published public var page: HomePage = .prepare
     /// The session folder name the Sessions page has selected.

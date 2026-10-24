@@ -10,7 +10,7 @@
     {
      "index": 0,
      "category": "statement",
-     "text": "Hi Alex, thanks for making the time today.",
+     "text": "Hi the owner, thanks for making the time today.",
      "is_question": false,
      "addressee": null,
      "bank_id": null,
@@ -285,12 +285,12 @@
      "d_first_text_s": 2.626,
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": 0.281
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": 0.281
       }
@@ -439,12 +439,12 @@
      "d_first_text_s": 2.19,
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": -2.304
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": -2.304
       }
@@ -519,12 +519,12 @@
      ],
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": 0.134
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": 0.134
       }
@@ -857,7 +857,7 @@
     {
      "index": 0,
      "category": "statement",
-     "text": "Thanks for joining us today, Alex.",
+     "text": "Thanks for joining us today, the owner.",
      "is_question": false,
      "addressee": null,
      "bank_id": null,
@@ -1474,7 +1474,7 @@
       },
       {
        "call": "d0011",
-       "line": "- the owner's expectation is EUR 70,000 to 80,000 gross per year (f023, f024).",
+       "line": "- The salary expectation is EUR 70,000 to 80,000 gross per year (f023, f024).",
        "turn_id": "r6"
       },
       {
@@ -2379,7 +2379,7 @@
     {
      "index": 0,
      "category": "statement",
-     "text": "Welcome Alex. Tomas and I will take turns with the questions today.",
+     "text": "Welcome the owner. Tomas and I will take turns with the questions today.",
      "is_question": false,
      "addressee": null,
      "bank_id": null,
@@ -2524,12 +2524,12 @@
      "d_first_text_s": 1.358,
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": -0.255
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": -0.255
       }
@@ -2594,7 +2594,7 @@
     {
      "index": 7,
      "category": "offbank",
-     "text": "Alex, how did you handle invoices in different languages?",
+     "text": "the owner, how did you handle invoices in different languages?",
      "is_question": true,
      "addressee": "me",
      "bank_id": null,
@@ -4006,7 +4006,7 @@
     {
      "index": 2,
      "category": "statement",
-     "text": "Alex, take your time with this one.",
+     "text": "the owner, take your time with this one.",
      "is_question": false,
      "addressee": null,
      "bank_id": null,
@@ -4215,12 +4215,12 @@
      ],
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": 0.258
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": 0.258
       }
@@ -4510,12 +4510,12 @@
      ],
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": -0.382
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": -0.382
       }
@@ -5014,12 +5014,12 @@
      "asr_endpoint_s": 1.287,
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": 0.469
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": 0.469
       }
@@ -5152,7 +5152,7 @@
   }
  ],
  "aggregate": {
-  "questions_to_owner": 59,
+  "questions_to_user": 59,
   "excluded_warmup_utterances": 0,
   "detection": {
    "positives": 59,
@@ -5308,7 +5308,7 @@
   }
  },
  "aggregate_short": {
-  "questions_to_owner": 6,
+  "questions_to_user": 6,
   "excluded_warmup_utterances": 0,
   "detection": {
    "positives": 6,
@@ -5761,7 +5761,7 @@
     "judge_claim": "Claims a former manager would say the candidate is quick to ship a first version and then tighten it; the notes contain no manager feedback.",
     "second_opinion": {
      "supported": false,
-     "claim": "Claims a former manager would say Alex is quick to ship a first version and then tighten it; the notes give no manager feedback"
+     "claim": "Claims a former manager would say the owner is quick to ship a first version and then tighten it; the notes give no manager feedback"
     }
    },
    {
@@ -5801,9 +5801,9 @@
     "dialogue": "d04",
     "category": "paraphrase",
     "question": "Give us a figure for the pay you would expect. / heard: Give us a figure for the pay you would expect",
-    "line": "- the owner's expectation is EUR 70,000 to 80,000 gross per year (f023, f024).",
+    "line": "- The salary expectation is EUR 70,000 to 80,000 gross per year (f023, f024).",
     "unresolved": {},
-    "judge_claim": "Attributes the salary expectation to 'Alex'; the notes name Alex only as the Lantern project lead and give no salary for him, though the figures match the candidate's own answer bank.",
+    "judge_claim": "Attributes the salary expectation to 'the owner'; the notes name the owner only as the Lantern project lead and give no salary for him, though the figures match the candidate's own answer bank.",
     "second_opinion": {
      "supported": true,
      "claim": null
@@ -5848,10 +5848,10 @@
    {
     "dialogue": "d07",
     "category": "offbank",
-    "question": "Alex, how did you handle invoices in different languages? / heard: Thessi, how did you handle invoices in different languages",
+    "question": "the owner, how did you handle invoices in different languages? / heard: Thessi, how did you handle invoices in different languages",
     "line": "SAY: Sure, I'll give you the short version of what I've worked on.",
     "unresolved": {},
-    "judge_claim": "The notes contain nothing about handling invoices in different languages; the line also addresses the interviewer as 'Alex' and a 'Thessi' name is not in the notes.",
+    "judge_claim": "The notes contain nothing about handling invoices in different languages; the line also addresses the interviewer as 'the owner' and a 'Thessi' name is not in the notes.",
     "second_opinion": {
      "supported": true,
      "claim": null

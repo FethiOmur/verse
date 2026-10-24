@@ -24,4 +24,4 @@
 [m502] Matching without references | Bank lines had no reference text, so Dana built a scoring step and measured 97 percent exact matches on 500 payments. | SRC: S2 "Dana built a scoring step for it and measured 97 percent exact matches on a frozen set of 500 payments"
 ## LOOKING FOR
 [m601] Senior machine-learning engineer role in Lisbon or remote in Europe, available from January 2027. | SRC: S1 "senior machine-learning engineer role in Lisbon or remote in Europe, available from January 2027"
-## MY NOTES
+## ALEX RIVERA'S NOTES

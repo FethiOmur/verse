@@ -59,12 +59,12 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
     w("## Setup")
     w("")
     n_d = len(metas)
-    w(f"- {len(main_ids)} synthetic dialogues made with macOS `say` (6 with two speakers, 6 with three), {ag['questions_to_owner']} questions to Alex, "
+    w(f"- {len(main_ids)} synthetic dialogues made with macOS `say` (6 with two speakers, 6 with three), {ag['questions_to_user']} questions to the user, "
       f"{adr['questions_to_other']} questions to the other interviewer, plus statements, fragments and short replies; exact bank questions, blind paraphrases "
       "(`bench/embed/blind_set.json`) and off-bank questions. One more dialogue (d13) has six 2-3 word questions, scored apart, to exercise the "
       "fresh-Haiku path (speculation cannot fire on fewer than four words). Labels: `eval/dialogues/*.json`. "
       "Audio is generated at run time in a temp folder and deleted after each dialogue; each dialogue starts with silence while the English engine loads.")
-    w("- Remote channel only: `verse-run --file` plays the mix of interviewers; the owner's answers are silence. Speech recognition: the app's English "
+    w("- Remote channel only: `verse-run --file` plays the mix of interviewers; the user's answers are silence. Speech recognition: the app's English "
       "engine (Nemotron 0.6B, 560 ms chunks) after a lead-in long enough for it to load.")
     w("- Brain: the live runtime (Haiku 5.5 for S/F, Sonnet 5.5 for D) against the P1-1 sample session (`sample-interview`, 22 bank entries).")
     w(f"- All times are measured from the true acoustic end of each question (known exactly from the generated audio). "
@@ -108,7 +108,7 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
       f"(all dialogues: {adr['no_say']}/{adr['questions_to_other']}) | {'met' if r3 is not None and r3 >= 0.9 else ('missed' if r3 is not None else 'not measured')} |")
     w("| 4 | Replay through the MacBook speakers produces no false \"me\" turns | zero | the me channel and the speaker-bleed test need P1-5 (follow-up) | not measured |")
     ok_d = det["precision"] is not None and det["recall"] is not None and det["precision"] >= 0.8 and det["recall"] >= 0.8
-    w(f"| 5 | Question detection, questions to Alex | precision and recall >= 80 % | precision {pc(det['precision'])} "
+    w(f"| 5 | Question detection, questions to the user | precision and recall >= 80 % | precision {pc(det['precision'])} "
       f"({det['true_positive_turns']}/{det['predicted_turns']}), recall {pc(det['recall'])} ({det['covered']}/{det['positives']}) | {'met' if ok_d else 'missed'} |")
     if gr.get("lines_checked"):
         vio = len(gr.get("violations", []))
@@ -138,7 +138,7 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
     for (name, s, a, b), st in zip(lat_rows, statuses):
         w(f"| {name} | {a:.1f} / {b:.1f} s | {lat_cell(s)} | {st} |")
     w("")
-    w("Stage by stage (all questions to Alex that the system answered):")
+    w("Stage by stage (all questions to the user that the system answered):")
     w("")
     w("| Stage | p50 / p90 |")
     w("|---|---|")
@@ -153,10 +153,10 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
     w("")
     w("## Question detection and addressing")
     w("")
-    w(f"- Questions to Alex missed: {len(det['missed'])} of {det['positives']}.")
+    w(f"- Questions to the user missed: {len(det['missed'])} of {det['positives']}.")
     for m in det["missed"][:12]:
         w(f"  - \"{m['text']}\" -> heard \"{m['heard']}\" kinds {m['kinds']} addressee {m['addressee']}")
-    w(f"- Statements, replies, fragments or other-addressed questions that were sent on as questions for Alex: {len(det['false_positives'])}.")
+    w(f"- Statements, replies, fragments or other-addressed questions that were sent on as questions for the user: {len(det['false_positives'])}.")
     for m in det["false_positives"][:12]:
         w(f"  - ({m['category']}) \"{m['text']}\" -> heard \"{m['heard']}\"")
     w(f"- Questions to the other interviewer: {adr['classified_other']}/{adr['questions_to_other']} recognised as addressed to someone else; "

@@ -105,11 +105,11 @@ SPEND = Spend()
 
 # ------------------------------------------------------------------ test data
 
-SYSTEM_PROMPT = """You are Verse, a silent assistant that helps Alex answer questions during a live meeting.
+SYSTEM_PROMPT = """You are Verse, a silent assistant that helps the owner answer questions during a live meeting.
 You receive a MEETING PACK (facts, glossary, answer bank), the last finalized transcript turns, and then one QUESTION.
 
 Reply in the language of the QUESTION, in exactly this plain-text line format and nothing else:
-SAY: <one short spoken-style sentence Alex can say right away, at most 18 words>
+SAY: <one short spoken-style sentence the owner can say right away, at most 18 words>
 - <supporting point, self-contained, cite fact ids like [F012]>
 - <supporting point>
 - <supporting point>
@@ -121,7 +121,7 @@ other than the leading "- ", no JSON."""
 TURNS = [
     "[Marco] Thanks everyone for joining. We have forty minutes and three topics: the pilot results, the budget for Q3, and the depot rollout.",
     "[Giulia] Before the numbers, a quick note: the Milan depot sent its figures late, so the on-time rate in the draft may still move by a point.",
-    "[Marco] Understood. Alex, you prepared the summary of the pilot, so you will walk us through it after the budget item.",
+    "[Marco] Understood. the owner, you prepared the summary of the pilot, so you will walk us through it after the budget item.",
     "[Elif] I would like to hear how the new optimiser behaved on the mountain routes, because that was our main worry in the spring.",
     "[Giulia] And please keep the cost figures net of the carrier rebate, otherwise finance will ask us to redo the slide.",
     "[Marco] Good. Let us start with the budget. Elif, can you give us the headline before we open questions?",

@@ -3,7 +3,7 @@ import VerseTurns
 @testable import VerseUI
 import XCTest
 
-/// The Me page's model. Fixtures are the fictional "Dana Reyes" of the brain's tests; nothing here reads the owner's profile.
+/// The Me page's model. Fixtures are the fictional "Dana Reyes" of the brain's tests; the owner profile is pinned to the generic one (OwnerPin.swift: notes heading MY NOTES, source tag `owner`).
 @MainActor
 final class MeModelTests: XCTestCase {
     static let meMD = """

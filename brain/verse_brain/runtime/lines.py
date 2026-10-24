@@ -50,7 +50,7 @@ def could_become_sentinel(partial: str) -> bool:
     return bool(core) and any(w.startswith(core) for w in SENTINELS)
 
 
-# A point that talks about the preparation instead of being something Alex can say ("The pack has no stated reason for the
+# A point that talks about the preparation instead of being something the owner can say ("The pack has no stated reason for the
 # school. Say what is true ...", live English call, 17 Oct). It is never shown: the prompts forbid it and this is the net.
 _META = re.compile(
     r"\b(?:the|this|these|that|your|his|my)\s+(?:meeting\s+)?(?:pack|notes|profile|prep|preparation|bank|grounding)\b"
@@ -62,7 +62,7 @@ _META = re.compile(
 
 
 def is_meta(line: str) -> bool:
-    """True when a card point talks about the pack, the notes or the profile, or tells Alex what to do, instead of giving him
+    """True when a card point talks about the pack, the notes or the profile, or tells the owner what to do, instead of giving him
     something to say."""
     return bool(_META.search(_after_marker(line)))
 

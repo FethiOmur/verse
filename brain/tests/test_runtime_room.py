@@ -3,8 +3,8 @@
 1. indirect questions: a room statement of 8+ words gets the statement probe, which shows a card only when it says
    KIND: question (no acknowledgements in the room);
 2. the owner's own voice by text: while a card is on screen, a room text that lines up with the card in order is relabelled `me`
-   (never a card, follow coverage, transcript as Alex); an interviewer who shares a few words with the card stays `room`;
-3. PRIORITIES: his notes lead the ABOUT OWNER block and the system prompts say to follow them.
+   (never a card, follow coverage, transcript as the owner); an interviewer who shares a few words with the card stays `room`;
+3. PRIORITIES: his notes lead the ABOUT ALEX RIVERA block and the system prompts say to follow them.
 
 Fictional fixtures only (Dana Reyes, an interview about the school she chose and her major); the transport is the canned fake."""
 
@@ -70,7 +70,7 @@ def words_of(s: str) -> list[str]:
 
 
 async def read_aloud(b, tid: str, text: str, *, cue: bool = True, kind: str = "statement") -> None:
-    """Alex reads `text` while the one microphone hears it: cumulative partials (a question cue on some of them, as a card
+    """the owner reads `text` while the one microphone hears it: cumulative partials (a question cue on some of them, as a card
     sentence can have one), then the turn."""
     w = words_of(text)
     for n in range(3, len(w) + 1, 3):
@@ -190,7 +190,7 @@ def card_two() -> OwnSpeech:
     return o
 
 
-READING = {                                             # Alex, reading the card: must be `me`
+READING = {                                             # the owner, reading the card: must be `me`
     "say, full": "I chose this school for its co-op program and I chose accounting because I like turning messy payment data into a clear story",
     "say, first half": "i chose this school for its co-op program and i chose accounting",
     "say, ASR slips": "i chose this school for its coop program and chose accounting because i like turning messy payment data in a clear story",
@@ -272,7 +272,7 @@ def test_a_follow_card_is_its_own_card_and_a_new_question_replaces_the_old_card(
 
 
 # ---------------------------------------------------------------- PRIORITIES
-NOTE = "[m701] Lead with Harbor Ledger and my recent projects before older jobs. | owner"
+NOTE = "[m701] Lead with Harbor Ledger and my recent projects before older jobs. | alex-rivera"
 
 
 def profile_with_note(tmp_path, note: str | None = NOTE):
@@ -288,8 +288,8 @@ def test_notes_lead_the_about_block_under_priorities_and_appear_once(tmp_path):
     d = profile_with_note(tmp_path)
     about = load_me(me_spec(d)).about_block((FIX / "pack.md").read_text(encoding="utf-8"))
     head, _, rest = about.partition("\n\n")
-    assert head.startswith("ABOUT OWNER") and rest.startswith(PRIORITIES_HEADING + "\n" + NOTE + "\n")
-    assert about.count(NOTE) == 1 and "## MY NOTES" not in about
+    assert head.startswith("ABOUT ALEX RIVERA") and rest.startswith(PRIORITIES_HEADING + "\n" + NOTE + "\n")
+    assert about.count(NOTE) == 1 and "## ALEX RIVERA'S NOTES" not in about
     assert about.index(PRIORITIES_HEADING) < about.index("## WHO I AM") < about.index("## PROJECTS")
     assert "[m201] Harbor Ledger" in about and "## STYLE GUIDE" in about           # the rest of the block is as it was
     assert about == load_me(me_spec(d)).about_block((FIX / "pack.md").read_text(encoding="utf-8"))   # byte-stable
@@ -298,7 +298,7 @@ def test_notes_lead_the_about_block_under_priorities_and_appear_once(tmp_path):
 
 def test_without_notes_the_block_and_the_system_text_are_what_they_were(tmp_path):
     core = (PROFILE / "me.md").read_text(encoding="utf-8")
-    assert "## MY NOTES" in core and priorities_first(core) == core                  # an empty notes section: untouched
+    assert "## ALEX RIVERA'S NOTES" in core and priorities_first(core) == core                  # an empty notes section: untouched
     layer = load_me(me_spec())
     assert layer.about_block("## FACTS\n[f001] x\n") == render_about_block(core, layer.voice)
     about = layer.about_block("")

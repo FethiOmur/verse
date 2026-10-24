@@ -52,7 +52,7 @@ final class ConversationSetupTests: XCTestCase {
         var s = ConversationSetup(thread: "Ann: hello, my rate is 420 EUR")
         s.postingURL = URL(string: "https://jobs.example/1")
         s.companyURL = "acme.example"
-        s.owner = "Alex"
+        s.owner = "the owner"
         s.fake = true
         let a = s.prepArguments(threadFile: URL(fileURLWithPath: "/tmp/t/thread.txt"), postingFile: URL(fileURLWithPath: "/tmp/t/posting.txt"),
                                 noteFile: URL(fileURLWithPath: "/tmp/t/note.md"), out: URL(fileURLWithPath: "/tmp/sessions"))
@@ -62,7 +62,7 @@ final class ConversationSetupTests: XCTestCase {
         XCTAssertEqual(a[a.firstIndex(of: "--note")! + 1], "/tmp/t/note.md")
         XCTAssertEqual(a[a.firstIndex(of: "--company-url")! + 1], "https://acme.example")
         XCTAssertEqual(a[a.firstIndex(of: "--posting-url")! + 1], "https://jobs.example/1")
-        XCTAssertEqual(a[a.firstIndex(of: "--me")! + 1], "Alex")
+        XCTAssertEqual(a[a.firstIndex(of: "--me")! + 1], "the owner")
         XCTAssertTrue(a.contains("--fake"))
         XCTAssertFalse(a.contains { $0.contains("420 EUR") || $0.contains("sk-ant") || $0.lowercased().contains("key") },
                        "no thread text and no key on the command line")
@@ -102,7 +102,7 @@ final class ConversationControllerTests: XCTestCase {
                             fetcher: (@Sendable (URL) async throws -> Posting)? = nil,
                             selected: SelectLog, spend: SpendLog) -> ConversationController {
         ConversationController(
-            owner: { "Alex" }, fake: { fake }, brainDir: { brain }, root: root, makeRunner: { runner },
+            owner: { "the owner" }, fake: { fake }, brainDir: { brain }, root: root, makeRunner: { runner },
             fetcher: fetcher ?? { _ in throw PostingError.network },
             selectSession: { selected.names.append($0); return true },
             recordSpend: { spend.records.append(($0.lastPathComponent, $2)) })
@@ -141,7 +141,7 @@ final class ConversationControllerTests: XCTestCase {
         XCTAssertEqual(s.postingText, "Role: Applied AI Engineer")
         XCTAssertEqual(s.companyURL, "acme.example")
         XCTAssertEqual(s.note, "keep it short")
-        XCTAssertEqual(s.owner, "Alex")
+        XCTAssertEqual(s.owner, "the owner")
         XCTAssertFalse(s.fake)
         c.another()
         XCTAssertEqual(c.phase, .setup)
@@ -211,7 +211,7 @@ final class ConversationControllerTests: XCTestCase {
     }
 
     func testBadLinkAndNetworkFailureMessages() async {
-        let c = ConversationController(owner: { "Alex" }, fake: { false }, brainDir: { nil }, root: URL(fileURLWithPath: "/tmp"),
+        let c = ConversationController(owner: { "the owner" }, fake: { false }, brainDir: { nil }, root: URL(fileURLWithPath: "/tmp"),
                                        fetcher: { _ in throw PostingError.network }, selectSession: { _ in true })
         c.postingLink = "not a link"
         c.fetchPosting()
@@ -331,7 +331,7 @@ final class ConversationWindowRenderTests: XCTestCase {
                                          warnings: ["2 research claim(s) are unverified", "no research fact has a verified source for the stack"])
 
         func make(_ runner: any ConversationRunning) -> ConversationController {
-            ConversationController(owner: { "Alex" }, fake: { false }, brainDir: { URL(fileURLWithPath: "/brain") }, root: root,
+            ConversationController(owner: { "the owner" }, fake: { false }, brainDir: { URL(fileURLWithPath: "/brain") }, root: root,
                                    makeRunner: { runner }, fetcher: { _ in throw PostingError.network }, selectSession: { _ in true },
                                    recordSpend: { _, _, _ in })
         }
@@ -339,7 +339,7 @@ final class ConversationWindowRenderTests: XCTestCase {
         try snapshot(empty, to: out.appendingPathComponent("1-empty.png"))
 
         let filled = make(FakeRunner(.cancelled))
-        filled.thread = "Mon 5 Oct 10:02 - Ann Lee (Head of Product, Acme Ltd)\nHi, thanks for applying. Can we talk Thursday at 16:00 on Google Meet?\n\nMon 5 Oct 11:30 - Alex\nYes, Thursday works for me."
+        filled.thread = "Mon 5 Oct 10:02 - Ann Lee (Head of Product, Acme Ltd)\nHi, thanks for applying. Can we talk Thursday at 16:00 on Google Meet?\n\nMon 5 Oct 11:30 - the owner\nYes, Thursday works for me."
         filled.postingLink = "https://jobs.example/applied-ai-engineer"
         filled.companyURL = "acme.example"
         filled.note = "Ask about the API docs."

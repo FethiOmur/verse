@@ -1,7 +1,7 @@
 {
  "id": "d01",
  "lang": "en",
- "owner": "Alex",
+ "owner": "the owner",
  "participants": [
   "Ingrid"
  ],
@@ -19,7 +19,7 @@
  "utterances": [
   {
    "speaker": "Ingrid",
-   "text": "Hi Alex, thanks for making the time today.",
+   "text": "Hi the owner, thanks for making the time today.",
    "category": "statement",
    "is_question": false,
    "addressee": null,
@@ -40,7 +40,7 @@
    "gap_before": 1.35
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -63,7 +63,7 @@
    "gap_before": 1.1
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -97,7 +97,7 @@
    "gap_before": 1.1
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -120,7 +120,7 @@
    "gap_before": 1.2
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -154,7 +154,7 @@
    "gap_before": 1.25
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,

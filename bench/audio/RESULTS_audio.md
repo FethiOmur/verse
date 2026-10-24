@@ -64,7 +64,7 @@ swift run -c release TapProbe --app "Brave Browser" --seconds 20 --label playing
 ```
 
 ## Permission note (main session, 2026-10-14)
-Alex confirmed that **no macOS dialog appeared** during the tap run. The audio-capture request returned "denied"
+the owner confirmed that **no macOS dialog appeared** during the tap run. The audio-capture request returned "denied"
 and TCC stayed `not_determined`, yet the tap delivered real audio. The JSON also shows
 `screenRecordingPreflight: true` for the responsible app (claude.app). Likely explanation, **unconfirmed**: an
 existing Screen & System Audio Recording grant on the responsible app covers process taps. For P1-3: the Verse app

@@ -1,4 +1,7 @@
-"""Vault retrieval through `beyin.py context`. Read-only by construction.
+"""Vault retrieval through the vault's own retrieval script (`<vault>/<script> context`). Read-only by construction.
+
+The vault, the script name and the interpreter come from the owner profile (`owner.py`). Without a configured vault
+there is no retrieval: `DEFAULT_VAULT` is None and callers skip the vault.
 
 Rules (spec 5.2): retrieval happens only at prep, never live; the command always carries `--no-sync`, which
 (verified with --help and by a before/after mtime check) reads the existing index without writing to the vault
@@ -14,8 +17,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-DEFAULT_VAULT = Path("~/Documents/knowledge-vault").expanduser()
-DEFAULT_PYTHON = "/opt/homebrew/opt/python@3.14/bin/python3.14"
+from ..owner import DEFAULT_VAULT_PYTHON, OWNER
+
+DEFAULT_VAULT: Path | None = OWNER.vault_path
+DEFAULT_PYTHON = OWNER.vault_python or DEFAULT_VAULT_PYTHON
+VAULT_PYTHON_ENV = "VERSE_VAULT_PYTHON"
 MAX_RECORD_CHARS = 1500
 
 
@@ -34,14 +40,17 @@ class Vault(Protocol):
     def search(self, query: str, limit: int = 3, budget_chars: int = 2500) -> list[VaultRecord]: ...
 
 
-class BeyinVault:
-    def __init__(self, vault_path: Path = DEFAULT_VAULT, python: str | None = None, audience: str = "internal",
-                 timeout: float = 60.0) -> None:
+class ScriptVault:
+    def __init__(self, vault_path: Path | str | None = DEFAULT_VAULT, python: str | None = None, audience: str = "internal",
+                 timeout: float = 60.0, script_name: str | None = None) -> None:
+        if vault_path is None:
+            raise VaultError("no vault is configured (vault_path in the owner profile)")
         self.vault_path = Path(vault_path).expanduser()
-        self.python = python or os.environ.get("VERSE_BEYIN_PYTHON") or DEFAULT_PYTHON
+        self.python = python or os.environ.get(VAULT_PYTHON_ENV) or DEFAULT_PYTHON
         self.audience = audience
         self.timeout = timeout
-        self.script = self.vault_path / "beyin.py"
+        self.script_name = script_name or OWNER.vault_script
+        self.script = self.vault_path / self.script_name if self.script_name else self.vault_path
 
     def command(self, query: str, limit: int, budget_chars: int) -> list[str]:
         cmd = [
@@ -53,8 +62,10 @@ class BeyinVault:
         return cmd
 
     def search(self, query: str, limit: int = 3, budget_chars: int = 2500) -> list[VaultRecord]:
+        if not self.script_name:
+            raise VaultError("no vault script is configured (vault_script in the owner profile)")
         if not self.script.exists():
-            raise VaultError(f"beyin.py not found at {self.script}")
+            raise VaultError(f"the vault script not found at {self.script}")
         q = query.strip()
         if not q:
             return []
@@ -62,17 +73,24 @@ class BeyinVault:
             r = subprocess.run(self.command(q, limit, budget_chars), capture_output=True, text=True,
                                timeout=self.timeout)
         except Exception as e:  # noqa: BLE001
-            raise VaultError(f"beyin.py failed: {type(e).__name__}") from None
+            raise VaultError(f"the vault script failed: {type(e).__name__}") from None
         if r.returncode != 0:
-            raise VaultError(f"beyin.py exit {r.returncode}: {r.stderr.strip()[:200]}")
+            raise VaultError(f"the vault script exit {r.returncode}: {r.stderr.strip()[:200]}")
         return parse_context(r.stdout)
+
+
+def make_vault(path: Path | str | None, audience: str = "internal") -> ScriptVault | None:
+    """The vault for a prep run, or None when no vault and retrieval script are configured (the feature is off)."""
+    if path is None or not OWNER.vault_script:
+        return None
+    return ScriptVault(path, audience=audience)
 
 
 def parse_context(stdout: str) -> list[VaultRecord]:
     try:
         data = json.loads(stdout)
     except json.JSONDecodeError:
-        raise VaultError("beyin.py returned non-JSON output") from None
+        raise VaultError("the vault script returned non-JSON output") from None
     if data.get("abstained"):
         return []
     out: list[VaultRecord] = []

@@ -13,6 +13,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable
 
+from ..owner import OWNER
 from .transport import Ev, TransportError
 
 
@@ -135,10 +136,10 @@ class FakeTransport:
 
 
 ROLLING_CANNED = ("DECISION: Start the pilot with one depot in shadow mode\n"
-                  "ACTION: Alex — share the pilot plan by Friday\nOPEN: Who approves the budget?")
+                  f"ACTION: {OWNER.display_name} — share the pilot plan by Friday\nOPEN: Who approves the budget?")
 FINAL_CANNED = ("SUMMARY: The pilot starts with one depot in shadow mode; the budget owner is still open.\n"
                 "DECISION: Start the pilot with one depot in shadow mode\n"
-                "ACTION: Alex — share the pilot plan by Friday\nOPEN: Who approves the budget?\n"
+                f"ACTION: {OWNER.display_name} — share the pilot plan by Friday\nOPEN: Who approves the budget?\n"
                 "CONFLICT: Said entry takes 3 minutes; the fact sheet says 2 minutes (f001)")
 
 

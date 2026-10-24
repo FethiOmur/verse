@@ -25,6 +25,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from ..owner import OWNER
 from .model import MAX_OUTPUT_TOKENS, PRICES, PrepError, PrepModel, Usage, spend_usd
 
 DEFAULT_VOICE_PATH = Path("~/Library/Application Support/Verse/profile/voice.md")
@@ -48,7 +49,7 @@ SAMPLES = SECTIONS[-1]
 # Headings the pipeline writes into packs. The runtime looks for VOICE_HEADING to know a pack carries a style guide.
 # It is called STYLE GUIDE (not "voice") on purpose: the model cited a section named VOICE as if it were evidence.
 VOICE_HEADING = "## STYLE GUIDE"
-LEGACY_HEADINGS = ("## VOICE", "## THE OWNER'S VOICE")  # earlier packs: stripped by strip_voice
+LEGACY_HEADINGS = ("## VOICE", *((OWNER.voice_heading,) if OWNER.named else ()))  # earlier packs: stripped by strip_voice
 MEETING_HEADER = (
     f"{VOICE_HEADING} (how to speak; not evidence, never cite. Wording only: every SAY line and point is phrased like "
     "this. Take no facts, numbers or names from it, and it never changes the line format or the length limits. "
@@ -271,7 +272,7 @@ _SECTION_START = re.compile(r"^## ", re.M)
 
 def strip_voice(pack: str) -> str:
     """Remove a trailing voice section from a rendered pack: this module's `## STYLE GUIDE` one, the earlier `## VOICE` one and the hand-appended
-    `## THE OWNER'S VOICE` one of the first Mara session. Only a section that runs to the end of the pack is removed."""
+    `## <OWNER>'S VOICE` one of the first Mara session. Only a section that runs to the end of the pack is removed."""
     for marker in ("\n" + h for h in (VOICE_HEADING, *LEGACY_HEADINGS)):
         i = pack.find(marker)
         if i == -1:

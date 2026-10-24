@@ -6,7 +6,7 @@ RUN apple en (133 s real time)
   en: last-word 717 / 1417 ms, final 940 / 1559 ms, WER 40.3%, CPU 1%, RTF n/a, peak RSS 61 MB
 RUN apple en-samantha (107 s real time)
   en-samantha: last-word 297 / 823 ms, final 955 / 1288 ms, WER 0.5%, CPU 1%, RTF n/a, peak RSS 61 MB
-wrote /Users/user/Desktop/ProjectExamples/CursorExamples/Verse/bench/stt-local/results/apple-rerun1-2026-10-14T100356Z.json
+wrote <repo>/bench/stt-local/results/apple-rerun1-2026-10-14T100356Z.json
    uptime after: load averages: 17.42 9.34 21.59
 === nemotron rerun1 12:08:19 load averages: 17.42 9.34 21.59
 FIXTURES deleted: 40/40, dir absent: true
@@ -15,7 +15,7 @@ RUN nemotron en (133 s real time)
   en: last-word 124 / 386 ms, final 3271 / 3665 ms, WER 12.2%, CPU 3%, RTF 0.079, peak RSS 612 MB
 RUN nemotron en-samantha (107 s real time)
   en-samantha: last-word 145 / 370 ms, final 3127 / 3344 ms, WER 0.0%, CPU 3%, RTF 0.049, peak RSS 612 MB
-wrote /Users/user/Desktop/ProjectExamples/CursorExamples/Verse/bench/stt-local/results/nemotron-rerun1-2026-10-14T100819Z.json
+wrote <repo>/bench/stt-local/results/nemotron-rerun1-2026-10-14T100819Z.json
    uptime after: load averages: 9.87 18.27 23.15
 === done 12:13:21
 /dev/disk3s1s1   460Gi    12Gi   7.5Gi    61%    459k   79M    1%   /

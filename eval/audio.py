@@ -77,7 +77,7 @@ class Rendered:
 def render(utterances: list[dict], voices: dict[str, str], workdir: Path, write_wav: bool = True,
            lead_in: float = LEAD_IN_S) -> Rendered:
     """Builds the timeline. utterances: dicts with speaker, text, gap_before (s), and either `silent_s` (a silent
-    stretch, e.g. Alex answering) or text to speak. Returns where each utterance's speech starts and ends."""
+    stretch, e.g. the owner answering) or text to speak. Returns where each utterance's speech starts and ends."""
     buf = array.array("h")
     buf.extend(silence(lead_in))
     timeline = []
