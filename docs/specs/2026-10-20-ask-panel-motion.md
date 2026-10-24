@@ -1,6 +1,6 @@
 # Ask panel: look and motion (ask-ui, 20 Oct 2026)
 
-Status: implemented on branch `ask-ui`, waiting for the owner's approval of the look. Supersedes the "Panel layout" and "Streaming" rows of
+Status: implemented on branch `ask-ui`, waiting for the user's approval of the look. Supersedes the "Panel layout" and "Streaming" rows of
 `2026-10-20-verse-five-features-design.md` 2.2 where they differ (listed in section 4). Tokens, glass rules and the leave-out list are
 the redesign's (`2026-10-16-verse-ui-redesign-design.md`).
 
@@ -58,7 +58,7 @@ damping 1.0. `enter` = cubic-bezier(0.23, 1, 0.32, 1), 260 ms. `tint` = ease-out
 - Panel width, the 340 pt column: fixed; only its position animates.
 - ⌘⇧A is keyboard-initiated, which usually argues for no animation. It stays animated because the panel changes the layout of the
   window (a column collapses), and an instant layout jump loses the reader. It is the one place the rule is bent; the spring settles
-  inside 0.35 s. If Alex finds it slow, `AskMotion.settle` is the one value to shorten.
+  inside 0.35 s. If the owner finds it slow, `AskMotion.settle` is the one value to shorten.
 
 ## 4. Differences from the 2.2 spec text
 

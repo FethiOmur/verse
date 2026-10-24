@@ -532,11 +532,11 @@ def test_trim_pack_rule():
         "[b002] Q (en): What is your notice period?\nSAY: Thirty days.\n- My earliest start is mid December. " + "pad " * 90 + "\n"
         "[b003] Q (en): Tell me about your salary expectations package?\nSAY: Flexible.\n- Salary depends. " + "pad " * 90 + "\n\n"
         "## SNIPPETS\n[s001] vault:x | " + "long noise " * 200 + "\n\n"
-        "## THE OWNER'S VOICE (source: prep:voice)\n- Tone: direct.\n"
+        "## USER'S VOICE (source: prep:voice)\n- Tone: direct.\n"
     )
     out, dropped = ll.trim_pack(pack, 1200)
     assert "## SNIPPETS" not in out and "long noise" not in out
-    assert "## FACTS" in out and "## GLOSSARY" in out and "THE OWNER'S VOICE" in out and "[b001]" in out
+    assert "## FACTS" in out and "## GLOSSARY" in out and "USER'S VOICE" in out and "[b001]" in out
     assert len(out) <= 1200
     assert [d.id for d in dropped]                                         # something was cut from the bank
     cut = ll.retrieve(dropped, "What salary and package do you expect from us?", 2)

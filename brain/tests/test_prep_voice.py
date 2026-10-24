@@ -187,7 +187,7 @@ def test_strip_voice_removes_only_a_trailing_voice_section():
     pack = "## FACTS\n[f001] x\n\n## SNIPPETS\n[s001] y\n"
     assert V.strip_voice(pack) == pack
     assert V.strip_voice(V.with_voice(pack, PROFILE)) == pack
-    legacy = pack + "\n## THE OWNER'S VOICE (source: prep:voice)\n- Tone: relaxed.\n  - nested\n"
+    legacy = pack + "\n## USER'S VOICE (source: prep:voice)\n- Tone: relaxed.\n  - nested\n"
     assert V.strip_voice(legacy) == pack
     old = pack + "\n## VOICE (earlier header)\n- a\n"
     assert V.strip_voice(old) == pack
@@ -302,7 +302,7 @@ def test_cli_apply_rewrites_the_voice_section_and_keeps_the_old_pack(tmp_path, v
     session = _build(tmp_path, "s")
     pack_path = session / "pack.md"
     original = pack_path.read_text(encoding="utf-8")
-    pack_path.write_text(original + "\n## THE OWNER'S VOICE (hand written)\n- old style\n", encoding="utf-8")
+    pack_path.write_text(original + "\n## USER'S VOICE (hand written)\n- old style\n", encoding="utf-8")
     hand = pack_path.read_text(encoding="utf-8")
     assert main(["voice", "--apply", str(session), "--voice-profile", str(voice_file)]) == 0
     assert pack_path.read_text(encoding="utf-8") == V.with_voice(original, PROFILE)

@@ -1,4 +1,4 @@
-"""Two-track synthetic dialogues for the replay harness: a remote track and a "me" track (Alex), plus a speaker-bleed
+"""Two-track synthetic dialogues for the replay harness: a remote track and a "me" track (the owner), plus a speaker-bleed
 simulation (the remote track leaking into the microphone).
 
 Audio is only ever created in a temp directory the caller deletes (same rule as audio.py). Stdlib only.

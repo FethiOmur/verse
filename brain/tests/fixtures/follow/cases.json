@@ -159,7 +159,7 @@
   "Tomas Weir is the tech lead of the platform team and is on the panel.",
   "Halden Freight Systems builds route-planning software for mid-size European haulage firms.",
   "Compass is the Halden product that re-plans delivery routes.",
-  "Lantern is the LLM invoice-extraction project that Alex led.",
+  "Lantern is the LLM invoice-extraction project that the owner led.",
   "Compass re-plans delivery routes every 90 seconds.",
   "The Halden AI team has 6 people and reports to Ingrid.",
   "Halden has about 140 employees.",
@@ -286,7 +286,7 @@
   {
    "card": "b001",
    "kind": "off_other",
-   "text": "Actually the thing I'm most proud of is a running app I built on my own, it's called Trailhead and it's live on the App Store.",
+   "text": "Actually the thing I'm most proud of is a running app I built on my own, it's called TrailHead and it's live on the App Store.",
    "expect": "diverge",
    "id": "b001-off_other-3",
    "covers": []

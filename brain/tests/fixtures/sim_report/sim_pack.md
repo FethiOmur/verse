@@ -8,7 +8,7 @@
 ## Evidence about the candidate
 - e1 (project) Built Verse, a macOS meeting assistant: a Swift app plus a Python brain that streams Claude answers to a notch card while the call is running.
 - e2 (metric) At Lantern, cut invoice entry time from 11 minutes to 2 minutes per document by adding an LLM extraction step with a human review screen.
-- e3 (project) Published Trailhead, an iOS running and cycling app, on the App Store; wrote the backend and ran 4 ad experiments.
+- e3 (project) Published TrailHead, an iOS running and cycling app, on the App Store; wrote the backend and ran 4 ad experiments.
 
 ## Questions
 - q1 opener [c2] (target 60-120 s): Tell me a bit about yourself and what brought you to this role.

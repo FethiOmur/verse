@@ -1,6 +1,6 @@
 # Verse: memory package (Ask across meetings, pre-meeting brief, people and companies)
 
-Status: decided 2026-10-21. Alex approved building it ("tüm toplantılarda kaynaklı Ask, aynı kişiyle görüşme öncesi özet, kişi/şirket
+Status: decided 2026-10-21. the owner approved building it ("tüm toplantılarda kaynaklı Ask, aynı kişiyle görüşme öncesi özet, kişi/şirket
 görünümü", 21 Oct); after this spec, build. No open question blocks a package (section 11). Plan:
 `docs/plans/2026-10-21-verse-memory-package-plan.md`.
 
@@ -24,7 +24,7 @@ tokens, `HomeTheme`, the leave-out list) and anytime calls (`2026-10-16-verse-an
 
 - **Ask this meeting** (5F 2.2, 3.2, 3.3; `brain/verse_brain/runtime/ask.py`, `AskSession.swift`, `AskPanel.swift`, `AskAnswerText.swift`,
   `ChatLog.swift`). A child process per open panel, `python -u -m verse_brain.runtime` whose first line is `ask_start`. One cached grounding
-  block (meeting line, ABOUT OWNER, MEETING PREP without STYLE GUIDE, SUMMARY, TRANSCRIPT rows sent by Swift), history from `chat.jsonl`
+  block (meeting line, ABOUT ME, MEETING PREP without STYLE GUIDE, SUMMARY, TRANSCRIPT rows sent by Swift), history from `chat.jsonl`
   after the last `reset` (12 pairs), full mode up to 180k tokens, else a TRANSCRIPT INDEX plus BM25 excerpts. Haiku/Sonnet/Opus routes in
   `runtime/settings.py ask_params`, prices in `prep/model.py` (`PRICES`, Haiku long tier), the key only through `prep.keychain.read_api_key()`
   in `ask.make_client()` (a test greps for other credential paths). `FakeAskClient` scripts streams and token counts. Streaming
@@ -73,7 +73,7 @@ tokens, `HomeTheme`, the leave-out list) and anytime calls (`2026-10-16-verse-an
 | When it syncs | `MemoryService.requestSync(_:)`, coalesced (one run at a time, a request during a run schedules one more): 15 s after launch; 20 s after a call stops (`controller.running` true → false, so `summary.md` is written); at once after Move to Trash and after Undo (`SessionTrashHooks.sessionsChanged`); after an entity change (labels only); when the Ask panel opens in a memory scope (the panel waits up to 5 s, then asks the index as it is and says "Updating memory"). |
 | Two phases | Phase 1 per session: rows, chunks and FTS in one transaction, then `put_done`. Phase 2: vectors for every chunk that has none for the current model sha, newest session first, in batches of 32, with `embed_progress`. A killed process loses nothing: the fingerprint is written in phase 1's transaction and phase 2 resumes on the next run. |
 | Deletes | Trash: the next sync's manifest lacks the session, so the brain deletes its rows, chunks, FTS entries and vectors in one transaction with `PRAGMA secure_delete = ON`, then `PRAGMA wal_checkpoint(TRUNCATE)`, so the deleted text is overwritten in the file and the WAL. Undo: the folder is back, the sync re-indexes it (about 1 s plus embedding). No tombstone, no vector cache: nothing derived from a trashed session stays in the index. |
-| Corruption | `sqlite3.DatabaseError` on open, or `user_version` ≠ the schema version: the file is renamed `index.sqlite.unreadable-<yyyyMMdd-HHmmss>` (not deleted; it is derived data, and Alex can remove it) and rebuilt from the sessions. A new embedding model sha only clears `vectors`. |
+| Corruption | `sqlite3.DatabaseError` on open, or `user_version` ≠ the schema version: the file is renamed `index.sqlite.unreadable-<yyyyMMdd-HHmmss>` (not deleted; it is derived data, and the owner can remove it) and rebuilt from the sessions. A new embedding model sha only clears `vectors`. |
 
 **Embeddings: yes, local, with the model Verse already ships.** Retrieval is hybrid: SQLite FTS5 (BM25) plus EmbeddingGemma 2 vectors,
 fused by reciprocal rank. Why it is worth it at tens to hundreds of sessions:
@@ -114,7 +114,7 @@ not re-checked for this spec, and the decision does not depend on it, because Em
 |---|---|
 | Scopes | `AskScope`: `.session(name)` (today's Ask this meeting, unchanged), `.entity(id)` (one person or company: their sessions, 2.5), `.all` (every indexed session). Titles: "Ask this meeting", "Ask about Marta Velin", "Ask all meetings". |
 | Process | `.session` keeps its `ask_start` process. `.entity` and `.all` start their own child process whose first line is `memory_ask_start` (`runtime/memory_ask.py MemoryAskRuntime`, a subclass of `AskRuntime` that reuses its streaming, cancel, chat file, cost and error mapping). Lifetime as in 5F: started when the panel opens in that scope, ended on close, on a scope change, when the window closes, or after 10 min idle. |
-| Grounding | Cached block (breakpoint 1): `SESSION CATALOG`, one line per in-scope session, newest first, at most 400 (`sk3f9qa · Mon 19 Oct 2026 · meeting · Halden kickoff · with Marta Velin (Halden Works)`), plus ABOUT OWNER when "Use my profile in every session" is on. Uncached tail per question: `EXCERPTS` (2.2) then `QUESTION`. History: the last 6 Q/A pairs (`MEMORY_HISTORY_PAIRS`), text only (earlier excerpts are not resent). Top-level automatic `cache_control` as in 5F. |
+| Grounding | Cached block (breakpoint 1): `SESSION CATALOG`, one line per in-scope session, newest first, at most 400 (`sk3f9qa · Mon 19 Oct 2026 · meeting · Halden kickoff · with Marta Velin (Halden Works)`), plus ABOUT ME when "Use my profile in every session" is on. Uncached tail per question: `EXCERPTS` (2.2) then `QUESTION`. History: the last 6 Q/A pairs (`MEMORY_HISTORY_PAIRS`), text only (earlier excerpts are not resent). Top-level automatic `cache_control` as in 5F. |
 | Trashed sources in history | A history pair whose answer cites a session no longer in the index is not sent to the model (the brain checks each pair's stored citations against `sessions`). On screen the pair stays; its tokens for that session are dimmed and say "In the Trash" on hover. |
 | Models | The same picker and routes as Ask this meeting (`ask_params`), the same `AppSettings.askModel`. Billing: the Keychain key via `ask.make_client()`; never OAuth, never a claude.ai login. |
 | Chat files | `memory/chats/all.jsonl` and `memory/chats/<entity-id>.jsonl`, written only by the memory Ask runtime, the 5F 3.3 line shapes plus `scope` and object citations (3.7). Clear chat appends `reset`. |
@@ -141,11 +141,11 @@ past meetings with {name}"):
 
 | Topic | Decision |
 |---|---|
-| Content | Five sections with fixed English headings in the file (the UI shows localized titles, as 5F does for summary headings): `DISCUSSED`, `PROMISED BY OWNER` (the owner name, upper case), `PROMISED BY THEM`, `STILL OPEN`, `TONE AND PREFERENCES`. At most 5 points each, at most 25 words each; every point ends with 1–3 citations in the 2.2 forms. A point without a valid citation is dropped and counted (`dropped_uncited`), the repo's "no unsourced points" rule. `- (none)` and `- (nothing clear yet)` are allowed without a citation. |
+| Content | Five sections with fixed English headings in the file (the UI shows localized titles, as 5F does for summary headings): `DISCUSSED`, `PROMISED BY THE USER` (the owner name, upper case), `PROMISED BY THEM`, `STILL OPEN`, `TONE AND PREFERENCES`. At most 5 points each, at most 25 words each; every point ends with 1–3 citations in the 2.2 forms. A point without a valid citation is dropped and counted (`dropped_uncited`), the repo's "no unsourced points" rule. `- (none)` and `- (nothing clear yet)` are allowed without a citation. |
 | Inputs | The target entity's past sessions that have a transcript or a summary, newest first, at most 8 (`BRIEF_MAX_SESSIONS`), excluding the session the brief is for. Per session: the whole summary (`summary` chunks), its first 4 and last 8 rows (openers and closing commitments), and the top chunks of three fixed probe queries scoped to that session (commitments, open questions, preferences; each written in en, it and tr in `memory/brief.py PROBES`), up to `BRIEF_EXCERPT_TOKENS` = 18,000 in all, split evenly between sessions. Prep and chat chunks are not inputs (they are plans and model answers, not what was said). Plus an `UPCOMING` line (title, start, attendee names) when there is one. Attendee emails are never sent. |
 | Process | A one-shot child process whose first line is `brief_start` (`memory/brief.py`). Its own Anthropic client through `ask.make_client()`. Model: **Sonnet** (`brief_params()` = `ask_params("sonnet")` with `max_tokens` 1,500). Not Haiku: the brief is about who promised what, where a wrong reading is costly; not Opus: twice the price for one short read. |
 | Language | `lang` from the request: the upcoming session's `meta.json languages[0]`, else the language most of the input sessions' rows have (`lang` of the transcript lines), else `en`. Brain-written text is not translated (5F 2.5). |
-| Trigger | **Automatic only when Alex prepares a session** (Up next or Practice's Upcoming, the `prepareSession(for:)` path) and the event's primary entity (below) has at least one past session with a transcript or summary: one brief right after the prep finishes. Prep already costs $0.33–$1.03 on this Mac, so a ≈ $0.05 brief adds 5–15 % to a spend he chose. **Manual** everywhere else: "Make brief" / "Update" on the person's page, "Brief" on an Up next item without a session, "Update" on a prepared session. **Never** in the background for calendar events he has not prepared: a meeting he skips would still cost. |
+| Trigger | **Automatic only when the owner prepares a session** (Up next or Practice's Upcoming, the `prepareSession(for:)` path) and the event's primary entity (below) has at least one past session with a transcript or summary: one brief right after the prep finishes. Prep already costs $0.33–$1.03 on this Mac, so a ≈ $0.05 brief adds 5–15 % to a spend he chose. **Manual** everywhere else: "Make brief" / "Update" on the person's page, "Brief" on an Up next item without a session, "Update" on a prepared session. **Never** in the background for calendar events he has not prepared: a meeting he skips would still cost. |
 | Primary entity | Of an event: its attendees (minus the owner, 2.5) resolved to entities. One company shared by all of them → the company; else exactly one person → that person; else the person with the most past sessions (ties: most recent). The brief covers that entity's sessions (for a company, its people's sessions too). Other attendees are named in `UPCOMING`. |
 | Freshness | A brief records `newest_session` (the newest input session). It is **stale** when the entity has a newer session with a transcript or summary; the UI then says "Made before your 19 Oct meeting" with **Update**. A brief is never regenerated without a click, except the one automatic brief on prepare. |
 | Where it is stored | `memory/briefs/<entity-id>.json` (the latest per entity; the previous file is overwritten). A brief made for a prepared session is also written to that session's folder as `brief.json` (same content) and `brief.md` (for the live model, below). |
@@ -173,7 +173,7 @@ Brief system prompt (frozen; `{owner}`, `{OWNER}`, `{name}`, `{lang}`):
 | Entity | `MemoryEntity`: `id` (`e-` + 8 random lowercase base-36 characters, like folder ids), `kind` (`person` \| `company`), `name`, `emails` (lowercased), `domains` (companies), `aliases`, `company` (a person's company id), `folders` (folder ids whose sessions belong to it), `namedBy` (`auto` \| `user`), `hidden`, `createdAt`. Stored in `memory/people.json` (3.6), written only by the app, on the main actor, atomically. |
 | Sessions of an entity | Computed, never stored as a list (`EntityResolver.sessions(of:)`). A session belongs to E when (a) it is in one of `E.folders` (folders.json), or (b) one of its recorded attendees' emails is in `E.emails`, or its non-freemail email domain is in `E.domains`, or (c) `links[session]` contains E (a manual Add); and (d) `unlinks[session]` does not contain E. A company's page also shows its people's sessions. Moving a session between folders therefore moves it between entities with no extra write. |
 | Recorded attendees | `people.json attendees[session]` = the event's attendees minus the owner, written when a session is prepared from an event: Up next and Practice's Upcoming (`afterPrepare`), and the meeting prompt's Start from invite (`MeetingCoordinator`, which creates the session as the call starts). The owner is the event's `currentUser` (new optional `MeetingEvent.currentUser`, filled from `CalendarEntry.currentUser`) and every email in `people.json ownerEmails` (each `currentUser` email seen is added). Skipped: addresses containing `resource.calendar.google.com`, `group.calendar.google.com`, `noreply`, `no-reply`, `calendar-notification`. |
-| Backfill | Once, best effort: for each `EventSessionMap` entry whose session has no recorded attendees, `CalendarSource.event(id:)` (it searches a day back and two weeks ahead, so only recent and recurring events are found). Nothing is asked of Alex; misses stay unlinked. |
+| Backfill | Once, best effort: for each `EventSessionMap` entry whose session has no recorded attendees, `CalendarSource.event(id:)` (it searches a day back and two weeks ahead, so only recent and recurring events are found). Nothing is asked of the owner; misses stay unlinked. |
 | Automatic entities | `EntityResolver.reconcile` (on load and after every change; it creates and never deletes): each folder that no entity lists → an entity with that name; kind `person` when the folded folder name equals a recorded attendee's folded name in that folder's sessions, else `company`. Each recorded attendee email that no entity has → a `person` (name = attendee name, else the email's local part split on `.`/`_` and capitalized). Its domain, when not on the freemail list (`EntityResolver.freemail`: gmail.com, googlemail.com, outlook.com, hotmail.com, live.com, msn.com, icloud.com, me.com, mac.com, yahoo.com, ymail.com, proton.me, protonmail.com, pm.me, gmx.com, gmx.de, gmx.net, libero.it, virgilio.it, tiscali.it, alice.it, yandex.com, yandex.ru, mail.ru, hey.com, fastmail.com), → the company whose `domains` has it, else the company whose folded name equals the domain's first label, else a new `company` named after that label, capitalized (`halden.example` → "Halden"); the person's `company` is set when empty. |
 | Weak signals | Session title words, folder-name words, `meta.json conversation.company` and FACTS name lines (the folder suggester's haystack, `FolderSuggester.haystack`) that contain an entity's folded name or alias as whole words → a **suggestion** on the entity page ("Maybe also"), never a link. Add → `links`; Not this → `dismissed[entity]`. Same rule as folders: nothing moves without a click. |
 | Rename | Inline on the entity page (⋯ → Rename…): trimmed, 1–80 characters, unique per kind after folding (`TextFold.fold`); sets `namedBy = user`. A folder rename renames an entity whose name came from that folder only while `namedBy == auto`. |
@@ -195,7 +195,7 @@ Brief system prompt (frozen; `{owner}`, `{OWNER}`, `{name}`, `{lang}`):
 - **A vector cache that survives trash.** Vectors are derived from the text; keeping them keeps the meeting.
 - **Per-question session-local `[m:ss]` stamps in memory answers.** They are ambiguous across meetings; the key + stamp form keeps the
   stamp exact and adds the meeting.
-- **Automatic briefs for every calendar event.** Cost without a decision by Alex (2.4).
+- **Automatic briefs for every calendar event.** Cost without a decision by the owner (2.4).
 - **Haiku for the brief by default.** Cheap but the wrong place to save $0.045.
 - **Entities as folders.** A session has one folder but often a person and a company; folders stay the owner's filing, entities read them.
 - **Auto-merging by similar names.** Two Martas at two companies are common; merge is a click.
@@ -266,7 +266,7 @@ The contentless FTS table has no cascade: `drop` deletes `chunks_fts` rows by ro
 {"type":"sync","sessions":[{"name":"halden-kickoff","fp":"9c1e…","labels":["Marta Velin","Halden Works"]}]}
 {"type":"put","name":"halden-kickoff","dir":"/…/sessions/halden-kickoff","fp":"9c1e…","title":"Halden Kickoff",
  "date":"2026-10-19T17:00:00+02:00","kind":"meeting","lang":"en","labels":["Marta Velin","Halden Works"],
- "rows":[{"stamp":"0:18","speaker":"Alex","text":"…"}]}
+ "rows":[{"stamp":"0:18","speaker":"the owner","text":"…"}]}
 {"type":"end"}
 ```
 
@@ -288,7 +288,7 @@ counts, never text.
 ### 3.4 Memory Ask protocol (first line `memory_ask_start`)
 
 ```json
-{"type":"memory_ask_start","db":"/…/memory/index.sqlite","chat":"/…/memory/chats/e-8hz1p0qq.jsonl","owner_name":"Alex",
+{"type":"memory_ask_start","db":"/…/memory/index.sqlite","chat":"/…/memory/chats/e-8hz1p0qq.jsonl","owner_name":"the owner",
  "me":{"core":"/…/profile/me.md"},"scope":{"kind":"entity","id":"e-8hz1p0qq","name":"Marta Velin",
  "sessions":["halden-kickoff","halden-pilot-review"]},"model":"sonnet"}
 ```
@@ -311,7 +311,7 @@ Per-session Ask (`ask_start`) keeps string citations; Swift tells the two apart 
 ### 3.5 Brief protocol (first line `brief_start`; one request, then the process exits)
 
 ```json
-{"type":"brief_start","db":"/…/memory/index.sqlite","owner_name":"Alex",
+{"type":"brief_start","db":"/…/memory/index.sqlite","owner_name":"the owner",
  "entity":{"id":"e-3k9xq2ma","kind":"person","name":"Marta Velin","company":"Halden Works"},
  "sessions":["halden-pilot-review","halden-kickoff"],
  "upcoming":{"title":"Halden weekly","start":"2026-10-28T10:00:00+01:00","attendees":["Marta Velin","Joe Arkwright"]},
@@ -340,7 +340,7 @@ Section ids: `discussed`, `promised_owner`, `promised_them`, `open`, `tone`. `(n
 ```
 PAST MEETINGS WITH Marta Velin (from Verse's memory, as of 21 Oct 2026; background only: what was said before, not facts of this meeting)
 Discussed: The pilot covers two teams, not four. …
-Promised by Alex: Send the revised budget by Friday (24 Oct). …
+Promised by the owner: Send the revised budget by Friday (24 Oct). …
 Promised by them: …
 Still open: …
 Tone and preferences: …
@@ -374,7 +374,7 @@ As 5F 3.3, with `"scope":"all"` or `"scope":"e-…"` on `q` lines, and `a` lines
 and `text`, so the hover card works on reopened history without a lookup). History rebuild skips pairs that cite a session no longer
 indexed (2.3).
 
-### 3.8 Settings keys (UserDefaults suite `dev.fethiverse.verse`)
+### 3.8 Settings keys (UserDefaults suite `dev.example.verse`)
 
 `peopleCollapsedHidden` (true), `askMemoryScope` (`all`; the last memory scope used from the Sessions page). No other new key.
 
@@ -548,7 +548,7 @@ brief and answer text is not translated.
   owner). Never a real session's text, name or email.
 - **No audio** is read, written or indexed: only the text files listed in 2.1.
 - **No new third party.** Embeddings run locally (EmbeddingGemma on LiteRT, already on disk). Anthropic receives meeting text only when
-  Alex asks a question in a memory scope or a brief is made (his click, or his Prepare), exactly the material in 2.3/2.4, through the
+  the owner asks a question in a memory scope or a brief is made (his click, or his Prepare), exactly the material in 2.3/2.4, through the
   Keychain key; never OAuth.
 - Attendee **emails never leave the Mac**: the brain receives names only (labels, `upcoming.attendees`); a test asserts that no request
   payload contains an `@` from the fixture's attendees.
@@ -579,7 +579,7 @@ brief and answer text is not translated.
 | Citation to a trashed session | Token dimmed, "In the Trash"; after Undo and a sync it works again (same key). |
 | Merged entity id in a chat scope, router selection or brief | Resolved through `merged`. |
 | Same person with two emails | Two entities until merged; the merge suggestion shows when the names fold equal. |
-| A person at a freemail address | A person without a company; Alex can put the session in a folder or merge. |
+| A person at a freemail address | A person without a company; the owner can put the session in a folder or merge. |
 | Event with only the owner | No primary entity, no brief UI. |
 | Event with people from two companies | Primary entity per 2.4; the others are named in UPCOMING only. |
 | Key missing, credit exhausted, offline | Ask: the 5F errors. Brief: `brief_error` shown on the plate with Retry; the automatic brief on prepare fails quietly and the prepared session shows "The brief could not be made: <reason>" with Retry. |
@@ -608,7 +608,7 @@ brief and answer text is not translated.
 
 ## 9. Done means
 
-- Ask all meetings: on the owner's real sessions, "What did I promise last week?" streams a Sonnet answer whose Sources open the right meeting
+- Ask all meetings: on the user's real sessions, "What did I promise last week?" streams a Sonnet answer whose Sources open the right meeting
   at the right line; a Turkish question finds an English meeting; the cost matches `ask_done` at the 3.4 prices and lands in
   `memory/spend.json`.
 - Moving a meeting to the Trash removes it from answers at once; Undo brings it back with working citations.
@@ -628,7 +628,7 @@ brief and answer text is not translated.
 - Practice-run transcripts in memory.
 - A date filter in questions ("last week") applied before retrieval rather than left to the model.
 
-## 11. Questions only Alex can answer
+## 11. Questions only the owner can answer
 
 None block the build. Defaults he may want to change later: the automatic brief on Prepare (one line to turn off), Sonnet as the brief
 model, the 16k-token excerpt budget per question (the main cost lever: 8k halves it at some recall cost).

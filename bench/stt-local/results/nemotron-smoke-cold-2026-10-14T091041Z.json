@@ -3,7 +3,7 @@
   "engine" : "nemotron",
   "fixtures" : {
     "deletedAt" : "2026-10-14T09:10:43Z",
-    "directory" : "\/Users\/user\/Desktop\/ProjectExamples\/CursorExamples\/Verse\/bench\/stt-local\/fixtures\/run-2026-10-14T091041Z",
+    "directory" : "\/Users\/example-user\/Desktop\/ProjectExamples\/CursorExamples\/Verse\/bench\/stt-local\/fixtures\/run-2026-10-14T091041Z",
     "directoryAbsentAfterDelete" : true,
     "filesCreated" : 3,
     "filesDeleted" : 3

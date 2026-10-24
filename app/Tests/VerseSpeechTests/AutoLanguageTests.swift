@@ -15,7 +15,7 @@ final class AutoLanguageTests: XCTestCase {
     static let it3 = "Ciao come stai oggi vorrei sapere di più sul tuo ultimo progetto"
     static let tr1 = "Bana en gurur duyduğun projeyi anlatır mısın"
     /// Italian with English loanwords: still an Italian sentence.
-    static let itLoan = "Poi usiamo React e machine learning per Trailhead"
+    static let itLoan = "Poi usiamo React e machine learning per TrailHead"
     /// Fictional example of the half-Italian text an Italian recognizer makes of English speech.
     static let garbledIt = "la sera very easy in English, Englishable"
     static let cleanEn = "so tell me a little bit about how you spend the weekend"
@@ -150,7 +150,7 @@ final class AutoLanguageTests: XCTestCase {
 
     func testTheMicrophoneVotesOnlyWhenTheRemoteIsQuiet() {
         var d = AutoLanguageDetector(current: "it", auto: true)
-        // The remote speaks Italian up to 20 s; Alex answers in English meanwhile: the remote has priority.
+        // The remote speaks Italian up to 20 s; the owner answers in English meanwhile: the remote has priority.
         XCTAssertNil(feed(&d, [fin(Self.it1, 0, 4), fin(Self.en1, 5, 8, channel: .me), fin(Self.en2, 9, 12, channel: .me)]))
         XCTAssertEqual(d.current, "it")
         // Long after the remote's last word the microphone's English counts.

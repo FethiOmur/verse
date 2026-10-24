@@ -7,14 +7,14 @@ import pytest
 import score_twotrack as ST
 import twotrack
 
-LABEL = {"id": "tx", "owner": "Alex", "utterances": [
+LABEL = {"id": "tx", "owner": "the owner", "utterances": [
     {"speaker": "Ingrid", "text": "Can you tell me about yourself?", "expect": "answer"},
-    {"speaker": "Alex", "text": "Sure, I build pipelines.", "expect": "me_turn"},
+    {"speaker": "the owner", "text": "Sure, I build pipelines.", "expect": "me_turn"},
     {"speaker": "Ingrid", "text": "Thanks, that is helpful.", "expect": "no_answer"},
 ]}
 META = {"timeline": [
     {"index": 0, "speaker": "Ingrid", "channel": "remote", "t_start": 10.0, "t_end": 12.0},
-    {"index": 1, "speaker": "Alex", "channel": "me", "t_start": 13.0, "t_end": 16.0},
+    {"index": 1, "speaker": "the owner", "channel": "me", "t_start": 13.0, "t_end": 16.0},
     {"index": 2, "speaker": "Ingrid", "channel": "remote", "t_start": 17.0, "t_end": 18.0}]}
 
 
@@ -98,9 +98,9 @@ def test_listen_summary_origins_shift_the_windows():
 
 def test_fixture_validates_and_bad_ones_do_not():
     f = twotrack.load("t01")
-    assert f["owner"] == "Alex" and any(u["expect"] == "answer" for u in f["utterances"])
-    bad = {"id": "x", "owner": "Alex", "participants": ["I"], "voices": {"I": "Kathy", "Alex": "Mara"},
-           "utterances": [{"speaker": "Alex", "text": "a", "offset_s": 0, "expect": "answer"}]}
+    assert f["owner"] == "the owner" and any(u["expect"] == "answer" for u in f["utterances"])
+    bad = {"id": "x", "owner": "the owner", "participants": ["I"], "voices": {"I": "Kathy", "the owner": "Mara"},
+           "utterances": [{"speaker": "the owner", "text": "a", "offset_s": 0, "expect": "answer"}]}
     assert twotrack.validate(bad)
 
 
@@ -118,8 +118,8 @@ def test_bleed_is_attenuated_delayed_and_noisy():
     assert math.isclose(twotrack.db_to_gain(-20.0), 0.1)
 
 
-def test_gate_drop_over_owners_own_speech_is_counted_and_deferrals_too():
-    # Alex speaks 13.0-16.0 on the me clock (origin 0). The gate dropped one event inside his speech and one in a silent stretch.
+def test_gate_drop_over_users_own_speech_is_counted_and_deferrals_too():
+    # the owner speaks 13.0-16.0 on the me clock (origin 0). The gate dropped one event inside his speech and one in a silent stretch.
     events = [t0(),
               ev(type="metric", stage="echo_gate_dropped", text="sorry", audio_start=13.1, audio_end=13.3),
               ev(type="metric", stage="echo_gate_dropped", text="thanks", audio_start=10.2, audio_end=11.0),

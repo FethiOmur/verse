@@ -69,7 +69,7 @@ struct CardReadingTests {
 
     @Test
     func theMeetingTapFeedsTheCardWhateverThePrompterSetting() async {
-        let model = PrompterModel(settings: PrompterSettings(defaults: .init(suiteName: "dev.fethiverse.verse.cardreading")!))
+        let model = PrompterModel(settings: PrompterSettings(defaults: .init(suiteName: "dev.example.verse.cardreading")!))
         model.settings.followMeetingCards = false
         let tap = model.meetingStarted()
         var card = OverlayCard(turnID: "t1", question: "Walk me through Lantern")
@@ -79,7 +79,7 @@ struct CardReadingTests {
         tap.ingest(micEvent("in lantern bad invoices"))
         #expect(await waitUntil { model.cardReading.spoken(for: say) == 4 })
         model.meetingEnded()
-        UserDefaults.standard.removePersistentDomain(forName: "dev.fethiverse.verse.cardreading")
+        UserDefaults.standard.removePersistentDomain(forName: "dev.example.verse.cardreading")
     }
 
     // MARK: room route (one microphone, its events arrive as `remote`)

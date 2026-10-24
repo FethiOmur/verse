@@ -59,8 +59,8 @@ output tokens ≈ $0.00005.
 **Why it fails.** D fires at t = 0 "with … the opener already on screen". When S guessed wrong, F's opener does not
 exist yet at t = 0; it appears around +1.0–1.4 s. D therefore continues either nothing or the wrong S opener. Three
 more problems:
-- Alex will paraphrase rather than read word for word. A "continuation" of words he did not say reads oddly.
-- If the opener is wrong (bank false positive, or a wrong S guess that was kept), D is told "Alex is already saying
+- the owner will paraphrase rather than read word for word. A "continuation" of words he did not say reads oddly.
+- If the opener is wrong (bank false positive, or a wrong S guess that was kept), D is told "the owner is already saying
   this; continue naturally". That pushes D to elaborate the wrong answer in a confident tone.
 - No prefill exists, so the continuation is only as coherent as the instruction-following. It also costs D extra
   tokens to re-state the context.
@@ -86,15 +86,15 @@ correction. Re-fire F or D only if the final changes content words, not punctuat
 ### B5. Mic bleed on speakers breaks turn detection (§5.3 barge-in, §5.7 item 1)
 **Why it fails.** The mic is captured raw through AVAudioEngine. Meet and Zoom run echo cancellation on *their*
 mic stream, not on Verse's. On laptop speakers, the remote voice comes back through Verse's mic channel. It gets
-transcribed as Alex, so "if Alex starts speaking, the turn is over" fires in the middle of the question. It also
+transcribed as the owner, so "if the owner starts speaking, the turn is over" fires in the middle of the question. It also
 creates duplicate transcript lines and wrong summaries.
-**How to show it.** Play the replay set through the MacBook speakers with the mic open. Count false Alex turns and
+**How to show it.** Play the replay set through the MacBook speakers with the mic open. Count false the owner turns and
 cancelled speculations.
 **Fix.** v1 options:
 - Require headphones, detect the output route, and show a chip when output is speakers.
 - Or enable AVAudioEngine voice processing (`setVoiceProcessingEnabled`) on the mic and verify the echo
   suppression.
-- In either case, gate Alex-VAD: discard mic speech whose energy envelope correlates with the remote channel
+- In either case, gate the owner-VAD: discard mic speech whose energy envelope correlates with the remote channel
   shifted by 0–80 ms.
 
 ### B6. Capturing the remote side from Brave is unproven, and the chosen API is the heavier one (§5.7 item 1, §11)
@@ -123,7 +123,7 @@ Zoom and Teams native apps tap by bundle the same way.
 - Volatile partials are rewritten as speech continues, so a faint hit flickers.
 - A false hit is the worst failure in the design. It shows a polished, Sonnet-written, source-cited answer to a
   different question, faintly *before* t = 0 and solid after. The spec does not say how a wrong hit is taken back.
-- §9's "≥ 50 % hit rate" is measured on a replay set Alex writes himself after reviewing the bank, so it is inflated.
+- §9's "≥ 50 % hit rate" is measured on a replay set the owner writes himself after reviewing the bank, so it is inflated.
   It measures no precision at all.
 
 **How to show it.** Build held-out paraphrases written blind, by another person or model that never saw the bank.
@@ -217,12 +217,12 @@ than none. Speculation drops out first under pressure. §7 should treat 429 sepa
 **Why it fails.** With several remote participants, all of them arrive on one channel and nothing labels the
 speaker. A question addressed to a colleague ("Marco, what's the timeline?") triggers S/F/D and a confident "SAY"
 line. That is a wrong answer on screen, and it costs Sonnet calls. §9's question-detection precision does not
-measure whether the question was addressed to Alex.
+measure whether the question was addressed to the user.
 **How to show it.** Use replay dialogues with 3 speakers where some questions are addressed to others. Measure
-precision restricted to questions addressed to Alex.
+precision restricted to questions addressed to the user.
 **Fix.**
 - Addressee cues: the owner's name, second-person forms (`sen/siz`, `tu/Lei`, `you`), a question right after the owner's own
-  turn, and silence held for Alex.
+  turn, and silence held for the user.
 - Questions not addressed to him get a small "for others" style without a SAY line, and no D call.
 - Optional: per-voice clustering on the remote channel (the spec mentions none).
 
@@ -242,14 +242,14 @@ precision restricted to questions addressed to Alex.
 | I1 | **Speculative fan-out without cancellation**: up to 3 Haiku calls in flight, choose at t = 0 (B2) | S-ready-at-t = 0 rate rises from "rare" to a large share of English/Italian questions (estimate, to be measured); the ≤ 0.2 s path actually occurs | ~$0.0004 per extra call; 2–3× the Haiku RPM during questions (watch B11) |
 | I2 | **Use the bank's deep answer directly on a strong hit**: it is already Sonnet-written with sources, so show it at t ≈ 0 and skip D, or run D only as a short "adapt to the exact wording" pass | Deep content at ~0 s instead of ~2–3 s on every bank hit; fewer Sonnet calls | None; less spend |
 | I3 | **Speculative D on a stable partial**: when S has re-fired twice on the same core question, or the bank hit is solid, fire Sonnet before t = 0 | D first words ~0.5–1.5 s earlier when right | ~$0.01–0.02 per wasted Sonnet call; cap at 1 in flight |
-| I4 | **Local fact chips at t ≈ 0**: char-n-gram BM25 of the question over the fact sheet and glossary, rendered instantly as source chips (numbers, names, dates Alex can cite) | Grounded, useful content within ~20 ms for every question, a time-buying trick that never invents anything; also a grounding anchor for S/F | Local only; a few ms |
+| I4 | **Local fact chips at t ≈ 0**: char-n-gram BM25 of the question over the fact sheet and glossary, rendered instantly as source chips (numbers, names, dates the owner can cite) | Grounded, useful content within ~20 ms for every question, a time-buying trick that never invents anything; also a grounding anchor for S/F | Local only; a few ms |
 | I5 | **Language-aware endpointing and question detection**: Turkish `mı/mi/mu/mü` plus verb-final finish; English aux inversion and wh-words; Italian F0 rise from a small YIN/vDSP pitch tracker on the remote channel (SpeechAnalyzer gives no pitch); a per-speaker silence threshold learned in the first minutes; a hesitation guard (`um/eh/ehm/şey`) | 100–200 ms off the endpoint wait when the cue is strong; fewer premature fires on slow or non-native speakers | ~1–2 days of DSP and rules; tune on replay |
 | I6 | **Plain-text line protocol instead of JSON**: the model writes `SAY: …` then `- …` lines; Swift renders on the first token; IPC sends deltas `{id, seq, field, text}` rather than the full object each time | First word renders after ~2 tokens; no partial-JSON parser; compatible with `max_tokens: 0` pre-warm (B9) | Trivial |
 | I7 | **Swift-native fast path**: S/F as raw HTTP SSE over `URLSession` (HTTP/2, pre-opened, keep-warm) in Swift; Python keeps prep, D and the Summarizer | Honest gain is small for IPC (a pipe hop is < 1 ms once flushed). The real gain is removing the cold-connection (B10) and buffering failure modes from the hottest path, and one fewer process on the critical path | ~1–2 days; Swift has no official SDK, so raw HTTP is the sanctioned route |
 | I8 | **Runtime grounding guard**: before rendering, check every number, date and proper noun in a live suggestion against the pack, fact sheet and transcript. Unmatched spans are dimmed with "unverified" or dropped. D additionally cites snippet ids that must exist | Enforces §5.2's rule live, not only in the offline eval (§9); prevents the most damaging on-screen errors | A few ms; a regex plus set lookup |
 
 Not proposed: a local model for generation (forbidden by §2). Local matching and retrieval only (I4, B7, B8) stays
-inside the "Max credit only for generation" rule.
+inside the "API credit only for generation" rule.
 
 ---
 
@@ -300,7 +300,7 @@ The real risks are B9 (silent cache misses, which raise latency more than cost) 
 - **SpeechAnalyzer Turkish:** a third-party guide (antongubarenko.substack.com, "iOS 26: SpeechAnalyzer Guide") lists
   `tr_TR` and `it_IT` in `SpeechTranscriber.supportedLocales`. Another (blog.addpipe.com) lists the 10 launch
   languages without Turkish, so Turkish was probably added in a later release. Confirm with `supportedLocales` and
-  asset install on the owner's macOS 26 build.
+  asset install on the user's macOS 26 build.
 - **SpeechAnalyzer partial and final latency:** no measured figures found. Searched the WWDC25 session 277 page,
   Apple docs (`ReportingOption`: `volatileResults`, `fastResults`, `alternativeTranscriptions` confirmed), and
   forasoft.com (generic on-device ASR claims, not SpeechAnalyzer-specific). Day-1 benchmark item.

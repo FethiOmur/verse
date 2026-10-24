@@ -1,6 +1,6 @@
 # Verse: interview simulation mode (design)
 
-Status: draft for the owner's review, 2026-10-14. Implementation starts after approval.
+Status: draft for the user's review, 2026-10-14. Implementation starts after approval.
 Builds on: `2026-10-14-verse-meeting-assistant-v1-design.md` (prep stage, brain sidecar, audio, overlay).
 
 ## 1. Goal and audience
@@ -9,10 +9,10 @@ A practice mode inside Verse: a mock interviewer asks questions built from **the
 **a specific job posting**, listens to the spoken answers, asks follow-ups like a real interviewer, and gives
 feedback, either after each answer or as a scored report at the end.
 
-First user: Alex, preparing for real interviews (Brightwave case study, Harbor Tech technical round). Later: every
+First user: the owner, preparing for real interviews (Brightwave case study, Harbor Tech technical round). Later: every
 Verse user, so nothing in the design may depend on the owner's vault being present.
 
-## 2. What Alex decided (2026-10-14)
+## 2. What the owner decided (2026-10-14)
 
 | Topic | Decision |
 |---|---|
@@ -24,7 +24,7 @@ Verse user, so nothing in the design may depend on the owner's vault being prese
 
 ## 3. Constraints
 
-- **Brain on the Max credit.** Interviewer questions, follow-ups, scoring and the report use Claude through the
+- **Brain on the Anthropic API credit.** Interviewer questions, follow-ups, scoring and the report use Claude through the
   same Individual Org key as the meeting assistant. ElevenLabs and OpenAI are used only for voice, and only when the
   user chose them and entered a key.
 - **Keys in the Keychain**: `verse-elevenlabs` and `verse-openai` (same account rule as `verse-anthropic`). They are
@@ -41,7 +41,7 @@ Verse user, so nothing in the design may depend on the owner's vault being prese
 |---|---|---|
 | **Reuse prep + a new `sim` runtime in the brain + a sim view in the app** | **Chosen** | Prep already turns notes, vault and commits into a grounded pack; the brain already streams Claude with caching; STT, bleed gate and the overlay exist |
 | Separate practice app | Rejected | Duplicates audio, STT, Keychain and settings |
-| Realtime voice model (gpt-live / Gemini Live) as the interviewer | Rejected for v1 | Bills outside the Max credit, and Alex measured gpt-live as laggy (2026-10-14). Revisit as an option later |
+| Realtime voice model (gpt-live / Gemini Live) as the interviewer | Rejected for v1 | Bills outside the Anthropic API credit, and the owner measured gpt-live as laggy (2026-10-14). Revisit as an option later |
 | Text chat only | Rejected | Speaking the answer is the point of practice |
 
 ## 5. Design
@@ -118,9 +118,9 @@ One protocol, three engines, chosen in Settings and per simulation:
 
 ### 5.5 Costs
 
-Measured in the spike and shown in Settings like meetings (no cap; Alex, 2026-10-14). Estimate to verify: one
+Measured in the spike and shown in Settings like meetings (no cap; the owner, 2026-10-14). Estimate to verify: one
 30-minute sim ≈ prep (Sonnet, once) + ~8 questions × (Haiku ask + judge) + report (Sonnet) ≈ well under $1.
-Cloud voice costs are billed by ElevenLabs/OpenAI to the user's own key and are not counted against the Max credit.
+Cloud voice costs are billed by ElevenLabs/OpenAI to the user's own key and are not counted against the Anthropic API credit.
 
 ## 6. Error handling
 
@@ -152,7 +152,7 @@ Cloud voice costs are billed by ElevenLabs/OpenAI to the user's own key and are 
 
 ## 8. Done means
 
-Alex pastes the Brightwave posting link, picks his CV, chooses Coach + Apple voice, and does a 10-minute practice
+the user pastes the Brightwave posting link, picks his CV, chooses Coach + Apple voice, and does a 10-minute practice
 interview end to end: spoken questions, his spoken answers, sensible follow-ups, Coach notes, and a report that
 cites his real projects and contains no invented numbers. The same run works with ElevenLabs and OpenAI voices
 when their keys are set, and in text mode with no voice key at all.

@@ -64,8 +64,8 @@
 {"wall":1791993712.2144,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":38.44,"text":"Could you","turn_id":"r3","type":"partial"}}
 {"wall":1791993712.7622,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":38.76,"text":"Could you describe","turn_id":"r3","type":"partial"}}
 {"wall":1791993713.3175,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":39.72,"text":"Could you describe Lantern for","turn_id":"r3","type":"partial"}}
-{"wall":1791993713.3176,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that Alex led.","turn_id":"r3","type":"chip"}}
-{"wall":1791993713.3176,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.","turn_id":"r3","type":"chip"}}
+{"wall":1791993713.3176,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that the owner led.","turn_id":"r3","type":"chip"}}
+{"wall":1791993713.3176,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.","turn_id":"r3","type":"chip"}}
 {"wall":1791993713.3185,"line":{"type":"metric","turn_id":"r3","stage":"fire","t":1791993713.318295,"id":"s0003","tier":"S","words":5,"hedge_after_s":1.5}}
 {"wall":1791993713.8751,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":39.96,"text":"Could you describe Lantern for us","turn_id":"r3","type":"partial"}}
 {"wall":1791993713.9897,"line":{"addressee":"me","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":40.136,"text":"Could you describe Lantern for us","turn_id":"r3","type":"turn"}}
@@ -270,7 +270,7 @@
 {"wall":1791993739.023,"line":{"type":"metric","turn_id":"","stage":"first_byte","t":1791993739.022932,"id":"r0011","tier":"R","lane":1,"new_connection":false}}
 {"wall":1791993739.0231,"line":{"type":"metric","turn_id":"","stage":"first_delta","t":1791993739.023048,"id":"r0011","tier":"R"}}
 {"wall":1791993739.409,"line":{"type":"actions","items":["Thomas — share the roadmap slide with everyone."]}}
-{"wall":1791993739.409,"line":{"type":"summary","decisions":["Thomas will take turns with Alex on the questions during today's interview."],"actions":["Thomas — share the roadmap slide with everyone."],"open":["How Lantern handled invoices in different languages, which was asked by Thessi and not yet answered."]}}
+{"wall":1791993739.409,"line":{"type":"summary","decisions":["Thomas will take turns with the user on the questions during today's interview."],"actions":["Thomas — share the roadmap slide with everyone."],"open":["How Lantern handled invoices in different languages, which was asked by Thessi and not yet answered."]}}
 {"wall":1791993739.409,"line":{"type":"metric","turn_id":"","stage":"done","t":1791993739.408915,"id":"r0011","tier":"R","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4549,"input_tokens":119,"output_tokens":91},"hedged":false,"winner_lane":1,"new_connection":false,"error":null,"discarded":false,"cost_usd":0.000103}}
 {"wall":1791993745.2621,"line":{"cue":false,"dir":"to_brain","speaker":"remote","t_audio_end":71.48,"text":"Ingrid","turn_id":"r7","type":"partial"}}
 {"wall":1791993745.2622,"line":{"fact_id":"f002","kind":"name","source_ref":"prep:L4","text":"Ingrid Solberg is the VP Engineering and the hiring manager on the panel.","turn_id":"r7","type":"chip"}}

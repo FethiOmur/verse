@@ -63,7 +63,7 @@ final class ReconfigureTests: XCTestCase {
         XCTAssertFalse(cfg0.emitMePartials)
 
         await e.reconfigure(roomMode: false, emitMePartials: true)
-        let meeting = await say(e, "owner can you walk me through how you built the routing service", at: 15)
+        let meeting = await say(e, "alex can you walk me through how you built the routing service", at: 15)
         XCTAssertEqual(meeting.turns.map(\.speaker), [.remote])
         XCTAssertEqual(meeting.turns.map(\.addressee), [.me])
         let cfg1 = await e.currentConfig

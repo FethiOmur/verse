@@ -10,14 +10,14 @@ import XCTest
 final class AskPanelRenderTests: XCTestCase {
     /// The Brightwave call's lines that the fictional chat cites.
     private static let lines: [String: AskCitedLine] = [
-        "0:14": AskCitedLine(speaker: "Lena", text: "Thanks for joining, Alex. I'm Lena, I lead platform at Brightwave. Before we dive in, can you tell me what you built at your last company?"),
+        "0:14": AskCitedLine(speaker: "Lena", text: "Thanks for joining, the owner. I'm Lena, I lead platform at Brightwave. Before we dive in, can you tell me what you built at your last company?"),
         "1:20": AskCitedLine(speaker: "Lena", text: "Six days to two is a big claim. How did you measure it, and what was the baseline?"),
         "2:10": AskCitedLine(speaker: "Lena", text: "Okay. And what did you stop doing to get there?"),
         "4:05": AskCitedLine(speaker: "Lena", text: "Let's talk about the team. How do you work with someone who disagrees with a technical decision of yours?"),
-        "4:41": AskCitedLine(speaker: "Alex", text: "I write down what would change my mind, and then we try the smaller option first. Last year that meant a nightly matching job instead of a real-time one, and nobody missed the real-time version."),
+        "4:41": AskCitedLine(speaker: "the owner", text: "I write down what would change my mind, and then we try the smaller option first. Last year that meant a nightly matching job instead of a real-time one, and nobody missed the real-time version."),
         "21:20": AskCitedLine(speaker: "Lena", text: "Sorry, my connection dropped. Where were we? Right, disagreement. One last thing: what would you need in your first month?"),
-        "21:47": AskCitedLine(speaker: "Alex", text: "A sandbox account, one person who owns the data export, and the last two post-mortems. I would rather read how things broke than how they are meant to work."),
-        "22:06": AskCitedLine(speaker: "Lena", text: "That is easy to arrange. Thank you, Alex, we will come back to you by Friday."),
+        "21:47": AskCitedLine(speaker: "the owner", text: "A sandbox account, one person who owns the data export, and the last two post-mortems. I would rather read how things broke than how they are meant to work."),
+        "22:06": AskCitedLine(speaker: "Lena", text: "That is easy to arrange. Thank you, the owner, we will come back to you by Friday."),
     ]
 
     func testRenderTheAskPanelStates() async throws {
@@ -56,11 +56,11 @@ final class AskPanelRenderTests: XCTestCase {
         try Data(HomeRender.Fixtures.chat.utf8).write(to: ChatLog.url(sessionDir: dir))
         let session = AskSession(makeBrain: { throw NSError(domain: "render", code: 1) })
         session.launchesBrain = false
-        session.open(AskContext(sessionDir: dir, ownerName: "Alex", title: "Brightwave · Lena Brandt", date: Date(), meCore: nil, rows: []))
+        session.open(AskContext(sessionDir: dir, ownerName: "the owner", title: "Brightwave · Lena Brandt", date: Date(), meCore: nil, rows: []))
         session.clearChat()
         let ink = VT.Window(dark: false)
         let size = NSSize(width: 340, height: 520)
-        let view = AskPanel(session: session, settings: AppSettings(defaults: UserDefaults(suiteName: "dev.fethiverse.verse.test-panel-render")),
+        let view = AskPanel(session: session, settings: AppSettings(defaults: UserDefaults(suiteName: "dev.example.verse.test-panel-render")),
                             stamps: Set(Self.lines.keys), lines: Self.lines, onCitation: { _ in }, onClose: {})
             .environment(\.homeInk, ink).environment(\.colorScheme, .light)
             .frame(width: size.width, height: size.height).background(ink.background)
@@ -117,11 +117,11 @@ final class AskPanelRenderTests: XCTestCase {
         try Data(HomeRender.Fixtures.chat.utf8).write(to: ChatLog.url(sessionDir: dir))
         let session = AskSession(makeBrain: { throw NSError(domain: "render", code: 1) })
         session.launchesBrain = false
-        session.open(AskContext(sessionDir: dir, ownerName: "Alex", title: "Brightwave · Lena Brandt", date: Date(), meCore: nil, rows: []))
+        session.open(AskContext(sessionDir: dir, ownerName: "the owner", title: "Brightwave · Lena Brandt", date: Date(), meCore: nil, rows: []))
         session.applyRender(state)
         let ink = VT.Window(dark: dark)
         let size = NSSize(width: 340, height: height)
-        let view = AskPanel(session: session, settings: AppSettings(defaults: UserDefaults(suiteName: "dev.fethiverse.verse.test-panel-render")),
+        let view = AskPanel(session: session, settings: AppSettings(defaults: UserDefaults(suiteName: "dev.example.verse.test-panel-render")),
                             stamps: Set(Self.lines.keys), lines: Self.lines, onCitation: { _ in }, onClose: {})
             .environment(\.homeInk, ink)
             .environment(\.colorScheme, dark ? .dark : .light)

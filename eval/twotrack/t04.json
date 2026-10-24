@@ -1,14 +1,14 @@
 {
  "id": "t04",
- "title": "Follow my answer: Alex leaves the card for a topic that is not in the pack at all (running); a follow card with at most one point and no invented fact",
+ "title": "Follow my answer: the owner leaves the card for a topic that is not in the pack at all (running); a follow card with at most one point and no invented fact",
  "lang": "en",
- "owner": "Alex",
+ "owner": "the owner",
  "participants": [
   "Ingrid"
  ],
  "voices": {
   "Ingrid": "Kathy",
-  "Alex": "Mara"
+  "the owner": "Mara"
  },
  "session": "sample-interview",
  "utterances": [
@@ -21,7 +21,7 @@
    "bank_id": "b001"
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "Sure, I'll give you the short version. Outside of work I run a lot. I just finished a half marathon last month and I'm planning a trail race next spring.",
    "offset_s": 1.2,
    "expect": "me_turn",

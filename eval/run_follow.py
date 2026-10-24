@@ -9,7 +9,7 @@ brain with follow off and sends no `partial` for the owner's own speech. This ru
 and keeps what the follow tests need: real `say` voices fix the true acoustic start and end of every utterance (the audio is
 rendered in a temp dir only for that and deleted at once), and the words of each utterance are then delivered to the brain the
 way a streaming recognizer would: one cumulative `partial` per 560 ms chunk with the words that have been spoken, spread evenly
-over the utterance, then a `turn` (remote: 0.35 s after the end, Alex: 1.2 s after, as the TurnEngine does). So the numbers include
+over the utterance, then a `turn` (remote: 0.35 s after the end, the owner: 1.2 s after, as the TurnEngine does). So the numbers include
 the brain's own latency and a recognizer-sized delay but no recognition errors.
 
 Output: $VERSE_EVAL_OUT/twotrack/<name>.{jsonl,meta.json,score.json,stderr.log}, the same files and the same scorer as run_twotrack.

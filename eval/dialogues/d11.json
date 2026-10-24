@@ -1,7 +1,7 @@
 {
  "id": "d11",
  "lang": "en",
- "owner": "Alex",
+ "owner": "the owner",
  "participants": [
   "Ingrid",
   "Tomas"
@@ -31,7 +31,7 @@
    "gap_before": 0.0
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -44,7 +44,7 @@
   },
   {
    "speaker": "Ingrid",
-   "text": "Alex, take your time with this one.",
+   "text": "the owner, take your time with this one.",
    "category": "statement",
    "is_question": false,
    "addressee": null,
@@ -65,7 +65,7 @@
    "gap_before": 0.99
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -110,7 +110,7 @@
    "gap_before": 1.09
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -133,7 +133,7 @@
    "gap_before": 0.96
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,
@@ -167,7 +167,7 @@
    "gap_before": 1.18
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers; silence on the remote channel)",
    "category": "answer",
    "is_question": false,

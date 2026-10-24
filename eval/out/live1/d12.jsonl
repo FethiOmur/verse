@@ -102,8 +102,8 @@
 {"wall":1791994207.2078,"line":{"bank_id":"b011","dir":"to_brain","score":0.74,"turn_id":"r2","type":"bank_hit"}}
 {"wall":1791994207.2082,"line":{"type":"metric","turn_id":"r2","stage":"fire","t":1791994207.2080798,"id":"s0004","tier":"S","words":4,"hedge_after_s":1.5}}
 {"wall":1791994207.7701,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":32.48,"text":"how accurate was the lantern","turn_id":"r2","type":"partial"}}
-{"wall":1791994207.7702,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that Alex led.","turn_id":"r2","type":"chip"}}
-{"wall":1791994207.7702,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.","turn_id":"r2","type":"chip"}}
+{"wall":1791994207.7702,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that the owner led.","turn_id":"r2","type":"chip"}}
+{"wall":1791994207.7702,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.","turn_id":"r2","type":"chip"}}
 {"wall":1791994207.7702,"line":{"bank_id":"b011","dir":"to_brain","score":0.865,"turn_id":"r2","type":"bank_hit"}}
 {"wall":1791994207.7791,"line":{"type":"metric","turn_id":"r2","stage":"first_byte","t":1791994207.7788742,"id":"s0004","tier":"S","lane":0,"new_connection":false}}
 {"wall":1791994207.7794,"line":{"type":"metric","turn_id":"r2","stage":"first_delta","t":1791994207.779247,"id":"s0004","tier":"S"}}
@@ -169,7 +169,7 @@
 {"wall":1791994220.0831,"line":{"type":"delta","id":"s0006","turn_id":"r3","tier":"S","text":"as-code ent","line_done":false}}
 {"wall":1791994220.0831,"line":{"type":"delta","id":"s0006","turn_id":"r3","tier":"S","text":"ry in the answer bank,","line_done":false}}
 {"wall":1791994220.0831,"line":{"type":"delta","id":"s0006","turn_id":"r3","tier":"S","text":" so I can't give","line_done":false}}
-{"wall":1791994220.0832,"line":{"type":"delta","id":"s0006","turn_id":"r3","tier":"S","text":" Alex a s","line_done":false}}
+{"wall":1791994220.0832,"line":{"type":"delta","id":"s0006","turn_id":"r3","tier":"S","text":" the owner a s","line_done":false}}
 {"wall":1791994220.0832,"line":{"type":"delta","id":"s0006","turn_id":"r3","tier":"S","text":"ourced answer on","line_done":false}}
 {"wall":1791994220.0832,"line":{"type":"delta","id":"s0006","turn_id":"r3","tier":"S","text":" that.","line_done":false}}
 {"wall":1791994220.0832,"line":{"type":"delta","id":"s0006","turn_id":"r3","tier":"S","text":"","line_done":true}}

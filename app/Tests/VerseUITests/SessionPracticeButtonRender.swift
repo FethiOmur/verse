@@ -47,7 +47,7 @@ final class SessionPracticeButtonRender: XCTestCase {
         try makeSession("Northwind Labs technical", in: root, summary: false, at: at(daysAgo: 2, hour: 10, minute: 5))
         try makeSession("Harbor Pine intro call", in: root, summary: true, at: at(daysAgo: 3, hour: 15, minute: 0))
         try makeSession("Brightwave first call", in: root, summary: true, at: at(daysAgo: 6, hour: 9, minute: 30))
-        let suite = "dev.fethiverse.verse.render-practicebtn-\(UUID().uuidString)"
+        let suite = "dev.example.verse.render-practicebtn-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite) ?? .standard
         defer { UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite) }
         let model = HomeSessionsModel(root: root, defaults: defaults)

@@ -93,7 +93,7 @@ def test_approximate_figures_tolerate_rounding_but_exact_ones_do_not():
 
 
 def test_gross_and_net_are_different_quantities():
-    b = book(["- Salary expectation: EUR 70,000 gross per year."], ["Salary expectation: EUR 65,000 net per year."])
+    b = book(["- Salary expectation: EUR 70,000 gross per year."], ["Salary expectation: EUR 60,000 net per year."])
     assert find_conflicts(b) == []
     plain = book(["- Salary expectation: EUR 70,000 per year."], ["Salary expectation: EUR 80,000 per year."])
     assert len(find_conflicts(plain)) == 1

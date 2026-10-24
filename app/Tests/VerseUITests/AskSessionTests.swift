@@ -245,7 +245,7 @@ final class AskSessionTests: XCTestCase {
     }
 
     func testAskModelIsRememberedAppWide() {
-        let suite = "dev.fethiverse.verse.test-\(UUID().uuidString)"
+        let suite = "dev.example.verse.test-\(UUID().uuidString)"
         let d = UserDefaults(suiteName: suite)!
         defer { d.removePersistentDomain(forName: suite) }
         let a = AppSettings(defaults: d)
@@ -294,7 +294,7 @@ final class AskSessionTests: XCTestCase {
         for f in ["pack.md", "summary.md"] { try FileManager.default.copyItem(at: fx.appendingPathComponent(f), to: dir.appendingPathComponent(f)) }
         let raw = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: fx.appendingPathComponent("transcript.json"))) as? [[String: String]])
         let rows = raw.map { AskRow(stamp: $0["stamp"] ?? "", speaker: $0["speaker"] ?? "", text: $0["text"] ?? "") }
-        let ctx = AskContext(sessionDir: dir, ownerName: "Alex", title: "Larkspur Health intro", date: Date(), meCore: nil, rows: rows)
+        let ctx = AskContext(sessionDir: dir, ownerName: "the owner", title: "Larkspur Health intro", date: Date(), meCore: nil, rows: rows)
         let brainDir = repo.appendingPathComponent("brain", isDirectory: true)
         let s = AskSession(model: .sonnet, makeBrain: {
             let b = try BrainProcess(brainDir: brainDir, extraArgs: [])

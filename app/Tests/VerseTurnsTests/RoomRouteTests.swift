@@ -27,9 +27,9 @@ final class RoomRouteTests: XCTestCase {
 
     func testRoomTurnsAreLabelledRoomAndNeverForAnyone() async {
         let e = engine()
-        // "Alex" names the owner and "you" is a second person: in a meeting that is a question for him. In the room nobody
+        // "the owner" names the owner and "you" is a second person: in a meeting that is a question for him. In the room nobody
         // can be told from anybody, so the addressee stays unknown.
-        let out = await hear("Alex can you walk me through how you built the routing service", e)
+        let out = await hear("the owner can you walk me through how you built the routing service", e)
         let turns = out.turns
         XCTAssertEqual(turns.count, 1)
         XCTAssertEqual(turns.first?.speaker, .room)
@@ -41,7 +41,7 @@ final class RoomRouteTests: XCTestCase {
 
     func testAMeetingStaysAsItWas() async {
         let e = engine(room: false)
-        let out = await hear("Alex can you walk me through how you built the routing service", e)
+        let out = await hear("the owner can you walk me through how you built the routing service", e)
         XCTAssertEqual(out.turns.first?.speaker, .remote)
         XCTAssertEqual(out.turns.first?.addressee, .me)
     }

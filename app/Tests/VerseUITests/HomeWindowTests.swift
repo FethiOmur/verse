@@ -99,7 +99,7 @@ final class HomeSessionsModelTests: XCTestCase {
     }
 
     func testChecklistRemembersTickedItemsPerSession() {
-        let suite = "dev.fethiverse.verse.test-\(UUID().uuidString)"
+        let suite = "dev.example.verse.test-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let store = HomeChecklistStore(defaults: defaults)
@@ -160,7 +160,7 @@ final class HomeRouterTests: XCTestCase {
 final class HomeUpNextTests: XCTestCase {
     private func makeModel(prepare: @escaping @Sendable (MeetingEvent, String) async throws -> URL,
                            onPrepared: @escaping @MainActor (String) -> Void = { _ in }) -> HomeUpNextModel {
-        let defaults = UserDefaults(suiteName: "dev.fethiverse.verse.test-\(UUID().uuidString)")!
+        let defaults = UserDefaults(suiteName: "dev.example.verse.test-\(UUID().uuidString)")!
         return HomeUpNextModel(settings: AppSettings(defaults: defaults), meeting: MeetingSettings(defaults: defaults), sessions: { [] },
                                eventMap: EventSessionMap(url: FileManager.default.temporaryDirectory.appendingPathComponent("evmap-\(UUID().uuidString).json")),
                                prepare: prepare, onPrepared: onPrepared)
@@ -243,7 +243,7 @@ final class HomeUpNextTests: XCTestCase {
     }
 
     private func calendarModel(_ entries: [CalendarEntry]) -> HomeUpNextModel {
-        let defaults = UserDefaults(suiteName: "dev.fethiverse.verse.test-\(UUID().uuidString)")!
+        let defaults = UserDefaults(suiteName: "dev.example.verse.test-\(UUID().uuidString)")!
         let meeting = MeetingSettings(defaults: defaults)
         meeting.useCalendar = true
         return HomeUpNextModel(settings: AppSettings(defaults: defaults), meeting: meeting, sessions: { [] },

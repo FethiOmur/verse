@@ -20,8 +20,8 @@ def test_fixtures_are_valid_and_labelled(fid):
 
 
 def test_diverge_label_needs_off_from_word():
-    bad = {"id": "x", "owner": "Alex", "participants": ["I"], "voices": {"I": "a", "Alex": "b"},
-           "utterances": [{"speaker": "Alex", "text": "hi", "offset_s": 0, "expect": "me_turn", "follow": "diverge"}]}
+    bad = {"id": "x", "owner": "the owner", "participants": ["I"], "voices": {"I": "a", "the owner": "b"},
+           "utterances": [{"speaker": "the owner", "text": "hi", "offset_s": 0, "expect": "me_turn", "follow": "diverge"}]}
     assert any("off_from_word" in e for e in twotrack.validate(bad))
 
 
@@ -38,7 +38,7 @@ def test_partials_are_cumulative_ordered_and_end_with_the_whole_text():
 def test_schedule_orders_partials_turns_and_the_bank_hit():
     f = twotrack.load("t03")
     tl = [{"index": 0, "speaker": "Ingrid", "channel": "remote", "t_start": 4.0, "t_end": 6.0},
-          {"index": 1, "speaker": "Alex", "channel": "me", "t_start": 7.0, "t_end": 17.0}]
+          {"index": 1, "speaker": "the owner", "channel": "me", "t_start": 7.0, "t_end": 17.0}]
     msgs = RF.schedule(f, tl, 3.0)
     assert [t for t, _ in msgs] == sorted(t for t, _ in msgs)
     kinds = [(m["type"], m.get("speaker")) for _, m in msgs]
@@ -50,16 +50,16 @@ def test_schedule_orders_partials_turns_and_the_bank_hit():
     assert last_me_partial < turn_m
 
 
-LABEL = {"id": "tf", "owner": "Alex", "utterances": [
+LABEL = {"id": "tf", "owner": "the owner", "utterances": [
     {"speaker": "Ingrid", "text": "Tell me about yourself.", "expect": "answer"},
-    {"speaker": "Alex", "text": "one two three four five six seven eight nine ten", "expect": "me_turn", "follow": "diverge", "off_from_word": 5},
+    {"speaker": "the owner", "text": "one two three four five six seven eight nine ten", "expect": "me_turn", "follow": "diverge", "off_from_word": 5},
     {"speaker": "Ingrid", "text": "Next?", "expect": "answer"},
-    {"speaker": "Alex", "text": "stays on the card", "expect": "me_turn", "follow": "none"}]}
+    {"speaker": "the owner", "text": "stays on the card", "expect": "me_turn", "follow": "none"}]}
 META = {"timeline": [
     {"index": 0, "speaker": "Ingrid", "channel": "remote", "t_start": 1.0, "t_end": 2.0},
-    {"index": 1, "speaker": "Alex", "channel": "me", "t_start": 10.0, "t_end": 20.0},
+    {"index": 1, "speaker": "the owner", "channel": "me", "t_start": 10.0, "t_end": 20.0},
     {"index": 2, "speaker": "Ingrid", "channel": "remote", "t_start": 30.0, "t_end": 31.0},
-    {"index": 3, "speaker": "Alex", "channel": "me", "t_start": 40.0, "t_end": 42.0}]}
+    {"index": 3, "speaker": "the owner", "channel": "me", "t_start": 40.0, "t_end": 42.0}]}
 
 
 def ev(w, **o):

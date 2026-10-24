@@ -13,8 +13,8 @@
 {"wall":1791992729.0649,"line":{"type":"metric","turn_id":"r1","stage":"first_point","t":1791992729.0648808,"id":"s0001","tier":"S"}}
 {"wall":1791992729.136,"line":{"type":"metric","turn_id":"r1","stage":"done","t":1791992729.135803,"id":"s0001","tier":"S","stop_reason":"end_turn","usage":{"cache_creation_input_tokens":0,"cache_read_input_tokens":4461,"input_tokens":40,"output_tokens":98},"hedged":false,"winner_lane":0,"new_connection":false,"error":null,"discarded":false,"cost_usd":9.8e-05}}
 {"wall":1791992729.2272,"line":{"cue":true,"dir":"to_brain","speaker":"remote","t_audio_end":18.84,"text":"Can you tell me about the Lantern project","turn_id":"r1","type":"partial"}}
-{"wall":1791992729.2273,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that Alex led.","turn_id":"r1","type":"chip"}}
-{"wall":1791992729.2273,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.","turn_id":"r1","type":"chip"}}
+{"wall":1791992729.2273,"line":{"fact_id":"f006","kind":"name","source_ref":"prep:L13","text":"Lantern is the LLM invoice-extraction project that the owner led.","turn_id":"r1","type":"chip"}}
+{"wall":1791992729.2273,"line":{"fact_id":"g003","kind":"term","source_ref":"prep:L13","text":"Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.","turn_id":"r1","type":"chip"}}
 {"wall":1791992729.2273,"line":{"bank_id":"b003","dir":"to_brain","score":1,"turn_id":"r1","type":"bank_hit"}}
 {"wall":1791992729.7854,"line":{"addressee":"me","dir":"to_brain","kind":"question","speaker":"remote","t_audio_end":19.015,"text":"Can you tell me about the Lantern project","turn_id":"r1","type":"turn"}}
 {"wall":1791992729.7855,"line":{"since_audio_end_s":0.657,"source":"verse-run","stage":"turn_sent","t":1791992729.785,"t_audio_end":19.015,"t_audio_end_wall":1791992729.128,"turn_id":"r1","type":"metric"}}

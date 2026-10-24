@@ -142,7 +142,7 @@ final class E5BundleCacheCleanerTests: XCTestCase {
     func testDefaultRootsAreTheThreeVerseCaches() {
         let paths = E5BundleCacheCleaner.defaultRoots().map { $0.path }
         XCTAssertEqual(paths.count, 3)
-        for id in ["dev.fethiverse.verse", "dev.verse.run", "dev.verse.listen"] {
+        for id in ["dev.example.verse", "dev.verse.run", "dev.verse.listen"] {
             XCTAssertTrue(paths.contains { $0.hasSuffix("/Library/Caches/\(id)/com.apple.e5rt.e5bundlecache") }, id)
         }
     }

@@ -1,4 +1,4 @@
-{"scored_before_unblinding": true, "scale": "G = groundedness (5 = every number/name/claim traceable to the pack, 1 = invented claims); U = usefulness for Alex to say right now (5 = directly answers, sayable)",
+{"scored_before_unblinding": true, "scale": "G = groundedness (5 = every number/name/claim traceable to the pack, 1 = invented claims); U = usefulness for the user to say right now (5 = directly answers, sayable)",
  "scores": {
   "q01": {"X": {"G": 5, "U": 4}, "Y": {"G": 5, "U": 4}},
   "q02": {"X": {"G": 5, "U": 4}, "Y": {"G": 5, "U": 4}},

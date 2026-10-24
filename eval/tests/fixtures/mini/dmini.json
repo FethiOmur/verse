@@ -1,7 +1,7 @@
 {
  "id": "dmini",
  "lang": "en",
- "owner": "Alex",
+ "owner": "the owner",
  "participants": [
   "Ingrid",
   "Tomas"
@@ -24,7 +24,7 @@
    "t_end": 3.0
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers)",
    "category": "answer",
    "is_question": false,
@@ -45,7 +45,7 @@
    "t_end": 11.0
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers)",
    "category": "answer",
    "is_question": false,
@@ -86,7 +86,7 @@
    "t_end": 24.5
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers)",
    "category": "answer",
    "is_question": false,
@@ -127,7 +127,7 @@
    "t_end": 40.0
   },
   {
-   "speaker": "Alex",
+   "speaker": "the owner",
    "text": "(answers)",
    "category": "answer",
    "is_question": false,

@@ -1,7 +1,7 @@
 # Verse: five features (transcript, Ask this meeting, folders, spoken mock interview, interface language)
 
-Status: decided 2026-10-20. the owner's rule applies: after a spec, build. No open question blocks any package (section 9).
-Requested by Alex on 19 Oct. Builds on the UI redesign (`2026-10-16-verse-ui-redesign-design.md`: tokens, home window,
+Status: decided 2026-10-20. The rule applies: after a spec, build. No open question blocks any package (section 9).
+Requested by the owner on 19 Oct. Builds on the UI redesign (`2026-10-16-verse-ui-redesign-design.md`: tokens, home window,
 "leave out" list), anytime calls (`2026-10-16-verse-anytime-calls-design.md`: me layer, adhoc sessions, `events.jsonl`,
 `general-core`) and the interview sim (`2026-10-14-verse-interview-sim-design.md`).
 
@@ -20,7 +20,7 @@ Spikes run for this spec (scratch package, not committed), on this Mac (Swift 6.
   every `*.bundle` next to the binary into `Verse.app/Contents/Resources/`. **Confirmed from the generated accessor**;
   that the localized bundle survives `codesign --verify --strict` is checked by the L0 acceptance step.
 - The test Mac's preferred languages include `tr-TR, it-IT`. "Follow the system" therefore shows Verse in **Turkish** on first
-  launch after L1 ships. Alex switches to English in Settings if he prefers.
+  launch after L1 ships. the owner switches to English in Settings if he prefers.
 
 ## 1. Goal
 
@@ -29,10 +29,10 @@ Spikes run for this spec (scratch package, not committed), on this Mac (Swift 6.
 2. **Ask this meeting.** A chat panel on the session page. A Claude agent answers questions about that one meeting from
    its transcript, summary, prep and the owner's me layer, streams, cites timestamps, shows the cost per answer and keeps the
    chat on disk.
-3. **Folders by company or person.** Alex makes folders ("Acme", "Lena Vance"), moves sessions into them, and the
+3. **Folders by company or person.** the owner makes folders ("Acme", "Lena Vance"), moves sessions into them, and the
    Sessions list groups by them. Verse suggests a folder; renaming or deleting a folder never touches a session.
 4. **Spoken mock interview before a meeting.** Practice runs a mock interview built from a prepared meeting session.
-   The notch asks the questions aloud in the chosen voice, Alex answers aloud, and the sim's STT, feedback and report are
+   The notch asks the questions aloud in the chosen voice, the owner answers aloud, and the sim's STT, feedback and report are
    reused. The next question is synthesized while he answers.
 5. **Interface language.** The whole app UI in English, Italian or Turkish, switchable at run time. The default follows
    the system. Call and answer languages are unchanged.
@@ -64,10 +64,10 @@ What is missing: a mock interview built from a **meeting session** (today it nee
 | Model | New `TranscriptDocument` (Swift, VerseUI) is built from `transcript.jsonl`, plus `events.jsonl` when present and `AppSettings.ownerName`. It is the single source of truth for rows, timestamps and speakers. Ask (2.2) receives its rows from Swift and never recomputes them in Python. |
 | Runs | One session folder can hold several runs (restarts, a re-Start of the same session; measured: `ironwood-lena` has 5 `start` events and its `t_audio_end` resets 3 times). **Forward:** every transcript line gains `run_start` (the runner's `wall0`, Unix seconds, 3 decimals) and `t_wall` (= `wall0 + t_audio_end`). **Legacy files** (no `run_start`): a new run starts when a `turn_id` repeats inside the current run or `t_audio_end` drops more than 30 s below the run's maximum. |
 | Timestamp | Elapsed time since the session's first run started: `m:ss` under an hour, `h:mm:ss` from an hour. Forward: `t_wall − min(run_start)`. Legacy with `events.jsonl` `start` events: transcript runs are aligned to the **last** N starts (early starts without speech have no lines), and elapsed = `(start_k − first aligned start) + t_audio_end`. Legacy without events, or with fewer starts than runs: cumulative (run k begins where run k−1's last line ended). Inside a run, rows are ordered by `t_audio_end` (a stable sort: the me and remote channels interleave by audio end). If one run has the same `turn_id` twice, the later text replaces the earlier one in the earlier one's position (today's `questions()` rule). |
-| Speakers | `me` → `ownerName` ("Alex"). `remote` → "Other" (localized). `room`: relabelled from `events.jsonl` `room_text` finals: `label:"me"` → Alex; `label:"split"` with the new `me_words` → two rows (the first `me_words` words are Alex, the rest stays room); a split without `me_words` (legacy) stays room. An unrelabelled `room` row is labelled **"Room"**, because before phase D the one mic holds both voices and "Other" would be wrong whenever Alex spoke freely. Rows of phase D's split route arrive as `me`/`remote` already. |
+| Speakers | `me` → `ownerName` ("the owner"). `remote` → "Other" (localized). `room`: relabelled from `events.jsonl` `room_text` finals: `label:"me"` → the owner; `label:"split"` with the new `me_words` → two rows (the first `me_words` words are the owner, the rest stays room); a split without `me_words` (legacy) stays room. An unrelabelled `room` row is labelled **"Room"**, because before phase D the one mic holds both voices and "Other" would be wrong whenever the owner spoke freely. Rows of phase D's split route arrive as `me`/`remote` already. |
 | Cards inline | From `events.jsonl` only, and only when wall times are known (forward files, or legacy files with aligned starts). One card per turn, shown under the row it answered: SAY = the last `say` line of the turn, points = every point line of the turn in order without repeats, and a tier list such as "F · D". A card whose turn id has no row (`now-<n>`, follow cards) attaches under the last row whose wall time ≤ the card's `t`. **Forward:** the brain writes a new `card_done{turn,tier,id,say,points}` event when a call finishes, with each line clipped at 240 characters. Today only the first line of each call is logged, at 60 characters. Legacy cards show those 60 characters with "…". A **Cards** toggle in the transcript toolbar is on by default and hidden when the session has no events. |
 | Search | A field in the transcript toolbar; ⌘F focuses it. Matching is case- and accent-insensitive with Turkish folding (`TextFold.fold`: lowercase with the root locale, strip diacritics, `ı`→`i`), so "istanbul" finds "İstanbul" and "perche" finds "perché". It searches row text and speaker names, not card text. "3 of 17" with ↑/↓ buttons; ⏎ or ⌘G goes to the next match, ⇧⏎ or ⇧⌘G to the previous one; Esc clears. Matches get a `VT.mint` 35 % background and the current match a full `VT.mint` fill with `VT.onMint` text, the analogue of the system's find highlight with the one accent. Rows stay on screen (no filtering), so context is kept. |
-| Copy / export | **Copy** (secondary) copies the whole transcript as plain text, `[m:ss] Name: text` per row, without cards. Row text is also selectable (`.textSelection(.enabled)`). **Export…** (secondary, a menu) offers Markdown (`.md`) or Plain text (`.txt`) through an `NSSavePanel` named `<title> transcript.<ext>`. Markdown: `# <title>`, a meta line (date, route or kind, turn count), then `**m:ss Name:** text` paragraphs, with cards (when the toggle is on) as `> Card (F · D): <SAY>` plus `> - point` lines. Nothing is written anywhere except the place Alex picks. |
+| Copy / export | **Copy** (secondary) copies the whole transcript as plain text, `[m:ss] Name: text` per row, without cards. Row text is also selectable (`.textSelection(.enabled)`). **Export…** (secondary, a menu) offers Markdown (`.md`) or Plain text (`.txt`) through an `NSSavePanel` named `<title> transcript.<ext>`. Markdown: `# <title>`, a meta line (date, route or kind, turn count), then `**m:ss Name:** text` paragraphs, with cards (when the toggle is on) as `> Card (F · D): <SAY>` plus `> - point` lines. Nothing is written anywhere except the place the owner picks. |
 | Header changes | The header's "Transcript" button (it opened Finder) goes away. "Show in Finder" moves into a "More" menu (`ellipsis.circle`, neutral) in the header. "Use for Start" and "Save to vault" stay. |
 | Summary headings | `summary.md` stays English (it is also saved to the vault). The detail maps its known headings (Summary, Decisions, Actions → "Follow up", Open questions → "Still open", Conflicts) to localized titles (L1). |
 
@@ -80,7 +80,7 @@ What is missing: a mock interview built from a **meeting session** (today it nee
 - **Rows** in a `LazyVStack` inside a `ScrollViewReader`, 20 pt side padding.
   - A *block* is consecutive rows of one speaker less than 60 s apart.
   - Block header: the timestamp in a 52 pt gutter (11 medium, `ink.tertiary`, monospaced digits, right-aligned), then the
-    name (12 semibold; Alex in `ink.primary`, Other and Room in `ink.secondary`).
+    name (12 semibold; the owner in `ink.primary`, Other and Room in `ink.secondary`).
   - Each row's text: 13 regular, `ink.primary`, line spacing 4. A row's own timestamp shows in the gutter on hover.
   - Spacing: 14 pt between blocks, 6 pt between rows.
 - **Card**: an inset fill (`ink.fill`, radius 9, padding 10/12) indented to the text column.
@@ -95,9 +95,9 @@ What is missing: a mock interview built from a **meeting session** (today it nee
 | Topic | Decision |
 |---|---|
 | Process | A **third mode of the brain CLI**, run as **its own child process**: `python -u -m verse_brain.runtime` whose first line is `ask_start` (today the first line already picks meeting vs sim, `runtime/__main__.py`). It is started when the panel opens and ended when the panel closes, when another session is selected, when the window closes, or after 10 min idle (restarted lazily on the next question, with the history rebuilt from `chat.jsonl`). It is never a command inside a live meeting's brain process: that process is latency-critical and its rate bucket and keep-alive must not compete with a chat. A one-shot CLI per question was rejected because it would re-read the files and re-open TLS for every answer and could not stream with cancel as cleanly. |
-| Key | The brain's own Keychain read (`prep/keychain.py`, service `verse-anthropic`, the Individual Org key funded by the Max plan's credit). It never uses OAuth or a claude.ai login, and the key is never on argv or in a log. `--fake` uses canned answers (tests, and Settings → Testing → Fake brain). |
+| Key | The brain's own Keychain read (`prep/keychain.py`, service `verse-anthropic`, the Individual Org key funded by the API plan's credit). It never uses OAuth or a claude.ai login, and the key is never on argv or in a log. `--fake` uses canned answers (tests, and Settings → Testing → Fake brain). |
 | When available | For meetings and adhoc calls with a non-empty transcript. It is disabled while that session is the one recording (help text: "Available when the call ends"). It is not offered for practice runs or prepared-but-unused sessions. |
-| Grounding | One cached user block, in this order: `ABOUT OWNER` (`me.md`, only when "Use my profile in every session" is on; MY NOTES lead as PRIORITIES, as in the live runtime) → `MEETING PREP` (`pack.md` without its STYLE GUIDE section; "(none: unprepared call)" when empty) → `SUMMARY` (`summary.md`, or "(none yet)") → `TRANSCRIPT` (`[m:ss] Name: text`, one line per row, rows from Swift). |
+| Grounding | One cached user block, in this order: `ABOUT ME` (`me.md`, only when "Use my profile in every session" is on; MY NOTES lead as PRIORITIES, as in the live runtime) → `MEETING PREP` (`pack.md` without its STYLE GUIDE section; "(none: unprepared call)" when empty) → `SUMMARY` (`summary.md`, or "(none yet)") → `TRANSCRIPT` (`[m:ss] Name: text`, one line per row, rows from Swift). |
 | Prompt layout | `system` (frozen, English, about 450 tokens; see 3.2) → `messages[0]` user = [grounding block with `cache_control`] + [question 1] → assistant answer 1 → user question 2 → … Top-level automatic `cache_control` caches through the last message: two breakpoints in all. History: the last 12 Q/A pairs after the last `reset`. Older pairs drop from the front, which only invalidates history after the grounding block; the grounding block stays cached. |
 | Long meetings | The tokens of the grounding block are counted once at `ask_start` with `count_tokens` (free) on Sonnet. ≤ **180,000 tokens** (about 15 hours of talk; a 30-minute call is about 20k): **full** mode, the whole transcript cached. Above that, **chunked** mode: the cached block holds me, prep, summary and a `TRANSCRIPT INDEX` (per 10-minute window: the stamp range and the first sentence of its first 3 turns). Each question's tail carries `TRANSCRIPT EXCERPTS`: chunks of about 6k tokens cut on turn boundaries, ranked by BM25 over accent-folded words of the question plus the previous question, the top ones up to 60k tokens, in time order. No extra model call. |
 | Models | A picker in the panel: **Haiku · Sonnet · Opus**, default **Sonnet**, remembered app-wide (`AppSettings.askModel`). Ids come from `brain/verse_brain/prep/model.py` and the claude-api skill (cached 2026-10-06): `claude-haiku-5-5`, `claude-sonnet-5-5`, new `claude-opus-5-5`. Changing the model mid-chat is allowed. The next answer writes a new cache (caches are per model), and the panel says nothing about it. |
@@ -183,11 +183,11 @@ What is missing: a mock interview built from a **meeting session** (today it nee
 | A meeting: setup | `HomeRow` "Meeting": a popup of prepared sessions (non-empty `pack.md`; not `general-core`, `adhoc-*` or `sim-*`), newest first; the default is the nearest Up next item that has a session, else the newest. A preview row reads "From its prep: 14 likely questions · 9 facts" (non-empty lines of `bank.jsonl`, `[f…]` lines of FACTS). Then the existing **Interview** section (Type, Difficulty, Length, Feedback, Interviewer voice). The "Company" field and the **Your experience** section are hidden in this mode: the pack carries the evidence, and `me.md` is added when "Use my profile in every session" is on. Primary: **Build interview ⌘↩**, then **Start practice ⌘↩** as today. |
 | Prep | `python -m verse_brain.prep --sim --from-session <DIR> [--me <me.md>] --type … --difficulty … --length … --out <root> [--fake]`. One Sonnet call (the existing sim prep tuple). **Questions are decided by code, not the model:** the opener (bank entry `b001` when its question asks about background, else the sim's `OPENER_TEXT`), then bank entries in bank order, cut to `question_count(length)`, each keeping `bank_id`. The model writes only the competencies (each quoting a pack line, checked against the pack text by `SourceBook` like posting quotes today), the rubric, and per question the `kind`, `competency_ids`, `evidence_ids` and 1–2 `follow_ups`. Evidence comes from the pack (and `me.md`), with sources verified as today. A bank with fewer than 3 entries means the model plans the remaining questions from the pack (the existing planning path). The output folder is `sim-YYYYMMDD-HHMM-<source session>`, holding `sim.json` (adds `"source":"session"` and `"source_session":"<name>"`; `posting_url` null), `source_pack.md` (the pack text used, in place of `posting.txt`) and `sim_pack.md`. Language: `meta.json` `languages[0]`, else `en`. |
 | Voice without a key | The **macOS system voice (AVSpeechSynthesizer, `AppleVoice`)**, which is already the default and the per-sentence fallback. Speaking aloud is the point of this feature, the best installed Premium/Enhanced voice for the language is used, and it costs nothing. Text only stays a choice the user can make, not the fallback. |
-| Providers | As built and confirmed again on 20 Oct (official docs): **OpenAI** `gpt-4o-mini-tts` (newest; `tts-1`, `tts-1-hd` older), 13 voices, default `marin`, Italian and Turkish listed; price about $0.015 per minute of audio ($0.60 / 1M text-in tokens, $12 / 1M audio-out tokens; third-party pages, the official pricing page snippet agrees). **ElevenLabs** `eleven_flash_v2_5` (about 75 ms, 32 languages including it/tr), about $0.05 per 1,000 characters on the API (third-party pages; the official page says 0.5–1 credit per character for Flash). A 30-minute mock (about 3,500 characters spoken) costs about $0.05 on OpenAI or $0.18 on ElevenLabs, billed to the user's own key, not the Max credit. `eleven_v4_turbo` (new, about 100 ms) is **not used**: the docs say v4 is served through the Text to Dialogue API, and whether the plain TTS endpoint accepts `eleven_v4_turbo` is **unconfirmed**. |
+| Providers | As built and confirmed again on 20 Oct (official docs): **OpenAI** `gpt-4o-mini-tts` (newest; `tts-1`, `tts-1-hd` older), 13 voices, default `marin`, Italian and Turkish listed; price about $0.015 per minute of audio ($0.60 / 1M text-in tokens, $12 / 1M audio-out tokens; third-party pages, the official pricing page snippet agrees). **ElevenLabs** `eleven_flash_v2_5` (about 75 ms, 32 languages including it/tr), about $0.05 per 1,000 characters on the API (third-party pages; the official page says 0.5–1 credit per character for Flash). A 30-minute mock (about 3,500 characters spoken) costs about $0.05 on OpenAI or $0.18 on ElevenLabs, billed to the user's own key, not the Anthropic API credit. `eleven_v4_turbo` (new, about 100 ms) is **not used**: the docs say v4 is served through the Text to Dialogue API, and whether the plain TTS endpoint accepts `eleven_v4_turbo` is **unconfirmed**. |
 | Latency: sentences | Every queued `say` sentence starts its synthesis **at once** (sentence n+1 synthesizes while sentence n plays) through a new in-memory `PrefetchCache`. Today the next sentence is fetched only after the previous one has played. |
-| Latency: next question | While Alex answers a planned question, the brain generates the **next planned question's line speculatively** (Haiku ASK, the tail adds "Do not refer to the candidate's previous answer; start with the question itself") and sends `say_prefetch{id,sentences}`. The line = a short acknowledgement from a fixed rotating list in the interview language ("Thank you.", "Okay.", "Got it.", …) + the question sentences. Swift synthesizes them into the cache. When JUDGE says NEXT (or on skip), the brain sends the normal `say` lines with the same id and identical text: a cache hit, so playback starts as soon as JUDGE returns. On FOLLOW or PUSH the follow-up streams as today, and the prefetched line waits for the next NEXT. A failed speculative ASK means the normal ASK runs at NEXT. Extra cost: one Haiku call (about $0.0003) only when the interview ends before the line is used. Apple voice lines are not pre-synthesized (it starts in tens of ms); the cache still holds `.live` entries so the flow is uniform. |
+| Latency: next question | While the owner answers a planned question, the brain generates the **next planned question's line speculatively** (Haiku ASK, the tail adds "Do not refer to the candidate's previous answer; start with the question itself") and sends `say_prefetch{id,sentences}`. The line = a short acknowledgement from a fixed rotating list in the interview language ("Thank you.", "Okay.", "Got it.", …) + the question sentences. Swift synthesizes them into the cache. When JUDGE says NEXT (or on skip), the brain sends the normal `say` lines with the same id and identical text: a cache hit, so playback starts as soon as JUDGE returns. On FOLLOW or PUSH the follow-up streams as today, and the prefetched line waits for the next NEXT. A failed speculative ASK means the normal ASK runs at NEXT. Extra cost: one Haiku call (about $0.0003) only when the interview ends before the line is used. Apple voice lines are not pre-synthesized (it starts in tens of ms); the cache still holds `.live` entries so the flow is uniform. |
 | Audio storage | **Memory only.** `PrefetchCache` holds at most 16 sentences and 8 MB (least recently used dropped first). It is cleared at the end of the interview, on `end`, and when the runner is released. Nothing is written to disk. The cache exists for the prefetch and for **repeat** (the same line replays without a second paid call). That is the justification, and it never outlives the session. |
-| Languages | The interviewer speaks the session language. `runtime/sim.py`'s fixed lines (SILENCE, CANDIDATE_Q, CLOSE, CLOSE_EARLY, ANSWER_FALLBACK and the new ACK list) get Italian and Turkish versions (executor-written, Alex reviews). STT: `ListenSimMic(lang:)` with the Apple engines for it/tr, as in meetings. The filler count stays English-only; for it/tr the report says "Fillers are counted for English only". |
+| Languages | The interviewer speaks the session language. `runtime/sim.py`'s fixed lines (SILENCE, CANDIDATE_Q, CLOSE, CLOSE_EARLY, ANSWER_FALLBACK and the new ACK list) get Italian and Turkish versions (executor-written, the owner reviews). STT: `ListenSimMic(lang:)` with the Apple engines for it/tr, as in meetings. The filler count stays English-only; for it/tr the report says "Fillers are counted for English only". |
 | Reused as is | Half-duplex turn-taking, the bleed rule, the ⌥Space done key, Coach and Realistic feedback, grading, `report.html`, the notch capsule states 6/6b, the 20 s silence prompt, and the voice fallback chip. |
 
 ### 2.5 Interface language
@@ -205,7 +205,7 @@ What is missing: a mock interview built from a **meeting session** (today it nee
 | Extraction | `app/scripts/l10n-sync.sh`: `swift build` (debug), then collect every `*.stringsdata` under `.build` whose path contains `VerseUI` or `VerseApp` (the Swift Build backend puts them under `.build/out/Intermediates.noindex/…/Objects-normal/arm64/`), then `xcrun xcstringstool sync app/Sources/VerseUI/Resources/Localizable.xcstrings --stringsdata …`. |
 | Check | `app/scripts/l10n-check.py [--allow-missing]` reads the catalog and reports keys without `it`/`tr`, stale keys, and placeholder mismatches (the count and kind of `%lld`, `%@`, `%.2f` must match `en`). It exits 1 on any non-stale key missing it or tr, unless `--allow-missing`. |
 | Lint | `LocalizationLintTests` (L1) fails on a `Text("`, `Button("`, `Label("`, `Toggle("`, `.help("`, `confirmationDialog("` or `alert("` literal in VerseUI/VerseApp without `bundle:`, unless the line carries `// l10n:verbatim`. |
-| Translation process | Executors write it and tr for every key (L1), following the glossary below. Italian uses "tu", like Apple's Italian UI. Turkish uses macOS-style imperatives ("Kaydet", "Sil") and avoids direct address. `app/scripts/l10n-review.py --lang tr\|it` writes `docs/l10n/review-<lang>.md` (key \| en \| translation \| file) for Alex to skim. His corrections go into the catalog. This review does not block shipping. |
+| Translation process | Executors write it and tr for every key (L1), following the glossary below. Italian uses "tu", like Apple's Italian UI. Turkish uses macOS-style imperatives ("Kaydet", "Sil") and avoids direct address. `app/scripts/l10n-review.py --lang tr\|it` writes `docs/l10n/review-<lang>.md` (key \| en \| translation \| file) for the user to skim. His corrections go into the catalog. This review does not block shipping. |
 
 Glossary (fixed terms):
 
@@ -239,7 +239,7 @@ Glossary (fixed terms):
   return after an hour pays one rewrite.
 - **Embeddings for long-meeting chunks.** A ≥ 180k-token transcript is rare; BM25 needs no model and no wait.
 - **Folders as real subdirectories, or a field in `meta.json`.** See 2.3.
-- **Auto-moving sessions by suggestion.** Alex decides. Only derived practice runs follow their source.
+- **Auto-moving sessions by suggestion.** the owner decides. Only derived practice runs follow their source.
 - **Opaque chat bubbles, an "AI" sparkle button, a coloured model picker.** These are on the redesign's "leave out"
   list: neutral fills, one primary.
 - **Caching TTS audio on disk.** It conflicts with "no audio is stored", and memory covers prefetch and repeat.
@@ -276,10 +276,10 @@ Glossary (fixed terms):
 Swift → brain (the first line decides the mode):
 
 ```json
-{"type":"ask_start","session_dir":"/…/sessions/ironwood-lena","owner_name":"Alex",
+{"type":"ask_start","session_dir":"/…/sessions/ironwood-lena","owner_name":"the owner",
  "title":"Ironwood Lena","date":"2026-10-19T17:00:00+02:00",
  "me":{"core":"/…/profile/me.md"} ,
- "transcript":[{"stamp":"0:18","speaker":"Alex","text":"…"},{"stamp":"1:33","speaker":"Other","text":"…"}],
+ "transcript":[{"stamp":"0:18","speaker":"the owner","text":"…"},{"stamp":"1:33","speaker":"Other","text":"…"}],
  "model":"sonnet"}
 {"type":"ask","id":"q4","text":"What did Lena ask about authoring?","model":"sonnet"}
 {"type":"control","action":"cancel"}
@@ -354,7 +354,7 @@ directories that hold a `pack.md`.
 - `sim.json` gains `"source":"posting"|"session"` (absent = posting), `"source_session"` and per question an optional
   `"bank_id"`.
 
-### 3.7 Settings keys (UserDefaults suite `dev.fethiverse.verse`)
+### 3.7 Settings keys (UserDefaults suite `dev.example.verse`)
 
 `interfaceLanguage` (`system`), `askModel` (`sonnet`), `sessionsDetailTab` (`summary`), `sessionsListMode`
 (`folders` once a folder exists, else `recent`), `sessionsCollapsedFolders` ([folder id]).
@@ -362,7 +362,7 @@ directories that hold a `pack.md`.
 ## 4. Units and packages
 
 Executors work in their own worktree from `main` (`git worktree add ../Verse-wt-<pkg> -b <pkg> main`, after the
-packages they depend on have merged). Python: `VERSE_PY=/Users/user/Desktop/ProjectExamples/CursorExamples/Verse/brain/.venv/bin/python`
+packages they depend on have merged). Python: `VERSE_PY=<repo>/brain/.venv/bin/python`
 (worktrees have no venv). No package runs the full test suite. Every package writes new UI strings in the localizable form
 (2.5) from the start, and none edits `Localizable.xcstrings` except L0 (creates it) and L1 (fills it). Each brief names
 its files and nothing more.
@@ -425,7 +425,7 @@ Tests:
 - legacy segmentation: ids restarting and a 30 s time drop each start a run; within-run duplicates keep the later text;
 - alignment to the last N starts; cumulative timing without events; forward timing from `t_wall`;
 - stamps: 59.4 s → "0:59", 3,725 s → "1:02:05";
-- speakers: me → owner name, remote → Other, room → Room; `room_text` me → Alex; a split with `me_words` 3 → two rows;
+- speakers: me → owner name, remote → Other, room → Room; `room_text` me → the owner; a split with `me_words` 3 → two rows;
   a legacy split stays one Room row;
 - cards: the last say + deduplicated points under the right row; `now-1` attaches by time; legacy 60-character text ends
   with "…"; no cards without wall times;
@@ -639,7 +639,7 @@ cd app && swift test --filter 'VerseUITests.PracticeFromSessionTests|VerseUITest
 ```
 
 Then a render `home-practice-meeting-*` (Read). Then one live 5-minute mock in the bundled app from a real prepared
-session, run once with the Apple voice and once with OpenAI if the key is saved (Alex, about 10 min). The report
+session, run once with the Apple voice and once with OpenAI if the key is saved (the owner, about 10 min). The report
 quotes `tts_gap_ms` for the prefetched questions.
 
 ### L1: localization sweep and translations (size L, `worker-hard`; after every other package merges)
@@ -725,7 +725,7 @@ Fan-out: at most 5 executors at once (wave 1), within the 10-agent limit.
 - **Transcript:**
   - on `ironwood-lena` (5 starts, 4 runs) the Transcript tab shows every turn with elapsed stamps that never go
     backwards between runs;
-  - Alex and Other are labelled, and an adhoc room call shows his read-aloud card text as Alex;
+  - the owner and Other are labelled, and an adhoc room call shows his read-aloud card text as the owner;
   - cards appear under the questions that fired them;
   - search finds an accented Italian word typed without its accent;
   - Copy and Export (.md, .txt) produce the 2.1 formats.
@@ -737,11 +737,11 @@ Fan-out: at most 5 executors at once (wave 1), within the 10-agent limit.
   - Haiku and Opus answer from the picker;
   - every call used the Keychain key.
 - **Folders:**
-  - Alex creates "Ironwood", Verse suggests it for `ironwood-lena`, one click files it, and the list groups it;
+  - the owner creates "Ironwood", Verse suggests it for `ironwood-lena`, one click files it, and the list groups it;
   - renaming changes only the name;
   - deleting the folder leaves the session in No folder, with its files byte-identical.
 - **Mock interview:**
-  - from Up next → Practise on a prepared session, Alex builds and runs a spoken mock whose questions are that
+  - from Up next → Practise on a prepared session, the owner builds and runs a spoken mock whose questions are that
     session's likely questions;
   - with no voice key it speaks in the Apple voice;
   - with an OpenAI key, prefetched questions start playing within about 1.2 s of his answer ending (JUDGE time, not TTS
@@ -763,14 +763,14 @@ Fan-out: at most 5 executors at once (wave 1), within the 10-agent limit.
 - Streaming TTS playback (chunked PCM) for follow-up lines that cannot be prefetched.
 - `eleven_v4_turbo`, once it is confirmed on the TTS endpoint.
 
-## 8. What changes for Alex day to day
+## 8. What changes for the user day to day
 
 - After a call he opens Sessions, reads or searches the transcript, and asks the meeting what he promised.
 - He keeps calls in folders per company or person, mostly with one click on a suggestion.
 - Before a meeting he presses Practise on Up next and rehearses the likely questions aloud.
 - Verse speaks Turkish, Italian or English to him in its own UI, whatever language the call is in.
 
-## 9. Questions only Alex can answer
+## 9. Questions only the owner can answer
 
 None block the build. One default to be aware of: "System" makes the UI Turkish on this Mac (preferred languages
 `tr-TR, it-IT`). If he wants English as the default instead, it is one line (`interfaceLanguage` default `en`).

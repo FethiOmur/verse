@@ -350,7 +350,7 @@ final class TopicChipExpiryTests: XCTestCase {
         .chip(obj(["type": "chip", "turn_id": tid, "kind": "topic", "text": text, "source_ref": "prep", "fact_id": "b003"]))
     }
 
-    /// Alex, 14 Oct: a topic hint stayed under the notch for good (cards never expire) and a click did not clear it.
+    /// the owner, 14 Oct: a topic hint stayed under the notch for good (cards never expire) and a click did not clear it.
     @MainActor func testTopicChipsFadeEvenWhenCardsNeverExpire() {
         let c = Clock()
         let m = OverlayModel(config: OverlayConfig(cardTimeout: .infinity), clock: { c.t })

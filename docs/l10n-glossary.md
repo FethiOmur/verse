@@ -76,6 +76,6 @@ sözcük/dk; minutes = min, dk; seconds = s, sn. Percentages follow the locale (
 ## Deviations from the spec glossary
 
 - **Prepare → tr "Hazırla"** (spec: "Hazırlık"). The key "Prepare" is both the page title and the label of the Prepare buttons (Up next,
-  the form's primary button, Practice). A catalog key has one translation, and "Hazırlık" on a button reads wrong. If Alex prefers
+  the form's primary button, Practice). A catalog key has one translation, and "Hazırlık" on a button reads wrong. If the owner prefers
   the noun for the sidebar, give the page its own key in code.
 - **Today / Yesterday in Italian** are written "Oggi" / "Ieri" (capitalized, like every label); the spec test text says "oggi".

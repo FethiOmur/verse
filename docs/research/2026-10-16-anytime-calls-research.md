@@ -50,7 +50,7 @@ Side note: macOS 26 FaceTime has its own call recording, which announces itself 
 
 Notes:
 - The FluidInference CoreML repo is **gated**: "To grant access please join the server … and message Sisyphu"
-  (HF model card). FluidAudio's downloader cannot fetch it without access. This is a question for Alex.
+  (HF model card). FluidAudio's downloader cannot fetch it without access. This is a question for the user.
 - At the 560 ms tier, punctuation gets sparse over long sessions (FluidAudio `NemotronMultilingual.md`, issue #687);
   the words are unaffected. Verse doesn't use `?` as a cue (bench: it arrives 0.9–1.6 s late), so this is acceptable.
   The fix is to reset the stream at long silences.
@@ -91,7 +91,7 @@ Findings:
 - Enrollment by audio needs the audio at every session start. Verse's rule is that no audio is written, so a stored
   clip conflicts with it. The spec therefore stores only an embedding centroid (a vector of numbers, not audio) and
   maps diarizer slots to "me / other" by cosine similarity. Whether a short voice clip may be kept is a question for
-  Alex.
+  the owner.
 - Accuracy expectations:
   - WeSpeaker ResNet34 reaches 0.72 % EER on VoxCeleb1-O (clean, with AS-Norm; wenet-e2e/wespeaker).
   - Short and far-field audio degrade it sharply. One ResNet34 system went from 1.45 % EER on full utterances to
@@ -148,7 +148,7 @@ Findings:
   exists.** The V1 voice profile is text style only.
 - `ENGINEERING_PROFILE.md`: about 21.5k characters, 12 sections (engineering mindset, AI design preferences,
   project context, communication).
-- knowledge-vault `🏰 300-Projects`: `Projects.md` plus one top note per project. The `AgentLogs/` subtree is 165 notes and
+- knowledge-vault `📁 300-Projects`: `Projects.md` plus one top note per project. The `AgentLogs/` subtree is 165 notes and
   1.35 MB of agent output. Other top folders (Body, Mind, Vault, daily, receipts, Companion) are personal and are not
   me-layer sources. Contents were not read beyond sizes and headings.
 - Meeting packs are 9.7–29.6 KB, about 2.5k–7.5k tokens; the cap is 12k tokens (`prep/pack.py`).

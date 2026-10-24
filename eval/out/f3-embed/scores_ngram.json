@@ -10,7 +10,7 @@
     {
      "index": 0,
      "category": "statement",
-     "text": "Hi Alex, thanks for making the time today.",
+     "text": "Hi the owner, thanks for making the time today.",
      "is_question": false,
      "addressee": null,
      "bank_id": null,
@@ -281,12 +281,12 @@
      "d_first_text_s": 3.865,
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": 0.236
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": 0.236
       }
@@ -436,12 +436,12 @@
      "d_first_text_s": 1.145,
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": -2.34
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": -2.34
       }
@@ -529,12 +529,12 @@
      ],
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": -0.186
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": -0.186
       }
@@ -885,7 +885,7 @@
     {
      "index": 0,
      "category": "statement",
-     "text": "Thanks for joining us today, Alex.",
+     "text": "Thanks for joining us today, the owner.",
      "is_question": false,
      "addressee": null,
      "bank_id": null,
@@ -2219,7 +2219,7 @@
       },
       {
        "call": "d0007",
-       "line": "- The pack does not list which languages Alex speaks or at what level, so name them and your working level yourself rather than guessing here.",
+       "line": "- The pack does not list which languages the owner speaks or at what level, so name them and your working level yourself rather than guessing here.",
        "turn_id": "r3"
       },
       {
@@ -2470,7 +2470,7 @@
     {
      "index": 0,
      "category": "statement",
-     "text": "Welcome Alex. Tomas and I will take turns with the questions today.",
+     "text": "Welcome the owner. Tomas and I will take turns with the questions today.",
      "is_question": false,
      "addressee": null,
      "bank_id": null,
@@ -2643,12 +2643,12 @@
      ],
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": -0.242
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": -0.242
       }
@@ -2713,7 +2713,7 @@
     {
      "index": 7,
      "category": "offbank",
-     "text": "Alex, how did you handle invoices in different languages?",
+     "text": "the owner, how did you handle invoices in different languages?",
      "is_question": true,
      "addressee": "me",
      "bank_id": null,
@@ -4252,7 +4252,7 @@
     {
      "index": 2,
      "category": "statement",
-     "text": "Alex, take your time with this one.",
+     "text": "the owner, take your time with this one.",
      "is_question": false,
      "addressee": null,
      "bank_id": null,
@@ -4464,12 +4464,12 @@
      "d_first_text_s": 1.533,
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": 0.163
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": 0.163
       }
@@ -4770,12 +4770,12 @@
      ],
      "chips": [
       {
-       "text": "Lantern is the LLM invoice-extraction project that Alex led.",
+       "text": "Lantern is the LLM invoice-extraction project that the owner led.",
        "kind": "name",
        "visible_s": -0.159
       },
       {
-       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Alex.",
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by the owner.",
        "kind": "term",
        "visible_s": -0.159
       }
@@ -5145,7 +5145,7 @@
   }
  ],
  "aggregate": {
-  "questions_to_owner": 59,
+  "questions_to_user": 59,
   "excluded_warmup_utterances": 0,
   "detection": {
    "positives": 59,

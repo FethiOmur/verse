@@ -14,7 +14,7 @@ Turn = P.Turn
 PACK = open(os.path.join(SESSION, "pack.md"), encoding="utf-8").read()
 
 TURNS = [
-    Turn("r1", "remote", "Thanks for joining, Alex. I'm Ingrid, I lead engineering here, and Tomas from the platform team is with me today."),
+    Turn("r1", "remote", "Thanks for joining, the owner. I'm Ingrid, I lead engineering here, and Tomas from the platform team is with me today."),
     Turn("m1", "me", "Thanks for having me, I'm happy to be here."),
     Turn("r2", "remote", "We have about forty minutes. First, can you give us a quick overview of what you have been working on recently?"),
     Turn("m2", "me", "Sure. The main thing was Lantern, an LLM pipeline for supplier invoices, and a small route optimiser for a courier pilot."),

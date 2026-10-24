@@ -203,7 +203,7 @@ func testTap(_ a: Args) async throws -> [String: Any] {
 
 // MARK: pause watch (silence while playback is paused)
 
-/// Taps until Alex pauses playback: needs >= 3 s of audio, then >= `pauseHold` s of windows at the floor.
+/// Taps until the owner pauses playback: needs >= 3 s of audio, then >= `pauseHold` s of windows at the floor.
 func testPauseWatch(_ a: Args) async throws -> [String: Any] {
     let hold = 5.0
     print("\n== pause_watch (up to \(a.watchSeconds) s; waiting for playback to pause for \(hold) s) ==")

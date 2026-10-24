@@ -29,7 +29,7 @@ enum FolderFixtures {
     }
 
     static func defaults() -> (UserDefaults, () -> Void) {
-        let suite = "dev.fethiverse.verse.test-\(UUID().uuidString)"
+        let suite = "dev.example.verse.test-\(UUID().uuidString)"
         let d = UserDefaults(suiteName: suite)!
         return (d, { d.removePersistentDomain(forName: suite) })
     }

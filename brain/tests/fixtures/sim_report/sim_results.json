@@ -7,7 +7,7 @@
   "questions": [
     {"q_id": "q1",
      "asked": [{"id": "s1", "text": "Thanks for making the time. To start, tell me a bit about yourself and what brought you to this role.", "kind": "question"}],
-     "answers": [{"text": "Sure. So um I'm an AI engineer. I built Verse, a meeting assistant for the Mac, and before that Trailhead, which is on the App Store. I like, you know, building things end to end.", "t_start": 5.0, "t_end": 47.0, "words": 105, "fillers": 3}],
+     "answers": [{"text": "Sure. So um I'm an AI engineer. I built Verse, a meeting assistant for the Mac, and before that TrailHead, which is on the App Store. I like, you know, building things end to end.", "t_start": 5.0, "t_end": 47.0, "words": 105, "fillers": 3}],
      "coach": ["Clear start. Name the one project you want them to ask about."],
      "skipped": false},
     {"q_id": "q2",

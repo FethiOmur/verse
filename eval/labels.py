@@ -2,7 +2,7 @@
 
 Utterance fields: speaker, text, category, is_question, addressee (me|other|null), bank_id|null, t_start, t_end (nominal
 seconds on the dialogue's own clock, measured at generation time; the runner records the real ones for each run),
-and `silent_s` for stretches where nobody on the remote channel speaks (Alex answering).
+and `silent_s` for stretches where nobody on the remote channel speaks (the owner answering).
 """
 
 from __future__ import annotations
