@@ -4,7 +4,7 @@
  "lang": "en",
  "owner": "the owner",
  "participants": ["Ingrid"],
- "voices": {"Ingrid": "Kathy", "the owner": "Mara"},
+ "voices": {"Ingrid": "Kathy", "the owner": "Daniel"},
  "session": "sample-interview",
  "utterances": [
   {"speaker": "Ingrid", "text": "Thanks for joining us today.", "offset_s": 0.0, "expect": "no_answer", "role": "statement"},

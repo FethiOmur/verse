@@ -67,7 +67,7 @@ SCRIPTS = {
         ("off", "Do you speak any other languages besides English?"),
         ("exact", "b018"), ("frag", I, "Um, so, and the"),
         ("para", "b015", 0), ("off", "What did the courier pilot teach you about live traffic?")]),
-    "d07": dict(voices={I: "Samantha", T: "Mara"}, entries=[
+    "d07": dict(voices={I: "Samantha", T: "Daniel"}, entries=[
         ("st", I, "Welcome the owner. Tomas and I will take turns with the questions today."),
         ("exact", "b001"), ("para", "b003", 0, T),
         ("oth", I, "Tomas, can you share the roadmap slide with everyone?"), ("rep", T, "Sure, sharing it now."),
@@ -81,7 +81,7 @@ SCRIPTS = {
         ("off", "How would you test the dispatcher before it touches live routes?", T),
         ("oth", I, "Tomas, could you mute your microphone while I talk?"), ("frag", T, "Sorry, done."),
         ("para", "b008", 0, I)]),
-    "d09": dict(voices={I: "Kathy", T: "Mara"}, entries=[
+    "d09": dict(voices={I: "Kathy", T: "Daniel"}, entries=[
         ("st", I, "Tomas, please go ahead with your first question."),
         ("exact", "b019", T), ("para", "b010", 0, T),
         ("oth", T, "Ingrid, anything you want to add here?"), ("rep", I, "Not right now."),
@@ -96,7 +96,7 @@ SCRIPTS = {
         ("oth", I, "Tomas, would you stop sharing your screen?"),
         ("para", "b007", 1, I),
         ("st", I, "We are running about ten minutes behind schedule.")]),
-    "d11": dict(voices={I: "Tessa", T: "Mara"}, entries=[
+    "d11": dict(voices={I: "Tessa", T: "Daniel"}, entries=[
         ("para", "b018", 0, T),
         ("st", I, "the owner, take your time with this one."),
         ("off", "Where do you see yourself in five years?", I),

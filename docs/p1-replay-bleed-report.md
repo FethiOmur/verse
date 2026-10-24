@@ -1,6 +1,6 @@
 # P1: me-channel replay, speaker bleed, final-text embedding pass
 
-Branch `replay-bleed`. Fake brain for every replay (no spend). Synthetic speech only (`say`, voices Kathy for Ingrid and Mara for the user); no audio is stored. One run per table cell: the recognizers and the load on the Mac move single numbers by one or two turns between runs.
+Branch `replay-bleed`. Fake brain for every replay (no spend). Synthetic speech only (`say`, voices Kathy for Ingrid and Daniel for the user); no audio is stored. One run per table cell: the recognizers and the load on the Mac move single numbers by one or two turns between runs.
 
 ## 1. Me-channel replay
 

@@ -60,7 +60,7 @@ final class MeChannelTests: XCTestCase {
     /// to a me turn.
     func testUserLandsAsMeTurnAndNeverGetsAnAnswer() async throws {
         let remote = try clip("Samantha", "Can you tell me about yourself and your background? [[slnc 9000]]")
-        let me = try clip("Mara", "[[slnc 5200]] Sure, I build data pipelines and route planners.")
+        let me = try clip("Daniel", "[[slnc 5200]] Sure, I build data pipelines and route planners.")
         let r = try await run(remote: remote, me: me, gate: true, guardOn: true)
         print("[me channel] remote \(r.remoteTurns), me \(r.meTurns), answered \(r.answeredTurnIDs)")
         XCTAssertTrue(r.meTurns.contains { $0.lowercased().contains("pipelines") }, "the owner's answer is a me turn: \(r.meTurns)")

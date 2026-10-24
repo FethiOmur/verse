@@ -169,7 +169,7 @@ final class RunnerSinkTests: XCTestCase {
         let before = Set(try FileManager.default.contentsOfDirectory(atPath: session.dir.path))
         let remoteFx = try SayFixture.make(voice: "Samantha", text: "Can you tell me about yourself and your background? [[slnc 4500]]")
         defer { remoteFx.delete() }
-        let meFx = try SayFixture.make(voice: "Mara", text: "[[slnc 4500]] Sure, I build data pipelines and route planners.")
+        let meFx = try SayFixture.make(voice: "Daniel", text: "[[slnc 4500]] Sure, I build data pipelines and route planners.")
         defer { meFx.delete() }
         let remote = try PCMClip.read(remoteFx.file)
         let me = try PCMClip.read(meFx.file)

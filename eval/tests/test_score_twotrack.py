@@ -99,7 +99,7 @@ def test_listen_summary_origins_shift_the_windows():
 def test_fixture_validates_and_bad_ones_do_not():
     f = twotrack.load("t01")
     assert f["owner"] == "the owner" and any(u["expect"] == "answer" for u in f["utterances"])
-    bad = {"id": "x", "owner": "the owner", "participants": ["I"], "voices": {"I": "Kathy", "the owner": "Mara"},
+    bad = {"id": "x", "owner": "the owner", "participants": ["I"], "voices": {"I": "Kathy", "the owner": "Daniel"},
            "utterances": [{"speaker": "the owner", "text": "a", "offset_s": 0, "expect": "answer"}]}
     assert twotrack.validate(bad)
 
