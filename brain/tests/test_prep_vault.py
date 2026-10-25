@@ -211,3 +211,12 @@ def test_public_audience_with_a_provider_that_cannot_enforce_it_gets_no_vault(wi
     with_registry(reg)
     assert make_vault(tmp_path, audience="public") is None
     assert isinstance(make_vault(tmp_path, audience="internal"), ProviderVault)
+
+
+def test_blocked_source_decodes_urls_and_ignores_missing_prefix():
+    from verse_brain.prep import vault as v
+    private = {v._norm("Hush")}
+    assert v.blocked_source("obsidian://open?vault=x&file=300-Projects%2FHush%2Fa.md", set(), private, "300-Projects")
+    assert v.blocked_source("file:///vault/300-Projects/Hush/a.md", set(), private, "300-Projects")
+    assert v.blocked_source("Hush/a.md", set(), private, "300-Projects")
+    assert not v.blocked_source("Misc/hush-notes.md", set(), private, "300-Projects")

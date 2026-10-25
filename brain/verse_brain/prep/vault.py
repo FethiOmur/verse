@@ -60,9 +60,16 @@ def _norm(name: str) -> str:
 
 
 def _path_parts(source: str) -> list[str]:
-    """The normalised parts of a vault path: either slash, `.` dropped, `..` resolved, case and Unicode form ignored."""
+    """The normalised parts of a vault path: either slash, `.` dropped, `..` resolved, case and Unicode form ignored.
+    URL-style sources (`file://`, `obsidian://…?file=`, percent-encoding) are decoded first so they are checked as paths."""
+    src = str(source)
+    if "://" in src or "%" in src:
+        from urllib.parse import parse_qs, unquote, urlsplit
+        u = urlsplit(src)
+        q = parse_qs(u.query)
+        src = unquote(q["file"][0] if q.get("file") else (u.path if u.scheme else src))
     parts: list[str] = []
-    for p in str(source).replace("\\", "/").split("/"):
+    for p in src.replace("\\", "/").split("/"):
         p = _norm(p)
         if p == "..":
             if parts:
@@ -97,7 +104,10 @@ def blocked_source(source: str, forbidden: Iterable[str], private: Iterable[str]
     if not base:
         return any(p in private for p in parts)
     n = len(base)
-    return any(parts[i:i + n] == base and parts[i + n] in private for i in range(len(parts) - n))
+    if any(parts[i:i + n] == base and parts[i + n] in private for i in range(len(parts) - n)):
+        return True
+    # A provider may report sources without the projects-folder prefix: a private name as a folder still blocks.
+    return any(p in private for p in parts[:-1])
 
 
 _FRONT = re.compile(r"\A\ufeff?---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|\Z)", re.S)

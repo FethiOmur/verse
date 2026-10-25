@@ -151,8 +151,9 @@ def default_sources(vault: Path | None = DEFAULT_VAULT, downloads_profile: Path 
         idx = proj / PROJECTS_INDEX
         if idx.is_file():
             add("vault", idx, f"{PROJECTS_FOLDER}/{PROJECTS_INDEX}")
-        skip = {n.casefold() for n in skip_project_folders()}
-        for d in sorted(p for p in proj.iterdir() if p.is_dir() and p.name.casefold() not in skip):
+        from .vault import _norm      # same normalisation as the vault's privacy filter (NFC + strip + casefold)
+        skip = {_norm(n) for n in skip_project_folders()}
+        for d in sorted(p for p in proj.iterdir() if p.is_dir() and _norm(p.name) not in skip):
             for note in sorted(d.glob("*.md")):
                 if note.is_file() and not forbidden_vault_path(note, vault):
                     add("vault", note, f"{PROJECTS_FOLDER}/{d.name}/{note.name}")
