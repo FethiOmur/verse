@@ -60,14 +60,8 @@ def _norm(name: str) -> str:
 
 
 def _path_parts(source: str) -> list[str]:
-    """The normalised parts of a vault path: either slash, `.` dropped, `..` resolved, case and Unicode form ignored.
-    URL-style sources (`file://`, `obsidian://…?file=`, percent-encoding) are decoded first so they are checked as paths."""
+    """The normalised parts of a vault path: either slash, `.` dropped, `..` resolved, case and Unicode form ignored."""
     src = str(source)
-    if "://" in src or "%" in src:
-        from urllib.parse import parse_qs, unquote, urlsplit
-        u = urlsplit(src)
-        q = parse_qs(u.query)
-        src = unquote(q["file"][0] if q.get("file") else (u.path if u.scheme else src))
     parts: list[str] = []
     for p in src.replace("\\", "/").split("/"):
         p = _norm(p)
@@ -91,7 +85,25 @@ def blocked_names() -> tuple[set[str], set[str]]:
     return forbidden, private
 
 
+def _source_variants(source: str) -> list[str]:
+    """Every reading of a source that the privacy check must clear: the raw string, its percent-decoded form and, for a
+    URL, its path, fragment and every query value. Decoding only ever adds readings; a source is blocked when any is."""
+    from urllib.parse import parse_qsl, unquote, urlsplit
+    raw = str(source)
+    out = [raw, unquote(raw)]
+    if "://" in raw:
+        u = urlsplit(raw)
+        out += [u.path, unquote(u.path), u.fragment, unquote(u.fragment)]
+        out += [v for _, v in parse_qsl(u.query, keep_blank_values=True)]
+    return [v for v in dict.fromkeys(out) if v]
+
+
 def blocked_source(source: str, forbidden: Iterable[str], private: Iterable[str], projects_folder: str | None = None) -> bool:
+    """True when any reading of `source` (see `_source_variants`) is blocked by `_blocked_path`."""
+    return any(_blocked_path(v, forbidden, private, projects_folder) for v in _source_variants(source))
+
+
+def _blocked_path(source: str, forbidden: Iterable[str], private: Iterable[str], projects_folder: str | None = None) -> bool:
     """True when `source` lies under a forbidden vault folder, or under a private project folder (a sub-folder of
     `projects_folder`). The sets hold normalised names (`_norm`)."""
     parts = _path_parts(source)

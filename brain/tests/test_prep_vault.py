@@ -220,3 +220,15 @@ def test_blocked_source_decodes_urls_and_ignores_missing_prefix():
     assert v.blocked_source("file:///vault/300-Projects/Hush/a.md", set(), private, "300-Projects")
     assert v.blocked_source("Hush/a.md", set(), private, "300-Projects")
     assert not v.blocked_source("Misc/hush-notes.md", set(), private, "300-Projects")
+
+
+def test_decoding_never_shrinks_the_checked_readings():
+    from verse_brain.prep import vault as v
+    private = {v._norm("Hush")}
+    # raw path blocked; a decoded '..' must not hide it
+    assert v.blocked_source("300-Projects/Hush/%2e%2e/a.md", set(), private, "300-Projects")
+    # private folder in a query value other than file=
+    assert v.blocked_source("obsidian://open?vault=300-Projects/Hush/a.md&file=Misc/b.md", set(), private, "300-Projects")
+    # private folder in the fragment
+    assert v.blocked_source("app://x/Misc/b.md#300-Projects/Hush/a.md", set(), private, "300-Projects")
+    assert not v.blocked_source("obsidian://open?vault=Notes&file=Misc/b.md", set(), private, "300-Projects")
