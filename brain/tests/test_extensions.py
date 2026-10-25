@@ -199,3 +199,48 @@ def run_child(code: str, owner_file: Path) -> subprocess.CompletedProcess:
     env = {**os.environ, "VERSE_OWNER_FILE": str(owner_file), "VERSE_EVENTS": "0"}
     return subprocess.run([sys.executable, "-I", "-c", f"import sys; sys.path.insert(0, {str(BRAIN)!r}); exec({code!r})"],
                           capture_output=True, text=True, env=env, cwd=str(BRAIN), timeout=120)
+
+
+# ------------------------------------------------------------------ the registry while it is loading
+def test_registry_while_loading_is_loud_and_private_projects_fail_closed(monkeypatch, caplog):
+    extensions.set_registry(None)
+    monkeypatch.setattr(extensions, "_loading", True)
+    try:
+        with caplog.at_level("WARNING", logger="verse.extensions"):
+            assert extensions.registry().private_projects == []
+        assert any("while the extensions are loading" in r.getMessage() for r in warnings_of(caplog))
+        with pytest.raises(RuntimeError):                      # the security-relevant reader never answers from a partial registry
+            extensions.private_projects()
+    finally:
+        extensions.set_registry(None)
+
+
+def test_private_projects_are_honoured_when_a_consumer_is_imported_during_loading(tmp_path):
+    ext = tmp_path / "ext"
+    (ext / "brain").mkdir(parents=True)
+    (ext / "brain" / "early.py").write_text(           # an extension that imports core modules at the top, then registers
+        "from verse_brain.prep import me, vault\n"
+        "def register(r):\n    r.add_private_project('Cloaked')\n")
+    root = tmp_path / "vault"
+    for rel in ("Work/Index.md", "Work/Cloaked/c.md", "Work/Open/o.md"):
+        f = root / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text("tides and ferry\n")
+    owner = tmp_path / "owner.json"
+    owner.write_text(json.dumps({"display_name": "Dana Reyes", "vault_path": str(root), "projects_folder": "Work",
+                                 "projects_index": "Index.md", "extensions_path": str(ext)}))
+    code = """
+import json, pathlib, tempfile
+from verse_brain import extensions
+extensions.registry()                      # loading: the extension imports me.py and vault.py before it registers
+from verse_brain.prep import me, vault
+labels = [s["label"] for s in me.default_sources(sessions=pathlib.Path(tempfile.mkdtemp()))]
+found = [r.source for r in vault.make_vault(vault.DEFAULT_VAULT).search("ferry", limit=10)]
+print(json.dumps({"labels": labels, "found": found, "skip": list(me.SKIP_PROJECT_FOLDERS)}))
+"""
+    r = run_child(code, owner)
+    assert r.returncode == 0, r.stderr[-800:]
+    got = json.loads(r.stdout)
+    assert "Cloaked" in got["skip"]
+    assert not any("Cloaked" in l for l in got["labels"]) and "Work/Open/o.md" in got["labels"], got
+    assert not any("Cloaked" in s for s in got["found"]) and "Work/Open/o.md" in got["found"], got

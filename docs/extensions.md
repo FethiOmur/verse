@@ -42,8 +42,9 @@ def register(registry):
 
 ### Vault provider
 
-The core ships a plain keyword search over the markdown files of `vault_path` (`MarkdownFolderVault`; hidden folders and
-`forbidden_vault_folders` are skipped; it ignores the `audience`). Without `vault_path` there is no retrieval. A provider replaces it:
+The core ships a plain keyword search over the markdown files of `vault_path` (`MarkdownFolderVault`; hidden folders,
+`forbidden_vault_folders` and private project folders are skipped). Without `vault_path` there is no retrieval. A provider
+replaces it:
 
 ```python
 class MyVault:
@@ -58,6 +59,19 @@ with `id`, `source` (a vault-relative path, shown to the model as `vault:<source
 without `source` or `text` are dropped. Any exception becomes a warning for that query; prep goes on with the other sources.
 Retrieval is for prep only. Keep a provider read-only.
 
+**What is never returned.** The core drops every record whose `source` lies under a forbidden vault folder
+(`forbidden_vault_folders`) or under a private project folder (`<projects_folder>/<name>`, where the name comes from
+`private_project_folders` or `registry.add_private_project`), whichever vault produced it, so a provider cannot leak them. The
+check ignores case, `\` versus `/`, `.` and `..`. The private project list is read when a search runs, not at import.
+
+**The `public` audience is safe by default.** Only `internal` gets every allowed note.
+
+- The built-in search, for any other audience, returns only notes whose frontmatter says `visibility: public`
+  (`---` block at the very top of the file; a note without it, or with another value, is never returned).
+- A provider is trusted to enforce the audience only if it defines `bind(vault_path, audience)`. A provider without `bind` gets
+  no vault for the public audience (a warning is logged and retrieval is off). If `bind` raises, the built-in search is used,
+  with the same public-only rule.
+
 ### Prompt addenda
 
 `name` is one of: `prep`, `profile`, `voice`, `script`, `live_fast`, `live_deep`, `ask`. The block is appended after the prompt
@@ -67,7 +81,9 @@ prefixes: they are built once at start, so an addendum cannot change inside a ru
 ### Private projects and profile sources
 
 Both feed the me-profile build (`python -m verse_brain.prep me build`). Private project names are added to
-`private_project_folders` from the owner profile. Profile sources are listed only when the sources file does not exist yet (a
+`private_project_folders` from the owner profile. They are read when they are used, so an extension that imports core
+modules while it is loading cannot make the list come out empty: while the extensions load, `registry()` logs a warning and
+the private project list refuses to answer. Profile sources are listed only when the sources file does not exist yet (a
 first build); later changes go through the me page or `me.sources.json`.
 
 ## Failure behaviour

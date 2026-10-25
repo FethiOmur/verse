@@ -11,7 +11,9 @@ Guarantees:
   - Nothing here raises. A missing folder, a module that fails to import, a module without `register`, a `register` that raises
     or sets something invalid: one warning on the `verse.extensions` logger, and the core behaviour stays. A module that fails
     contributes nothing, not even the part it registered before it failed.
-  - The result is read once per process (prompts are cache prefixes and must not change inside a run).
+  - The result is read once per process (prompts are cache prefixes and must not change inside a run). Security-relevant readers
+    (the private project list) ask at use time, never at import; while the extensions load, `registry()` logs a warning and
+    `private_projects()` raises.
 """
 
 from __future__ import annotations
@@ -139,6 +141,11 @@ def registry() -> Registry:
     if _registry is not None:
         return _registry
     if _loading:                 # an extension imported a module that asks for the registry while it is loading
+        # Robust for extensions that import core modules at the top, but never silent: whatever the caller reads now is an empty
+        # answer, and a value cached from it would miss what the extensions register later. Security-relevant readers
+        # (`private_projects()`) refuse instead, and read the registry at use time rather than at import.
+        log.warning("extensions.registry() was read while the extensions are loading (caller: %s); it returns an empty registry. "
+                    "Read it when you use it, not at import time.", _caller())
         return Registry(OWNER.raw)
     _loading = True
     try:
@@ -146,6 +153,16 @@ def registry() -> Registry:
     finally:
         _loading = False
     return _registry
+
+
+def _caller() -> str:
+    try:
+        f = sys._getframe(2)
+        while f is not None and f.f_code.co_filename == __file__:
+            f = f.f_back
+        return f"{f.f_globals.get('__name__', '?')}:{f.f_lineno}" if f is not None else "?"
+    except Exception:  # noqa: BLE001
+        return "?"
 
 
 def set_registry(reg: Registry | None) -> None:
@@ -163,6 +180,10 @@ def with_addenda(prompt: str, text: str) -> str:
 
 
 def private_projects() -> tuple[str, ...]:
+    """Project names the extensions marked private. Call it when you use the answer, never at import: while the extensions are
+    loading the list is incomplete, so this raises then (fail closed) instead of returning a partial list."""
+    if _loading:
+        raise RuntimeError("the extensions are still loading; the private project list is not complete yet")
     return tuple(registry().private_projects)
 
 

@@ -50,8 +50,21 @@ SESSIONS_DIR = Path("~/Library/Application Support/Verse/sessions")
 DOWNLOADS_PROFILE: Path | None = OWNER.profile_source
 PROJECTS_FOLDER = OWNER.projects_folder
 PROJECTS_INDEX = OWNER.projects_index
-SKIP_PROJECT_FOLDERS = (*OWNER.private_project_folders, *extensions.private_projects())   # private repos never leave the machine
 FORBIDDEN_VAULT_FOLDERS = OWNER.forbidden_vault_folders
+
+
+def skip_project_folders() -> tuple[str, ...]:
+    """Private project folders: private repos never leave the machine. The extensions add to the list when they load, so it is
+    read when it is used, never cached at import (an extension may import this module while it is still loading)."""
+    return (*OWNER.private_project_folders, *extensions.private_projects())
+
+
+def __getattr__(name: str):                      # `me.SKIP_PROJECT_FOLDERS` keeps working, computed on access
+    if name == "SKIP_PROJECT_FOLDERS":
+        return skip_project_folders()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 OWNER_TAG = OWNER.source_tag                              # the `src` of a line the user wrote himself
 
 CAP_TOKENS = 3500
@@ -138,7 +151,8 @@ def default_sources(vault: Path | None = DEFAULT_VAULT, downloads_profile: Path 
         idx = proj / PROJECTS_INDEX
         if idx.is_file():
             add("vault", idx, f"{PROJECTS_FOLDER}/{PROJECTS_INDEX}")
-        for d in sorted(p for p in proj.iterdir() if p.is_dir() and p.name not in SKIP_PROJECT_FOLDERS):
+        skip = {n.casefold() for n in skip_project_folders()}
+        for d in sorted(p for p in proj.iterdir() if p.is_dir() and p.name.casefold() not in skip):
             for note in sorted(d.glob("*.md")):
                 if note.is_file() and not forbidden_vault_path(note, vault):
                     add("vault", note, f"{PROJECTS_FOLDER}/{d.name}/{note.name}")
