@@ -232,3 +232,12 @@ def test_decoding_never_shrinks_the_checked_readings():
     # private folder in the fragment
     assert v.blocked_source("app://x/Misc/b.md#300-Projects/Hush/a.md", set(), private, "300-Projects")
     assert not v.blocked_source("obsidian://open?vault=Notes&file=Misc/b.md", set(), private, "300-Projects")
+
+
+def test_token_check_catches_any_url_shape_and_double_encoding():
+    from verse_brain.prep import vault as v
+    private = {v._norm("Hush")}
+    assert v.blocked_source("obsidian:open?file=300-Projects%2FHush%2Fa.md", set(), private, "300-Projects")
+    assert v.blocked_source("x://h/?a=300-Projects%252FHush%252Fa.md", set(), private, "300-Projects")
+    assert v.blocked_source("note:Hush", set(), private, "300-Projects")
+    assert not v.blocked_source("obsidian:open?file=Misc%2Fhushed.md", set(), private, "300-Projects")

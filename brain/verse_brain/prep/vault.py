@@ -98,9 +98,36 @@ def _source_variants(source: str) -> list[str]:
     return [v for v in dict.fromkeys(out) if v]
 
 
+def _decoded_levels(raw: str, max_rounds: int = 5) -> list[str]:
+    """`raw` and its repeated percent-decodings until they stop changing (bounded)."""
+    from urllib.parse import unquote
+    out = [raw]
+    for _ in range(max_rounds):
+        nxt = unquote(out[-1])
+        if nxt == out[-1]:
+            break
+        out.append(nxt)
+    return out
+
+
+_TOKEN_SPLIT = re.compile(r"[/\\?&=#:;]+")
+
+
 def blocked_source(source: str, forbidden: Iterable[str], private: Iterable[str], projects_folder: str | None = None) -> bool:
-    """True when any reading of `source` (see `_source_variants`) is blocked by `_blocked_path`."""
-    return any(_blocked_path(v, forbidden, private, projects_folder) for v in _source_variants(source))
+    """True when any reading of `source` is blocked. Two independent checks, either one blocks (fail closed):
+    1. the structured path check (`_blocked_path`) on every reading from `_source_variants`;
+    2. a token check: every percent-decoding level of the raw string is split on path, query and fragment delimiters, and
+       any token equal to a forbidden or private name blocks, whatever the URL shape."""
+    forbidden, private = set(forbidden), set(private)
+    if any(_blocked_path(v, forbidden, private, projects_folder) for v in _source_variants(source)):
+        return True
+    names = forbidden | private
+    if not names:
+        return False
+    for level in _decoded_levels(str(source)):
+        if any(_norm(t) in names for t in _TOKEN_SPLIT.split(level) if t):
+            return True
+    return False
 
 
 def _blocked_path(source: str, forbidden: Iterable[str], private: Iterable[str], projects_folder: str | None = None) -> bool:
