@@ -33,9 +33,13 @@ public struct MeetingEvent: Sendable, Codable, Equatable, Identifiable {
     public var notes: String?
     public var url: URL?
     public var provider: MeetingProvider
+    /// The attendee that is the calendar's owner (EventKit's `isCurrentUser`). Absent in JSON written before memory existed (it
+    /// decodes as nil), and absent when the owner is not on the invite. The brain's `prep/event.py` reads the event with `.get`
+    /// and ignores this key.
+    public var currentUser: Attendee?
 
     public init(id: String, title: String, start: Date, end: Date, attendees: [Attendee] = [],
-                notes: String? = nil, url: URL? = nil, provider: MeetingProvider = .other) {
+                notes: String? = nil, url: URL? = nil, provider: MeetingProvider = .other, currentUser: Attendee? = nil) {
         self.id = id
         self.title = title
         self.start = start
@@ -44,6 +48,7 @@ public struct MeetingEvent: Sendable, Codable, Equatable, Identifiable {
         self.notes = notes
         self.url = url
         self.provider = provider
+        self.currentUser = currentUser
     }
 
     /// The JSON the brain reads with `--from-event`: ISO 8601 dates with the local UTC offset.
