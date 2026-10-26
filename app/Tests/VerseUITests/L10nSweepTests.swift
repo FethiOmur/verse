@@ -39,9 +39,9 @@ final class L10nSweepTests: XCTestCase {
     func testTheWindowTitlesFollowTheLanguage() {
         XCTAssertEqual(HomePage.sessions.title, "Sessions")
         L10nState.shared.apply(.it)
-        XCTAssertEqual(HomePage.allCases.map(\.title), ["Prepara", "Profilo", "Sessioni", "Esercitazione", "Copioni", "Impostazioni"])
+        XCTAssertEqual(HomePage.allCases.map(\.title), ["Prepara", "Profilo", "Sessioni", "Persone", "Esercitazione", "Copioni", "Impostazioni"])
         L10nState.shared.apply(.tr)
-        XCTAssertEqual(HomePage.allCases.map(\.title), ["Hazırla", "Profil", "Oturumlar", "Pratik", "Metinler", "Ayarlar"])
+        XCTAssertEqual(HomePage.allCases.map(\.title), ["Hazırla", "Profil", "Oturumlar", "Kişiler", "Pratik", "Metinler", "Ayarlar"])
     }
 
     // MARK: Dates and numbers

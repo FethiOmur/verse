@@ -1,5 +1,7 @@
 import AppKit
+import Combine
 import SwiftUI
+import VerseMeet
 
 /// The objects the home window's pages work with. The app builds one at launch; renders and tests build their own.
 @MainActor
@@ -16,6 +18,10 @@ public struct HomeContext {
     public let router: HomeRouter
     /// Verse's memory: the index of past sessions and the brief runner. It starts nothing in tests and renders (see `init`).
     let memory: MemoryService
+    /// The people and companies of the owner's meetings (`memory/people.json`). A test or render process gets an empty store in a
+    /// scratch folder; it never reads the owner's own file.
+    let people: EntityStore
+    private var peopleSubscriptions: [AnyCancellable] = []
 
     public init(settings: AppSettings, controller: VerseController, simSettings: SimSettings, sim: SimController,
                 conversation: ConversationController, sessions: HomeSessionsModel? = nil, upNext: HomeUpNextModel? = nil,
@@ -27,7 +33,7 @@ public struct HomeContext {
     /// `memory` nil builds the app's own service (live paths, the real brain), enabled only inside the app.
     init(settings: AppSettings, controller: VerseController, simSettings: SimSettings, sim: SimController,
          conversation: ConversationController, sessions: HomeSessionsModel?, upNext: HomeUpNextModel?,
-         me: MeModel?, router: HomeRouter, memory: MemoryService?) {
+         me: MeModel?, router: HomeRouter, memory: MemoryService?, people: EntityStore? = nil) {
         self.settings = settings
         self.controller = controller
         self.simSettings = simSettings
@@ -36,12 +42,24 @@ public struct HomeContext {
         let sessionsModel = sessions ?? HomeSessionsModel()
         self.sessions = sessionsModel
         // Only the app itself indexes: a test or render process builds a context too and must not start the brain.
+        let isApp = Bundle.main.bundleIdentifier == AppSettings.suiteName
         let memoryService = memory ?? MemoryService(
             ownerName: { settings.ownerName },
             makeBrain: { [weak controller] in try MemoryService.makeBrainProcess(fake: controller?.fakeBrain ?? false) },
             makeIndexBrain: { [weak controller] in try MemoryService.makeBrainProcess(fake: controller?.fakeBrain ?? false, indexOnly: true) },
-            enabled: Bundle.main.bundleIdentifier == AppSettings.suiteName)
+            enabled: isApp)
         self.memory = memoryService
+        let peopleStore = people ?? EntityStore(
+            paths: isApp ? memoryService.paths : MemoryPaths(base: FileManager.default.temporaryDirectory.appendingPathComponent("verse-people-\(UUID().uuidString)", isDirectory: true)),
+            sessionsRoot: sessionsModel.root)
+        self.people = peopleStore
+        peopleStore.context = { [weak sessionsModel] in (sessionsModel?.folders.file ?? FoldersFile(), sessionsModel?.sessions ?? []) }
+        // The memory index shows each session's people and companies; a change of an entity relabels it.
+        memoryService.labels = { [weak peopleStore, weak sessionsModel] name in
+            guard let peopleStore, let folders = sessionsModel?.folders.file else { return [] }
+            return peopleStore.entities(of: name, folders: folders).map(\.name)
+        }
+        peopleStore.onChange = { [weak memoryService] in memoryService?.requestSync(.labelsChanged) }
         memoryService.recordingSession = { [weak controller] in controller?.recordingSessionName }
         memoryService.attach(controller: controller)
         // Move to Trash asks the window what is running, which session Start uses and which row is shown.
@@ -52,13 +70,39 @@ public struct HomeContext {
                 controller?.refreshSessions()
                 sessionsModel.reload()
                 if controller?.running == false { settings.sessionName = name }
+            },
+            // Who is in the meeting, for People (Up next and Practice's Upcoming both come through here).
+            afterPrepare: { [weak peopleStore] event, session in
+                peopleStore?.recordAttendees(event.attendees, owner: event.currentUser, session: session)
             })
         self.me = me ?? MeModel(fake: { [weak controller] in controller?.fakeBrain ?? false })
         self.router = router
+        if isApp { startPeople(controller: controller, sessions: sessionsModel) }
+    }
+
+    /// The app only: People follows the folders and sessions, the Start-from-invite path records attendees, and once per launch the
+    /// events the app mapped to sessions are asked of the calendar (it never asks for access: it reads only what is granted).
+    private mutating func startPeople(controller: VerseController, sessions: HomeSessionsModel) {
+        let store = people
+        controller.meeting.onPreparedFromEvent = { [weak store] event, session in
+            store?.recordAttendees(event.attendees, owner: event.currentUser, session: session)
+        }
+        store.refresh()
+        peopleSubscriptions.append(sessions.$sessions.combineLatest(sessions.folders.$file)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak store] _, _ in store?.refresh() })
+        let calendar = CalendarSource()
+        let eventMap = controller.eventSessions
+        let useCalendar = { controller.meeting.settings.useCalendar }
+        Task { @MainActor [weak store] in
+            try? await Task.sleep(for: .seconds(8))
+            guard useCalendar(), calendar.authorization() == .fullAccess else { return }
+            await store?.backfill(eventSessions: eventMap.load(), lookup: { id in try? await calendar.event(id: id) })
+        }
     }
 }
 
-/// The home window: one glass sheet with a sidebar (Prepare, Me, Sessions, Practice, Scripts, Settings) and the page.
+/// The home window: one glass sheet with a sidebar (Prepare, Me, Sessions, People, Practice, Scripts, Settings) and the page.
 public struct HomeRoot: View {
     let context: HomeContext
     var a11yOverride: HomeA11yOverride?
@@ -132,6 +176,9 @@ public struct HomeRoot: View {
             MePage(model: context.me, controller: context.controller, settings: settings)
         case .sessions:
             HomeSessionsPage(model: context.sessions, router: router, controller: context.controller, settings: settings)
+        case .people:
+            PeoplePage(store: context.people, sessions: context.sessions, upNext: context.upNext, memory: context.memory,
+                       router: router, settings: settings)
         case .practice:
             SimSetupView(sim: context.sim, meeting: context.controller, upNext: context.upNext, router: context.router)
         case .scripts:

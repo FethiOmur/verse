@@ -42,6 +42,17 @@ Apple, Finder) are never translated. Plurals use catalog plural variants (`one` 
 | Interview | Colloquio | Mülakat | |
 | Teleprompter | Teleprompter | Teleprompter | |
 | Island (the notch UI) | island | island | kept as a loan word |
+| People (the page) | Persone | Kişiler | memory spec 5.7 |
+| Person / Company | Persona / Azienda | Kişi / Şirket | |
+| Brief (noun) / Make brief | Briefing / Prepara briefing | Brifing / Brifing hazırla | the pre-meeting summary |
+| Ask all meetings | Chiedi a tutte le riunioni | Tüm toplantılara sor | |
+| Ask about %@ | Chiedi su %@ | %@ hakkında sor | |
+| Memory (Verse's index) | Memoria | Hafıza | |
+| Merge / Merge Into… | Unisci / Unisci a… | Birleştir / Şununla Birleştir… | |
+| Rename… | Rinomina… | Yeniden Adlandır… | |
+| Hide from People | Nascondi da Persone | Kişiler’den Gizle | |
+| You promised / They promised | Hai promesso / Hanno promesso | Söz verdiklerin / Söz verdikleri | brief section titles; "You" is the owner |
+| Tone and preferences | Tono e preferenze | Üslup ve tercihler | brief section title |
 
 ## Verbs and labels
 

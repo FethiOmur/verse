@@ -54,6 +54,10 @@ public final class MeetingCoordinator: ObservableObject {
     public let settings: MeetingSettings
     @Published public private(set) var calendarStatus: String
 
+    /// Called with the event and the new session's folder name once a session was prepared from an invite (the prompt's Start from
+    /// invite). The People model records the attendees from it (memory spec 2.5). Nothing else runs here: the call is starting.
+    public var onPreparedFromEvent: (@MainActor (MeetingEvent, String) -> Void)?
+
     private weak var host: (any MeetingHost)?
     private let detector: MeetingDetector
     private let calendar: CalendarSource
@@ -295,6 +299,7 @@ public final class MeetingCoordinator: ObservableObject {
                 case .success(let dir):
                     let name = dir.lastPathComponent
                     self.eventMap.remember(eventID: event.id, session: name)
+                    self.onPreparedFromEvent?(event, name)
                     self.begin(session: name, offer: o)
                 case .failure(let error):
                     // Do not leave him with nothing: the session chosen in the menu is the fallback.

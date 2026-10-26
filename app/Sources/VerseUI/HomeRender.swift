@@ -2,6 +2,7 @@ import AppKit
 import ScreenCaptureKit
 import SwiftUI
 import VerseAudio
+import VerseMeet
 import VersePrompter
 import VerseTurns
 
@@ -32,7 +33,8 @@ public enum HomeRender {
         let fixtures = try Fixtures()
         defer { fixtures.cleanUp() }
         let variants = [
-            Variant(suffix: "", override: nil, pages: HomePage.allCases),
+            // People has its own states below (a brief, a stale one, none, and an empty page).
+            Variant(suffix: "", override: nil, pages: HomePage.allCases.filter { $0 != .people }),
             Variant(suffix: "-reduce-transparency", override: HomeA11yOverride(reduceTransparency: true), pages: [.prepare]),
             Variant(suffix: "-increase-contrast", override: HomeA11yOverride(increaseContrast: true), pages: [.prepare]),
         ]
@@ -89,6 +91,10 @@ public enum HomeRender {
             // thought about, one being answered, and one that failed.
             if only?.contains(.sessions) ?? true {
                 out += try await renderAsk(fixtures, dir: dir, dark: dark)
+            }
+            // People: the entity page with a ready brief, a stale one, none, and the empty page (fictional people only).
+            if only?.contains(.people) ?? true {
+                out += try await renderPeople(fixtures, dir: dir, dark: dark)
             }
             // Me: the usual state, and the one with "Sources changed · Refresh" (a build older than a week, a source changed).
             if only?.contains(.me) ?? true {
@@ -158,6 +164,27 @@ public enum HomeRender {
         return out
     }
 
+    /// `home-people-{brief,stale,nobrief,empty}-<light|dark>.png`: Marta Velin's page over a fictional Halden Works, and the empty page.
+    static func renderPeople(_ fixtures: Fixtures, dir: URL, dark: Bool) async throws -> [URL] {
+        var out: [URL] = []
+        for state in ["brief", "stale", "nobrief", "empty"] {
+            let pf = try PeopleFixtures(empty: state == "empty", settings: fixtures.settings)
+            defer { pf.cleanUp() }
+            let router = HomeRouter()
+            router.page = .people
+            router.selectedEntity = pf.marta
+            let ctx = HomeContext(settings: fixtures.settings, controller: fixtures.controller, simSettings: fixtures.simSettings, sim: fixtures.sim,
+                                  conversation: fixtures.conversation, sessions: pf.sessions, upNext: pf.upNext, me: fixtures.meModel(stale: false),
+                                  router: router, memory: nil, people: pf.store)
+            var scene = Scene(context: ctx, dark: dark, override: nil)
+            scene.briefRender = PeopleBriefRenderState(brief: state == "brief" ? pf.brief(stale: false) : (state == "stale" ? pf.brief(stale: true) : nil))
+            let url = dir.appendingPathComponent("home-people-\(state)-\(dark ? "dark" : "light").png")
+            try await capture(scene, size: canvas, dark: dark, to: url)
+            out.append(url)
+        }
+        return out
+    }
+
     // MARK: scene
 
     struct Scene: View {
@@ -171,6 +198,8 @@ public enum HomeRender {
         var askRender: AskRenderState?
         /// A row with its Trash action revealed, or the toast (Move to Trash).
         var trashRender: SessionsTrashRenderState?
+        /// The brief the People page shows (renders only).
+        var briefRender: PeopleBriefRenderState?
 
         var body: some View {
             ZStack {
@@ -179,6 +208,7 @@ public enum HomeRender {
                     .environment(\.sessionsDetailRender, detailRender)
                     .environment(\.askRender, askRender)
                     .environment(\.sessionsTrashRender, trashRender)
+                    .environment(\.peopleBriefRender, briefRender)
                     .frame(width: 1100, height: HomeRender.windowHeight)
                     .shadow(color: .black.opacity(dark ? 0.45 : 0.18), radius: 30, y: 16)
             }
@@ -234,6 +264,147 @@ public enum HomeRender {
     /// A borderless window that can be key.
     final class RenderWindow: NSWindow {
         override var canBecomeKey: Bool { true }
+    }
+
+    // MARK: people fixtures
+
+    /// The People page over fictional people at `.example` domains: Halden Works (Marta Velin, Joe Arkwright), Corvo Studio (Giulia Ferri,
+    /// an Italian call) and Tarla Labs (Emre Kaya, a Turkish call), and the owner Dana Reyes. Everything lives in a temporary folder.
+    @MainActor
+    final class PeopleFixtures {
+        let root: URL
+        let sessions: HomeSessionsModel
+        let store: EntityStore
+        let upNext: HomeUpNextModel
+        let marta = "e-martavel"
+        private let suite = "\(AppIdentity.bundleID).render-people-\(UUID().uuidString)"
+
+        init(empty: Bool, settings: AppSettings) throws {
+            let fm = FileManager.default
+            root = fm.temporaryDirectory.appendingPathComponent("verse-render-people-\(UUID().uuidString)", isDirectory: true)
+            let sessionsRoot = root.appendingPathComponent("sessions", isDirectory: true)
+            try fm.createDirectory(at: sessionsRoot, withIntermediateDirectories: true)
+            let cal = Calendar.current
+            let now = Date()
+            func at(_ daysAgo: Int, _ hour: Int, _ minute: Int) -> Date {
+                let d = cal.date(byAdding: .day, value: -daysAgo, to: now) ?? now
+                return cal.date(bySettingHour: hour, minute: minute, second: 0, of: d) ?? d
+            }
+            func write(_ name: String, _ date: Date, summary: String, extra: [String: String] = [:]) throws {
+                let d = sessionsRoot.appendingPathComponent(name, isDirectory: true)
+                try fm.createDirectory(at: d, withIntermediateDirectories: true)
+                try Data().write(to: d.appendingPathComponent("pack.md"))
+                for (f, text) in extra.merging(["summary.md": summary], uniquingKeysWith: { a, _ in a }) {
+                    let u = d.appendingPathComponent(f)
+                    try Data(text.utf8).write(to: u)
+                    try fm.setAttributes([.modificationDate: date], ofItemAtPath: u.path)
+                }
+            }
+            func summary(_ line: String, actions: [String]) -> String {
+                "# Meeting summary\n\n_generated fixture_\n\n## Summary\n\n\(line)\n\n## Actions\n\n" + actions.map { "- \($0)\n" }.joined()
+            }
+            let defaults = UserDefaults(suiteName: suite) ?? .standard
+            defaults.removePersistentDomain(forName: suite)
+            let paths = MemoryPaths(base: root.appendingPathComponent("memory", isDirectory: true))
+            if empty {
+                sessions = HomeSessionsModel(root: sessionsRoot, defaults: defaults)
+                store = EntityStore(paths: paths, sessionsRoot: sessionsRoot)
+                upNext = HomeUpNextModel(settings: settings, meeting: MeetingSettings(defaults: defaults), sessions: { [] },
+                                         eventMap: EventSessionMap(url: root.appendingPathComponent("event-sessions.json")))
+                return
+            }
+            try write("Halden Pilot Review", at(2, 10, 0),
+                      summary: summary("Marta Velin agreed to start the pilot with two teams. The budget stays open until the revised sheet arrives.",
+                                       actions: ["Send the revised budget by Friday", "Share the security questionnaire next week"]))
+            try write("Halden Kickoff", at(8, 17, 0),
+                      summary: summary("Marta Velin and Joe Arkwright described the invoice-matching backlog at Halden Works.",
+                                       actions: ["Send the pilot plan"]))
+            try write("Corvo Design Call", at(5, 15, 0),
+                      summary: summary("Giulia Ferri ha chiesto una prima bozza della navigazione entro il fine mese.", actions: ["Inviare la bozza"]))
+            try write("Tarla Intro", at(12, 11, 0),
+                      summary: summary("Emre Kaya pilot için iki haftalık bir deneme istedi.", actions: ["Deneme planını paylaş"]))
+            try write("Halden pricing call", at(20, 14, 0),
+                      summary: summary("A short call about per-seat pricing.", actions: []))
+            sessions = HomeSessionsModel(root: sessionsRoot, defaults: defaults)
+            let halden = try sessions.folders.create(name: "Halden Works")
+            for s in ["Halden Pilot Review", "Halden Kickoff"] { try sessions.folders.move(s, to: halden.id) }
+            sessions.reload()
+
+            // people.json as the app would have written it: the owner is Dana Reyes, so her address is not an entity.
+            let created = at(30, 9, 0)
+            func person(_ id: String, _ name: String, _ email: String, company: String) -> MemoryEntity {
+                MemoryEntity(id: id, kind: .person, name: name, emails: [email], company: company, createdAt: created)
+            }
+            var file = PeopleFile()
+            file.entities = [
+                person("e-martavel", "Marta Velin", "marta@halden.example", company: "e-haldenwk"),
+                person("e-joearkwr", "Joe Arkwright", "joe@halden.example", company: "e-haldenwk"),
+                MemoryEntity(id: "e-haldenwk", kind: .company, name: "Halden Works", domains: ["halden.example"], aliases: ["Halden"],
+                             folders: [halden.id], namedBy: "user", createdAt: created),
+                person("e-giuliafe", "Giulia Ferri", "giulia@corvo.example", company: "e-corvostu"),
+                MemoryEntity(id: "e-corvostu", kind: .company, name: "Corvo Studio", domains: ["corvo.example"], createdAt: created),
+                person("e-emrekaya", "Emre Kaya", "emre@tarla.example", company: "e-tarlalab"),
+                MemoryEntity(id: "e-tarlalab", kind: .company, name: "Tarla Labs", domains: ["tarla.example"], createdAt: created),
+            ]
+            file.ownerEmails = ["owner@example.com"]
+            file.attendees = [
+                "Halden Pilot Review": [Attendee(name: "Marta Velin", email: "marta@halden.example")],
+                "Halden Kickoff": [Attendee(name: "Marta Velin", email: "marta@halden.example"), Attendee(name: "Joe Arkwright", email: "joe@halden.example")],
+                "Corvo Design Call": [Attendee(name: "Giulia Ferri", email: "giulia@corvo.example")],
+                "Tarla Intro": [Attendee(name: "Emre Kaya", email: "emre@tarla.example")],
+            ]
+            try fm.createDirectory(at: paths.base, withIntermediateDirectories: true)
+            try PeopleCodec.encode(file).write(to: paths.people)
+            store = EntityStore(paths: paths, sessionsRoot: sessionsRoot)
+
+            let owner = Attendee(name: "Dana Reyes", email: "owner@example.com")
+            let start = cal.date(bySettingHour: 10, minute: 0, second: 0, of: cal.date(byAdding: .day, value: 1, to: now) ?? now) ?? now
+            let event = MeetingEvent(id: "ev-halden-weekly", title: "Halden weekly", start: start, end: start.addingTimeInterval(1_800),
+                                     attendees: [owner, Attendee(name: "Marta Velin", email: "marta@halden.example"),
+                                                 Attendee(name: "Joe Arkwright", email: "joe@halden.example")], provider: .meet, currentUser: owner)
+            upNext = HomeUpNextModel(settings: settings, meeting: MeetingSettings(defaults: defaults), sessions: { [] },
+                                     eventMap: EventSessionMap(url: root.appendingPathComponent("event-sessions.json")))
+            upNext.setItems([HomeUpNextItem(id: event.id, title: event.title, meta: "", session: nil, event: event)])
+        }
+
+        func cleanUp() {
+            try? FileManager.default.removeItem(at: root)
+            UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite)
+        }
+
+        /// Marta's brief: made from the Pilot Review (current) or from the Kickoff only (stale).
+        func brief(stale: Bool) -> BriefFile {
+            func cite(_ session: String, key: String, kind: String = "turn", _ stamp: String? = nil) -> BriefFile.Cite {
+                BriefFile.Cite(key: key, session: session, kind: kind, stamp: stamp)
+            }
+            let review = "Halden Pilot Review", kick = "Halden Kickoff"
+            let sections: [BriefFile.Section] = [
+                .init(id: "discussed", points: [
+                    .init(text: "The pilot covers two teams, not four", cites: [cite(review, key: "sp0m2vx", "4:10")]),
+                    .init(text: "Pricing moves to per-seat once the pilot ends", cites: [cite(kick, key: "sk3f9qa", kind: "summary")]),
+                ]),
+                .init(id: "promised_owner", points: [
+                    .init(text: "Send the revised budget by Friday", cites: [cite(review, key: "sp0m2vx", "31:12"), cite(review, key: "sp0m2vx", kind: "summary")]),
+                ]),
+                .init(id: "promised_them", points: [
+                    .init(text: "Marta shares the security questionnaire next week", cites: [cite(kick, key: "sk3f9qa", "12:34")]),
+                ]),
+                .init(id: "open", points: [
+                    .init(text: "Whether the second team joins in January", cites: [cite(review, key: "sp0m2vx", "18:40")]),
+                ]),
+                .init(id: "tone", points: [
+                    .init(text: "Prefers short written follow-ups to long calls", cites: [cite(kick, key: "sk3f9qa", "25:05")]),
+                ]),
+            ]
+            let iso = ISO8601DateFormatter()
+            let cal = Calendar.current
+            func stamp(_ daysAgo: Int) -> String { iso.string(from: cal.date(byAdding: .day, value: -daysAgo, to: Date()) ?? Date()) }
+            return BriefFile(version: 1, entity: marta, name: "Marta Velin", madeAt: cal.date(byAdding: .day, value: -1, to: Date()) ?? Date(), lang: "en",
+                             model: "claude-sonnet-5-5", newestSession: stale ? kick : review, forSession: nil,
+                             sessions: [.init(name: review, key: "sp0m2vx", title: review, date: stamp(2)),
+                                        .init(name: kick, key: "sk3f9qa", title: kick, date: stamp(8))],
+                             sections: sections, costUSD: 0.048, droppedUncited: 0)
+        }
     }
 
     // MARK: folder fixtures

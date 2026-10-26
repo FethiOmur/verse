@@ -121,7 +121,7 @@ public struct CalendarSource: Sendable {
             .map { e in
                 let link = MeetingLink.extract(url: e.url, location: e.location, notes: e.notes)
                 return MeetingEvent(id: e.id, title: e.title, start: e.start, end: e.end, attendees: e.attendees,
-                                    notes: e.notes, url: link.url, provider: link.provider)
+                                    notes: e.notes, url: link.url, provider: link.provider, currentUser: e.currentUser)
             }
     }
 }
