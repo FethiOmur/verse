@@ -3,7 +3,8 @@ import Foundation
 import VerseTurns
 
 // Ask this meeting, app side (spec 2.2, 3.2): one brain child process per open panel, `python -u -m verse_brain.runtime` whose first
-// line is `ask_start`. The key is read by that process from the Keychain; nothing here handles it. The process ends when the panel
+// line is `ask_start`. In the memory scopes (memory spec 2.3, 3.4: one person or company, or every meeting) the first line is
+// `memory_ask_start`, the chat file and the spend record live in the memory folder, and the citations come back as objects. The key is read by that process from the Keychain; nothing here handles it. The process ends when the panel
 // closes, another session is selected, the window closes, or after 10 minutes without a question; the next question starts it
 // again and the brain rebuilds its history from `chat.jsonl`.
 
@@ -62,6 +63,98 @@ struct AskContext: Equatable, Sendable {
     }
 }
 
+/// What `memory_ask_start` carries (memory spec 3.4): the index, the chat file of the scope, the owner, the me layer when the profile
+/// toggle is on, and the scope. Attendee emails are never part of it.
+struct MemoryAskContext: Equatable, Sendable {
+    /// `.all` or `.entity(id)`.
+    var scope: AskScope
+    /// The entity's name; "" for every meeting.
+    var scopeName: String
+    var ownerName: String
+    var db: URL
+    var chat: URL
+    /// The folder whose `spend.json` takes the cost of this opening (`memory/`).
+    var spendDir: URL
+    var meCore: URL?
+    /// The entity's sessions (the resolver's, newest first); empty and unused for `.all`.
+    var sessions: [String] = []
+
+    /// The first line the brain reads (its mode switch). Keys are sorted so the line is deterministic.
+    func startLine(model: AskModel) -> String {
+        var scopeObj: [String: Any] = ["kind": "all", "id": NSNull(), "name": NSNull(), "sessions": NSNull()]
+        if case .entity(let id) = scope {
+            scopeObj = ["kind": "entity", "id": id, "name": scopeName, "sessions": sessions]
+        }
+        var obj: [String: Any] = [
+            "type": "memory_ask_start", "db": db.path, "chat": chat.path, "owner_name": ownerName, "scope": scopeObj, "model": model.rawValue,
+        ]
+        if let meCore { obj["me"] = ["core": meCore.path] } else { obj["me"] = NSNull() }
+        return AskWire.line(obj)
+    }
+}
+
+/// What an open panel is about: one session (today's Ask this meeting) or a memory scope.
+enum AskTarget: Equatable, Sendable {
+    case session(AskContext)
+    case memory(MemoryAskContext)
+
+    var chatURL: URL {
+        switch self {
+        case .session(let c): ChatLog.url(sessionDir: c.sessionDir)
+        case .memory(let c): c.chat
+        }
+    }
+
+    /// Where the cost of this opening is recorded: the session folder, or `memory/`.
+    var spendDir: URL {
+        switch self {
+        case .session(let c): c.sessionDir
+        case .memory(let c): c.spendDir
+        }
+    }
+
+    func startLine(model: AskModel) -> String {
+        switch self {
+        case .session(let c): c.startLine(model: model)
+        case .memory(let c): c.startLine(model: model)
+        }
+    }
+}
+
+/// One cited source of a memory answer (memory spec 3.4): the session, where in it, and what it says, so the hover card needs no file
+/// read. `kind` is `turn` (then `stamp` is set), `summary`, `prep` or `chat`.
+struct AskSource: Equatable, Sendable {
+    var key: String
+    var session: String
+    var title: String
+    var date: Date?
+    var kind: String
+    var stamp: String?
+    var speaker: String?
+    var text: String?
+
+    init(key: String, session: String, title: String, date: Date? = nil, kind: String, stamp: String? = nil, speaker: String? = nil, text: String? = nil) {
+        self.key = key
+        self.session = session
+        self.title = title
+        self.date = date
+        self.kind = kind
+        self.stamp = stamp
+        self.speaker = speaker
+        self.text = text
+    }
+
+    /// nil unless the object has a key, a session and a kind.
+    init?(_ o: [String: Any]) {
+        guard let key = o["key"] as? String, let session = o["session"] as? String, let kind = o["kind"] as? String else { return nil }
+        self.init(key: key, session: session, title: (o["title"] as? String) ?? session, date: (o["date"] as? String).flatMap(BriefLayout.date(from:)),
+                  kind: kind, stamp: o["stamp"] as? String, speaker: o["speaker"] as? String, text: o["text"] as? String)
+    }
+
+    /// The `[key form]` form that cites it (memory spec 2.2): a stamp for a transcript line, else the kind.
+    var form: String { kind == "turn" ? (stamp ?? "") : kind }
+}
+
 enum AskWire {
     static func line(_ obj: [String: Any]) -> String {
         let d = (try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data("{}".utf8)
@@ -88,6 +181,9 @@ struct AskDone: Equatable, Sendable {
     var msTotal: Int?
     var citations: [String]
     var stopReason: String?
+    /// Object citations of a memory answer (`citations` is empty then); empty for Ask this meeting.
+    var sources: [AskSource] = []
+    var excerptTokens: Int?
 }
 
 enum AskEvent: Equatable, Sendable {
@@ -108,10 +204,13 @@ enum AskEvent: Equatable, Sendable {
         case "ask_delta":
             return .delta(question: str("q"), text: str("text"))
         case "ask_done":
+            // Ask this meeting cites with strings, the memory scopes with objects; the element type tells them apart.
+            let cites = (o["citations"] as? [Any]) ?? []
             return .done(AskDone(answerID: str("id"), question: str("q"), model: str("model"), usage: ChatUsage(o["usage"] as? [String: Any]),
                                  costUSD: (o["cost_usd"] as? NSNumber)?.doubleValue ?? 0, costEstimated: (o["cost_estimated"] as? Bool) ?? false,
-                                 msFirstToken: int("ms_first_token"), msTotal: int("ms_total"), citations: (o["citations"] as? [String]) ?? [],
-                                 stopReason: o["stop_reason"] as? String))
+                                 msFirstToken: int("ms_first_token"), msTotal: int("ms_total"), citations: cites.compactMap { $0 as? String },
+                                 stopReason: o["stop_reason"] as? String,
+                                 sources: cites.compactMap { ($0 as? [String: Any]).flatMap(AskSource.init) }, excerptTokens: int("excerpt_tokens")))
         case "ask_error":
             return .error(question: str("q"), ChatFailure(kind: str("kind").isEmpty ? "error" : str("kind"), message: str("message"),
                                                          retryAfter: (o["retry_after"] as? NSNumber)?.doubleValue))
@@ -166,13 +265,18 @@ final class AskSession: ObservableObject {
     var idleInterval: Duration
     /// False in renders: the panel shows what is on disk and never starts a process.
     var launchesBrain = true
-    /// Writes the cost of this opening into the session's `spend.json` (a run of kind `ask`).
+    /// Writes the cost of this opening into the `spend.json` of the session folder, or of `memory/` in the memory scopes (a run of kind `ask`).
     var recordSpend: (URL, Date, Double) -> Void = { dir, startedAt, cost in
         SpendLedger.record(sessionDir: dir, startedAt: startedAt, costUSD: cost, kind: "ask")
     }
     var now: () -> Date = { Date() }
 
-    private(set) var context: AskContext?
+    /// What the panel is open on; nil when it is closed.
+    private(set) var target: AskTarget?
+    /// The session's context when the panel is open on one meeting.
+    var context: AskContext? { if case .session(let c) = target { c } else { nil } }
+    /// The memory scope's context when the panel is open on a person, a company or every meeting.
+    var memoryContext: MemoryAskContext? { if case .memory(let c) = target { c } else { nil } }
     private var brain: (any SimBrainTransport)?
     private var reader: Task<Void, Never>?
     private var idleTask: Task<Void, Never>?
@@ -189,7 +293,7 @@ final class AskSession: ObservableObject {
         self.makeBrain = makeBrain
     }
 
-    var isOpen: Bool { context != nil }
+    var isOpen: Bool { target != nil }
     var isRunning: Bool { brain != nil }
 
     /// "This chat": what the answers on screen cost.
@@ -198,10 +302,16 @@ final class AskSession: ObservableObject {
     // MARK: open and close
 
     /// Shows the history and starts the brain (spec: started when the panel opens).
-    func open(_ ctx: AskContext) {
-        if context != nil { close() }
-        context = ctx
-        let loaded = ChatLog.load(sessionDir: ctx.sessionDir)
+    func open(_ ctx: AskContext) { open(.session(ctx)) }
+
+    /// A memory scope: the same, with the chat file and the spend record of the memory folder. `launch: false` shows the history and
+    /// waits (the caller syncs the index first and then calls `launchIfOpen()`).
+    func open(_ ctx: MemoryAskContext, launch: Bool = true) { open(.memory(ctx), launch: launch) }
+
+    func open(_ t: AskTarget, launch: Bool = true) {
+        if target != nil { close() }
+        target = t
+        let loaded = ChatLog.load(url: t.chatURL)
         turns = loaded.turns
         nextIndex = loaded.nextIndex
         isBusy = false
@@ -210,7 +320,14 @@ final class AskSession: ObservableObject {
         lastStatusError = nil
         openedAt = now()
         openCost = 0
-        if launchesBrain { _ = ensureRunning() }
+        if launchesBrain, launch { _ = ensureRunning() }
+        touch()
+    }
+
+    /// Starts the brain of an open panel that waited for the index to sync.
+    func launchIfOpen() {
+        guard target != nil, launchesBrain else { return }
+        _ = ensureRunning()
         touch()
     }
 
@@ -219,7 +336,7 @@ final class AskSession: ObservableObject {
         stopBrain()
         idleTask?.cancel()
         idleTask = nil
-        context = nil
+        target = nil
         isBusy = false
     }
 
@@ -237,13 +354,13 @@ final class AskSession: ObservableObject {
     /// Sends a question. Ignored while an answer is out, for an empty text, and when the panel is not open.
     func send(_ raw: String) {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isBusy, context != nil else { return }
+        guard !text.isEmpty, !isBusy, target != nil else { return }
         ask(text, replacing: nil)
     }
 
     /// Asks the question of a failed turn again; the failed one leaves the screen.
     func retry(_ turnID: String) {
-        guard !isBusy, context != nil, let t = turns.first(where: { $0.id == turnID && $0.phase == .failed }) else { return }
+        guard !isBusy, target != nil, let t = turns.first(where: { $0.id == turnID && $0.phase == .failed }) else { return }
         ask(t.question, replacing: turnID)
     }
 
@@ -271,7 +388,7 @@ final class AskSession: ObservableObject {
 
     /// "Clear chat": the brain appends a `reset` line to `chat.jsonl`, the screen empties. Nothing is deleted.
     func clearChat() {
-        guard context != nil else { return }
+        guard target != nil else { return }
         turns = []
         isBusy = false
         notice = nil
@@ -285,14 +402,14 @@ final class AskSession: ObservableObject {
     @discardableResult
     private func ensureRunning() -> Bool {
         if brain != nil { return true }
-        guard let ctx = context else { return false }
+        guard let t = target else { return false }
         do {
             let b = try makeBrain()
             brain = b
             startCount += 1
             lastStatusError = nil
             startReader(b)
-            b.send(ctx.startLine(model: model))
+            b.send(t.startLine(model: model))
             return true
         } catch {
             notice = ChatFailure(kind: "start_failed", message: "\(error)")
@@ -339,11 +456,11 @@ final class AskSession: ObservableObject {
         case .done(let d):
             isBusy = false
             openCost += d.costUSD
-            if let ctx = context, let at = openedAt, d.costUSD > 0 { recordSpend(ctx.sessionDir, at, openCost) }
+            if let t = target, let at = openedAt, d.costUSD > 0 { recordSpend(t.spendDir, at, openCost) }
             if let i = turns.firstIndex(where: { $0.id == d.question }) {
                 turns[i].answer = ChatAnswer(id: d.answerID, text: turns[i].partial, model: d.model, usage: d.usage, costUSD: d.costUSD,
                                              costEstimated: d.costEstimated, msFirstToken: d.msFirstToken, msTotal: d.msTotal,
-                                             citations: d.citations, stopReason: d.stopReason)
+                                             citations: d.citations, stopReason: d.stopReason, sources: d.sources, excerptTokens: d.excerptTokens)
                 turns[i].phase = .answered
                 turns[i].failure = nil
             }
@@ -367,7 +484,7 @@ final class AskSession: ObservableObject {
     /// Re-arms the idle timer; the process stops after `idleInterval` without activity and starts again on the next question.
     private func touch() {
         idleTask?.cancel()
-        guard context != nil, brain != nil else { return }
+        guard target != nil, brain != nil else { return }
         let interval = idleInterval
         idleTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: interval)

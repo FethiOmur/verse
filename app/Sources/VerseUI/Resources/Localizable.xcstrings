@@ -1490,6 +1490,22 @@
         }
       }
     },
+    "About $0.05 on your Anthropic key": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Circa $0,05 sulla tua chiave Anthropic"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic anahtarından yaklaşık $0,05"
+          }
+        }
+      }
+    },
     "About $0.05 on your Anthropic key.": {
       "localizations": {
         "it": {
@@ -1618,6 +1634,22 @@
         }
       }
     },
+    "Add person…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiungi persona…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kişi Ekle…"
+          }
+        }
+      }
+    },
     "Add to your profile": {
       "localizations": {
         "it": {
@@ -1646,6 +1678,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Toplantıdan sonra özeti kasaya kaydetmeyi öner"
+          }
+        }
+      }
+    },
+    "All meetings": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutte le riunioni"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm toplantılar"
           }
         }
       }
@@ -1746,6 +1794,22 @@
         }
       }
     },
+    "Answers come from the transcripts, summaries and prep of your past meetings, with sources you can tap.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le risposte vengono dalle trascrizioni, dai riepiloghi e dalla preparazione delle tue riunioni passate, con fonti su cui puoi cliccare."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yanıtlar geçmiş toplantılarının transkriptlerinden, özetlerinden ve hazırlıklarından gelir; kaynaklara tıklayabilirsin."
+          }
+        }
+      }
+    },
     "Answers come from this meeting's transcript, summary and prep, with timestamps you can tap.": {
       "localizations": {
         "it": {
@@ -1774,6 +1838,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yanıtlar Anthropic anahtarını ve yalnızca bu toplantının transkriptini, özetini, hazırlığını ve profilini kullanır."
+          }
+        }
+      }
+    },
+    "Answers use your Anthropic key and the meetings in Verse's memory on this Mac.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le risposte usano la tua chiave Anthropic e le riunioni nella memoria di Verse su questo Mac."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yanıtlar Anthropic anahtarını ve bu Mac’teki Verse hafızasında bulunan toplantıları kullanır."
           }
         }
       }
@@ -1922,6 +2002,22 @@
         }
       }
     },
+    "Ask about all meetings": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiedi su tutte le riunioni"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm toplantılar hakkında sor"
+          }
+        }
+      }
+    },
     "Ask about this meeting": {
       "localizations": {
         "it": {
@@ -1934,6 +2030,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bu toplantı hakkında sor"
+          }
+        }
+      }
+    },
+    "Ask all meetings": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiedi a tutte le riunioni"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm toplantılara sor"
           }
         }
       }
@@ -2130,6 +2242,22 @@
         }
       }
     },
+    "Before this meeting": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prima di questa riunione"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu toplantıdan önce"
+          }
+        }
+      }
+    },
     "Best installed": {
       "localizations": {
         "it": {
@@ -2190,6 +2318,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Brifing hazır"
+          }
+        }
+      }
+    },
+    "Brief…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Briefing…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brifing…"
           }
         }
       }
@@ -4432,6 +4576,22 @@
         }
       }
     },
+    "How does %@ like to work?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Come preferisce lavorare %@?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ nasıl çalışmayı sever?"
+          }
+        }
+      }
+    },
     "Imported %@: %@, %@": {
       "localizations": {
         "en": {
@@ -4466,6 +4626,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "İçe Aktar…"
+          }
+        }
+      }
+    },
+    "In the Trash": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nel Cestino"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çöp Sepeti’nde"
           }
         }
       }
@@ -5030,6 +5206,22 @@
         }
       }
     },
+    "Making brief…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparo il briefing…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brifing hazırlanıyor…"
+          }
+        }
+      }
+    },
     "Making the brief…": {
       "localizations": {
         "it": {
@@ -5304,6 +5496,44 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ ile birleştirildi"
+          }
+        }
+      }
+    },
+    "Met %lld times · last %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Met %1$lld times · last %2$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incontrati %lld volte · l’ultima il %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kez görüşüldü · son: %@"
+          }
+        }
+      }
+    },
+    "Met once · last %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incontrati una volta · l’ultima il %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir kez görüşüldü · son: %@"
           }
         }
       }
@@ -5938,6 +6168,22 @@
         }
       }
     },
+    "No meetings with %@ are in Verse yet.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse non ha ancora riunioni con %@."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse’te henüz %@ ile toplantı yok."
+          }
+        }
+      }
+    },
     "No one matches your search.": {
       "localizations": {
         "it": {
@@ -6126,6 +6372,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bu oturum için transkript kaydedilmedi."
+          }
+        }
+      }
+    },
+    "Nobody matches.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun risultato."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eşleşen yok."
           }
         }
       }
@@ -6494,6 +6756,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aç"
+          }
+        }
+      }
+    },
+    "Open %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ sayfasını aç"
+          }
+        }
+      }
+    },
+    "Open %@'s page": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri la pagina di %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ sayfasını aç"
           }
         }
       }
@@ -8370,6 +8664,22 @@
         }
       }
     },
+    "Scope": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ambito"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapsam"
+          }
+        }
+      }
+    },
     "Screening": {
       "localizations": {
         "it": {
@@ -8638,6 +8948,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kişiler’de Göster"
+          }
+        }
+      }
+    },
+    "Show in the transcript": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra nella trascrizione"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transkriptte göster"
           }
         }
       }
@@ -9566,6 +9892,22 @@
         }
       }
     },
+    "That line is no longer in this transcript.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quella frase non è più in questa trascrizione."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu satır artık bu transkriptte yok."
+          }
+        }
+      }
+    },
     "The Anthropic key is missing or was not accepted. Check it in Settings.": {
       "localizations": {
         "it": {
@@ -9642,6 +9984,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Beyin durdu; bir kez yeniden başlatılıyor."
+          }
+        }
+      }
+    },
+    "The brief could not be made: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è stato possibile preparare il briefing: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brifing hazırlanamadı: %@"
           }
         }
       }
@@ -10010,6 +10368,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bu satırda “|” ile ayrılmış %lld bölüm var. Hepsini koru."
+          }
+        }
+      }
+    },
+    "This meeting": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa riunione"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu toplantı"
           }
         }
       }
@@ -10446,6 +10820,28 @@
         }
       }
     },
+    "Updating memory · %lld of %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Updating memory · %1$lld of %2$lld"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiorno la memoria · %lld di %lld"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hafıza güncelleniyor · %lld / %lld"
+          }
+        }
+      }
+    },
     "Use for Start": {
       "localizations": {
         "it": {
@@ -10772,6 +11168,22 @@
         }
       }
     },
+    "Verse has no past meetings to search yet.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse non ha ancora riunioni passate in cui cercare."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse’te aranacak geçmiş toplantı henüz yok."
+          }
+        }
+      }
+    },
     "Verse is writing…": {
       "localizations": {
         "it": {
@@ -10938,6 +11350,22 @@
         }
       }
     },
+    "What did I promise %@?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Che cosa ho promesso a %@?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ konusunda ne vaat ettim?"
+          }
+        }
+      }
+    },
     "What did I promise to do?": {
       "localizations": {
         "it": {
@@ -10950,6 +11378,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ne yapmayı vaat ettim?"
+          }
+        }
+      }
+    },
+    "What did I promise, and to whom?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Che cosa ho promesso, e a chi?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ne vaat ettim, kime?"
+          }
+        }
+      }
+    },
+    "What did people ask me most often?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Che cosa mi hanno chiesto più spesso?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bana en sık ne sordular?"
           }
         }
       }
@@ -10970,6 +11430,22 @@
         }
       }
     },
+    "What did we agree last time?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Su cosa ci siamo accordati l’ultima volta?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçen sefer neye karar verildi?"
+          }
+        }
+      }
+    },
     "What is it about? Say what you want to get across, in your own words. Verse writes it the way you talk.": {
       "localizations": {
         "it": {
@@ -10982,6 +11458,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Konu ne? Anlatmak istediğini kendi sözlerinle söyle. Verse bunu senin konuştuğun gibi yazar."
+          }
+        }
+      }
+    },
+    "What is still open across my meetings?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Che cosa è ancora aperto nelle mie riunioni?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toplantılarımda neler hâlâ açık?"
+          }
+        }
+      }
+    },
+    "What is still open with %@?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Che cosa è ancora aperto con %@?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ile neler hâlâ açık?"
           }
         }
       }
@@ -11046,6 +11554,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yanıtım nerede zayıftı?"
+          }
+        }
+      }
+    },
+    "Which meetings talked about pricing?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quali riunioni hanno parlato di prezzi?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hangi toplantılarda fiyatlandırma konuşuldu?"
           }
         }
       }
@@ -11258,6 +11782,44 @@
         }
       }
     },
+    "You've met %@ %lld times. Make a brief?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "You've met %1$@ %2$lld times. Make a brief?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hai incontrato %@ %lld volte. Preparo un briefing?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ile %lld kez görüşüldü. Brifing hazırlansın mı?"
+          }
+        }
+      }
+    },
+    "You've met %@ once. Make a brief?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hai incontrato %@ una volta. Preparo un briefing?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ile bir kez görüşüldü. Brifing hazırlansın mı?"
+          }
+        }
+      }
+    },
     "Your Anthropic credit is used up. Add credit, then retry.": {
       "localizations": {
         "it": {
@@ -11270,6 +11832,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Anthropic kredin bitti. Kredi ekle, sonra tekrar dene."
+          }
+        }
+      }
+    },
+    "Your brief before this meeting": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il tuo briefing prima di questa riunione"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu toplantıdan önceki brifing"
           }
         }
       }

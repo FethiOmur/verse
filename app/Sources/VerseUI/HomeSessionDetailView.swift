@@ -45,6 +45,12 @@ struct HomeSessionDetailView: View {
     var onPractice: () -> Void = {}
     /// The Trash button and the More menu's Move to Trash act on the selection (`HomeSessionsPage.performTrash`).
     var trash = SessionTrashControl()
+    /// Verse's memory (memory spec 5.3): the people row, the brief before a prepared meeting and the brief a past meeting had. nil in
+    /// tests and renders that do not need it.
+    var memory: SessionMemoryEnvironment?
+    /// Where the page asks this detail to be (a citation to the Summary, or to a transcript line that is gone), and the note then.
+    var place: SessionDetailPlace?
+    var note: String?
     @StateObject private var ownJump = TranscriptJump()
     @Environment(\.sessionsDetailRender) private var render
     @State private var detail = HomeSessionDetail()
@@ -86,6 +92,7 @@ struct HomeSessionDetailView: View {
         VStack(alignment: .leading, spacing: 0) {
             header
             if let message { HomeNote(verbatim: message, isError: messageIsError).padding(.top, 8) }
+            if let note { HomeNote(verbatim: note).padding(.top, 8).accessibilityIdentifier("verse.home.sessions.revealNote") }
             if showsTabs {
                 HomeSegmented(Self.tabItems,
                               selection: Binding(get: { render?.tab ?? tab }, set: { tab = $0; SessionsDetailTabStore().tab = $0 }))
@@ -108,6 +115,11 @@ struct HomeSessionDetailView: View {
             guard hasTranscript else { return }
             tab = .transcript
         }
+        // A citation of a summary, or of a line that is no longer in the transcript.
+        .onChange(of: place) { _, p in
+            guard let p else { return }
+            if p.tab == .transcript ? hasTranscript : hasSummary { tab = p.tab }
+        }
     }
 
     // MARK: header
@@ -116,6 +128,9 @@ struct HomeSessionDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(session.title).font(.system(size: 20, weight: .bold)).tracking(-0.3).foregroundStyle(ink.primary).lineLimit(2)
             Text(meta).font(VT.Font.callout).foregroundStyle(ink.secondary)
+            if let memory, session.kind != .practice {
+                SessionPeopleRow(session: session, env: memory).padding(.top, 1)
+            }
         }
     }
 
@@ -199,6 +214,18 @@ struct HomeSessionDetailView: View {
             } else {
                 HomeGroup(plate: true) { Color.clear }.frame(maxHeight: .infinity)
             }
+        } else if SessionBriefPlacement.showsPlate(session), let memory {
+            // A prepared session: "Before this meeting" above the prepared card (memory spec 5.3).
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    SessionBriefPlate(session: session, ownerName: settings.ownerName, env: memory)
+                    HomeGroup(plate: true) {
+                        VStack(alignment: .leading, spacing: 14) { content }
+                            .padding(20).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
         } else {
             HomeGroup(plate: true) {
                 ScrollView {
@@ -246,6 +273,10 @@ struct HomeSessionDetailView: View {
             if detail.questions.count > 12 {
                 Text("and \(detail.questions.count - 12) more in the transcript", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary)
             }
+        }
+        // The brief this meeting had, collapsed (memory spec 5.3).
+        if let memory, SessionBriefPlacement.showsDisclosure(session) {
+            SessionBriefDisclosure(session: session, ownerName: settings.ownerName, env: memory)
         }
     }
 
@@ -303,5 +334,363 @@ struct HomeSessionDetailView: View {
             message = "\(error)"
             messageIsError = true
         }
+    }
+}
+
+// MARK: - Memory in the detail (memory spec 5.3)
+
+/// What a session's detail and Up next need to show people and briefs. References, so a change anywhere redraws the views that watch.
+struct SessionMemoryEnvironment {
+    let memory: MemoryService
+    let people: EntityStore
+    let sessions: HomeSessionsModel
+    let router: HomeRouter
+    let briefs: AutoBriefCenter
+}
+
+/// "Making the brief…": one quiet line that breathes like Ask's Thinking line (1.1 s per half cycle); still under Reduce Motion.
+struct BriefMakingLine: View {
+    var animated: Bool
+    @Environment(\.homeInk) private var ink
+    @State private var dim = false
+
+    var body: some View {
+        Text("Making the brief…", bundle: .module).font(VT.Font.body).foregroundStyle(ink.secondary)
+            .opacity(animated && dim ? 0.45 : 1)
+            .onAppear {
+                guard animated else { return }
+                withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) { dim = true }
+            }
+            .accessibilityElement(children: .combine)
+    }
+}
+
+/// The session's people under its meta line: plain text links to their pages, and "Add person…" to link one by hand or take one out.
+struct SessionPeopleRow: View {
+    var session: HomeSession
+    var env: SessionMemoryEnvironment
+    @ObservedObject private var people: EntityStore
+    @ObservedObject private var sessions: HomeSessionsModel
+    @Environment(\.homeInk) private var ink
+    @State private var adding = false
+
+    init(session: HomeSession, env: SessionMemoryEnvironment) {
+        self.session = session
+        self.env = env
+        _people = ObservedObject(wrappedValue: env.people)
+        _sessions = ObservedObject(wrappedValue: env.sessions)
+    }
+
+    private var entities: [MemoryEntity] { people.entities(of: session.name, folders: sessions.folders.file) }
+
+    var body: some View {
+        AskFlow(space: 6, lineSpacing: 2, uniformSpace: true) {
+            ForEach(Array(entities.enumerated()), id: \.element.id) { i, e in
+                HStack(spacing: 6) {
+                    PersonLink(name: e.name) { env.router.showEntity(e.id) }
+                    if i < entities.count - 1 { Text(verbatim: "·").font(VT.Font.callout).foregroundStyle(ink.tertiary) }
+                }
+            }
+            Button { adding = true } label: {
+                Text("Add person…", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary).frame(height: 18)
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $adding, arrowEdge: .bottom) {
+                SessionPeoplePicker(session: session.name, env: env)
+            }
+            .accessibilityIdentifier("verse.home.sessions.addPerson")
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
+/// A name that is a link: secondary text, underlined while the pointer is on it.
+private struct PersonLink: View {
+    var name: String
+    var action: () -> Void
+    @Environment(\.homeInk) private var ink
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(verbatim: name).font(VT.Font.callout).foregroundStyle(hover ? ink.primary : ink.secondary).underline(hover)
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
+        .animation(AskMotion.tint, value: hover)
+    }
+}
+
+/// The popover of "Add person…": every person and company, the ones in this meeting ticked. A click links or unlinks.
+private struct SessionPeoplePicker: View {
+    var session: String
+    var env: SessionMemoryEnvironment
+    @ObservedObject private var people: EntityStore
+    @ObservedObject private var sessions: HomeSessionsModel
+    @Environment(\.homeInk) private var ink
+    @State private var query = ""
+
+    init(session: String, env: SessionMemoryEnvironment) {
+        self.session = session
+        self.env = env
+        _people = ObservedObject(wrappedValue: env.people)
+        _sessions = ObservedObject(wrappedValue: env.sessions)
+    }
+
+    private var members: Set<String> { Set(people.entities(of: session, folders: sessions.folders.file).map(\.id)) }
+
+    private var candidates: [MemoryEntity] {
+        let q = TextFold.fold(query.trimmingCharacters(in: .whitespacesAndNewlines))
+        let inside = members
+        return people.file.entities.filter { !$0.hidden && (q.isEmpty || $0.foldedNames.contains { $0.contains(q) }) }
+            .sorted { a, b in
+                let ia = inside.contains(a.id), ib = inside.contains(b.id)
+                if ia != ib { return ia }
+                if a.kind != b.kind { return a.kind == .person }
+                return TextFold.fold(a.name) < TextFold.fold(b.name)
+            }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").font(.system(size: 11, weight: .medium)).foregroundStyle(ink.tertiary)
+                TextField("", text: $query, prompt: Text("Search people and companies", bundle: .module).foregroundStyle(ink.tertiary))
+                    .textFieldStyle(.plain).font(VT.Font.body)
+            }
+            .padding(.horizontal, 9).frame(height: 28)
+            .background(ink.fill, in: RoundedRectangle(cornerRadius: VT.Radius.control, style: .continuous))
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(candidates) { e in row(e) }
+                    if candidates.isEmpty {
+                        Text("Nobody matches.", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary).padding(10)
+                    }
+                }
+            }
+            .frame(maxHeight: 240)
+        }
+        .padding(12).frame(width: 320)
+    }
+
+    private func row(_ e: MemoryEntity) -> some View {
+        let inside = members.contains(e.id)
+        return Button {
+            if inside { people.unlink(session, from: e.id) } else { people.link(session, to: e.id) }
+        } label: {
+            HStack(spacing: 8) {
+                Text(verbatim: e.name).font(.system(size: 13, weight: .medium)).foregroundStyle(ink.primary).lineLimit(1)
+                Text(e.kind == .person ? "Person" : "Company", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary)
+                Spacer(minLength: 6)
+                Image(systemName: inside ? "checkmark" : "plus").font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(inside ? ink.primary : ink.tertiary)
+            }
+            .padding(.horizontal, 8).frame(height: 32).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(inside ? .isSelected : [])
+    }
+}
+
+/// What a session's detail shows about its brief (memory spec 5.3), apart from the views.
+enum SessionBriefPlacement {
+    /// The plate above the prepared card is for a session that was not held; a held one keeps its brief in the Summary tab's disclosure.
+    static func showsPlate(_ s: HomeSession) -> Bool { s.kind == .prepared && !EntityResolver.wasHeld(s) }
+
+    static func showsDisclosure(_ s: HomeSession) -> Bool { s.kind != .practice && EntityResolver.wasHeld(s) }
+
+    /// The session's own `brief.json`, else the latest brief of its primary entity.
+    static func brief(for session: HomeSession, entity: MemoryEntity?, paths: MemoryPaths) -> BriefFile? {
+        BriefStore.load(sessionDir: session.dir) ?? entity.flatMap { BriefStore.load(entity: $0.id, paths: paths) }
+    }
+
+    /// The primary entity of the session and its past meetings (held, newest first, without the session itself).
+    static func about(_ session: HomeSession, file: PeopleFile, folders: FoldersFile, sessions: [HomeSession]) -> (entity: MemoryEntity, past: [HomeSession])? {
+        guard let e = BriefPlanning.primaryEntity(of: session.name, file: file, folders: folders, sessions: sessions) else { return nil }
+        return (e, EntityResolver.pastSessions(of: e.id, excluding: session.name, file: file, folders: folders, sessions: sessions))
+    }
+
+    /// `hidden` (no plate) without a past meeting; "You've met Marta 3 times. Make a brief?" without a brief; Update when stale.
+    static func state(past: [HomeSession], brief: BriefFile?, making: Bool, failure: ChatFailure?) -> PeopleModel.BriefState {
+        PeopleModel.briefState(past: past, brief: brief, making: making, failure: failure)
+    }
+}
+
+/// "Before this meeting": the brief of a prepared session, above its prepared card (memory spec 5.3).
+struct SessionBriefPlate: View {
+    var session: HomeSession
+    var ownerName: String
+    var env: SessionMemoryEnvironment
+    @ObservedObject private var people: EntityStore
+    @ObservedObject private var sessions: HomeSessionsModel
+    @ObservedObject private var memory: MemoryService
+    @ObservedObject private var briefs: AutoBriefCenter
+    @Environment(\.homeInk) private var ink
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var brief: BriefFile?
+    @State private var animated = false
+
+    init(session: HomeSession, ownerName: String, env: SessionMemoryEnvironment) {
+        self.session = session
+        self.ownerName = ownerName
+        self.env = env
+        _people = ObservedObject(wrappedValue: env.people)
+        _sessions = ObservedObject(wrappedValue: env.sessions)
+        _memory = ObservedObject(wrappedValue: env.memory)
+        _briefs = ObservedObject(wrappedValue: env.briefs)
+    }
+
+    private var about: (entity: MemoryEntity, past: [HomeSession])? {
+        SessionBriefPlacement.about(session, file: people.file, folders: sessions.folders.file, sessions: sessions.sessions)
+    }
+
+    private var entity: MemoryEntity? { about?.entity }
+    private var past: [HomeSession] { about?.past ?? [] }
+
+    private var making: Bool {
+        briefs.making.contains(session.name) || (entity.map { memory.briefsInFlight.contains($0.id) } ?? false)
+    }
+
+    private var state: PeopleModel.BriefState {
+        SessionBriefPlacement.state(past: past, brief: brief, making: making, failure: briefs.failures[session.name])
+    }
+
+    var body: some View {
+        let state = state
+        Group {
+            if state != .hidden, let entity {
+                EntityPlate(title: "Before this meeting", caption: caption(state)) {
+                    stateBody(state, entity: entity)
+                }
+                .accessibilityIdentifier("verse.home.sessions.briefPlate")
+            }
+        }
+        .task(id: session.name) { reload() }
+        .onChange(of: memory.briefsInFlight) { old, new in
+            reload()
+            if !old.isEmpty, new.isEmpty, brief != nil { animated = true }
+        }
+        .onChange(of: briefs.making) { _, _ in reload() }
+    }
+
+    private func reload() {
+        brief = SessionBriefPlacement.brief(for: session, entity: entity, paths: memory.paths)
+    }
+
+    private func caption(_ state: PeopleModel.BriefState) -> String? {
+        switch state {
+        case .ready(let b), .stale(let b, _):
+            var parts = [L10n.tr("Made \(PeopleModel.date(b.madeAt))"), AskModel.displayName(forModelID: b.model)]
+            if b.costUSD > 0 { parts.append(L10n.usd(b.costUSD)) }
+            return parts.joined(separator: " · ")
+        default:
+            return nil
+        }
+    }
+
+    @ViewBuilder private func stateBody(_ state: PeopleModel.BriefState, entity: MemoryEntity) -> some View {
+        switch state {
+        case .hidden:
+            EmptyView()
+        case .none(let n):
+            HStack(spacing: 12) {
+                Text(verbatim: metText(n, entity: entity)).font(VT.Font.body).foregroundStyle(ink.secondary)
+                Spacer(minLength: 8)
+                HomeSecondaryButton("Make brief") { make() }.accessibilityIdentifier("verse.home.sessions.makeBrief")
+            }
+        case .making:
+            HStack(spacing: 14) {
+                BriefMakingLine(animated: !reduceMotion)
+                Spacer(minLength: 8)
+                HomeSecondaryButton("Cancel") { memory.cancelBrief(entity: entity.id) }
+            }
+        case .failed(let f):
+            VStack(alignment: .leading, spacing: 10) {
+                HomeNote(verbatim: L10n.tr("The brief could not be made: \(PeopleModel.failureText(f))"), isError: true)
+                HomeSecondaryButton("Retry") { retry() }.accessibilityIdentifier("verse.home.sessions.retryBrief")
+            }
+        case .ready(let b):
+            briefView(b)
+        case .stale(let b, let newest):
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 12) {
+                    Text("Made before your \(PeopleModel.date(newest.date)) meeting.", bundle: .module).font(VT.Font.callout).foregroundStyle(ink.secondary)
+                    Spacer(minLength: 8)
+                    HomeSecondaryButton("Update") { make() }.accessibilityIdentifier("verse.home.sessions.updateBrief")
+                }
+                briefView(b)
+            }
+        }
+    }
+
+    /// "You've met Marta 3 times. Make a brief?"
+    private func metText(_ n: Int, entity: MemoryEntity) -> String {
+        let who = PeopleModel.shortName(entity)
+        return n == 1 ? L10n.tr("You've met \(who) once. Make a brief?") : L10n.tr("You've met \(who) \(n) times. Make a brief?")
+    }
+
+    private func briefView(_ b: BriefFile) -> some View {
+        var view = BriefView(brief: b, ownerName: ownerName, availableSessions: Set(sessions.sessions.map(\.name))) { cite in
+            env.router.showSession(cite.session, reveal: EntityPageView.reveal(for: cite))
+        }
+        view.animated = animated
+        return view
+    }
+
+    private func make() {
+        guard let request = BriefPlanning.request(forSession: session.name, file: people.file, folders: sessions.folders.file,
+                                                  sessions: sessions.sessions, sessionsRoot: sessions.root) else { return }
+        briefs.clearFailure(session: session.name)
+        Task { @MainActor in
+            if case .success = await briefs.run(request, session: session.name) { animated = true }
+            reload()
+        }
+    }
+
+    private func retry() {
+        briefs.clearFailure(session: session.name)
+        briefs.retry(session: session.name)
+    }
+}
+
+/// "Your brief before this meeting": collapsed at the end of a past meeting's Summary tab (memory spec 5.3). Open or closed is kept in
+/// view state only.
+struct SessionBriefDisclosure: View {
+    var session: HomeSession
+    var ownerName: String
+    var env: SessionMemoryEnvironment
+    @Environment(\.homeInk) private var ink
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var brief: BriefFile?
+    @State private var open = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let brief {
+                Button {
+                    withAnimation(reduceMotion ? AskMotion.crossfade : AskMotion.tint) { open.toggle() }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)).foregroundStyle(ink.tertiary)
+                            .rotationEffect(.degrees(open && !reduceMotion ? 90 : 0))
+                        Text("Your brief before this meeting", bundle: .module).font(.system(size: 12, weight: .semibold)).foregroundStyle(ink.secondary)
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityValue(Text(open ? "Expanded" : "Collapsed", bundle: .module))
+                .accessibilityIdentifier("verse.home.sessions.pastBrief")
+                if open {
+                    BriefView(brief: brief, ownerName: ownerName, availableSessions: Set(env.sessions.sessions.map(\.name))) { cite in
+                        env.router.showSession(cite.session, reveal: EntityPageView.reveal(for: cite))
+                    }
+                    .transition(.opacity)
+                }
+            }
+        }
+        .padding(.top, brief == nil ? 0 : 6)
+        .task(id: session.name) { brief = BriefStore.load(sessionDir: session.dir) }
     }
 }

@@ -30,6 +30,8 @@ struct AskRenderState: Equatable, Sendable {
     }
 
     var open = true
+    /// A memory scope to open in instead of the selected meeting (`.all` or `.entity(id)`).
+    var scope: AskScope?
     var script: Script = .chat
     /// A citation whose transcript line is shown as if the pointer rested on it.
     var hover: Hover?
@@ -215,6 +217,75 @@ enum AskMotion {
     static let cardGrace: Duration = .milliseconds(90)
 }
 
+// MARK: - Scope (memory spec 2.3, 5.2)
+
+/// What the panel knows about its scope when it can work across meetings. Without it (`AskPanel.scope == nil`) the panel is Ask this
+/// meeting exactly as before.
+struct AskPanelScope {
+    struct Choice: Identifiable, Equatable {
+        var scope: AskScope
+        var title: String
+        var id: AskScope { scope }
+    }
+
+    var current: AskScope
+    /// "This meeting" (when the selected session offers Ask), one item per entity of the selected session, "All meetings".
+    var choices: [Choice]
+    /// The entity's name for the entity scope, the whole name; "" otherwise.
+    var entityName = ""
+    /// The first word of a person's name ("Marta"), the whole name of a company: what the starters say.
+    var shortName = ""
+    /// A sync's first phase is running: "Updating memory · 3 of 12".
+    var updating: (done: Int, total: Int)?
+    /// No indexed meeting in scope: the sentence that replaces the starters (the composer is disabled).
+    var emptyText: String?
+    /// Session folders that still exist: a source in the Trash is dimmed.
+    var available: Set<String> = []
+    var onChange: (AskScope) -> Void = { _ in }
+    /// A citation was clicked: open that session at that place.
+    var onSource: (AskSource) -> Void = { _ in }
+
+    var isMemory: Bool { if case .session = current { false } else { true } }
+
+    var title: String {
+        switch current {
+        case .session: L10n.tr("Ask this meeting")
+        case .all: L10n.tr("Ask all meetings")
+        case .entity: L10n.tr("Ask about \(entityName)")
+        }
+    }
+
+    var placeholder: String {
+        switch current {
+        case .session: L10n.tr("Ask about this meeting")
+        case .all: L10n.tr("Ask about all meetings")
+        case .entity: L10n.tr("Ask about \(entityName)")
+        }
+    }
+
+    /// The four rows of the empty state.
+    var starters: [String] {
+        switch current {
+        case .session:
+            Self.sessionStarters
+        case .all:
+            [L10n.tr("What did I promise, and to whom?"), L10n.tr("What is still open across my meetings?"),
+             L10n.tr("Which meetings talked about pricing?"), L10n.tr("What did people ask me most often?")]
+        case .entity:
+            [L10n.tr("What did we agree last time?"), L10n.tr("What did I promise \(shortName)?"),
+             L10n.tr("What is still open with \(shortName)?"), L10n.tr("How does \(shortName) like to work?")]
+        }
+    }
+
+    /// Ask this meeting's four rows, whatever the scope says (the panel without a scope).
+    static var sessionStarters: [String] {
+        [L10n.tr("What did they ask me?"), L10n.tr("What did I promise to do?"), L10n.tr("Where was my answer weak?"), L10n.tr("What is still open?")]
+    }
+
+    /// "Updating memory · 3 of 12".
+    var updatingText: String? { updating.map { L10n.tr("Updating memory · \($0.done) of \($0.total)") } }
+}
+
 // MARK: - The panel
 
 struct AskPanel: View {
@@ -226,6 +297,8 @@ struct AskPanel: View {
     var lines: [String: AskCitedLine] = [:]
     var onCitation: (String) -> Void
     var onClose: () -> Void
+    /// Set by the Sessions page: the scope menu, the memory scopes' states and what a citation click does. nil: Ask this meeting only.
+    var scope: AskPanelScope?
 
     @Environment(\.homeInk) private var ink
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -241,16 +314,40 @@ struct AskPanel: View {
     @State private var faded = false
     @FocusState private var composerFocused: Bool
 
+    init(session: AskSession, settings: AppSettings, stamps: Set<String>, lines: [String: AskCitedLine] = [:],
+         onCitation: @escaping (String) -> Void, onClose: @escaping () -> Void, scope: AskPanelScope? = nil) {
+        self.session = session
+        self.settings = settings
+        self.stamps = stamps
+        self.lines = lines
+        self.onCitation = onCitation
+        self.onClose = onClose
+        self.scope = scope
+    }
+
     static let width: CGFloat = 340
+
+    private var memory: Bool { scope?.isMemory ?? false }
+    private var composerEnabled: Bool { scope?.emptyText == nil }
 
     private var animated: Bool { !reduceMotion && askRender == nil }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
+            if let text = scope?.updatingText {
+                Text(verbatim: text).font(VT.Font.caption).monospacedDigit().foregroundStyle(ink.tertiary).padding(.top, 2)
+                    .transition(.opacity)
+                    .accessibilityIdentifier("verse.home.ask.updating")
+            }
+            // A scope change is one crossfade of the conversation; the panel itself does not move.
             conversation.padding(.top, 14)
+                .id(scope?.current)
+                .transition(.opacity)
             composer.padding(.top, 10)
         }
+        .animation(AskMotion.crossfade, value: scope?.current)
+        .animation(AskMotion.tint, value: scope?.updatingText)
         .padding(.horizontal, 16).padding(.top, 26).padding(.bottom, 16)
         .frame(width: Self.width).frame(maxHeight: .infinity, alignment: .topLeading)
         .overlayPreferenceValue(AskSourceAnchors.self) { anchors in citationCard(anchors) }
@@ -282,12 +379,29 @@ struct AskPanel: View {
         Binding(get: { session.model }, set: { session.model = $0; settings.askModel = $0 })
     }
 
-    /// The title, one menu (model, this chat's cost, Clear chat) and Close. Nothing else lives up here.
+    private func scopeBinding(_ scope: AskPanelScope) -> Binding<AskScope> {
+        Binding(get: { scope.current }, set: { if $0 != scope.current { scope.onChange($0) } })
+    }
+
+    /// The title, one menu (scope, model, this chat's cost, Clear chat) and Close. Nothing else lives up here.
     private var header: some View {
         HStack(spacing: 8) {
-            Text("Ask this meeting", bundle: .module).font(VT.Font.title).foregroundStyle(ink.primary).lineLimit(1)
+            if let scope {
+                Text(verbatim: scope.title).font(VT.Font.title).foregroundStyle(ink.primary).lineLimit(1)
+            } else {
+                Text("Ask this meeting", bundle: .module).font(VT.Font.title).foregroundStyle(ink.primary).lineLimit(1)
+            }
             Spacer(minLength: 8)
             SessionChromeMenu(symbol: "ellipsis", help: "More") {
+                if let scope, scope.choices.count > 1 {
+                    Picker(selection: scopeBinding(scope)) {
+                        ForEach(scope.choices) { c in Text(verbatim: c.title).tag(c.scope) }
+                    } label: {
+                        Text("Scope", bundle: .module)
+                    }
+                    .pickerStyle(.inline)
+                    Divider()
+                }
                 Picker(selection: modelBinding) {
                     ForEach(AskModel.allCases) { m in Text(verbatim: m.title).tag(m) }
                 } label: {
@@ -346,14 +460,16 @@ struct AskPanel: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 26) {
                     if session.turns.isEmpty {
-                        AskEmptyState(disabled: session.isBusy, animated: animated, reduceMotion: reduceMotion) { ask($0) }
+                        AskEmptyState(disabled: session.isBusy || !composerEnabled, animated: animated, reduceMotion: reduceMotion,
+                                      scope: scope) { ask($0) }
                             .containerRelativeFrame(.vertical, alignment: .center) { h, _ in max(h - 38, 0) }
                             .transition(.opacity)
                     } else {
                         ForEach(session.turns) { turn in
                             AskTurnView(turn: turn, isLast: turn.id == session.turns.last?.id, busy: session.isBusy, stamps: stamps,
                                         animated: animated, reduceMotion: reduceMotion, activeCite: shownCite, onCitation: onCitation,
-                                        onHover: hover, onRetry: { pinned = true; session.retry(turn.id) })
+                                        onHover: hover, onRetry: { pinned = true; session.retry(turn.id) },
+                                        memory: memory ? AskMemoryEnv(available: scope?.available ?? [], onSource: scope?.onSource ?? { _ in }) : nil)
                                 .id(turn.id)
                                 .transition(.asymmetric(insertion: .identity, removal: .opacity))
                         }
@@ -429,16 +545,29 @@ struct AskPanel: View {
         shownCite = nil
     }
 
+    /// What the card under a hovered citation shows: the transcript line of a stamp, or in a memory scope the source behind a mark.
+    private func cardContent(key: String, stamp: String) -> (stamp: String, line: AskCitedLine)? {
+        guard memory else { return lines[stamp].map { (stamp, $0) } }
+        let parts = key.split(separator: "|").map(String.init)
+        guard parts.count == 2, let n = Int(parts[1]), let turn = session.turns.first(where: { $0.id == parts[0] }), let a = turn.answer else { return nil }
+        let cited = AskAnswerParser.memoryBlocks(a.text, sources: a.sources).cited
+        guard cited.indices.contains(n - 1) else { return nil }
+        let src = cited[n - 1]
+        return (src.kind == "turn" ? (src.stamp ?? "") : "", AskMemoryFormat.line(for: src))
+    }
+
     @ViewBuilder private func citationCard(_ anchors: [String: Anchor<CGRect>]) -> some View {
         GeometryReader { geo in
-            if let key = shownCite, let anchor = anchors[key], let stamp = key.split(separator: "|").last.map(String.init), let line = lines[stamp] {
+            if let key = shownCite, let anchor = anchors[key], let stamp = key.split(separator: "|").last.map(String.init),
+               let card = cardContent(key: key, stamp: stamp) {
+                let line = card.line
                 let r = geo[anchor]
                 // 292 pt at most, kept inside the plate (16 pt from the panel edge, 6 pt in).
                 let w = min(292, geo.size.width - 44)
                 let x = min(max(r.minX - 6, 22), geo.size.width - 22 - w)
                 // Above the token when there is room, otherwise below it.
                 let above = r.minY > 150
-                AskCitationCard(stamp: stamp, line: line, width: w)
+                AskCitationCard(stamp: card.stamp, line: line, width: w)
                     .frame(width: geo.size.width, height: above ? max(r.minY - 6, 0) : nil, alignment: above ? .bottomLeading : .topLeading)
                     .padding(.top, above ? 0 : r.maxY + 6)
                     .offset(x: x)
@@ -451,15 +580,16 @@ struct AskPanel: View {
 
     // MARK: composer
 
-    private var canSend: Bool { !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !session.isBusy }
+    private var canSend: Bool { !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !session.isBusy && composerEnabled }
 
     /// One field with the send control inside it (radius 14, control inset 5, so the 9 pt button is concentric). The plate's own
     /// material, no glass; the accent shows only on the focus ring and the send button.
     private var composer: some View {
         HStack(alignment: .bottom, spacing: 4) {
-            TextField("", text: $draft, selection: $selection, prompt: Text("Ask about this meeting", bundle: .module).foregroundStyle(ink.tertiary), axis: .vertical)
+            TextField("", text: $draft, selection: $selection, prompt: composerPrompt, axis: .vertical)
                 .textFieldStyle(.plain).font(.system(size: 14)).foregroundStyle(ink.primary).lineLimit(1 ... 6)
                 .focused($composerFocused)
+                .disabled(!composerEnabled)
                 .padding(.leading, 13).padding(.vertical, 11.5)
                 .onKeyPress(keys: [.return]) { press in
                     if press.modifiers.contains(.shift) {
@@ -482,6 +612,11 @@ struct AskPanel: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { composerFocused = true }
+    }
+
+    private var composerPrompt: Text {
+        if let scope { return Text(verbatim: scope.placeholder).foregroundStyle(ink.tertiary) }
+        return Text("Ask about this meeting", bundle: .module).foregroundStyle(ink.tertiary)
     }
 
     private var sendButton: some View {
@@ -560,9 +695,12 @@ private struct AskEmptyState: View {
     var disabled: Bool
     var animated: Bool
     var reduceMotion: Bool
+    var scope: AskPanelScope?
     var send: (String) -> Void
     @Environment(\.homeInk) private var ink
     @State private var appeared = false
+
+    private var memory: Bool { scope?.isMemory ?? false }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -571,31 +709,44 @@ private struct AskEmptyState: View {
                 Text("Ask what was said, promised or missed.", bundle: .module)
                     .font(.system(size: 17, weight: .semibold)).tracking(-0.2).foregroundStyle(ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
-                Text("Answers come from this meeting's transcript, summary and prep, with timestamps you can tap.", bundle: .module)
-                    .font(.system(size: 13)).lineSpacing(3).foregroundStyle(ink.secondary).fixedSize(horizontal: false, vertical: true)
+                if let empty = scope?.emptyText {
+                    Text(verbatim: empty)
+                        .font(.system(size: 13)).lineSpacing(3).foregroundStyle(ink.secondary).fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("verse.home.ask.noMeetings")
+                } else if memory {
+                    Text("Answers come from the transcripts, summaries and prep of your past meetings, with sources you can tap.", bundle: .module)
+                        .font(.system(size: 13)).lineSpacing(3).foregroundStyle(ink.secondary).fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("Answers come from this meeting's transcript, summary and prep, with timestamps you can tap.", bundle: .module)
+                        .font(.system(size: 13)).lineSpacing(3).foregroundStyle(ink.secondary).fixedSize(horizontal: false, vertical: true)
+                }
             }
             .modifier(Rise(on: appeared, index: 0, animated: animated, reduceMotion: reduceMotion))
-            VStack(spacing: 0) {
-                row("What did they ask me?", sends: L10n.tr("What did they ask me?"), index: 1)
-                row("What did I promise to do?", sends: L10n.tr("What did I promise to do?"), index: 2)
-                row("Where was my answer weak?", sends: L10n.tr("Where was my answer weak?"), index: 3)
-                row("What is still open?", sends: L10n.tr("What is still open?"), index: 4, last: true)
+            if scope?.emptyText == nil {
+                VStack(spacing: 0) {
+                    let rows = scope?.starters ?? AskPanelScope.sessionStarters
+                    ForEach(Array(rows.enumerated()), id: \.offset) { i, title in
+                        AskStarterRow(title: title, last: i == rows.count - 1, disabled: disabled) { send(title) }
+                            .modifier(Rise(on: appeared, index: i + 1, animated: animated, reduceMotion: reduceMotion))
+                    }
+                }
+                .padding(.top, 18)
             }
-            .padding(.top, 18)
             // The group sits a little above the middle, where the eye rests.
             Spacer(minLength: 16)
             Color.clear.frame(height: 36)
-            Text("Answers use your Anthropic key and only this meeting's transcript, summary, prep and profile.", bundle: .module)
-                .font(VT.Font.caption).foregroundStyle(ink.tertiary).fixedSize(horizontal: false, vertical: true)
-                .modifier(Rise(on: appeared, index: 5, animated: animated, reduceMotion: reduceMotion))
+            if memory {
+                Text("Answers use your Anthropic key and the meetings in Verse's memory on this Mac.", bundle: .module)
+                    .font(VT.Font.caption).foregroundStyle(ink.tertiary).fixedSize(horizontal: false, vertical: true)
+                    .modifier(Rise(on: appeared, index: 5, animated: animated, reduceMotion: reduceMotion))
+            } else {
+                Text("Answers use your Anthropic key and only this meeting's transcript, summary, prep and profile.", bundle: .module)
+                    .font(VT.Font.caption).foregroundStyle(ink.tertiary).fixedSize(horizontal: false, vertical: true)
+                    .modifier(Rise(on: appeared, index: 5, animated: animated, reduceMotion: reduceMotion))
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .onAppear { appeared = true }
-    }
-
-    private func row(_ key: LocalizedStringKey, sends question: String, index: Int, last: Bool = false) -> some View {
-        AskStarterRow(title: key, last: last, disabled: disabled) { send(question) }
-            .modifier(Rise(on: appeared, index: index, animated: animated, reduceMotion: reduceMotion))
     }
 }
 
@@ -615,7 +766,7 @@ private struct Rise: ViewModifier {
 }
 
 private struct AskStarterRow: View {
-    var title: LocalizedStringKey
+    var title: String
     var last: Bool
     var disabled: Bool
     var action: () -> Void
@@ -625,7 +776,7 @@ private struct AskStarterRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                Text(title, bundle: .module).font(.system(size: 13.5, weight: .medium)).foregroundStyle(ink.primary).multilineTextAlignment(.leading)
+                Text(verbatim: title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(ink.primary).multilineTextAlignment(.leading)
                 Spacer(minLength: 8)
                 Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .semibold)).foregroundStyle(hover ? ink.secondary : ink.tertiary)
             }
@@ -644,6 +795,18 @@ private struct AskStarterRow: View {
 
 // MARK: - One question and what became of it
 
+/// What a turn needs in a memory scope: which sessions still exist, and what a source click does.
+struct AskMemoryEnv {
+    var available: Set<String>
+    var onSource: (AskSource) -> Void
+
+    /// A click on a mark or a token: a source whose session is in the Trash does nothing.
+    func open(_ source: AskSource) {
+        guard available.contains(source.session) else { return }
+        onSource(source)
+    }
+}
+
 private struct AskTurnView: View {
     var turn: ChatTurn
     var isLast: Bool
@@ -656,6 +819,7 @@ private struct AskTurnView: View {
     var activeCite: String?
     var onHover: (String, Bool) -> Void
     var onRetry: () -> Void
+    var memory: AskMemoryEnv?
 
     @Environment(\.homeInk) private var ink
     @State private var chunks: [AskChunk] = []
@@ -665,7 +829,8 @@ private struct AskTurnView: View {
     @State private var entered: Bool
 
     init(turn: ChatTurn, isLast: Bool, busy: Bool, stamps: Set<String>, animated: Bool, reduceMotion: Bool, activeCite: String?,
-         onCitation: @escaping (String) -> Void, onHover: @escaping (String, Bool) -> Void, onRetry: @escaping () -> Void) {
+         onCitation: @escaping (String) -> Void, onHover: @escaping (String, Bool) -> Void, onRetry: @escaping () -> Void,
+         memory: AskMemoryEnv? = nil) {
         self.turn = turn
         self.isLast = isLast
         self.busy = busy
@@ -676,6 +841,7 @@ private struct AskTurnView: View {
         self.onCitation = onCitation
         self.onHover = onHover
         self.onRetry = onRetry
+        self.memory = memory
         // A turn that is already on screen when it is built (history, the panel opening) just is; a turn that was just asked enters.
         let fresh = turn.phase == .waiting && turn.partial.isEmpty
         _seen = State(initialValue: fresh ? 0 : turn.shownText.count)
@@ -683,6 +849,15 @@ private struct AskTurnView: View {
     }
 
     private var live: Bool { turn.phase == .waiting || turn.phase == .streaming }
+
+    /// A mark in the text. In a memory scope it is the ordinal of a source of this answer: a source in the Trash does nothing.
+    private func markTapped(_ mark: String) {
+        guard let memory else { onCitation(mark); return }
+        guard let a = turn.answer, let n = Int(mark) else { return }
+        let cited = AskAnswerParser.memoryBlocks(a.text, sources: a.sources).cited
+        guard cited.indices.contains(n - 1) else { return }
+        memory.open(cited[n - 1])
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -694,13 +869,18 @@ private struct AskTurnView: View {
                         .animation(.easeOut(duration: 0.08), value: turn.phase)
                 }
                 if !turn.shownText.isEmpty {
-                    AskAnswerText(text: turn.shownText, stamps: stamps, streaming: live, chunks: chunks, fading: fading, onCitation: onCitation)
+                    AskAnswerText(text: turn.shownText, stamps: stamps, streaming: live, chunks: chunks, fading: fading,
+                                  memorySources: memory == nil ? nil : (turn.answer?.sources ?? []), onCitation: markTapped)
                 }
             }
             if let a = turn.answer {
                 let cited = AskAnswerParser.citedStamps(AskAnswerParser.blocks(a.text, validStamps: stamps))
+                let sources = memory == nil ? [] : AskAnswerParser.memoryBlocks(a.text, sources: a.sources).cited
                 VStack(alignment: .leading, spacing: 4) {
-                    if !cited.isEmpty {
+                    if let memory, !sources.isEmpty {
+                        AskMemorySourcesRow(turnID: turn.id, cited: sources, available: memory.available, active: activeCite,
+                                            onSource: memory.onSource, onHover: onHover)
+                    } else if memory == nil, !cited.isEmpty {
                         AskSourcesRow(turnID: turn.id, stamps: cited, active: activeCite, onCitation: onCitation, onHover: onHover)
                     }
                     HStack(spacing: 4) {

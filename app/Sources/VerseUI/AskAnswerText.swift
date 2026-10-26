@@ -25,7 +25,12 @@ struct AskBlock: Equatable {
 struct AskCitedLine: Equatable, Sendable {
     var speaker: String
     var text: String
+    /// Memory scopes: the session's title and date, shown above the line ("Halden Kickoff · 19 Oct").
+    var caption: String? = nil
 }
+
+/// How a citation is found in a line: its range, and the mark it becomes (`nil`: the text is cut out, nothing replaces it).
+typealias AskCitationFinder = (String) -> [(range: NSRange, mark: String?)]
 
 enum AskAnswerParser {
     private static let stamp = try! NSRegularExpression(pattern: #"\[(\d{1,2}:\d{2}(?::\d{2})?)\]"#)
@@ -36,8 +41,44 @@ enum AskAnswerParser {
     /// citation run (a stamp that does not stays plain text). The space before a citation is dropped: the mark hugs its word, so the
     /// line never opens a gap before a comma. While streaming, a `[` that has not closed yet is held back instead of flashing as text.
     static func blocks(_ raw: String, validStamps: Set<String>, streaming: Bool = false) -> [AskBlock] {
+        blocks(raw, unfinished: unfinishedStamp, streaming: streaming) { line in
+            let ns = line as NSString
+            return stamp.matches(in: line, range: NSRange(location: 0, length: ns.length)).compactMap { m in
+                let value = ns.substring(with: m.range(at: 1))
+                return validStamps.contains(value) ? (m.range, value) : nil
+            }
+        }
+    }
+
+    // MARK: memory citations (memory spec 2.2)
+
+    /// `[sk3f9qa 12:34]`, `[sk3f9qa summary]`, `[sk3f9qa prep]`, `[sk3f9qa chat]`: the brain's regex.
+    static let memoryCitation = try! NSRegularExpression(pattern: #"\[(s[0-9a-hjkmnp-tv-z]{6,8}) (\d{1,2}:\d{2}(?::\d{2})?|summary|prep|chat)\]"#)
+    private static let unfinishedMemory = try! NSRegularExpression(pattern: #"\[(?:s[0-9a-z]{0,8}(?: [0-9a-z:]{0,8})?)?$"#)
+
+    /// An answer of a memory scope: each citation that names one of `sources` becomes a mark numbered by order of first citation in
+    /// this answer (1, 2, 3); one that names nothing known stays plain text. While streaming (the sources are not known yet) a
+    /// citation is cut out of the text and an unfinished one is held back, so no bracket flashes. `cited` lists the sources in
+    /// ordinal order: ordinal n is `cited[n - 1]`.
+    static func memoryBlocks(_ raw: String, sources: [AskSource], streaming: Bool = false) -> (blocks: [AskBlock], cited: [AskSource]) {
+        var cited: [AskSource] = []
+        let blocks = blocks(raw, unfinished: unfinishedMemory, streaming: streaming) { line in
+            let ns = line as NSString
+            return memoryCitation.matches(in: line, range: NSRange(location: 0, length: ns.length)).compactMap { m in
+                if streaming { return (m.range, nil) }
+                let key = ns.substring(with: m.range(at: 1)), form = ns.substring(with: m.range(at: 2))
+                guard let source = sources.first(where: { $0.key == key && $0.form == form }) else { return nil }
+                if let i = cited.firstIndex(of: source) { return (m.range, "\(i + 1)") }
+                cited.append(source)
+                return (m.range, "\(cited.count)")
+            }
+        }
+        return (blocks, cited)
+    }
+
+    private static func blocks(_ raw: String, unfinished: NSRegularExpression, streaming: Bool, finder: AskCitationFinder) -> [AskBlock] {
         var text = raw
-        if streaming, let m = unfinishedStamp.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)), let r = Range(m.range, in: text) {
+        if streaming, let m = unfinished.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)), let r = Range(m.range, in: text) {
             text.removeSubrange(r)
         }
         var out: [AskBlock] = []
@@ -47,7 +88,7 @@ enum AskAnswerParser {
         var i = text.startIndex
         while i < text.endIndex {
             if text[i].isNewline {
-                if let b = block(text[lineStart ..< i], offset: lineOffset, validStamps: validStamps) { out.append(b) }
+                if let b = block(text[lineStart ..< i], offset: lineOffset, finder: finder) { out.append(b) }
                 count += 1
                 lineStart = text.index(after: i)
                 lineOffset = count
@@ -56,11 +97,11 @@ enum AskAnswerParser {
             }
             i = text.index(after: i)
         }
-        if let b = block(text[lineStart...], offset: lineOffset, validStamps: validStamps) { out.append(b) }
+        if let b = block(text[lineStart...], offset: lineOffset, finder: finder) { out.append(b) }
         return out
     }
 
-    private static func block(_ line: Substring, offset: Int, validStamps: Set<String>) -> AskBlock? {
+    private static func block(_ line: Substring, offset: Int, finder: AskCitationFinder) -> AskBlock? {
         var s = line
         var off = offset
         func dropLeadingSpace() {
@@ -77,23 +118,21 @@ enum AskAnswerParser {
         }
         while let l = s.last, l.isWhitespace { s = s.dropLast() }
         guard !s.isEmpty else { return nil }
-        let runs = runs(String(s), offset: off, validStamps: validStamps)
+        let runs = runs(String(s), offset: off, finder: finder)
         return runs.isEmpty ? nil : AskBlock(bullet: bullet, runs: runs)
     }
 
-    private static func runs(_ line: String, offset: Int, validStamps: Set<String>) -> [AskRun] {
+    private static func runs(_ line: String, offset: Int, finder: AskCitationFinder) -> [AskRun] {
         var out: [AskRun] = []
-        let ns = line as NSString
         var cursor = line.startIndex
         func at(_ i: String.Index) -> Int { offset + line.distance(from: line.startIndex, to: i) }
-        for m in stamp.matches(in: line, range: NSRange(location: 0, length: ns.length)) {
-            let value = ns.substring(with: m.range(at: 1))
-            guard validStamps.contains(value), let r = Range(m.range, in: line) else { continue }
+        for (nsRange, mark) in finder(line) {
+            guard let r = Range(nsRange, in: line), r.lowerBound >= cursor else { continue }
             var before = line[cursor ..< r.lowerBound]
             let beforeStart = cursor
             while let l = before.last, l.isWhitespace { before = before.dropLast() }
             if !before.isEmpty { out.append(AskRun(text: String(before), stamp: nil, offset: at(beforeStart))) }
-            out.append(AskRun(text: value, stamp: value, offset: at(r.lowerBound)))
+            if let mark { out.append(AskRun(text: mark, stamp: mark, offset: at(r.lowerBound))) }
             cursor = r.upperBound
         }
         let rest = line[cursor...]
@@ -129,6 +168,30 @@ enum AskSpoken {
         f.allowedUnits = [.hour, .minute, .second]
         f.zeroFormattingBehavior = .dropAll
         return f.string(from: c) ?? stamp
+    }
+
+    /// A memory answer: every mark becomes "(source 1: Halden Kickoff, 19 October, at 12 minutes 34 seconds)".
+    static func answer(_ blocks: [AskBlock], cited: [AskSource], locale: Locale = L10n.locale) -> String {
+        blocks.map { b in
+            b.runs.map { r in
+                guard let s = r.stamp, let n = Int(s), cited.indices.contains(n - 1) else { return r.text }
+                return " (" + source(n, cited[n - 1], locale: locale) + ")"
+            }.joined()
+        }.joined(separator: "\n")
+    }
+
+    /// "Source 1: Halden Kickoff, 19 October, at 12 minutes 34 seconds"; "…, summary" for the other kinds.
+    static func source(_ n: Int, _ s: AskSource, locale: Locale = L10n.locale) -> String {
+        var parts = [s.title]
+        if let d = s.date { parts.append(d.formatted(Date.FormatStyle().locale(L10n.formatLocale).day().month(.wide))) }
+        switch s.kind {
+        case "turn": if let st = s.stamp { parts.append(L10n.tr("at \(time(st, locale: locale))")) }
+        case "summary": parts.append(L10n.tr("Summary"))
+        case "prep": parts.append(L10n.tr("Prep"))
+        case "chat": parts.append(L10n.tr("Chat"))
+        default: break
+        }
+        return L10n.tr("Source \(n): \(parts.joined(separator: ", "))")
     }
 
     /// The answer as VoiceOver reads it: every mark becomes "(at 1 minute, 20 seconds)".
@@ -225,13 +288,28 @@ struct AskAnswerText: View {
     var streaming: Bool
     var chunks: [AskChunk]
     var fading: Bool
+    /// The stamp of a transcript mark; in a memory scope the mark's ordinal ("1").
     var onCitation: (String) -> Void
+    /// Set in the memory scopes: the answer's citations are `[key stamp]` forms resolved against these sources.
+    var memorySources: [AskSource]?
     @Environment(\.homeInk) private var ink
+
+    init(text: String, stamps: Set<String>, streaming: Bool, chunks: [AskChunk], fading: Bool, memorySources: [AskSource]? = nil,
+         onCitation: @escaping (String) -> Void) {
+        self.text = text
+        self.stamps = stamps
+        self.streaming = streaming
+        self.chunks = chunks
+        self.fading = fading
+        self.memorySources = memorySources
+        self.onCitation = onCitation
+    }
 
     private static let lineSpacing: CGFloat = 4.5
 
     var body: some View {
-        let blocks = AskAnswerParser.blocks(text, validStamps: stamps, streaming: streaming)
+        let memory = memorySources.map { AskAnswerParser.memoryBlocks(text, sources: $0, streaming: streaming) }
+        let blocks = memory?.blocks ?? AskAnswerParser.blocks(text, validStamps: stamps, streaming: streaming)
         TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !fading)) { _ in
             // The real time at every evaluation, not the timeline's date: a paused or hidden timeline hands out a stale date, and a
             // chunk that arrived "after" it would stay invisible until the next event.
@@ -251,11 +329,17 @@ struct AskAnswerText: View {
             return .handled
         })
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(verbatim: AskSpoken.answer(blocks)))
+        .accessibilityLabel(Text(verbatim: memory.map { AskSpoken.answer(blocks, cited: $0.cited) } ?? AskSpoken.answer(blocks)))
         .accessibilityActions {
             if !streaming {
-                ForEach(AskAnswerParser.citedStamps(blocks), id: \.self) { s in
-                    Button { onCitation(s) } label: { Text("Show the transcript at \(AskSpoken.time(s))", bundle: .module) }
+                if let memory {
+                    ForEach(Array(memory.cited.enumerated()), id: \.offset) { i, src in
+                        Button { onCitation("\(i + 1)") } label: { Text("Show source \(i + 1): \(AskMemoryFormat.caption(for: src))", bundle: .module) }
+                    }
+                } else {
+                    ForEach(AskAnswerParser.citedStamps(blocks), id: \.self) { s in
+                        Button { onCitation(s) } label: { Text("Show the transcript at \(AskSpoken.time(s))", bundle: .module) }
+                    }
                 }
             }
         }
@@ -334,7 +418,102 @@ private struct AskSourceToken: View {
     }
 }
 
+// MARK: - Sources of a memory answer
+
+enum AskMemoryFormat {
+    /// "Halden Kickoff · 19 Oct · 12:34", "Halden Pilot Review · 24 Oct · Summary".
+    static func caption(for s: AskSource) -> String {
+        var parts = [s.title]
+        if let d = s.date { parts.append(d.formatted(BriefLayout.shortDate)) }
+        switch s.kind {
+        case "turn": if let st = s.stamp { parts.append(st) }
+        case "summary": parts.append(L10n.tr("Summary"))
+        case "prep": parts.append(L10n.tr("Prep"))
+        case "chat": parts.append(L10n.tr("Chat"))
+        default: break
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    /// The hover card of a source: the session and date, then who said it and what, from the answer's own citation object.
+    static func line(for s: AskSource) -> AskCitedLine {
+        let speaker: String
+        switch s.kind {
+        case "turn": speaker = s.speaker ?? ""
+        case "summary": speaker = L10n.tr("Summary")
+        case "prep": speaker = L10n.tr("Prep")
+        default: speaker = L10n.tr("Chat")
+        }
+        var head = [s.title]
+        if let d = s.date { head.append(d.formatted(BriefLayout.shortDate)) }
+        return AskCitedLine(speaker: speaker, text: s.text ?? "", caption: head.joined(separator: " · "))
+    }
+}
+
+/// "Sources" and one token per cited source: "1 Halden Kickoff · 19 Oct · 12:34". A click opens that session at that place; a source
+/// whose session is gone (Move to Trash) is dimmed, says "In the Trash" and does nothing.
+struct AskMemorySourcesRow: View {
+    var turnID: String
+    var cited: [AskSource]
+    /// Session folders that still exist.
+    var available: Set<String>
+    var active: String?
+    var onSource: (AskSource) -> Void
+    var onHover: (String, Bool) -> Void
+    @Environment(\.homeInk) private var ink
+
+    var body: some View {
+        AskFlow(space: 4, lineSpacing: 4, uniformSpace: true) {
+            Text("Sources", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary).frame(height: 20)
+            ForEach(Array(cited.enumerated()), id: \.offset) { i, src in
+                AskMemorySourceToken(ordinal: i + 1, source: src, gone: !available.contains(src.session), key: "\(turnID)|\(i + 1)",
+                                     lit: active == "\(turnID)|\(i + 1)", onSource: onSource, onHover: onHover)
+            }
+        }
+    }
+}
+
+private struct AskMemorySourceToken: View {
+    var ordinal: Int
+    var source: AskSource
+    var gone: Bool
+    var key: String
+    var lit: Bool
+    var onSource: (AskSource) -> Void
+    var onHover: (String, Bool) -> Void
+    @Environment(\.homeInk) private var ink
+    @State private var hover = false
+
+    var body: some View {
+        let on = (hover || lit) && !gone
+        Button { if !gone { onSource(source) } } label: {
+            HStack(spacing: 5) {
+                Text(verbatim: "\(ordinal)").font(.system(size: 11, weight: .semibold)).monospacedDigit().foregroundStyle(ink.tertiary)
+                Text(verbatim: AskMemoryFormat.caption(for: source)).font(.system(size: 11, weight: .medium)).monospacedDigit().lineLimit(1)
+                    .foregroundStyle(gone ? ink.tertiary : (on ? ink.primary : ink.secondary))
+            }
+            .padding(.horizontal, 6).frame(height: 20)
+            .background(on ? ink.selection : ink.fill, in: RoundedRectangle(cornerRadius: VT.Radius.chip, style: .continuous))
+            .opacity(gone ? 0.7 : 1)
+            .overlay {
+                if ink.increaseContrast {
+                    RoundedRectangle(cornerRadius: VT.Radius.chip, style: .continuous).strokeBorder(ink.controlBorder)
+                }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(AskPressStyle(scale: gone ? 1 : 0.95))
+        .onHover { hover = $0; if !gone { onHover(key, $0) } }
+        .anchorPreference(key: AskSourceAnchors.self, value: .bounds) { [key: $0] }
+        .animation(AskMotion.tint, value: on)
+        .help(gone ? Text("In the Trash", bundle: .module) : Text(verbatim: AskMemoryFormat.caption(for: source)))
+        .accessibilityLabel(Text(verbatim: AskSpoken.source(ordinal, source)))
+        .accessibilityAction(named: Text("Show in the transcript", bundle: .module)) { if !gone { onSource(source) } }
+    }
+}
+
 /// The transcript line under a hovered citation: speaker, timestamp, the words. Solid (it floats over a surface that is already glass).
+/// In a memory scope a caption line (the session's title and date) comes first.
 struct AskCitationCard: View {
     var stamp: String
     var line: AskCitedLine
@@ -343,9 +522,14 @@ struct AskCitationCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
+            if let caption = line.caption {
+                Text(verbatim: caption).font(VT.Font.caption).foregroundStyle(ink.tertiary).lineLimit(1)
+            }
             HStack(spacing: 6) {
                 Text(verbatim: line.speaker).font(.system(size: 11, weight: .semibold)).foregroundStyle(ink.secondary)
-                Text(verbatim: stamp).font(.system(size: 11, weight: .medium)).monospacedDigit().foregroundStyle(ink.tertiary)
+                if !stamp.isEmpty {
+                    Text(verbatim: stamp).font(.system(size: 11, weight: .medium)).monospacedDigit().foregroundStyle(ink.tertiary)
+                }
             }
             Text(verbatim: line.text).font(.system(size: 12.5)).foregroundStyle(ink.primary).lineSpacing(2.5)
                 .lineLimit(4).fixedSize(horizontal: false, vertical: true)

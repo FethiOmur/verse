@@ -3,6 +3,122 @@ import Combine
 import SwiftUI
 import VerseMeet
 
+// MARK: - Briefs (memory spec 2.4)
+
+/// Which entity a brief is about and what it is made from. Pure: it reads the people file, the folders and the session list.
+enum BriefPlanning {
+    /// The company a session's people share, else its one person, else the person with the most past meetings (spec 2.4 "Primary
+    /// entity", applied to the entities a session already has).
+    static func primaryEntity(of session: String, file: PeopleFile, folders: FoldersFile, sessions: [HomeSession]) -> MemoryEntity? {
+        let es = EntityResolver.entities(of: session, file: file, folders: folders)
+        guard !es.isEmpty else { return nil }
+        func companyID(_ e: MemoryEntity) -> String? { e.kind == .company ? e.id : e.company }
+        let companies = Set(es.map(companyID))
+        if companies.count == 1, let cid = companies.first ?? nil, let company = file.entities.first(where: { $0.id == cid && $0.kind == .company && !$0.hidden }) {
+            return company
+        }
+        let people = es.filter { $0.kind == .person }
+        if people.count == 1 { return people[0] }
+        func score(_ e: MemoryEntity) -> (Int, Date) {
+            let past = EntityResolver.pastSessions(of: e.id, excluding: session, file: file, folders: folders, sessions: sessions)
+            return (past.count, past.first?.date ?? .distantPast)
+        }
+        return (people.isEmpty ? es : people).max { score($0) < score($1) }
+    }
+
+    private static func request(entity: MemoryEntity, past: [HomeSession], upcoming: BriefRequest.Upcoming?, file: PeopleFile, sessionDir: URL?) -> BriefRequest {
+        let company = entity.company.flatMap { c in file.entities.first { $0.id == c }?.name }
+        let lang = BriefLanguage.pick(upcoming: sessionDir.map(BriefLanguage.language(of:)), past: past.map { BriefLanguage.language(of: $0.dir) })
+        return BriefRequest(entity: .init(id: entity.id, kind: entity.kind.rawValue, name: entity.name, company: company),
+                            sessions: past.map(\.name), upcoming: upcoming, lang: lang, sessionOut: sessionDir)
+    }
+
+    /// The brief for `event` (spec 2.4): its primary entity's past meetings, newest first, at most 8, without `session`. `session` is
+    /// the prepared session when there is one: the brain also writes `brief.json` and `brief.md` into it. Nil when the event has no
+    /// primary entity or that entity has no past meeting. Attendees go in as names only.
+    static func request(for event: MeetingEvent, session: String?, file: PeopleFile, folders: FoldersFile, sessions: [HomeSession],
+                        sessionsRoot: URL) -> BriefRequest? {
+        guard let entity = EntityResolver.primaryEntity(for: event, file: file, folders: folders, sessions: sessions) else { return nil }
+        let past = Array(EntityResolver.pastSessions(of: entity.id, excluding: session, file: file, folders: folders, sessions: sessions).prefix(8))
+        guard !past.isEmpty else { return nil }
+        let upcoming = BriefRequest.Upcoming(title: event.title, start: event.start, attendees: EntityResolver.guestNames(of: event, file: file))
+        return request(entity: entity, past: past, upcoming: upcoming, file: file, sessionDir: session.map { sessionsRoot.appendingPathComponent($0, isDirectory: true) })
+    }
+
+    /// The brief for a session that exists (its detail's Make brief and Update): the same, from the session's own people.
+    static func request(forSession name: String, file: PeopleFile, folders: FoldersFile, sessions: [HomeSession], sessionsRoot: URL) -> BriefRequest? {
+        guard let entity = primaryEntity(of: name, file: file, folders: folders, sessions: sessions) else { return nil }
+        let past = Array(EntityResolver.pastSessions(of: entity.id, excluding: name, file: file, folders: folders, sessions: sessions).prefix(8))
+        guard !past.isEmpty, let me = sessions.first(where: { $0.name == name }) else { return nil }
+        let names = (file.attendees[name] ?? []).compactMap { $0.name?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        let upcoming = BriefRequest.Upcoming(title: me.title, start: me.date, attendees: names)
+        return request(entity: entity, past: past, upcoming: upcoming, file: file, sessionDir: sessionsRoot.appendingPathComponent(name, isDirectory: true))
+    }
+}
+
+/// Makes the briefs the user did not click for, and remembers what happened to them: the automatic brief after a session is prepared
+/// (spec 2.4 "Trigger"), whose failure shows on that session with Retry, and the briefs made from a session's detail. One per app.
+@MainActor
+final class AutoBriefCenter: ObservableObject {
+    /// Session name -> why its brief could not be made.
+    @Published private(set) var failures: [String: ChatFailure] = [:]
+    /// Sessions whose brief is being made now.
+    @Published private(set) var making: Set<String> = []
+
+    let memory: MemoryService
+    let people: EntityStore
+    let sessions: HomeSessionsModel
+    /// The task of the last automatic brief (tests wait for it).
+    private(set) var lastTask: Task<Void, Never>?
+    private var requests: [String: BriefRequest] = [:]
+    /// Called when a brief finishes ("Brief ready" for VoiceOver).
+    var announce: (String) -> Void = { AccessibilityNotification.Announcement($0).post() }
+
+    init(memory: MemoryService, people: EntityStore, sessions: HomeSessionsModel) {
+        self.memory = memory
+        self.people = people
+        self.sessions = sessions
+    }
+
+    /// The hook after `prepareSession`: one brief for the event's primary entity when it has a past meeting, otherwise nothing.
+    func afterPrepare(_ event: MeetingEvent, session: String) {
+        guard memory.enabled,
+              let request = BriefPlanning.request(for: event, session: session, file: people.file, folders: sessions.folders.file,
+                                                  sessions: sessions.sessions, sessionsRoot: sessions.root) else { return }
+        making.insert(session)
+        lastTask = Task { @MainActor [weak self] in await self?.run(request, session: session) }
+    }
+
+    /// Makes `request`; a failure is kept for `session` (the row says "The brief could not be made" with Retry). `session` nil: a brief
+    /// of the entity alone, whose failure the caller shows.
+    @discardableResult
+    func run(_ request: BriefRequest, session: String?) async -> Result<BriefFile, ChatFailure> {
+        if let session {
+            requests[session] = request
+            making.insert(session)
+            failures[session] = nil
+        }
+        let result = await memory.makeBrief(request)
+        if let session { making.remove(session) }
+        switch result {
+        case .success:
+            announce(L10n.tr("Brief ready"))
+        case .failure(let f):
+            if let session, f.kind != "cancelled" { failures[session] = f }
+        }
+        return result
+    }
+
+    func retry(session: String) {
+        guard let request = requests[session], !making.contains(session) else { return }
+        failures[session] = nil
+        making.insert(session)
+        lastTask = Task { @MainActor [weak self] in await self?.run(request, session: session) }
+    }
+
+    func clearFailure(session: String) { failures[session] = nil }
+}
+
 /// The objects the home window's pages work with. The app builds one at launch; renders and tests build their own.
 @MainActor
 public struct HomeContext {
@@ -21,6 +137,8 @@ public struct HomeContext {
     /// The people and companies of the owner's meetings (`memory/people.json`). A test or render process gets an empty store in a
     /// scratch folder; it never reads the owner's own file.
     let people: EntityStore
+    /// The automatic brief after a session is prepared, and the briefs made from a session's detail.
+    let briefs: AutoBriefCenter
     private var peopleSubscriptions: [AnyCancellable] = []
 
     public init(settings: AppSettings, controller: VerseController, simSettings: SimSettings, sim: SimController,
@@ -43,16 +161,21 @@ public struct HomeContext {
         self.sessions = sessionsModel
         // Only the app itself indexes: a test or render process builds a context too and must not start the brain.
         let isApp = Bundle.main.bundleIdentifier == AppSettings.suiteName
+        // A test or render process never touches the owner's memory folder: its paths are a scratch one.
+        let scratchMemory = MemoryPaths(base: FileManager.default.temporaryDirectory.appendingPathComponent("verse-memory-\(UUID().uuidString)", isDirectory: true))
         let memoryService = memory ?? MemoryService(
+            paths: isApp ? .live : scratchMemory,
             ownerName: { settings.ownerName },
             makeBrain: { [weak controller] in try MemoryService.makeBrainProcess(fake: controller?.fakeBrain ?? false) },
             makeIndexBrain: { [weak controller] in try MemoryService.makeBrainProcess(fake: controller?.fakeBrain ?? false, indexOnly: true) },
             enabled: isApp)
         self.memory = memoryService
         let peopleStore = people ?? EntityStore(
-            paths: isApp ? memoryService.paths : MemoryPaths(base: FileManager.default.temporaryDirectory.appendingPathComponent("verse-people-\(UUID().uuidString)", isDirectory: true)),
+            paths: isApp ? memoryService.paths : scratchMemory,
             sessionsRoot: sessionsModel.root)
         self.people = peopleStore
+        let briefCenter = AutoBriefCenter(memory: memoryService, people: peopleStore, sessions: sessionsModel)
+        self.briefs = briefCenter
         peopleStore.context = { [weak sessionsModel] in (sessionsModel?.folders.file ?? FoldersFile(), sessionsModel?.sessions ?? []) }
         // The memory index shows each session's people and companies; a change of an entity relabels it.
         memoryService.labels = { [weak peopleStore, weak sessionsModel] name in
@@ -71,9 +194,10 @@ public struct HomeContext {
                 sessionsModel.reload()
                 if controller?.running == false { settings.sessionName = name }
             },
-            // Who is in the meeting, for People (Up next and Practice's Upcoming both come through here).
-            afterPrepare: { [weak peopleStore] event, session in
+            // Who is in the meeting, for People, then the one automatic brief (Up next and Practice's Upcoming both come through here).
+            afterPrepare: { [weak peopleStore, weak briefCenter] event, session in
                 peopleStore?.recordAttendees(event.attendees, owner: event.currentUser, session: session)
+                briefCenter?.afterPrepare(event, session: session)
             })
         self.me = me ?? MeModel(fake: { [weak controller] in controller?.fakeBrain ?? false })
         self.router = router
@@ -171,11 +295,14 @@ public struct HomeRoot: View {
     @ViewBuilder private var page: some View {
         switch router.page {
         case .prepare:
-            ConversationSetupView(model: context.conversation, upNext: context.upNext, meeting: context.controller, settings: settings)
+            ConversationSetupView(model: context.conversation, upNext: context.upNext, meeting: context.controller, settings: settings,
+                                  memory: SessionMemoryEnvironment(memory: context.memory, people: context.people, sessions: context.sessions,
+                                                                   router: router, briefs: context.briefs))
         case .me:
             MePage(model: context.me, controller: context.controller, settings: settings)
         case .sessions:
-            HomeSessionsPage(model: context.sessions, router: router, controller: context.controller, settings: settings)
+            HomeSessionsPage(model: context.sessions, router: router, controller: context.controller, settings: settings,
+                             memory: context.memory, people: context.people, briefs: context.briefs)
         case .people:
             PeoplePage(store: context.people, sessions: context.sessions, upNext: context.upNext, memory: context.memory,
                        router: router, settings: settings)
