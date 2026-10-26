@@ -558,7 +558,7 @@ class Brain:
     # ------------------------------------------------------------------ start / warm transport
     def _prefix_request(self, route: str, max_tokens: int | None, tail: str, turns: list[Turn] | None = None) -> dict:
         assert self.session is not None
-        return build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack,
+        return build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack_for_model,
                              list(self.turns if turns is None else turns), tail, self.about)
 
     async def _warm(self, model: str, kind: str, lane: int = 0) -> None:
@@ -850,7 +850,7 @@ class Brain:
             return None
         route = {"R": "S", "A": "D"}.get(tier, tier)   # summaries ride the S/F and D tuples (and their caches)
         max_tokens = {"R": self.config.summary_max_tokens, "A": self.config.final_max_tokens}.get(tier)
-        req = build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack, turns, tail, self.about)
+        req = build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack_for_model, turns, tail, self.about)
         model = req["model"]
         est_in = (sum(len(b.get("text", "")) for b in req["messages"][0]["content"]) + len(self.about or "")) // 4
         if not self.limiters[model].try_acquire(est_in, req["max_tokens"]):

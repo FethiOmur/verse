@@ -32,5 +32,7 @@ def register(registry):
     registry.add_prompt_addendum("voice", "HARBOR-ADDENDUM-VOICE.")
     registry.add_prompt_addendum("script", "HARBOR-ADDENDUM-SCRIPT.")
     registry.add_prompt_addendum("ask", "HARBOR-ADDENDUM-ASK for {owner}.")
+    registry.add_prompt_addendum("memory_ask", "HARBOR-ADDENDUM-MEMORY-ASK for {owner}.")
+    registry.add_prompt_addendum("brief", "HARBOR-ADDENDUM-BRIEF.")
     registry.add_private_project("Lighthouse-Private")
     assert registry.config.get("harbor_setting") == "on"      # the extension reads its own key from the owner file

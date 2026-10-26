@@ -29,7 +29,7 @@ from .owner import OWNER
 log = logging.getLogger("verse.extensions")
 
 # The prompts that accept an addendum (`add_prompt_addendum(name, text)`).
-PROMPT_NAMES = ("prep", "profile", "voice", "script", "live_fast", "live_deep", "ask")
+PROMPT_NAMES = ("prep", "profile", "voice", "script", "live_fast", "live_deep", "ask", "memory_ask", "brief")
 MODULE_PREFIX = "verse_ext_"
 
 

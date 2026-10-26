@@ -185,3 +185,20 @@ MEMORY_SOURCE_WEIGHTS = {"turn": 1.0, "summary": 1.2, "prep": 0.6, "chat": 0.5}
 MEMORY_EXCERPT_TOKENS = 16_000      # the excerpts of one question, estimated with ask.est_tokens
 MEMORY_SESSION_EXCERPT_TOKENS = 6_000   # ...of which one session may take this much
 MEMORY_EMBED_BATCH = 32             # chunks embedded per batch in phase 2 of the index run
+
+
+# Memory Ask and the pre-meeting brief (spec 2.3, 2.4; runtime/memory_ask.py, memory/brief.py).
+MEMORY_HISTORY_PAIRS = 6            # Q/A pairs of a memory chat that are sent again (text only)
+MEMORY_CATALOG_MAX = 400            # SESSION CATALOG lines (newest first); older meetings are searched but not listed
+BRIEF_MAX_SESSIONS = 8              # past sessions a brief reads
+BRIEF_EXCERPT_TOKENS = 18_000       # ...of excerpts in all, split evenly between them
+BRIEF_MAX_TOKENS = 1_500            # the brief's output cap
+BRIEF_PACK_CHARS = 2_400            # brief.md as the live model sees it (about 600 tokens)
+
+
+def brief_params() -> dict:
+    """The brief's request tuple: Sonnet's Ask tuple with the brief's output cap."""
+    p = ask_params("sonnet")
+    p["max_tokens"] = BRIEF_MAX_TOKENS
+    p["output_config"] = {"effort": "low"}       # the default (adaptive) thinking at medium used the whole cap before the text (live check)
+    return p
