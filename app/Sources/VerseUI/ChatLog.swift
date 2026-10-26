@@ -1,6 +1,7 @@
 import Foundation
 
-// `chat.jsonl` of Ask this meeting (spec 2.2, 3.3): one JSON object per line, append-only, written by the brain's ask runtime only.
+// `chat.jsonl` of Ask this meeting (spec 2.2, 3.3) and the chat files of the memory scopes (memory spec 3.7, same line shapes, citations
+// as objects): one JSON object per line, append-only, written by the brain's ask runtime only.
 // Swift reads it to show the history. Nothing here writes the file; "Clear chat" is a `control reset` to the brain, which appends a
 // `reset` line. Earlier pairs stay on disk and are hidden.
 
@@ -41,6 +42,9 @@ struct ChatAnswer: Equatable, Sendable {
     var msTotal: Int?
     var citations: [String]
     var stopReason: String?
+    /// The object citations of a memory answer (memory spec 3.4, 3.7); empty for Ask this meeting, whose `citations` are strings.
+    var sources: [AskSource] = []
+    var excerptTokens: Int?
 
     var cancelled: Bool { stopReason == "cancelled" }
 }
@@ -89,8 +93,11 @@ enum ChatLog {
     static func url(sessionDir: URL) -> URL { sessionDir.appendingPathComponent("chat.jsonl") }
 
     /// A missing or unreadable file is an empty chat.
-    static func load(sessionDir: URL) -> Loaded {
-        guard let data = try? Data(contentsOf: url(sessionDir: sessionDir)), let text = String(data: data, encoding: .utf8) else {
+    static func load(sessionDir: URL) -> Loaded { load(url: url(sessionDir: sessionDir)) }
+
+    /// Any chat file: a session's `chat.jsonl`, or `memory/chats/all.jsonl` and `memory/chats/<entity-id>.jsonl`.
+    static func load(url: URL) -> Loaded {
+        guard let data = try? Data(contentsOf: url), let text = String(data: data, encoding: .utf8) else {
             return Loaded(turns: [], nextIndex: 1)
         }
         return parse(text)
@@ -111,12 +118,14 @@ enum ChatLog {
                                       failure: ChatFailure(kind: "interrupted", message: "")))
             case "a":
                 guard let q = o["q"] as? String, let i = turns.firstIndex(where: { $0.id == q }) else { continue }
+                let cites = (o["citations"] as? [Any]) ?? []
                 turns[i].answer = ChatAnswer(
                     id: (o["id"] as? String) ?? "", text: (o["text"] as? String) ?? "", model: (o["model"] as? String) ?? turns[i].model,
                     usage: ChatUsage(o["usage"] as? [String: Any]), costUSD: (o["cost_usd"] as? NSNumber)?.doubleValue ?? 0,
                     costEstimated: (o["cost_estimated"] as? Bool) ?? false, msFirstToken: (o["ms_first_token"] as? NSNumber)?.intValue,
-                    msTotal: (o["ms_total"] as? NSNumber)?.intValue, citations: (o["citations"] as? [String]) ?? [],
-                    stopReason: o["stop_reason"] as? String)
+                    msTotal: (o["ms_total"] as? NSNumber)?.intValue, citations: cites.compactMap { $0 as? String },
+                    stopReason: o["stop_reason"] as? String, sources: cites.compactMap { ($0 as? [String: Any]).flatMap(AskSource.init) },
+                    excerptTokens: (o["excerpt_tokens"] as? NSNumber)?.intValue)
                 turns[i].failure = nil
                 turns[i].phase = .answered
             case "a_error":

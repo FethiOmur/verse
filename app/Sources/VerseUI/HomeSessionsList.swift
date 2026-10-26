@@ -109,6 +109,18 @@ struct HomeSessionsList: View {
             Text("Sessions", bundle: .module).font(VT.Font.largeTitle).tracking(VT.Font.largeTitleTracking).foregroundStyle(ink.primary)
                 .padding(.leading, 10)
             Spacer(minLength: 8)
+            // Ask all meetings (memory spec 5.2): opens the panel in the scope across every indexed session.
+            Button { router.showAsk(.all) } label: {
+                Image(systemName: "bubble.left.and.text.bubble.right").font(.system(size: 12.5, weight: .medium)).foregroundStyle(ink.secondary)
+                    .frame(width: 24, height: 24)
+                    .background(ink.fill, in: RoundedRectangle(cornerRadius: VT.Radius.chip, style: .continuous))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(HomePressStyle())
+            .help(Text("Ask all meetings", bundle: .module))
+            .accessibilityLabel(Text("Ask all meetings", bundle: .module))
+            .accessibilityIdentifier("verse.home.sessions.askAll")
+            .padding(.trailing, 6)
             Button { startNewFolder(session: nil, text: "") } label: {
                 Image(systemName: "folder.badge.plus").font(.system(size: 12.5, weight: .medium)).foregroundStyle(ink.secondary)
                     .frame(width: 24, height: 24)

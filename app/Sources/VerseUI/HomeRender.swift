@@ -92,6 +92,10 @@ public enum HomeRender {
             if only?.contains(.sessions) ?? true {
                 out += try await renderAsk(fixtures, dir: dir, dark: dark)
             }
+            // Memory: Ask across meetings, the brief before a prepared meeting, and Up next's Brief popover (fictional people only).
+            if (only?.contains(.sessions) ?? true) || (only?.contains(.prepare) ?? true) {
+                out += try await renderMemory(fixtures, dir: dir, dark: dark, pages: only)
+            }
             // People: the entity page with a ready brief, a stale one, none, and the empty page (fictional people only).
             if only?.contains(.people) ?? true {
                 out += try await renderPeople(fixtures, dir: dir, dark: dark)
@@ -164,6 +168,52 @@ public enum HomeRender {
         return out
     }
 
+    /// `home-sessions-ask-memory-{all,entity}-*`, `home-sessions-prepared-brief-dark`, `home-prepare-upnext-brief-dark`: Ask across
+    /// meetings and the brief placements over fictional meetings with Halden Works, Corvo Studio and Tarla Labs.
+    static func renderMemory(_ fixtures: Fixtures, dir: URL, dark: Bool, pages: [HomePage]?) async throws -> [URL] {
+        var out: [URL] = []
+        let mf = try MemoryRenderFixtures(settings: fixtures.settings)
+        defer { mf.cleanUp() }
+        let mode = dark ? "dark" : "light"
+        if pages?.contains(.sessions) ?? true {
+            let router = HomeRouter()
+            router.page = .sessions
+            router.selectedSession = "Halden Pilot Review"
+            let all = dir.appendingPathComponent("home-sessions-ask-memory-all-\(mode).png")
+            var scene = Scene(context: mf.context(router: router, fixtures: fixtures), dark: dark, override: nil)
+            scene.askRender = AskRenderState(scope: .all)
+            try await capture(scene, size: canvas, dark: dark, to: all)
+            out.append(all)
+            if dark {
+                let entityRouter = HomeRouter()
+                entityRouter.page = .sessions
+                entityRouter.selectedSession = "Halden Pilot Review"
+                let entity = dir.appendingPathComponent("home-sessions-ask-memory-entity-\(mode).png")
+                var entityScene = Scene(context: mf.context(router: entityRouter, fixtures: fixtures), dark: dark, override: nil)
+                entityScene.askRender = AskRenderState(scope: .entity(mf.people.marta), hover: .init(question: "q2", stamp: "1"))
+                try await capture(entityScene, size: canvas, dark: dark, to: entity)
+                out.append(entity)
+
+                let briefRouter = HomeRouter()
+                briefRouter.page = .sessions
+                briefRouter.selectedSession = mf.prepared
+                let brief = dir.appendingPathComponent("home-sessions-prepared-brief-\(mode).png")
+                try await capture(Scene(context: mf.context(router: briefRouter, fixtures: fixtures), dark: dark, override: nil), size: canvas, dark: dark, to: brief)
+                out.append(brief)
+            }
+        }
+        if dark, pages?.contains(.prepare) ?? true {
+            let router = HomeRouter()
+            router.page = .prepare
+            let url = dir.appendingPathComponent("home-prepare-upnext-brief-\(mode).png")
+            var scene = Scene(context: mf.context(router: router, fixtures: fixtures), dark: dark, override: nil)
+            scene.upNextBriefRender = true
+            try await capture(scene, size: canvas, dark: dark, to: url)
+            out.append(url)
+        }
+        return out
+    }
+
     /// `home-people-{brief,stale,nobrief,empty}-<light|dark>.png`: Marta Velin's page over a fictional Halden Works, and the empty page.
     static func renderPeople(_ fixtures: Fixtures, dir: URL, dark: Bool) async throws -> [URL] {
         var out: [URL] = []
@@ -200,6 +250,8 @@ public enum HomeRender {
         var trashRender: SessionsTrashRenderState?
         /// The brief the People page shows (renders only).
         var briefRender: PeopleBriefRenderState?
+        /// Up next's Brief popover drawn open (renders only; a popover is a window of its own and is not in the capture).
+        var upNextBriefRender = false
 
         var body: some View {
             ZStack {
@@ -209,6 +261,7 @@ public enum HomeRender {
                     .environment(\.askRender, askRender)
                     .environment(\.sessionsTrashRender, trashRender)
                     .environment(\.peopleBriefRender, briefRender)
+                    .environment(\.upNextBriefRender, upNextBriefRender)
                     .frame(width: 1100, height: HomeRender.windowHeight)
                     .shadow(color: .black.opacity(dark ? 0.45 : 0.18), radius: 30, y: 16)
             }
@@ -279,7 +332,7 @@ public enum HomeRender {
         let marta = "e-martavel"
         private let suite = "\(AppIdentity.bundleID).render-people-\(UUID().uuidString)"
 
-        init(empty: Bool, settings: AppSettings) throws {
+        init(empty: Bool, settings: AppSettings, prepared: Bool = false) throws {
             let fm = FileManager.default
             root = fm.temporaryDirectory.appendingPathComponent("verse-render-people-\(UUID().uuidString)", isDirectory: true)
             let sessionsRoot = root.appendingPathComponent("sessions", isDirectory: true)
@@ -325,6 +378,13 @@ public enum HomeRender {
                       summary: summary("Emre Kaya pilot için iki haftalık bir deneme istedi.", actions: ["Deneme planını paylaş"]))
             try write("Halden pricing call", at(20, 14, 0),
                       summary: summary("A short call about per-seat pricing.", actions: []))
+            if prepared {
+                // A session prepared from the invite of tomorrow's call: a pack, no summary, not held yet.
+                let d = sessionsRoot.appendingPathComponent("Halden weekly", isDirectory: true)
+                try fm.createDirectory(at: d, withIntermediateDirectories: true)
+                try Data("# Halden weekly\n\nPrepared from the invite.\n".utf8).write(to: d.appendingPathComponent("pack.md"))
+                try Data(#"{"languages":["en"]}"#.utf8).write(to: d.appendingPathComponent("meta.json"))
+            }
             sessions = HomeSessionsModel(root: sessionsRoot, defaults: defaults)
             let halden = try sessions.folders.create(name: "Halden Works")
             for s in ["Halden Pilot Review", "Halden Kickoff"] { try sessions.folders.move(s, to: halden.id) }
@@ -353,6 +413,9 @@ public enum HomeRender {
                 "Corvo Design Call": [Attendee(name: "Giulia Ferri", email: "giulia@corvo.example")],
                 "Tarla Intro": [Attendee(name: "Emre Kaya", email: "emre@tarla.example")],
             ]
+            if prepared {
+                file.attendees["Halden weekly"] = [Attendee(name: "Marta Velin", email: "marta@halden.example"), Attendee(name: "Joe Arkwright", email: "joe@halden.example")]
+            }
             try fm.createDirectory(at: paths.base, withIntermediateDirectories: true)
             try PeopleCodec.encode(file).write(to: paths.people)
             store = EntityStore(paths: paths, sessionsRoot: sessionsRoot)
@@ -373,7 +436,7 @@ public enum HomeRender {
         }
 
         /// Marta's brief: made from the Pilot Review (current) or from the Kickoff only (stale).
-        func brief(stale: Bool) -> BriefFile {
+        func brief(stale: Bool, entity: String? = nil, name: String? = nil, forSession: String? = nil) -> BriefFile {
             func cite(_ session: String, key: String, kind: String = "turn", _ stamp: String? = nil) -> BriefFile.Cite {
                 BriefFile.Cite(key: key, session: session, kind: kind, stamp: stamp)
             }
@@ -399,11 +462,98 @@ public enum HomeRender {
             let iso = ISO8601DateFormatter()
             let cal = Calendar.current
             func stamp(_ daysAgo: Int) -> String { iso.string(from: cal.date(byAdding: .day, value: -daysAgo, to: Date()) ?? Date()) }
-            return BriefFile(version: 1, entity: marta, name: "Marta Velin", madeAt: cal.date(byAdding: .day, value: -1, to: Date()) ?? Date(), lang: "en",
-                             model: "claude-sonnet-5-5", newestSession: stale ? kick : review, forSession: nil,
+            return BriefFile(version: 1, entity: entity ?? marta, name: name ?? "Marta Velin", madeAt: cal.date(byAdding: .day, value: -1, to: Date()) ?? Date(), lang: "en",
+                             model: "claude-sonnet-5-5", newestSession: stale ? kick : review, forSession: forSession,
                              sessions: [.init(name: review, key: "sp0m2vx", title: review, date: stamp(2)),
                                         .init(name: kick, key: "sk3f9qa", title: kick, date: stamp(8))],
                              sections: sections, costUSD: 0.048, droppedUncited: 0)
+        }
+    }
+
+    // MARK: memory fixtures
+
+    /// Ask across meetings and the brief placements over the People fixtures: Dana Reyes's fictional meetings with Halden Works,
+    /// Corvo Studio and Tarla Labs, a session prepared for tomorrow's call with its brief, and the chats of two scopes. Everything is
+    /// in a temporary folder; the memory service is disabled, so no process starts.
+    @MainActor
+    final class MemoryRenderFixtures {
+        let people: PeopleFixtures
+        let memory: MemoryService
+        let prepared = "Halden weekly"
+        let haldenCompany = "e-haldenwk"
+
+        init(settings: AppSettings) throws {
+            people = try PeopleFixtures(empty: false, settings: settings, prepared: true)
+            let paths = MemoryPaths(base: people.root.appendingPathComponent("memory", isDirectory: true))
+            memory = MemoryService(paths: paths, sessionsRoot: people.sessions.root, ownerName: { "Dana Reyes" },
+                                   makeBrain: { throw NSError(domain: "render", code: 1) }, enabled: false)
+            paths.ensureDirectories()
+            // Briefs: the session's own (`brief.json`) and its company's latest.
+            let enc = JSONEncoder()
+            enc.dateEncodingStrategy = .iso8601
+            enc.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let own = people.brief(stale: false, entity: haldenCompany, name: "Halden Works", forSession: prepared)
+            try enc.encode(own).write(to: people.sessions.root.appendingPathComponent(prepared).appendingPathComponent("brief.json"))
+            try enc.encode(people.brief(stale: false, entity: haldenCompany, name: "Halden Works")).write(to: paths.brief(entity: haldenCompany))
+            try Self.chat(all: true).write(to: paths.chat(named: "all"), atomically: true, encoding: .utf8)
+            try Self.chat(all: false).write(to: paths.chat(named: people.marta), atomically: true, encoding: .utf8)
+            people.sessions.reload()
+        }
+
+        func cleanUp() { people.cleanUp() }
+
+        func context(router: HomeRouter, fixtures: Fixtures) -> HomeContext {
+            HomeContext(settings: fixtures.settings, controller: fixtures.controller, simSettings: fixtures.simSettings, sim: fixtures.sim,
+                        conversation: fixtures.conversation, sessions: people.sessions, upNext: people.upNext, me: fixtures.meModel(stale: false),
+                        router: router, memory: memory, people: people.store)
+        }
+
+        /// The chat files, `memory/chats/all.jsonl` and `<entity-id>.jsonl`, in the brain's line shapes (memory spec 3.7).
+        static func chat(all: Bool) -> String {
+            let cal = Calendar.current
+            let iso = ISO8601DateFormatter()
+            func stamp(_ daysAgo: Int, _ h: Int = 10, _ m: Int = 0) -> String {
+                let d = cal.date(byAdding: .day, value: -daysAgo, to: Date()) ?? Date()
+                return iso.string(from: cal.date(bySettingHour: h, minute: m, second: 0, of: d) ?? d)
+            }
+            func cite(_ key: String, _ session: String, _ title: String, _ days: Int, _ kind: String, _ stampText: String?, _ speaker: String?, _ text: String) -> [String: Any] {
+                ["key": key, "session": session, "title": title, "date": stamp(days), "kind": kind, "stamp": stampText as Any? ?? NSNull(),
+                 "speaker": speaker as Any? ?? NSNull(), "text": text]
+            }
+            func line(_ o: [String: Any]) -> String { AskWire.line(o) }
+            func q(_ id: String, _ text: String, _ scope: String, _ days: Int) -> String {
+                line(["type": "q", "id": id, "t": stamp(days, 11, 2), "text": text, "model": "claude-sonnet-5-5", "scope": scope])
+            }
+            func a(_ id: String, _ q: String, _ text: String, _ cites: [[String: Any]], cost: Double, ms: Int, days: Int) -> String {
+                line(["type": "a", "id": id, "q": q, "t": stamp(days, 11, 3), "text": text, "model": "claude-sonnet-5-5",
+                      "usage": ["input": 1_840, "output": 212, "cache_read": 15_620, "cache_write": 0], "cost_usd": cost, "cost_estimated": false,
+                      "ms_first_token": 1_900, "ms_total": ms, "citations": cites, "stop_reason": "end_turn", "context": "memory", "excerpt_tokens": 15_820])
+            }
+            let budget = cite("sp0m2vx", "Halden Pilot Review", "Halden Pilot Review", 2, "turn", "31:12", "Dana", "I'll send the revised budget by Friday, with the two-team scope.")
+            let plan = cite("sk3f9qa", "Halden Kickoff", "Halden Kickoff", 8, "turn", "12:34", "Marta", "We'd need the pilot plan by Friday, and the security questionnaire after that.")
+            let corvo = cite("sc4r7wd", "Corvo Design Call", "Corvo Design Call", 5, "summary", nil, nil, "Actions: Send the navigation draft by the end of the month")
+            let pricing = cite("sk3f9qa", "Halden Kickoff", "Halden Kickoff", 8, "summary", nil, nil, "Pricing moves to per-seat once the pilot ends.")
+            let gone = cite("sg7t1mn", "Halden pricing call", "Halden pricing call", 20, "turn", "4:02", "Joe", "Per-seat is fine for us if the pilot stays free.")
+            let review = cite("sp0m2vx", "Halden Pilot Review", "Halden Pilot Review", 2, "turn", "4:10", "Marta", "The pilot covers two teams, not four.")
+            let reviewSummary = cite("sp0m2vx", "Halden Pilot Review", "Halden Pilot Review", 2, "summary", nil, nil, "Marta Velin and Joe Arkwright described the invoice-matching backlog.")
+            let tone = cite("sk3f9qa", "Halden Kickoff", "Halden Kickoff", 8, "turn", "25:05", "Marta", "Short written follow-ups work better for me than another call.")
+            var out: [String] = []
+            if all {
+                out.append(q("q1", "What did I promise, and to whom?", "all", 1))
+                out.append(a("a1", "q1", "You made two promises in the last week.\n- To Marta at Halden Works: the revised budget by Friday [sp0m2vx 31:12].\n- To Giulia at Corvo Studio: the navigation draft by the end of the month [sc4r7wd summary].\nMarta also asked for the pilot plan by Friday [sk3f9qa 12:34].",
+                             [budget, corvo, plan], cost: 0.041, ms: 5_200, days: 1))
+                out.append(q("q2", "Which meetings talked about pricing?", "all", 1))
+                out.append(a("a2", "q2", "Two meetings did.\n- Halden Kickoff: pricing moves to per-seat once the pilot ends [sk3f9qa summary].\n- An earlier pricing call, which is no longer in Verse [sg7t1mn 4:02].",
+                             [pricing, gone], cost: 0.038, ms: 4_400, days: 1))
+            } else {
+                out.append(q("q1", "What did we agree last time?", "e-martavel", 1))
+                out.append(a("a1", "q1", "At the Pilot Review you agreed on a two-team pilot [sp0m2vx 4:10], and you said you would send the revised budget by Friday [sp0m2vx 31:12]. Marta still owes you the pilot plan [sk3f9qa 12:34].",
+                             [review, budget, plan], cost: 0.036, ms: 4_800, days: 1))
+                out.append(q("q2", "How does Marta like to work?", "e-martavel", 1))
+                out.append(a("a2", "q2", "She prefers short written follow-ups to another call [sk3f9qa 25:05], and she wants the numbers in the summary rather than in the meeting [sp0m2vx summary].",
+                             [tone, reviewSummary], cost: 0.033, ms: 4_100, days: 1))
+            }
+            return out.joined(separator: "\n") + "\n"
         }
     }
 

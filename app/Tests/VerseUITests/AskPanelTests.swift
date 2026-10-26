@@ -163,7 +163,76 @@ final class AskPanelTests: XCTestCase {
         }
     }
 
+    // MARK: memory citations (memory spec 2.2, 5.2)
+
+    private func source(_ key: String, _ kind: String, _ stamp: String? = nil, session: String = "s") -> AskSource {
+        AskSource(key: key, session: session, title: "Title \(key)", kind: kind, stamp: stamp)
+    }
+
+    func testMemoryMarksAreOrdinalsByFirstCitationInThisAnswer() {
+        let sources = [source("sk3f9qa", "turn", "12:34"), source("sp0m2vx", "summary")]
+        let text = "Said by Marta [sk3f9qa 12:34] and again [sp0m2vx summary]. Then once more [sk3f9qa 12:34][sp0m2vx summary]."
+        let r = AskAnswerParser.memoryBlocks(text, sources: sources)
+        XCTAssertEqual(r.cited.map(\.key), ["sk3f9qa", "sp0m2vx"])
+        let marks = r.blocks.flatMap(\.runs).compactMap(\.stamp)
+        XCTAssertEqual(marks, ["1", "2", "1", "2"])
+        // The mark hugs its word: no run ends in a space.
+        XCTAssertEqual(r.blocks[0].runs.first?.text, "Said by Marta")
+    }
+
+    func testAnOrdinalFollowsTheOrderOfTheAnswerNotOfTheSourcesList() {
+        let sources = [source("sk3f9qa", "turn", "12:34"), source("sp0m2vx", "summary")]
+        let r = AskAnswerParser.memoryBlocks("First the summary [sp0m2vx summary], then the line [sk3f9qa 12:34].", sources: sources)
+        XCTAssertEqual(r.cited.map(\.key), ["sp0m2vx", "sk3f9qa"])
+        XCTAssertEqual(r.blocks[0].runs.compactMap(\.stamp), ["1", "2"])
+    }
+
+    func testACitationThatNamesNoKnownSourceStaysPlainText() {
+        let r = AskAnswerParser.memoryBlocks("Unknown [sk3f9qa 9:99] and known [sk3f9qa 12:34].", sources: [source("sk3f9qa", "turn", "12:34")])
+        XCTAssertEqual(r.cited.count, 1)
+        XCTAssertEqual(r.blocks[0].runs.map(\.text).joined().contains("[sk3f9qa 9:99]"), true, "an invalid one is plain text")
+        XCTAssertEqual(r.blocks[0].runs.compactMap(\.stamp), ["1"])
+    }
+
+    func testWhileStreamingNoBracketFlashesAndAnUnfinishedOneIsHeldBack() {
+        let streaming = AskAnswerParser.memoryBlocks("The budget [sk3f9qa 12:34] by Friday [sk3f", sources: [], streaming: true)
+        XCTAssertEqual(streaming.blocks[0].runs.map(\.text).joined(), "The budget by Friday")
+        XCTAssertTrue(streaming.blocks[0].runs.allSatisfy { $0.stamp == nil })
+        XCTAssertEqual(AskAnswerParser.memoryBlocks("Half a mark [", sources: [], streaming: true).blocks[0].runs.map(\.text).joined(), "Half a mark")
+        // Offsets stay the raw positions, so the stream's fade still finds each word.
+        let tail = AskAnswerParser.memoryBlocks("A [sk3f9qa 12:34] tail", sources: [], streaming: true).blocks[0].runs
+        XCTAssertEqual(tail.last?.offset, 17)
+    }
+
+    func testTheSourceCaptionsAndTheSpokenForm() {
+        let date = BriefLayout.date(from: "2026-10-19T17:00:00+02:00")
+        var s = AskSource(key: "sk3f9qa", session: "s", title: "Halden Kickoff", date: date, kind: "turn", stamp: "12:34")
+        XCTAssertTrue(AskMemoryFormat.caption(for: s).hasPrefix("Halden Kickoff · "))
+        XCTAssertTrue(AskMemoryFormat.caption(for: s).hasSuffix(" · 12:34"))
+        XCTAssertEqual(AskSpoken.source(1, s, locale: Locale(identifier: "en")), "Source 1: Halden Kickoff, 19 October, at 12 minutes, 34 seconds")
+        s.kind = "summary"
+        XCTAssertTrue(AskMemoryFormat.caption(for: s).hasSuffix(" · Summary"))
+        XCTAssertTrue(AskSpoken.source(2, s, locale: Locale(identifier: "en")).hasSuffix(", Summary"))
+        XCTAssertEqual(AskMemoryFormat.line(for: s).caption?.hasPrefix("Halden Kickoff"), true)
+    }
+
+    func testThePanelScopeNamesItselfAndItsStarters() {
+        let all = AskPanelScope(current: .all, choices: [])
+        XCTAssertEqual(all.title, "Ask all meetings")
+        XCTAssertEqual(all.starters.count, 4)
+        var entity = AskPanelScope(current: .entity("e-1"), choices: [])
+        entity.entityName = "Marta Velin"
+        entity.shortName = "Marta"
+        XCTAssertEqual(entity.title, "Ask about Marta Velin")
+        XCTAssertEqual(entity.starters, ["What did we agree last time?", "What did I promise Marta?", "What is still open with Marta?", "How does Marta like to work?"])
+        XCTAssertEqual(AskPanelScope(current: .session("s"), choices: []).title, "Ask this meeting")
+        var updating = all
+        updating.updating = (3, 12)
+        XCTAssertEqual(updating.updatingText, "Updating memory · 3 of 12")
+    }
+
     // MARK: the view
+
 
     /// The panel lays out at 340 pt in both appearances, with answers, chips, an error and the empty state, and draws something.
     func testThePanelLaysOutAndDrawsInLightAndDark() throws {
