@@ -2,7 +2,9 @@
 
 One process serves one session, and its first message decides which: `start` runs the meeting runtime (engine.Brain),
 `sim_start` the interview simulation (sim.SimRuntime, plan S2), `ask_start` the chat about one past session (ask.AskRuntime; its own
-Anthropic client, built from the Keychain key by ask.make_client), `memory_index_start` the writer of the memory index
+Anthropic client, built from the Keychain key by ask.make_client), `memory_ask_start` the chat across meetings
+(memory_ask.MemoryAskRuntime, same client) and `brief_start` one pre-meeting brief (memory.brief.BriefRuntime, same client; it ends the
+process), `memory_index_start` the writer of the memory index
 (memory.indexer.IndexRuntime: no model calls; `--fake` embeds with the hash stand-in, `--no-embed` skips phase 2, and
 `--no-api` serves only this mode without reading the Keychain). `--budget-usd` and the embedding matcher apply to
 meetings only.
@@ -53,6 +55,20 @@ def _index_runtime(args, emitter):
     cfg = Config()
     return IndexRuntime(emitter, fake=args.fake, no_embed=args.no_embed, embed_model=cfg.embed_model,
                         embed_backend=cfg.embed_backend)
+
+
+def _memory_runtime(kind, client, args, emitter, cfg):
+    """`memory_ask_start` -> MemoryAskRuntime (runtime/memory_ask.py); `brief_start` -> BriefRuntime (memory/brief.py). Both read the
+    index read-only and call Claude through the client from `ask.make_client`; `--fake` embeds with the hash stand-in and
+    `--no-embed` searches with FTS only."""
+    kw = dict(fake=args.fake, no_embed=args.no_embed, embed_model=cfg.embed_model, embed_backend=cfg.embed_backend)
+    if kind == "memory_ask_start":
+        from .memory_ask import MemoryAskRuntime
+
+        return MemoryAskRuntime(client, emitter, **kw)
+    from ..memory.brief import BriefRuntime
+
+    return BriefRuntime(client, emitter, **kw)
 
 
 async def _amain_index_only(args, emitter) -> int:
@@ -116,7 +132,7 @@ async def amain(args) -> int:
         from .embed import LiteRtEmbedder
 
         factory = lambda: LiteRtEmbedder(cfg.embed_model, cfg.embed_backend)  # noqa: E731
-    runtime: Brain | SimRuntime | AskRuntime | None = None
+    runtime = None
     try:
         async for raw in _stdin_lines():
             try:
@@ -142,6 +158,16 @@ async def amain(args) -> int:
                         return 2
                 elif msg.get("type") == "memory_index_start":
                     runtime = _index_runtime(args, emitter)
+                elif msg.get("type") in ("memory_ask_start", "brief_start"):
+                    from ..prep.keychain import KeychainError
+                    from .ask import make_client
+
+                    try:
+                        client = make_client(fake=args.fake)
+                    except KeychainError as e:
+                        emitter.status("error", str(e))
+                        return 2
+                    runtime = _memory_runtime(msg["type"], client, args, emitter, cfg)
                 else:
                     brain_transport, brain_emitter = transport, emitter
                     if not args.fake and cfg.fallback_enabled:   # G1: Gemma as the degraded-mode brain (meetings only)

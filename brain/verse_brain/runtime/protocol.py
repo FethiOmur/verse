@@ -64,6 +64,14 @@ MEMORY_INDEX_OUT_TYPES = {"sync_plan", "put_done", "embed_progress", "index_erro
 MEMORY_INDEX_STATES = {"ready", "busy", "done"}
 INDEX_ERROR_KINDS = {"unreadable", "bad_request", "db"}
 IN_TYPES |= MEMORY_INDEX_IN_TYPES
+# Memory Ask and the brief (spec 3.4, 3.5), additive. A process whose first message is `memory_ask_start{db,chat,owner_name,me,scope,model}`
+# runs runtime/memory_ask.py (then `ask`, `control` as in Ask this meeting; `ask_done.citations` are objects); one whose first message is
+# `brief_start{db,owner_name,entity,sessions,upcoming,lang,out,session_out,model}` runs memory/brief.py: one request, `brief_done{path,
+# cost_usd,usage,points,dropped_uncited,ms_total}` or `brief_error{kind,message,retry_after}`, then the process ends.
+MEMORY_ASK_IN_TYPES = {"memory_ask_start", "brief_start"}
+BRIEF_OUT_TYPES = {"brief_done", "brief_error"}
+BRIEF_ERROR_KINDS = ASK_ERROR_KINDS | {"no_sessions"}
+IN_TYPES |= MEMORY_ASK_IN_TYPES
 
 
 class Emitter:
@@ -142,6 +150,13 @@ class Session:
     pack: str
     bank: dict[str, dict] = field(default_factory=dict)
     meta: dict = field(default_factory=dict)
+    brief: str = ""          # brief.md (memory/brief.py): "PAST MEETINGS WITH <name> ..." for the live model; empty when there is none
+
+    @property
+    def pack_for_model(self) -> str:
+        """The pack as the prompt layout receives it: with a brief, the pack and a blank line and the brief block; without one, the
+        pack itself (every request byte is what it was)."""
+        return self.pack if not self.brief else self.pack.rstrip() + "\n\n" + self.brief
 
 
 def load_session(session_dir: str | Path) -> Session:
@@ -157,4 +172,20 @@ def load_session(session_dir: str | Path) -> Session:
                 bank[rec["id"]] = rec
     meta_file = p / "meta.json"
     meta = json.loads(meta_file.read_text(encoding="utf-8")) if meta_file.exists() else {}
-    return Session(p, pack, bank, meta)
+    return Session(p, pack, bank, meta, _read_brief(p))
+
+
+def _read_brief(folder: Path) -> str:
+    """`brief.md`, at most BRIEF_PACK_CHARS characters (cut at a whole line); "" when missing or not UTF-8."""
+    from .settings import BRIEF_PACK_CHARS
+
+    try:
+        text = (folder / "brief.md").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return ""
+    text = text.strip()
+    if len(text) > BRIEF_PACK_CHARS:
+        text = text[:BRIEF_PACK_CHARS]
+        cut = text.rfind("\n")
+        text = text[:cut] if cut > 0 else text
+    return text.rstrip()

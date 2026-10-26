@@ -74,7 +74,7 @@ check ignores case, `\` versus `/`, `.` and `..`. The private project list is re
 
 ### Prompt addenda
 
-`name` is one of: `prep`, `profile`, `voice`, `script`, `live_fast`, `live_deep`, `ask`. The block is appended after the prompt
+`name` is one of: `prep`, `profile`, `voice`, `script`, `live_fast`, `live_deep`, `ask`, `memory_ask`, `brief`. The block is appended after the prompt
 text, separated by a blank line. `{owner}`, `{Owner}` and `{OWNER}` are replaced by the owner's display name. Prompts are cache
 prefixes: they are built once at start, so an addendum cannot change inside a run.
 
