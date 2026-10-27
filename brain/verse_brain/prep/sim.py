@@ -29,6 +29,7 @@ from .git_digest import Commit, GitError, read_commits
 from .keychain import read_api_key
 from .model import PREP_MODEL, AnthropicPrepModel, ModelOutput, PrepError, Usage
 from .pipeline import MAX_VAULT_SEED_RECORDS, seed_queries
+from .sim_persona import apply_persona
 from .sim_pack import MAX_LENGTH_MIN, MIN_LENGTH_MIN, QUESTION_KINDS, question_count, render_sim_pack
 from .sim_prompt import (SESSION_SYSTEM, SYSTEM, render_params, render_session_params, render_session_sources,
                          render_sources)
@@ -668,7 +669,7 @@ async def build_sim_async(
     note: Path | None = None, repos: list[Path] | tuple[Path, ...] = (), vault: Vault | None = None,
     interview_type: str = "mixed", difficulty: str = "standard", length_min: int = 30, lang: str = "en",
     company: str | None = None, role: str | None = None, now: datetime | None = None,
-    voice_path: Path | None = None,
+    voice_path: Path | None = None, persona: dict | None = None,
 ) -> Path:
     if interview_type not in INTERVIEW_TYPES:
         raise PrepError(f"interview type must be one of {', '.join(INTERVIEW_TYPES)}")
@@ -701,7 +702,7 @@ async def build_sim_async(
     note_lines = note_text.splitlines() if note_text else None
     n = question_count(length_min)
     sources = render_sources(posting, cv_lines, note_lines, handles, commits)
-    params = render_params(interview_type, difficulty, length_min, n, lang, company, role)
+    params = render_params(interview_type, difficulty, length_min, n, lang, company, role, (persona or {}).get("focus"))
     res = await model.generate_sim(SYSTEM, sources, params, MAX_OUTPUT_TOKENS)
     if res.stop_reason == "max_tokens":
         raise PrepError(f"the model's sim plan hit the {MAX_OUTPUT_TOKENS}-token limit and was cut off")
@@ -731,6 +732,9 @@ async def build_sim_async(
     voice = load_voice(voice_path)
     if voice is not None:
         sim["voice_sha256"] = sha256_text(voice)
+    if persona:
+        apply_persona(persona, sim["questions"])
+        sim["persona"] = persona
 
     out.mkdir(parents=True, exist_ok=True)
     tmp = out / f".{final.name}.tmp"
@@ -791,6 +795,7 @@ async def build_sim_from_session_async(
     session_dir: Path, *, out: Path, model: SimPrepModel, me: Path | None = None,
     interview_type: str = "mixed", difficulty: str = "standard", length_min: int = 30, lang: str | None = None,
     company: str | None = None, role: str | None = None, now: datetime | None = None, voice_path: Path | None = None,
+    persona: dict | None = None,
 ) -> Path:
     """A mock interview from a prepared MEETING session (`pack.md`, `bank.jsonl`, `meta.json`). Writes
     `<out>/sim-<YYYYMMDD-HHMM>-<source session>/` with `sim.json` (`source: "session"`, `source_session`), `source_pack.md`
@@ -828,7 +833,8 @@ async def build_sim_from_session_async(
     me_lines = me_text.splitlines() if me_text else None
     sources = render_session_sources(pack_lines, me_lines)
     params = render_session_params(interview_type, difficulty, length_min, n, lang,
-                                   [(f["key"], f["text"]) for f in fixed], extra, company, role)
+                                   [(f["key"], f["text"]) for f in fixed], extra, company, role,
+                                   (persona or {}).get("focus"))
     res = await model.generate_sim(SESSION_SYSTEM, sources, params, MAX_OUTPUT_TOKENS)
     if res.stop_reason == "max_tokens":
         raise PrepError(f"the model's sim plan hit the {MAX_OUTPUT_TOKENS}-token limit and was cut off")
@@ -859,6 +865,9 @@ async def build_sim_from_session_async(
     voice = load_voice(voice_path)
     if voice is not None:
         sim["voice_sha256"] = sha256_text(voice)
+    if persona:
+        apply_persona(persona, sim["questions"])
+        sim["persona"] = persona
 
     out.mkdir(parents=True, exist_ok=True)
     tmp = out / f".{final.name}.tmp"

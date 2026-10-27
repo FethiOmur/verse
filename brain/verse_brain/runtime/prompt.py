@@ -202,16 +202,21 @@ def pack_has_style_guide(pack: str) -> bool:
     return VOICE_HEADING in pack
 
 
-def system_blocks(route: str, about: str | None = None, unprepared: bool = False) -> list[dict]:
+def system_blocks(route: str, about: str | None = None, unprepared: bool = False, directives: str | None = None) -> list[dict]:
     """The frozen system prompt. With `about` (the me layer on) the text names ABOUT <OWNER> and a second block carries it,
-    with breakpoint 0. Without it and with a real pack, the result is what it always was."""
+    with breakpoint 0. Without it and with a real pack, the result is what it always was.
+    `directives` (runtime/call.py, a session's call.json) is appended to the first text block; None leaves every byte alone."""
     if about is not None:
         systems = SYSTEMS_ME_PRIORITIES if PRIORITIES_HEADING in about else SYSTEMS_ME
-        return [{"type": "text", "text": systems[route]},
-                {"type": "text", "text": about, "cache_control": dict(EPHEMERAL)}]
-    if unprepared:
-        return [{"type": "text", "text": SYSTEMS_UNPREPARED[route]}]
-    return [{"type": "text", "text": SYSTEMS[route]}]
+        blocks = [{"type": "text", "text": systems[route]},
+                  {"type": "text", "text": about, "cache_control": dict(EPHEMERAL)}]
+    elif unprepared:
+        blocks = [{"type": "text", "text": SYSTEMS_UNPREPARED[route]}]
+    else:
+        blocks = [{"type": "text", "text": SYSTEMS[route]}]
+    if directives:
+        blocks[0]["text"] += "\n\n" + directives
+    return blocks
 
 
 LANG_NAME = {"en": "English", "it": "Italian", "tr": "Turkish"}
@@ -231,9 +236,10 @@ def _files(files: str) -> str:
     return files + "\n" if files else ""
 
 
-def fast_tail(question: str, lang: str, final: bool, files: str = "") -> str:
+def fast_tail(question: str, lang: str, final: bool, files: str = "", bank: str = "") -> str:
+    """`bank`: the PREPARED ANSWER block of a matched bank entry (a session's `prefer_bank` directive); empty leaves the tail as it was."""
     state = "finished" if final else "still being spoken, may be cut off"
-    return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}"
+    return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}{_files(bank)}"
             f"CURRENT QUESTION ({state}): {' '.join(question.split())}")
 
 
@@ -386,8 +392,9 @@ def final_tail(lang: str, draft: list[str]) -> str:
 WARMUP_TAIL = "warmup"
 
 
-def build_request(route: str, params: dict, pack: str, turns: list[Turn], tail: str, about: str | None = None) -> dict:
+def build_request(route: str, params: dict, pack: str, turns: list[Turn], tail: str, about: str | None = None,
+                  directives: str | None = None) -> dict:
     req = dict(params)
-    req["system"] = system_blocks(route, about, unprepared=not pack.strip())
+    req["system"] = system_blocks(route, about, unprepared=not pack.strip(), directives=directives)
     req["messages"] = build_messages(pack, turns, tail)
     return req

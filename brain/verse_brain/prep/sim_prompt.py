@@ -86,7 +86,7 @@ def render_sources(
 
 def render_params(
     interview_type: str, difficulty: str, length_min: int, question_count: int, lang: str,
-    company: str | None, role: str | None,
+    company: str | None, role: str | None, focus: list[str] | None = None,
 ) -> str:
     lines = [
         "Interview parameters:",
@@ -100,6 +100,9 @@ def render_params(
         lines.append(f"company_hint: {company}")
     if role:
         lines.append(f"role_hint: {role}")
+    if focus:
+        lines.append(f"interviewer_focus: {'; '.join(focus)}")
+        lines.append("Probe the interviewer_focus areas in the questions where the material supports them.")
     lines.append("")
     lines.append(f"Plan exactly {question_count} questions for a {length_min}-minute {interview_type} interview.")
     return "\n".join(lines)
@@ -166,7 +169,7 @@ def render_session_sources(pack_lines: list[str], me_lines: list[str] | None) ->
 
 def render_session_params(
     interview_type: str, difficulty: str, length_min: int, question_count: int, lang: str,
-    questions: list[tuple[str, str]], extra: int, company: str | None, role: str | None,
+    questions: list[tuple[str, str]], extra: int, company: str | None, role: str | None, focus: list[str] | None = None,
 ) -> str:
     """`questions`: the (bank_id, text) list decided by code, in asking order. `extra`: how many more the model plans."""
     lines = [
@@ -182,6 +185,9 @@ def render_session_params(
         lines.append(f"company_hint: {company}")
     if role:
         lines.append(f"role_hint: {role}")
+    if focus:
+        lines.append(f"interviewer_focus: {'; '.join(focus)}")
+        lines.append("Choose follow-ups, and the extra questions, that probe the interviewer_focus areas where the pack supports them.")
     lines += ["", "Questions (fixed, in asking order; `bank_id` is the key you return):"]
     lines += [f"Q {bid} | {' '.join(text.split())}" for bid, text in questions]
     lines.append("")

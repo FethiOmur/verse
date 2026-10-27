@@ -45,6 +45,12 @@ SCHEMA = """{"overall": 1-5,
 
 TAIL = ("GRADE THE INTERVIEW. Answer language: @LANG@. Reply with one JSON object of exactly this shape:\n" + SCHEMA)
 
+# A sim with an interviewer persona (sim.json `persona`) adds one field per question: claims the evidence does not back.
+SCHEMA_PERSONA = SCHEMA.replace('"missing": ["..."],', '"missing": ["..."], "unsupported": ["..."],')
+TAIL_PERSONA_NOTE = ("\nFor every answered question, \"unsupported\" lists each claim, number or name in the candidate's answer that no "
+                     "evidence item of the pack backs (a short quote of what they said, one line each); an empty list when everything "
+                     "they said is backed or general.")
+
 _NUM_WORDS = {
     "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
     "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17,
@@ -104,6 +110,13 @@ def transcript_text(sim: dict, results: dict) -> str:
     return "\n".join(lines)
 
 
+def _tail(sim: dict) -> str:
+    tail = TAIL.replace("@LANG@", str(sim.get("lang", "en")))
+    if sim.get("persona"):
+        tail = tail.replace(SCHEMA, SCHEMA_PERSONA) + TAIL_PERSONA_NOTE
+    return tail
+
+
 def build_request(pack: str, sim: dict, results: dict, model: str = SONNET) -> dict:
     req = route_params("D", max_tokens=MAX_TOKENS)
     req["model"] = model
@@ -111,7 +124,7 @@ def build_request(pack: str, sim: dict, results: dict, model: str = SONNET) -> d
     req["messages"] = [{"role": "user", "content": [
         {"type": "text", "text": "INTERVIEW PACK\n\n" + pack + "\n", "cache_control": dict(EPHEMERAL)},
         {"type": "text", "text": transcript_text(sim, results)},
-        {"type": "text", "text": TAIL.replace("@LANG@", str(sim.get("lang", "en")))},
+        {"type": "text", "text": _tail(sim)},
     ]}]
     return req
 
@@ -191,8 +204,11 @@ def parse_grades(raw: str, sim: dict) -> dict | None:
                 better.append({"sentence": sentence, "evidence_ids": eids})
             else:
                 dropped += 1
-        questions.append({"q_id": q["q_id"], "strong": _strs(q.get("strong")), "missing": _strs(q.get("missing")),
-                          "better_answer": better})
+        entry = {"q_id": q["q_id"], "strong": _strs(q.get("strong")), "missing": _strs(q.get("missing")),
+                 "better_answer": better}
+        if sim.get("persona"):
+            entry["unsupported"] = _strs(q.get("unsupported"))[:5]
+        questions.append(entry)
 
     overall = _score(obj.get("overall"))
     if overall is None and comps:

@@ -62,6 +62,7 @@ from .follow import (Covered, Diverged, Ended, FollowMachine, NeedEmbed, Refresh
 from .lines import LineAssembler
 from .own import OwnSpeech
 from .me import LibraryPath, MeLayer, conflicts as me_conflicts, load_me, pack_snippet_refs, select_hits
+from .call import bank_hint
 from .prompt import (STATEMENT_SAY_WORDS, WARMUP_TAIL, Turn, build_request, card_now_tail, deep_tail, fast_tail,
                      files_block, final_tail, follow_tail, rolling_tail, statement_tail)
 from .protocol import LANGS, REMOTE_SPEAKERS, Emitter, Session, load_session, msg_lang, turn_kind
@@ -559,7 +560,17 @@ class Brain:
     def _prefix_request(self, route: str, max_tokens: int | None, tail: str, turns: list[Turn] | None = None) -> dict:
         assert self.session is not None
         return build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack_for_model,
-                             list(self.turns if turns is None else turns), tail, self.about)
+                             list(self.turns if turns is None else turns), tail, self.about, self._directives(route))
+
+    def _directives(self, route: str) -> str | None:
+        """The session's call.json text for the system prompt of `route` (runtime/call.py); None without a call.json."""
+        call = self.session.call if self.session is not None else None
+        return call.system_text(route) if call is not None else None
+
+    def _bank_hint(self, st: "TurnState") -> str:
+        """The matched bank entry for the tail of a fast call, only with the session's `prefer_bank` directive."""
+        call = self.session.call if self.session is not None else None
+        return bank_hint(self._bank_rec(st)) if call is not None and call.prefer_bank else ""
 
     async def _warm(self, model: str, kind: str, lane: int = 0) -> None:
         route = MODEL_ROUTE[model]
@@ -580,6 +591,8 @@ class Brain:
             self._status("error", f"cannot read session folder: {type(e).__name__}")
             return
         self.lang = msg.get("lang", "en")
+        if self.session.call is not None and self.session.call.language:    # call.json names the language of the cards
+            self.lang = self.session.call.language
         self.mode = "unprepared" if msg.get("mode") == "unprepared" else "prepared"
         self.route_kind = msg["route"] if msg.get("route") in ("meeting", "phone", "room") else "meeting"
         self.room_auto = "off" if msg.get("room_auto") == "off" else "questions"
@@ -850,7 +863,8 @@ class Brain:
             return None
         route = {"R": "S", "A": "D"}.get(tier, tier)   # summaries ride the S/F and D tuples (and their caches)
         max_tokens = {"R": self.config.summary_max_tokens, "A": self.config.final_max_tokens}.get(tier)
-        req = build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack_for_model, turns, tail, self.about)
+        req = build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack_for_model, turns, tail, self.about,
+                            self._directives(route))
         model = req["model"]
         est_in = (sum(len(b.get("text", "")) for b in req["messages"][0]["content"]) + len(self.about or "")) // 4
         if not self.limiters[model].try_acquire(est_in, req["max_tokens"]):
@@ -1039,7 +1053,7 @@ class Brain:
         if len(st.s_calls) >= cfg.s_max_per_turn:
             return
         call = self._launch("S", st.turn_id, st.partial,
-                            fast_tail(st.partial, self._lang(st), final=False, files=self._files(st)),
+                            fast_tail(st.partial, self._lang(st), final=False, files=self._files(st), bank=self._bank_hint(st)),
                             list(self.turns), buffered=True)
         if call is not None:
             st.s_calls.append(call)
@@ -1452,7 +1466,7 @@ class Brain:
             self._maybe_verdict(st)
         else:
             tail = (card_now_tail(st.final_text, self._lang(st), not st.card_now_partial, self._files(st)) if st.card_now
-                    else fast_tail(st.final_text, self._lang(st), final=True, files=self._files(st)))
+                    else fast_tail(st.final_text, self._lang(st), final=True, files=self._files(st), bank=self._bank_hint(st)))
             st.fast = self._launch("F", st.turn_id, st.final_text, tail, st.turns_before, buffered=False)
         self._deciding += 1
         self._spawn(self._decide_d_tracked(st))
