@@ -40,6 +40,12 @@ public final class OverlayModel: ObservableObject {
         publish()
     }
 
+    /// The running call's time cue (from its `call.json`); nil when it has none.
+    public func setCallCue(_ cue: CallCue?) {
+        reducer.setCallCue(cue, now: clock())
+        publish()
+    }
+
     public func sessionStarting(lang: String, session: String = "", app: String? = nil, route: AudioRoute? = nil, unprepared: Bool = false,
                                 auto: Bool = false) {
         reducer.sessionStarting(lang: lang, session: session, app: app, route: route, unprepared: unprepared, auto: auto)

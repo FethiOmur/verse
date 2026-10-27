@@ -118,6 +118,8 @@ struct IslandBand: View {
         case .capsule:
             if let s = state.status {
                 Text(s.shortTitle).foregroundStyle(VT.Island.secondary)
+            } else if let cue = state.timeCue {
+                TimeCueText(cue: cue)
             } else if let tag = state.addresseeTag {
                 Text(tag).foregroundStyle(state.tagDimmed ? VT.Island.tertiary : VT.Island.secondary)
             } else if state.unprepared, state.running, width >= metrics.listeningWidth {
@@ -145,6 +147,8 @@ struct IslandBand: View {
             }
         case .prompter:
             if let p = prompter { Text(verbatim: "\(p.page) / \(p.pages)").monospacedDigit() }
+        case .card where state.timeCue != nil:
+            TimeCueText(cue: state.timeCue ?? .soon)
         case .card(let c):
             Text(verbatim: c.following && c.say != nil ? L10n.tr("your answer") : (state.addresseeTag ?? L10n.tr("for you")))
                 .foregroundStyle(state.tagDimmed ? VT.Island.tertiary : VT.Island.secondary)
@@ -154,6 +158,18 @@ struct IslandBand: View {
     static func statusDot(_ s: OverlayStatus) -> IslandDot.Kind {
         if case .error = s { return .coral }
         return .amber
+    }
+}
+
+/// The calm time cue in the right wing: the last minute of the call's walkthrough, then the end of it.
+struct TimeCueText: View {
+    var cue: TimeCue
+
+    var body: some View {
+        switch cue {
+        case .soon: Text("1 min left", bundle: .module).foregroundStyle(VT.Island.secondary)
+        case .now: Text("wrap up", bundle: .module).foregroundStyle(VT.amber)
+        }
     }
 }
 
