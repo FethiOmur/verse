@@ -11,6 +11,7 @@ from html import escape
 
 from ..prep.model import PRICES, Usage, spend_usd
 from . import delivery
+from .checks import check_lines
 from .templates.styles import CSS
 
 MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -34,7 +35,7 @@ TEXT: dict[str, dict[str, str]] = {
         "follow_up": "Follow-up", "target": "target", "short": "shorter than the target", "on_target": "on target", "long": "longer than the target",
         "filler_one": "filler", "filler_many": "fillers", "longest_pause": "longest pause",
         "strong": "Strong", "missing": "Missing", "nothing": "Nothing noted.", "better": "A better answer, from your own evidence",
-        "coach": "Live coach note", "your_q": "Your question to them", "their_reply": "Their reply",
+        "coach": "Live coach note", "checks": "Answer checks", "unsupported": "Not backed by your sources", "your_q": "Your question to them", "their_reply": "Their reply",
         "footer": "Session {id}. Graded from the transcript only; no audio was stored.",
     },
     "it": {
@@ -50,7 +51,7 @@ TEXT: dict[str, dict[str, str]] = {
         "follow_up": "Approfondimento", "target": "obiettivo", "short": "più breve dell'obiettivo", "on_target": "in linea con l'obiettivo", "long": "più lunga dell'obiettivo",
         "filler_one": "intercalare", "filler_many": "intercalari", "longest_pause": "pausa più lunga",
         "strong": "Punti di forza", "missing": "Cosa manca", "nothing": "Niente da segnalare.", "better": "Una risposta migliore, dalle tue esperienze",
-        "coach": "Nota del coach dal vivo", "your_q": "La tua domanda per loro", "their_reply": "La loro risposta",
+        "coach": "Nota del coach dal vivo", "checks": "Controlli sulla risposta", "unsupported": "Non supportato dalle tue fonti", "your_q": "La tua domanda per loro", "their_reply": "La loro risposta",
         "footer": "Sessione {id}. Valutata solo dalla trascrizione; nessun audio è stato salvato.",
     },
     "tr": {
@@ -66,7 +67,7 @@ TEXT: dict[str, dict[str, str]] = {
         "follow_up": "Devam sorusu", "target": "hedef", "short": "hedeften kısa", "on_target": "hedefte", "long": "hedeften uzun",
         "filler_one": "dolgu sözcüğü", "filler_many": "dolgu sözcüğü", "longest_pause": "en uzun duraklama",
         "strong": "Güçlü yönler", "missing": "Eksikler", "nothing": "Not yok.", "better": "Deneyimlere dayalı daha iyi bir yanıt",
-        "coach": "Canlı koç notu", "your_q": "Mülakatçıya sorulan soru", "their_reply": "Yanıtları",
+        "coach": "Canlı koç notu", "checks": "Yanıt kontrolleri", "unsupported": "Kaynaklarınla desteklenmeyen", "your_q": "Mülakatçıya sorulan soru", "their_reply": "Yanıtları",
         "footer": "Oturum {id}. Yalnızca transkriptten puanlandı; ses kaydedilmedi.",
     },
 }
@@ -123,6 +124,8 @@ def assemble(sim: dict, results: dict, grades: dict | None, *, error: str | None
                 {"sentence": b["sentence"], "evidence_ids": b["evidence_ids"],
                  "sources": [{"id": eid, **s} for eid in b["evidence_ids"] for s in evidence[eid].get("sources", [])]}
                 for b in src["better_answer"]]}
+            if "unsupported" in src:          # a sim with a persona: the grader also lists claims the evidence does not back
+                g["unsupported"] = src["unsupported"]
         questions.append({
             "q_id": qid, "kind": pq.get("kind", ""), "planned_text": pq.get("text", ""),
             "asked": [{"text": a.get("text", ""), "kind": a.get("kind", "question")} for a in rq.get("asked", [])],
@@ -131,6 +134,9 @@ def assemble(sim: dict, results: dict, grades: dict | None, *, error: str | None
                         for a in answers],
             "skipped": bool(rq.get("skipped")), "coach": list(rq.get("coach", [])),
             "delivery": d, "grade": g})
+        if rq.get("checks") is not None:      # a sim with a persona (sim/checks.py)
+            questions[-1]["checks"] = rq["checks"]
+            questions[-1]["check_lines"] = check_lines(rq["checks"])
 
     answered = sum(1 for q in questions if q["answers"])
     skipped = sum(1 for q in questions if q["skipped"])
@@ -250,6 +256,10 @@ def _question(q: dict, t: dict[str, str]) -> str:
             if src:
                 out.append('<div class="src">' + "".join(src) + "</div>")
             out.append("</div>")
+    if q.get("check_lines"):
+        out.append(f'<p class="coach">{_e(t["checks"])}: {_e(" ".join(q["check_lines"]))}</p>')
+    if g and g.get("unsupported"):
+        out.append(f'<p class="coach">{_e(t["unsupported"])}: {_e(" ".join(g["unsupported"]))}</p>')
     if q["coach"]:
         out.append(f'<p class="coach">{_e(t["coach"])}: {_e(" ".join(q["coach"]))}</p>')
     out.append("</article>")

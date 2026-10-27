@@ -11,7 +11,10 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import IO, Callable
+from typing import IO, TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from .call import CallDirectives
 
 IN_TYPES = {"start", "partial", "turn", "bank_hit", "control"}
 # Anytime calls (docs/specs/2026-10-16-verse-anytime-calls-design.md section 3), additive. Swift -> brain: `start` gains `mode`
@@ -151,6 +154,7 @@ class Session:
     bank: dict[str, dict] = field(default_factory=dict)
     meta: dict = field(default_factory=dict)
     brief: str = ""          # brief.md (memory/brief.py): "PAST MEETINGS WITH <name> ..." for the live model; empty when there is none
+    call: "CallDirectives | None" = None   # call.json (runtime/call.py CallDirectives): per-session live-call directives; None when there is none
 
     @property
     def pack_for_model(self) -> str:
@@ -172,7 +176,9 @@ def load_session(session_dir: str | Path) -> Session:
                 bank[rec["id"]] = rec
     meta_file = p / "meta.json"
     meta = json.loads(meta_file.read_text(encoding="utf-8")) if meta_file.exists() else {}
-    return Session(p, pack, bank, meta, _read_brief(p))
+    from .call import load_call
+
+    return Session(p, pack, bank, meta, _read_brief(p), load_call(p))
 
 
 def _read_brief(folder: Path) -> str:

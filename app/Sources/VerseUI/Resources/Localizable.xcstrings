@@ -1170,6 +1170,22 @@
         }
       }
     },
+    "1 min left": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "manca 1 min"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1 dk kaldı"
+          }
+        }
+      }
+    },
     "1 person": {
       "localizations": {
         "it": {
@@ -12954,6 +12970,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "toplantı uygulamasının sesi bekleniyor"
+          }
+        }
+      }
+    },
+    "wrap up": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "concludi"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "toparla"
           }
         }
       }

@@ -170,6 +170,8 @@ public struct OverlayState: Equatable, Sendable {
     public var route: AudioRoute?
     /// An adhoc session: no meeting pack. The island's right wing says "Unprepared".
     public var unprepared = false
+    /// The call's time cue (`call.json`, `CallCue`): "1 min left" in the last minute, "wrap up" at the end. nil otherwise.
+    public var timeCue: TimeCue?
 
     public init() {}
 
@@ -364,6 +366,8 @@ public struct OverlayReducer: Sendable {
     private var topicTurn: [String: String] = [:]
     /// When the meeting's audio was last above `config.audibleDbfs` (or text from it arrived).
     private var lastAudible: TimeInterval = -.infinity
+    /// The session's time cue, when its `call.json` has one.
+    private var callCue: CallCue?
 
     public init(config: OverlayConfig = OverlayConfig(), bank: [String: BankOpener] = [:]) {
         self.config = config
@@ -381,6 +385,13 @@ public struct OverlayReducer: Sendable {
         topicSeen = [:]
         topicTurn = [:]
         lastAudible = -.infinity
+        callCue = nil
+    }
+
+    /// Sets (or, with nil, removes) the call's time cue. `tick` moves `state.timeCue` with the clock.
+    public mutating func setCallCue(_ cue: CallCue?, now: TimeInterval) {
+        callCue = cue
+        state.timeCue = cue?.phase(now: now)
     }
 
     // MARK: events
@@ -418,6 +429,7 @@ public struct OverlayReducer: Sendable {
 
     /// Collapses a card that has had no new content for `cardTimeout`.
     public mutating func tick(now: TimeInterval) {
+        if callCue != nil || state.timeCue != nil { state.timeCue = callCue?.phase(now: now) }
         if state.remoteSpeaking, now - lastAudible >= config.audibleHold {
             state.remoteSpeaking = false
             state.remoteBars = [0, 0, 0]

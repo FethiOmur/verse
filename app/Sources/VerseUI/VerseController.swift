@@ -300,6 +300,7 @@ public final class VerseController: ObservableObject {
         overlay.config = settings.overlayConfig
         overlay.sessionStarting(lang: lang, session: name, app: route == .meeting ? Self.meetingAppName() : nil,
                                 route: anytimeStart ? route : nil, unprepared: mode == .unprepared, auto: auto)
+        overlay.setCallCue(CallCue.load(sessionDir: dir))
         overlay.startClock()
         runner = r
         runSessionDir = dir

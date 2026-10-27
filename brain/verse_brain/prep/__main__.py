@@ -40,6 +40,13 @@ bank.jsonl. The questions are decided by code (the opener, then the bank entries
 competencies, evidence, rubric and follow-ups. The language is meta.json languages[0] unless --lang is given. --me adds the
 profile as a second evidence source. Stdout and stderr as above.
 
+Interviewer persona (opt-in, both --sim forms): who asks, what they probe, and the answer length the feedback measures against.
+  [--interviewer-name N] [--interviewer-role R] [--focus "ownership and AI use, trade-offs, evals"] [--focus ...]
+  [--answer-target 30-60] [--persona-file persona.json]
+The flags override the JSON file ({"name","role","focus":[...],"answer_target_s":[30,60]}, see prep/sim_persona.py). The persona is
+stored in sim.json; the sim interviewer follows it, and the report and the live coach notes add a check per answer (length against
+the target, clarity, over-eager phrasing, numbers and names the sources do not support). Without it nothing changes.
+
 Prep from a conversation (P2): python -m verse_brain.prep conversation --thread FILE [--posting-file F] [--posting-url U]
   [--company-url U] [--note F] [--fake]
 reads a pasted LinkedIn/email thread, researches the company with the Anthropic web_search tool (at most 8 searches, a URL on
@@ -62,6 +69,7 @@ from .keychain import KeychainError, read_api_key, redact
 from .model import PRICES, PrepError, Usage, spend_usd
 from .pipeline import build
 from .sim import DIFFICULTIES, INTERVIEW_TYPES, FakeSimModel, build_sim, build_sim_from_session
+from .sim_persona import build_persona
 from .vault import DEFAULT_VAULT, make_vault
 from .voice import (DEFAULT_VOICE_PATH, FakeVoiceModel, distill_async, load_voice, strip_voice, with_voice, write_profile)
 
@@ -135,6 +143,12 @@ def _main(argv: list[str]) -> int:
     ap.add_argument("--length", type=int, default=30, help="--sim: minutes (15 -> 5 questions, 30 -> 8, 45 -> 11)")
     ap.add_argument("--company", help="--sim: override the company name read from the posting")
     ap.add_argument("--role", help="--sim: override the role title read from the posting")
+    ap.add_argument("--interviewer-name", help="--sim: the interviewer's name (persona)")
+    ap.add_argument("--interviewer-role", help="--sim: the interviewer's role, for example 'Head of Engineering' (persona)")
+    ap.add_argument("--focus", action="append", default=[], metavar="AREAS",
+                    help="--sim: what the interviewer probes; repeatable or comma-separated (persona)")
+    ap.add_argument("--answer-target", metavar="LO-HI", help="--sim: answer length in seconds the feedback measures against (default 30-60 with a persona)")
+    ap.add_argument("--persona-file", type=Path, help="--sim: JSON file with the persona (flags override it)")
     _voice_profile_arg(ap)
     ap.add_argument("--no-voice", action="store_true", help="build the pack without the voice profile")
     ap.add_argument("--live", action="store_true",
@@ -145,6 +159,9 @@ def _main(argv: list[str]) -> int:
         a.prep_note = a.prep_note or SAMPLE
         a.budget_usd = min(a.budget_usd, 0.45)
         a.max_questions = min(a.max_questions, 24)
+    persona_flags = (a.interviewer_name, a.interviewer_role, a.focus, a.answer_target, a.persona_file)
+    if any(persona_flags) and not a.sim:
+        ap.error("the persona flags need --sim")
     if a.sim:
         if a.prep_note is not None or a.from_event is not None or a.live:
             ap.error("--sim cannot be combined with --prep-note, --from-event or --live")
@@ -232,6 +249,8 @@ def _run_sim(a: argparse.Namespace) -> int:
     key = None
     try:
         voice_path = _resolve_voice(a)
+        persona = build_persona(file=a.persona_file, name=a.interviewer_name, role=a.interviewer_role,
+                                focus=",".join(a.focus), answer_target=a.answer_target)
         if a.fake:
             model = FakeSimModel()
         else:
@@ -240,12 +259,13 @@ def _run_sim(a: argparse.Namespace) -> int:
         if from_session:
             session = build_sim_from_session(
                 a.from_session, out=a.out, model=model, me=a.me, interview_type=a.interview_type, difficulty=a.difficulty,
-                length_min=a.length, lang=lang or None, company=a.company, role=a.role, voice_path=voice_path)
+                length_min=a.length, lang=lang or None, company=a.company, role=a.role, voice_path=voice_path,
+                persona=persona)
         else:
             session = build_sim(
                 a.posting_file, out=a.out, model=model, posting_url=a.posting_url, cv=a.cv, note=a.note, repos=a.repo,
                 vault=vault, interview_type=a.interview_type, difficulty=a.difficulty, length_min=a.length, lang=lang,
-                company=a.company, role=a.role, voice_path=voice_path)
+                company=a.company, role=a.role, voice_path=voice_path, persona=persona)
     except (KeychainError, PrepError, OSError) as e:
         print(f"error: {redact(str(e), key)}", file=sys.stderr)
         return 1

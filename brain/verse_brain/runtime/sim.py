@@ -51,6 +51,7 @@ from typing import Awaitable, Callable
 
 from ..prep.model import spend_usd
 from ..prep.voice import VOICE_HEADING
+from ..sim.checks import answer_checks, check_lines
 from .engine import usage_obj
 from .fake import CallInfo, Script, lines_script
 from .prompt import EPHEMERAL, LANG_NAME, bp2_index
@@ -136,6 +137,19 @@ _BOUNDARY = re.compile(r"(?<=[.!?…])[\"'’”)\]]*\s+|\n+")
 _LABEL = re.compile(r"^\s*(?:interviewer|say)\s*:\s*", re.IGNORECASE)
 
 
+def persona_text(persona: dict) -> str:
+    """The interviewer persona of a sim (sim.json `persona`, prep/sim_persona.py) as a system-prompt paragraph."""
+    who = " ".join(x for x in (persona.get("name"), f"({persona['role']})" if persona.get("role") else "") if x)
+    parts = [f"Your persona: you are {who}." if who else "Your persona:"]
+    if persona.get("focus"):
+        parts.append("You care most about: " + "; ".join(persona["focus"]) + ". When an answer leaves one of these out, follow up on it "
+                     "in your own words; never read the list out.")
+    lo, hi = persona.get("answer_target_s", (30, 60))
+    parts.append(f"A good answer on this call lasts {lo} to {hi} seconds. If an answer clearly runs longer, a follow-up may ask for "
+                 "the short version.")
+    return " ".join(parts)
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
@@ -192,11 +206,15 @@ class QRec:
     answers: list[dict] = field(default_factory=list)
     coach: list[str] = field(default_factory=list)
     skipped: bool = False
+    checks: dict | None = None      # per-answer checks (sim/checks.py); only for a sim with a persona
     _lines: list[str] = field(default_factory=list)    # the exchange as prompt text, in arrival order
 
     def as_dict(self) -> dict:
-        return {"q_id": self.q_id, "asked": list(self.asked), "answers": list(self.answers),
-                "coach": list(self.coach), "skipped": self.skipped}
+        out = {"q_id": self.q_id, "asked": list(self.asked), "answers": list(self.answers),
+               "coach": list(self.coach), "skipped": self.skipped}
+        if self.checks is not None:
+            out["checks"] = self.checks
+        return out
 
     def exchange(self) -> str:
         """The question's lines in order (interviewer lines and answers interleaved by arrival)."""
@@ -280,6 +298,7 @@ class SimRuntime:
         self.mode = "realistic"
         self.voice = "text"
         self.from_session = False
+        self.persona: dict | None = None
         self.started_at = ""
         self.evidence: dict[str, str] = {}
         # state
@@ -404,6 +423,10 @@ class SimRuntime:
         self.system = SYSTEM_TEMPLATE.format(type_desc=TYPE_DESC[itype], diff_desc=DIFF_DESC[diff])
         if self.from_session:       # a mock built from a prepared meeting: the competencies come from its pack, not a posting
             self.system = self.system.replace("the competencies the job posting asks for", "the competencies the prep pack points to")
+        persona = self.sim.get("persona")
+        self.persona = persona if isinstance(persona, dict) and persona.get("answer_target_s") else None
+        if self.persona:            # opt-in: a sim without a persona keeps its system prompt byte for byte
+            self.system += "\n\n" + persona_text(self.persona)
 
     def _request(self, route: str, max_tokens: int, tail: str) -> dict:
         req = route_params(route, max_tokens=max_tokens)
@@ -742,6 +765,8 @@ class SimRuntime:
             role = self.sim.get("role") or "this role"
             lines.append(f"This is the start of the interview: greet the candidate in one short sentence and say you "
                          f"are interviewing them for the {role} role at {company}, then ask the question.")
+            if self.persona and self.persona.get("name"):
+                lines.append(f"Introduce yourself by the name {self.persona['name']} in that greeting.")
         else:
             lines.append("You may open with a brief bridge of a few words (for example \"Thanks.\" or \"Let's move "
                          "on.\"), but never judge or summarise the previous answer.")
@@ -920,6 +945,9 @@ class SimRuntime:
                 line_id, text, kind = move
                 self._record_line(rec, line_id, text, kind)
                 followups += 1
+            if self.persona and not rec.skipped and not self._ending and rec.answers:
+                rec.checks = answer_checks(rec.answers, q.get("target_s") or self.persona["answer_target_s"],
+                                           evidence=self.sim.get("evidence") or [], source_text=self.posting, lang=self.lang)
             if self.mode == "coach" and not rec.skipped and not self._ending and rec.answers:
                 coaching = True
                 await self._interruptible(self._coach(q, rec))
@@ -1059,15 +1087,18 @@ class SimRuntime:
 
     async def _coach(self, q: dict, rec: QRec) -> None:
         buf: list[str] = []
+        failed = False
         try:
             await self._call("COACH", rec.q_id, "S", self.config.coach_max_tokens, self.coach_tail(q, rec), buf.append)
         except TransportError as e:
             self._on_error("COACH", e)
-            return
-        lines = self.check_coach("".join(buf), rec)
+            failed = True
+        lines = [] if failed else self.check_coach("".join(buf), rec)
         if lines:
             rec.coach = lines
-            self.emitter.emit({"type": "coach", "q_id": rec.q_id, "lines": lines})
+        shown = lines + (check_lines(rec.checks) if rec.checks else [])     # the persona's checks ride the same coach note
+        if shown:
+            self.emitter.emit({"type": "coach", "q_id": rec.q_id, "lines": shown})
 
     async def _candidate_phase(self) -> None:
         cfg = self.config
