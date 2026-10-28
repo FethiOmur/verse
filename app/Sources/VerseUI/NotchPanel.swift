@@ -89,10 +89,11 @@ public final class NotchPanelController {
                                                                 object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.screenChanged() }
         }
-        // Nothing running and nothing to read: no window on screen.
-        stateSub = model.$state.receive(on: RunLoop.main).sink { [weak self] s in
+        // Nothing running and nothing to read: no window on screen. The sink runs one hop late, so it reads the model as it
+        // is now: a value delivered late (the prompt cleared just before a meeting's Start) must not hide the new call.
+        stateSub = model.$state.receive(on: RunLoop.main).sink { [weak self] _ in
             MainActor.assumeIsolated {
-                if !s.running, s.status == nil, s.meetingPrompt == nil { self?.hide() }
+                self?.hideIfIdle()
             }
         }
         // Screen shares: the whole panel (cards, statuses, prompts and the teleprompter) stays out of them while the
@@ -105,8 +106,8 @@ public final class NotchPanelController {
                     self.panel.sharingType = Self.sharingType(hideFromShare: hide)
                     if open {
                         self.show()
-                    } else if !self.model.state.running, self.model.state.status == nil {
-                        self.panel.orderOut(nil)
+                    } else {
+                        self.hideIfIdle()
                     }
                 }
             }
@@ -125,6 +126,12 @@ public final class NotchPanelController {
     public func show() {
         layout()
         panel.orderFrontRegardless()
+    }
+
+    /// Nothing running, no message and no meeting prompt: off screen. Judged on the model as it is now.
+    private func hideIfIdle() {
+        let s = model.state
+        if !s.running, s.status == nil, s.meetingPrompt == nil { hide() }
     }
 
     public func hide() {
