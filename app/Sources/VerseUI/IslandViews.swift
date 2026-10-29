@@ -198,7 +198,7 @@ struct Wings<L: View, R: View>: View {
 // MARK: - Card pieces
 
 /// The line to say, in the teleprompter's "current line" type: 30 semibold, -0.4 tracking, scaled with the text size.
-/// Words already said are 100 % white, the rest 55 %. No bar, no colour.
+/// Words still to say are 100 % white, words already said 35 %. No bar, no colour.
 struct SayLine: View {
     var text: String
     var scale: CGFloat
@@ -211,9 +211,10 @@ struct SayLine: View {
 
     var body: some View {
         let unspoken = contrast ? VT.Island.sayUnspokenContrast : VT.Island.sayUnspoken
+        let spoken = contrast ? VT.Island.saySpokenContrast : VT.Island.saySpoken
         let runs = SaySplit.segments(text, struck: struck ?? (spokenWords > 0 ? IndexSet(integersIn: 0..<spokenWords) : IndexSet()))
         VStack(alignment: .leading, spacing: 4) {
-            runs.reduce(Text(verbatim: "")) { $0 + Text(verbatim: $1.text).foregroundStyle($1.spoken ? VT.Island.saySpoken : unspoken) }
+            runs.reduce(Text(verbatim: "")) { $0 + Text(verbatim: $1.text).foregroundStyle($1.spoken ? spoken : unspoken) }
                 .font(VT.Font.prompterCurrent(scale))
                 .tracking(VT.Font.promptSayTracking)
                 .lineSpacing(2)

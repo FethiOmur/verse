@@ -3,7 +3,7 @@ import VersePrompter
 import VerseSpeech
 
 /// How much of the card's SAY line the owner has already said, for the prompter-style answer card (spec 3.2, states 4
-/// and 5: spoken words 100 % white, unspoken 55 %).
+/// and 5; since 29 Oct spoken words fade to 35 % and unspoken stay 100 % white).
 ///
 /// It is the same word tracking the meeting-card prompter mode uses: one `WordTrackingDriver` (the `PromptMatcher`
 /// behind the teleprompter) per SAY text, fed with the `me` channel of the meeting's `MeetingMicTap`. No second

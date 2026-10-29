@@ -29,11 +29,13 @@ public enum VT {
         public static let quaternary = Color.white.opacity(0.36)
         /// The heard question on the answer card (and "Following you"): the lime accent at 75 % (owner review, 16 Oct; about 7:1 on the island glass).
         public static let question = VT.mint.opacity(0.75)
-        /// SAY words not yet said / already said on the prompter-style card.
-        public static let sayUnspoken = Color.white.opacity(0.55)
-        /// Increase Contrast: the unsaid words stay readable but still differ from the said ones.
-        public static let sayUnspokenContrast = Color.white.opacity(0.78)
-        public static let saySpoken = Color.white
+        /// SAY words not yet said / already said on the prompter-style card: what is still to say stays bright, what he has
+        /// said fades (owner, 29 Oct), so the eye lands on the next word.
+        public static let sayUnspoken = Color.white
+        public static let sayUnspokenContrast = Color.white
+        public static let saySpoken = Color.white.opacity(0.35)
+        /// Increase Contrast: the said words fade less, but still differ from the unsaid ones.
+        public static let saySpokenContrast = Color.white.opacity(0.6)
         public static let fill = Color.white.opacity(0.11)
         public static let fillStrong = Color.white.opacity(0.17)
     }
