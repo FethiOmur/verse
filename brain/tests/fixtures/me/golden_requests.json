@@ -50,7 +50,7 @@
       "type": "text"
      },
      {
-      "text": "Language: English\nCURRENT QUESTION (finished): how did you build the invoice pipeline?",
+      "text": "Language: English\nCARD SIZE: DEEP. This question asks for a real answer. The SAY line may be up to 32 words (two short sentences are fine) and both \"- \" lines should be full, concrete points. Then the BANK line.\nCURRENT QUESTION (finished): how did you build the invoice pipeline?",
       "type": "text"
      }
     ],
@@ -92,7 +92,7 @@
       "type": "text"
      },
      {
-      "text": "Language: English\nCURRENT QUESTION (finished): and what about the cost per month?",
+      "text": "Language: English\nCARD SIZE: NORMAL. The SAY line (at most 20 words) and one or two \"- \" lines: write the second only when it adds something the first does not. This overrides the two-points rule above. Then the BANK line.\nCURRENT QUESTION (finished): and what about the cost per month?",
       "type": "text"
      }
     ],

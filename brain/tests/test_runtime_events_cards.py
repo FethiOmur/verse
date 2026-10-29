@@ -28,7 +28,7 @@ def responder(info):
     if info.route == "D":
         return lines_script("OPENER_OK\n- Un dettaglio (f001)\n- Un altro dettaglio (f002)")
     if "parli di lei" in tail:
-        return lines_script(f"SAY: {LONG_SAY}\n- {SHORT_POINT}\n- {LONG_POINT}\n- {SHORT_POINT}\nBANK: none")
+        return lines_script(f"SAY: {LONG_SAY}\n- {SHORT_POINT}\n- {LONG_POINT}\nBANK: none")
     return lines_script("SAY: Certo, ecco la risposta breve.\n- Primo punto.\nBANK: none")
 
 
@@ -62,7 +62,7 @@ def test_card_done_holds_the_full_say_and_points_clipped_at_240(tmp_path, monkey
     assert len(LONG_SAY) > CARD_FULL_CHARS and len(LONG_POINT) > CARD_FULL_CHARS
     assert d["say"] == LONG_SAY[:CARD_FULL_CHARS].rstrip() + "…"                  # clipped at 240, not at 60
     assert len(d["say"]) <= CARD_FULL_CHARS + 1
-    assert d["points"][0] == SHORT_POINT and d["points"][2] == SHORT_POINT          # short lines whole, in order
+    assert len(d["points"]) == 2 and d["points"][0] == SHORT_POINT                   # a short line whole, in order
     assert d["points"][1].endswith("…") and len(d["points"][1]) <= CARD_FULL_CHARS + 1
     card = next(r for r in rows if r["ev"] == "card" and r["id"] == d["id"])       # `card` still logs the 60-character first line
     assert card["text"] == d["say"][:60].rstrip() + "…" and len(card["text"]) <= 61

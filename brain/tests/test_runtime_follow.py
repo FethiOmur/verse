@@ -23,17 +23,24 @@ from verse_brain.runtime.protocol import ListEmitter
 from verse_brain.runtime.settings import Config, route_params, tuple_of
 from verse_brain.runtime.transport import BadRequest
 
+C_SECOND = ("SAY: Next on the list are group challenges for friends.\n"
+            "- Friends join a shared weekly distance goal.\n- Every Sunday the team compares totals.")
 C_CANNED = ("SAY: And that is where I keep the model on a short leash.\n"
-            "- Fields below 0.8 confidence go to a human operator.\n- That was about 7 percent of invoices.")
+            "- Fields below 0.8 confidence go to a human operator.\n- Reviews take a few hours every week.")
 OFF_CARD = ("Actually the thing I am most proud of is a running app for the marathon, it is called TrailHead and it is on "
             "the App Store with thousands of weekly users")
 FAST_PARAMS = FollowParams(pause_s=0.15, refresh_gap_s=0.4, embed_wait_s=0.3, embed_gap_s=0.0, end_silence_s=0.5)
 
 
 def responder(c_script=C_CANNED, c_delay=0.0, f_body=FAST_OK):
+    """`c_script`: one follow card for every C call, or a list: the n-th C call gets the n-th card (the last one repeats)."""
+    n_c = [0]
+
     def r(info):
         if "FOLLOW MY ANSWER" in info.tail:
-            return lines_script(c_script, per_chunk=c_delay)
+            body = c_script if isinstance(c_script, str) else c_script[min(n_c[0], len(c_script) - 1)]
+            n_c[0] += 1
+            return lines_script(body, per_chunk=c_delay)
         if info.route in ("S", "F") and not info.tail.startswith("SUMMARIZE") and "STATEMENT CHECK" not in info.tail:
             return lines_script(f_body)
         return default_responder(info)
@@ -228,7 +235,7 @@ def test_a_failed_follow_call_is_silent_and_leaves_the_card():
 
 def test_a_refresh_follows_at_his_sentence_end_not_before():
     async def go():
-        b, t, em, sess, fol = make()
+        b, t, em, sess, fol = make(responder([C_CANNED, C_SECOND]))
         await start(b, sess, fol)
         await question(b)
         await me(b, OFF_CARD)
@@ -337,6 +344,7 @@ def test_in_degraded_mode_the_follow_card_is_written_by_gemma_like_f():
         await asyncio.sleep(0.3)
         await question(b)
         assert ft.degraded
+        backend.reply = C_CANNED             # Gemma's next answer is a follow card, not the original card again
         await me(b, OFF_CARD)
         await asyncio.sleep(0.4)
         await settle(b, 8.0)

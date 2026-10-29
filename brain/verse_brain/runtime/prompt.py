@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from .. import extensions
 from ..owner import OWNER
 from ..prep.voice import VOICE_HEADING, render_voice_section
+from .size import deep_size_line, size_line
 
 BP2_EVERY = 4
 EPHEMERAL = {"type": "ephemeral"}
@@ -236,21 +237,24 @@ def _files(files: str) -> str:
     return files + "\n" if files else ""
 
 
-def fast_tail(question: str, lang: str, final: bool, files: str = "", bank: str = "") -> str:
-    """`bank`: the PREPARED ANSWER block of a matched bank entry (a session's `prefer_bank` directive); empty leaves the tail as it was."""
+def fast_tail(question: str, lang: str, final: bool, files: str = "", bank: str = "", size: str | None = None,
+              card_lines: int | None = None) -> str:
+    """`bank`: the PREPARED ANSWER block of a matched bank entry (a session's `prefer_bank` directive); empty leaves the tail as it was.
+    `size`: the question's size class (runtime/size.py), stated as a rule before the question; None leaves the tail as it was."""
     state = "finished" if final else "still being spoken, may be cut off"
-    return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}{_files(bank)}"
+    return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}{_files(bank)}{size_line(size, card_lines)}"
             f"CURRENT QUESTION ({state}): {' '.join(question.split())}")
 
 
-def card_now_tail(text: str, lang: str, final: bool, files: str = "") -> str:
+def card_now_tail(text: str, lang: str, final: bool, files: str = "", size: str | None = None,
+                  card_lines: int | None = None) -> str:
     """F call for the card-now key: he asks for a card for what the other side said last, question or not. The gates (cue,
     kind, addressee) are skipped, so the instruction says so; the answer format of the system prompt stays."""
     state = "finished" if final else "still being spoken, may be cut off"
     return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}"
             + OWNER.fill("CARD NOW. {Owner} pressed the card key: he wants something to say to the words below at once, even when they "
                          "are not phrased as a question. If they are a remark or a request, give him what he can say next. The answer "
-                         "format above applies: SAY, two \"- \" lines, BANK.\n") +
+                         "format above applies: SAY, two \"- \" lines, BANK.\n") + size_line(size, card_lines) +
             f"CURRENT QUESTION ({state}): {' '.join(text.split())}")
 
 
@@ -292,13 +296,19 @@ def room_card_block(card: list[tuple[str, str]] | None) -> str:
     return ROOM_CARD_RULE.format(card=body)
 
 
-def statement_tail(text: str, lang: str, files: str = "", room: bool = False, card: list[tuple[str, str]] | None = None) -> str:
+def _if_question(rule: str) -> str:
+    """A size rule inside a statement check applies only when the turn turns out to be a question."""
+    return "If you write KIND: question, this applies to the answer lines. " + rule if rule else ""
+
+
+def statement_tail(text: str, lang: str, files: str = "", room: bool = False, card: list[tuple[str, str]] | None = None,
+                   size: str | None = None, card_lines: int | None = None) -> str:
     """F call for a turn Swift classified as a statement. The instructions live in the tail (never cached), so the
     system prompt and the cached prefix stay byte-identical to the question path. `room`: the room route's one microphone
     (the speaker is not known); a statement then gets no acknowledgement, only a question for the owner gets a card."""
     if room:
         return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}{ROOM_STATEMENT_CHECK}{room_card_block(card)}"
-                f"CURRENT TURN (finished): {' '.join(text.split())}")
+                f"{_if_question(size_line(size, card_lines))}CURRENT TURN (finished): {' '.join(text.split())}")
     return (
         f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}"
         "STATEMENT CHECK. The turn below is probably not a question. The answer format above does not apply until "
@@ -310,16 +320,17 @@ def statement_tail(text: str, lang: str, files: str = "", room: bool = False, ca
                      "Then write one line only: SAY: <a brief acknowledgement {owner} can say, first person, at most ")
         + f"{STATEMENT_SAY_WORDS} words>, or the single word NONE. Write NONE unless the speaker expects a reply "
         "(a greeting, a thank-you, a request for permission, a how-are-you). No points, no BANK line.\n"
-        f"CURRENT TURN (finished): {' '.join(text.split())}")
+        f"{_if_question(size_line(size, card_lines))}CURRENT TURN (finished): {' '.join(text.split())}")
 
 
 def follow_tail(question: str, lang: str, his_words: str, card: list[str], said: list[str], now_card: list[str] | None,
-                reason: str, me_on: bool = False) -> str:
+                reason: str, me_on: bool = False, shown: list[str] | None = None) -> str:
     """C call (follow my answer). The owner is answering in his own direction; write the card he needs next. The instructions
     live in the tail (never cached), so the system prompt and the cached prefix stay byte-identical to F's.
 
     `card`: the original card as lines ("SAY: ...", "- ..."); `said`: the card points he has already covered (they are not
-    to be repeated); `now_card`: the follow card on screen at a refresh (None at the first switch)."""
+    to be repeated); `now_card`: the follow card on screen at a refresh (None at the first switch); `shown`: every other line
+    that reached his screen this turn (earlier follow cards, the detail points): none of it may come back, in any words."""
     lines = [
         f"Language: {LANG_NAME.get(lang, lang)}",
         OWNER.fill("FOLLOW MY ANSWER. {Owner} is answering the question below in his own direction, not by reading the card. Do not "
@@ -336,6 +347,9 @@ def follow_tail(question: str, lang: str, his_words: str, card: list[str], said:
                    "with the content, not with a reaction word (no \"Right\", \"Yes\", \"Exactly\", \"Well\"). Follow the "
                    "STYLE GUIDE for tone. No comment on the card, on the question or on him, and no line about the pack, the notes "
                    "or the profile or about what is missing from them."),
+        OWNER.fill("Nothing new is an answer: when your SAY line could only restate what {Owner} has said or a line already shown "
+                   "below (he is repeating or rephrasing himself), write the single word NONE and nothing else. A card that "
+                   "restates a line already shown, even in other words, is worse than no card."),
         f"CURRENT QUESTION (finished): {' '.join(question.split())}",
         f"WHAT {OWNER.display_name.upper()} HAS SAID SO FAR: {' '.join(his_words.split()) or '(nothing yet)'}",
         "THE CARD HE DID NOT FOLLOW:",
@@ -343,6 +357,9 @@ def follow_tail(question: str, lang: str, his_words: str, card: list[str], said:
     ]
     if said:
         lines += ["ALREADY SAID (struck through for him):", *[f"- {x}" for x in said]]
+    if shown:
+        lines += ["ALREADY SHOWN TO HIM THIS TURN, earlier follow cards and detail lines (do not restate any of it, not even in "
+                  "other words):", *[f"- {x}" for x in shown]]
     if now_card:
         lines += ["THE FOLLOW CARD ON HIS SCREEN NOW (it is replaced by yours: new SAY sentence, new points, nothing from it):",
                   *now_card]
@@ -356,7 +373,8 @@ def follow_tail(question: str, lang: str, his_words: str, card: list[str], said:
     return text
 
 
-def deep_tail(question: str, lang: str, final: bool, shown_opener: str | None, bank: dict | None, files: str = "") -> str:
+def deep_tail(question: str, lang: str, final: bool, shown_opener: str | None, bank: dict | None, files: str = "",
+              size: str | None = None) -> str:
     state = "finished" if final else "still being spoken, may be cut off"
     lines = [f"Language: {LANG_NAME.get(lang, lang)}",
              f"OPENER ALREADY SHOWN: {shown_opener if shown_opener else '(none)'}"]
@@ -365,6 +383,8 @@ def deep_tail(question: str, lang: str, final: bool, shown_opener: str | None, b
         lines.append(f"PREPARED DEEP ANSWER [{bank['id']}] (sources: {refs}): {' '.join(str(bank.get('deep', '')).split())}")
     if files:
         lines.append(files)
+    if size and deep_size_line(size):
+        lines.append(deep_size_line(size).rstrip("\n"))
     lines.append(f"CURRENT QUESTION ({state}): {' '.join(question.split())}")
     return "\n".join(lines)
 

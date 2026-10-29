@@ -11,6 +11,9 @@ Output contract towards Swift (in addition to the plan's event list):
   in the transcript). `statement` (addressee me|unknown) -> S output is dropped, no early D; one F "statement probe"
   whose first line is `KIND: question|statement`: `statement` shows at most one `SAY:` line of <= 12 words (or nothing
   on `NONE`), `question` continues as the normal F answer and then D. `question` or no kind: unchanged.
+- Card size (docs/specs/2026-10-29-verse-card-size-and-repeats.md; runtime/size.py). The question text gets a class, `short`
+  (small talk, logistics: SAY only, no D, no follow card), `normal` (SAY + 1 or 2 points) or `deep` (longer SAY, the full set).
+  The class is a rule in the uncached tail and a point cap applied while the lines are parsed. `Config.card_size` off = old shape.
 - F2 incremental summary, lowest priority. Tier R (Haiku, the S/F tuple and cached prefix, lane 1, no hedge) runs
   every `summary_every_turns` finalized turns or `summary_every_s` of speech, only when no turn is open and no
   S/F/D call is in flight and the Haiku bucket and the budget have room; its lines are merged (deduped) into a
@@ -24,7 +27,8 @@ Output contract towards Swift (in addition to the plan's event list):
   `follow{turn_id,reason,card_id}`, then `delta`s with tier C and `card_id`. Points he says (also in other words) are sent as
   `covered{turn_id,card_id,point}`; the original card's id is `orig-<turn_id>`. After a follow card, refreshes come at his
   sentence ends only. `start.follow` turns it on (Swift sends it; its setting defaults to on; absent means off); it is English only until the thresholds are tuned for
-  other languages. C never changes the S/F/D flow: a failed or dropped C leaves the original card on screen.
+  other languages. C never changes the S/F/D flow: a failed or dropped C leaves the original card on screen. A C call is held until it is over; a line that
+  repeats a shown line or his own words (runtime/repeat.py) is dropped, and a card with nothing new is not shown at all.
 - Anytime calls (docs/specs/2026-10-16-verse-anytime-calls-design.md; runtime/me.py is the me layer). `start.me` names the
   permanent profile: its text goes into the cached ABOUT <OWNER> system block, its NUMBERS are compared with the pack's FACTS
   (`notice me_conflicts`), and chunks of his files are retrieved for remote turns on the embedding thread into the uncached
@@ -63,6 +67,8 @@ from .lines import LineAssembler
 from .own import OwnSpeech
 from .me import LibraryPath, MeLayer, conflicts as me_conflicts, load_me, pack_snippet_refs, select_hits
 from .call import bank_hint
+from .repeat import embed_all, filter_card, his_chunks
+from .size import FOLLOW_POINTS, card_size, points_cap
 from .prompt import (STATEMENT_SAY_WORDS, WARMUP_TAIL, Turn, build_request, card_now_tail, deep_tail, fast_tail,
                      files_block, final_tail, follow_tail, rolling_tail, statement_tail)
 from .protocol import LANGS, REMOTE_SPEAKERS, Emitter, Session, load_session, msg_lang, turn_kind
@@ -140,7 +146,7 @@ class Call:
     buffered/live output."""
 
     def __init__(self, brain: "Brain", tier: str, turn_id: str, input_text: str, request: dict, *,
-                 buffered: bool, route: str, probe: bool = False, quiet: bool = False) -> None:
+                 buffered: bool, route: str, probe: bool = False, quiet: bool = False, size: str | None = None) -> None:
         self.brain = brain
         self.tier = tier
         self.route = route
@@ -164,6 +170,18 @@ class Call:
         self.kind: str | None = None          # None until the KIND line (or, without one, the first text line)
         self.kind_known = asyncio.Event()
         self.points: list[str] = []
+        # the size class of the question (runtime/size.py): the points beyond its cap are dropped when the lines are parsed
+        self.size = size
+        directives = brain.session.call if brain.session is not None else None
+        if tier == "C":
+            self.max_points = FOLLOW_POINTS
+        elif size is not None and tier in ("S", "F", "D"):
+            self.max_points = points_cap(size, tier, directives.card_lines if directives else None)
+        else:
+            self.max_points = 99
+        # tier C: the lines are held until the call is over, then the repeat guard decides what reaches the screen
+        self.held_say: str | None = None
+        self.held_points: list[str] = []
         self.stop_reason: str | None = None
         self.usage: dict = {}
         self.error: TransportError | None = None
@@ -236,10 +254,13 @@ class Call:
         if self.probe and self.kind != "question":
             self._on_statement_text(line_done, line)
             return
-        if self.tier == "C" and not self.follow_sent and not self.discarded:
-            self.follow_sent = True      # the card switches when its first text arrives, not when the call is launched
-            self.brain.emitter.emit({"type": "follow", "turn_id": self.turn_id, "reason": self.follow_reason,
-                                     "card_id": self.id})
+        if self.tier == "C":
+            if line_done:
+                self._hold_follow_line(line.strip())
+            return
+        if line_done and line.strip().startswith("- ") and len(self.points) >= self.max_points:
+            self._stage("point_capped", line=line.strip()[:40], cap=self.max_points)
+            return                       # a "- " line is held until it is whole, so nothing of it was shown yet
         self._out(self.brain.emitter.delta(self.id, self.turn_id, self.tier, chunk, line_done,
                                            card_id=self.id if self.tier == "C" else None))
         if line_done:
@@ -254,6 +275,38 @@ class Call:
                 if self.first_point is None:
                     self.first_point = s[2:].strip()
                     self._stage("first_point")
+
+    def _hold_follow_line(self, s: str) -> None:
+        """A follow card is written whole before it is shown (`show_held`): the repeat guard needs all of its lines."""
+        if s.startswith("SAY:") and self.held_say is None:
+            self.held_say = s[4:].strip() or None
+        elif s.startswith("- "):
+            if len(self.held_points) < self.max_points:
+                self.held_points.append(s[2:].strip())
+            else:
+                self._stage("point_capped", line=s[:40], cap=self.max_points)
+
+    def show_held(self, say: bool, points: list[str]) -> bool:
+        """Tier C: put the held lines on the screen: the `follow` event (the card switches), then one delta per line. False when
+        there is nothing to show or the call was discarded meanwhile."""
+        lines = ([("say", self.held_say)] if say and self.held_say else []) + [("point", p) for p in points if p]
+        if self.discarded or not lines:
+            return False
+        self.follow_sent = True
+        self._out({"type": "follow", "turn_id": self.turn_id, "reason": self.follow_reason, "card_id": self.id})
+        for kind, text in lines:
+            self._out(self.brain.emitter.delta(self.id, self.turn_id, self.tier, ("SAY: " if kind == "say" else "- ") + text, True,
+                                               card_id=self.id))
+            if kind == "say":
+                self.say_line = text
+                self._stage("say_line")
+            else:
+                self.points.append(text)
+                if self.first_point is None:
+                    self.first_point = text
+                    self._stage("first_point")
+            self.brain.on_card_line(self, kind, text)
+        return True
 
     def _on_statement_text(self, line_done: bool, line: str) -> None:
         """Statement mode: only the first complete `SAY:` line of <= STATEMENT_SAY_WORDS words is shown. Points, a
@@ -493,7 +546,7 @@ class Brain:
         self._follow_calls: list[Call] = []
         self._follow_detected: dict[str, float] = {}      # turn_id -> time.time() of the last divergence/refresh decision
         self._follow_banks: set[str] = set()
-        self.follow_counts = {"diverged": 0, "refresh": 0, "covered": 0, "c_calls": 0, "c_empty": 0}
+        self.follow_counts = {"diverged": 0, "refresh": 0, "covered": 0, "c_calls": 0, "c_empty": 0, "c_repeat": 0}
 
     # ------------------------------------------------------------------ helpers
     def _spawn(self, coro) -> asyncio.Task:
@@ -566,6 +619,14 @@ class Brain:
         """The session's call.json text for the system prompt of `route` (runtime/call.py); None without a call.json."""
         call = self.session.call if self.session is not None else None
         return call.system_text(route) if call is not None else None
+
+    def _size(self, st: "TurnState", text: str) -> str | None:
+        """The size class of the question `text` (runtime/size.py); None with `Config.card_size` off (every card as before)."""
+        return card_size(text, self._lang(st)) if self.config.card_size else None
+
+    def _card_lines(self) -> int | None:
+        call = self.session.call if self.session is not None else None
+        return call.card_lines if call is not None else None
 
     def _bank_hint(self, st: "TurnState") -> str:
         """The matched bank entry for the tail of a fast call, only with the session's `prefer_bank` directive."""
@@ -855,7 +916,7 @@ class Brain:
 
     # ------------------------------------------------------------------ call plumbing
     def _launch(self, tier: str, turn_id: str, text: str, tail: str, turns: list[Turn], *, buffered: bool,
-                probe: bool = False, quiet: bool = False) -> Call | None:
+                probe: bool = False, quiet: bool = False, size: str | None = None) -> Call | None:
         if self.halted or self.session is None:
             return None
         if self.config.budget_usd is not None and self.spend >= self.config.budget_usd:
@@ -872,7 +933,7 @@ class Brain:
             if tier in ("D", "A"):
                 self._status("rate_limited", "client-side token bucket empty", turn_id=turn_id)
             return None
-        call = Call(self, tier, turn_id, text, req, buffered=buffered, route=route, probe=probe, quiet=quiet)
+        call = Call(self, tier, turn_id, text, req, buffered=buffered, route=route, probe=probe, quiet=quiet, size=size)
         self.calls.append(call)
         self.last_call_mono[model] = time.monotonic()
         call.task = self._spawn(call.run())
@@ -1052,9 +1113,11 @@ class Brain:
             return
         if len(st.s_calls) >= cfg.s_max_per_turn:
             return
+        size = self._size(st, st.partial)
         call = self._launch("S", st.turn_id, st.partial,
-                            fast_tail(st.partial, self._lang(st), final=False, files=self._files(st), bank=self._bank_hint(st)),
-                            list(self.turns), buffered=True)
+                            fast_tail(st.partial, self._lang(st), final=False, files=self._files(st), bank=self._bank_hint(st),
+                                      size=size, card_lines=self._card_lines()),
+                            list(self.turns), buffered=True, size=size)
         if call is not None:
             st.s_calls.append(call)
             st.last_fire_text = st.partial
@@ -1093,10 +1156,14 @@ class Brain:
         st.d_call = self._fire_d(st, st.partial, final=False, buffered=True)
 
     def _fire_d(self, st: TurnState, text: str, *, final: bool, buffered: bool, opener: str | None = None) -> Call | None:
+        size = self._size(st, text)
+        if size == "short":              # small talk and logistics: the SAY line is the whole card, there is no detail to add
+            self.emitter.metric(st.turn_id, "d_skipped", reason="short_card")
+            return None
         shown = opener if opener is not None else self._shown_opener_guess(st)
-        tail = deep_tail(text, self._lang(st), final, shown, self._bank_rec(st), self._files(st))
+        tail = deep_tail(text, self._lang(st), final, shown, self._bank_rec(st), self._files(st), size=size)
         turns = st.turns_before if st.finished else list(self.turns)
-        return self._launch("D", st.turn_id, text, tail, turns, buffered=buffered)
+        return self._launch("D", st.turn_id, text, tail, turns, buffered=buffered, size=size)
 
     # ------------------------------------------------------------------ F3: paraphrase matcher (embedding)
     def _embed_partial(self, st: TurnState) -> None:
@@ -1444,8 +1511,9 @@ class Brain:
         final = tokens(st.final_text)
         best: tuple[int, int] | None = None   # (distance, -seq): closest input wins, the newest on a tie
         chosen: Call | None = None
+        size = self._size(st, st.final_text)
         for c in st.s_calls:
-            if c.discarded or c.error is not None:
+            if c.discarded or c.error is not None or c.size != size:     # a speculative card of another size class is not this answer
                 continue
             key = (edit_distance(c.input_tokens, final), -c.seq)
             if key[0] <= cfg.match_max_edit and (best is None or key < best):
@@ -1465,9 +1533,11 @@ class Brain:
             chosen.release()
             self._maybe_verdict(st)
         else:
-            tail = (card_now_tail(st.final_text, self._lang(st), not st.card_now_partial, self._files(st)) if st.card_now
-                    else fast_tail(st.final_text, self._lang(st), final=True, files=self._files(st), bank=self._bank_hint(st)))
-            st.fast = self._launch("F", st.turn_id, st.final_text, tail, st.turns_before, buffered=False)
+            tail = (card_now_tail(st.final_text, self._lang(st), not st.card_now_partial, self._files(st), size=size,
+                                  card_lines=self._card_lines()) if st.card_now
+                    else fast_tail(st.final_text, self._lang(st), final=True, files=self._files(st), bank=self._bank_hint(st),
+                                   size=size, card_lines=self._card_lines()))
+            st.fast = self._launch("F", st.turn_id, st.final_text, tail, st.turns_before, buffered=False, size=size)
         self._deciding += 1
         self._spawn(self._decide_d_tracked(st))
 
@@ -1491,10 +1561,12 @@ class Brain:
             self.emitter.metric(st.turn_id, "statement_skipped", words=len(tokens(st.final_text)))
             self._ev("card_suppressed", turn=st.turn_id, reason="statement_skipped", words=len(tokens(st.final_text)))
             return
+        size = self._size(st, st.final_text)
         st.fast = self._launch("F", st.turn_id, st.final_text,
                                statement_tail(st.final_text, self._lang(st), self._files(st), room=st.room,
-                                      card=self._own.visible_lines() if st.room else None),
-                               st.turns_before, buffered=False, probe=True, quiet=st.room)
+                                      card=self._own.visible_lines() if st.room else None, size=size,
+                                      card_lines=self._card_lines()),
+                               st.turns_before, buffered=False, probe=True, quiet=st.room, size=size)
         self.emitter.metric(st.turn_id, "statement_probe", launched=st.fast is not None)
         if st.fast is None:
             return
@@ -1532,7 +1604,7 @@ class Brain:
     async def _decide_d(self, st: TurnState) -> None:
         cfg = self.config
         d = st.d_call
-        if d is not None and (d.discarded or d.error is not None
+        if d is not None and (d.discarded or d.error is not None or d.size != self._size(st, st.final_text)
                               or edit_distance(d.input_tokens, tokens(st.final_text)) > cfg.match_max_edit):
             d.discard()
             self.emitter.metric(st.turn_id, "d_early_dropped", id=d.id)
@@ -1661,6 +1733,8 @@ class Brain:
             self._follow_calls = [c for c in self._follow_calls if c.turn_id == st.turn_id]
         self._follow_banks.clear()
         self._follow_bank(st)
+        if self._size(st, st.final_text) == "short":
+            f.end("short_card")           # a one-line card (small talk, logistics) has no line to follow: nothing continues it
         self._follow_apply()
 
     @_follow_safe
@@ -1899,7 +1973,10 @@ class Brain:
         now_card = [("SAY: " if ln.kind == "say" else "- ") + ln.text for ln in cur] if reason == "refresh" and cur else None
         words = f.his_text().split()
         his = ("... " if len(words) > 160 else "") + " ".join(words[-160:])
-        tail = follow_tail(st.final_text, self.lang, his, card, said, now_card, reason, me_on=self.about is not None)
+        on_screen = {ln.text for ln in orig} | {ln.text for ln in cur}
+        shown = list(dict.fromkeys(ln.text for cid in f.order for ln in f.cards[cid].lines
+                                   if ln.tier in ("C", "D") and ln.text not in on_screen))[-12:]
+        tail = follow_tail(st.final_text, self.lang, his, card, said, now_card, reason, me_on=self.about is not None, shown=shown)
         call = self._launch("C", st.turn_id, his, tail, st.turns_before, buffered=False)
         if call is None:
             f.c_failed()
@@ -1916,11 +1993,58 @@ class Brain:
         f = self.follow
         if f is None or f.turn_id != call.turn_id:
             return
-        f.c_done()
-        if not call.discarded and call.error is None and call.say_line is None and not call.points:
+        if call.discarded or call.error is not None:
+            f.c_done()
+            return
+        if call.held_say is None and not call.held_points:
+            f.c_done(shown=False)          # NONE, or nothing: the model had nothing new
             self.follow_counts["c_empty"] += 1
-            self.emitter.metric(call.turn_id, "follow_empty", id=call.id, reason=call.follow_reason,
-                                stop=call.stop_reason)
+            self.emitter.metric(call.turn_id, "follow_empty", id=call.id, reason=call.follow_reason, stop=call.stop_reason)
+            return
+        self._spawn(self._follow_gate(call))     # the card is on the screen only after the repeat guard (c_in_flight stays up)
+
+    async def _follow_vectors(self, texts: list[str]) -> dict[str, list[float]] | None:
+        """Unit vectors of `texts` for the repeat guard, on the embedding thread; None when the path is not available (the lexical
+        rule alone then decides) or takes longer than `follow_repeat_wait_s`."""
+        cfg = self.config
+        if self.embed is None or not self.embed.ready or self._follow_embed_failed or self.lang not in cfg.embed_langs:
+            return None
+        cache = self._follow_cache
+        try:
+            return await asyncio.wait_for(self.embed.run_job(lambda e: embed_all(e.embed, texts, cache, PREFIX)),
+                                          timeout=cfg.follow_repeat_wait_s)
+        except Exception as e:  # noqa: BLE001 - without vectors the lexical rule decides
+            self.emitter.metric("", "follow_repeat_embed_failed", reason=f"{type(e).__name__}: {e}"[:160])
+            return None
+
+    async def _follow_gate(self, call: Call) -> None:
+        """The new follow card against what he has seen and said this turn (runtime/repeat.py): a SAY line that repeats drops the
+        card, a point that repeats is dropped alone; nothing left means the card on screen stays."""
+        f = self.follow
+        shown = False
+        try:
+            if f is None or f.turn_id != call.turn_id or call.discarded or self.halted:
+                return
+            p = self.config.follow_repeat
+            say, pts = call.held_say, list(call.held_points)
+            refs = f.shown_texts() + his_chunks(f.his_text(), p)
+            vecs = await self._follow_vectors([*([say] if say else []), *pts, *refs])
+            if self.follow is not f or f.turn_id != call.turn_id or call.discarded or self.halted:
+                return
+            keep_say, kept, found = filter_card(say, pts, refs, vecs, p)
+            for kind, line, like, score in found:
+                self._ev("point_dropped" if kind == "point" else "card_suppressed", turn=call.turn_id, tier="C", id=call.id,
+                         why="repeat", reason="follow_repeat", text=clip(line, CARD_CHARS), like=clip(like, CARD_CHARS), score=score)
+            if found:
+                self.follow_counts["c_repeat"] += len(found)
+                self.emitter.metric(call.turn_id, "follow_repeat", id=call.id, lines=len(found), embed=vecs is not None)
+            shown = call.show_held(keep_say, kept)
+            if not shown:
+                self.follow_counts["c_empty"] += 1
+                self.emitter.metric(call.turn_id, "follow_empty", id=call.id, reason=call.follow_reason, stop="repeat")
+        finally:
+            if f is not None and f.turn_id == call.turn_id:
+                f.c_done(shown=shown or call.discarded)
 
     def _follow_embed(self, req: NeedEmbed) -> None:
         self._follow_req = req            # a request that has not started yet is replaced: only the newest runs

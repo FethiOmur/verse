@@ -116,6 +116,32 @@ the card for that window (within 0.01), has four content words, and, for a point
 0.88: no point is ever struck that he did not say, 4 of 48 said points stay visible. A wrong strike hides a point he still owes;
 a missed strike only leaves a said point on screen.
 
+## Repeats (2026-10-29)
+
+A live answer got four follow cards in 25 seconds that all said the same idea ("the big calls are mine to make") with the same two
+points in other words. Three causes, three fixes (`runtime/repeat.py`, `follow.py`, `prompt.follow_tail`):
+
+1. The prompt forced a SAY line every time and showed the model only the card on screen, not the earlier ones. It now lists every
+   earlier follow card and detail line ("ALREADY SHOWN TO HIM THIS TURN") and allows the single word `NONE`.
+2. Nothing checked the output. Every line of a new follow card is compared with all lines shown this turn and the last 8 sentences
+   of his answer: a repeat is an embedding cosine >= 0.86 or >= 60 % of the shorter line's content stems (>= 3 stems) found in the
+   other. A repeating SAY drops the card (the card on screen stays), a repeating point is dropped alone. The card is held until the
+   call is over (about one more second than streaming it), because the check needs all of its lines.
+3. The refresh counted any four content words as news. It now counts distinct content stems that he has not said earlier in the turn
+   and that are on no card line of the turn, and each card that showed nothing (NONE, or only repeats) doubles the wait and the
+   word count for the next refresh, up to three times the base values (`repeat_backoff_max`).
+
+Threshold evidence (EmbeddingGemma 270M, sentence-similarity prefix, 13 hand-written fictional pairs, cosine):
+
+| pairs | n | range |
+|---|---|---|
+| the same idea in other words | 6 | 0.85 to 0.94 |
+| same topic, a different fact | 4 | 0.78 to 0.84 |
+| unrelated | 3 | 0.74 to 0.80 |
+
+0.86 catches five of the six paraphrases and none of the others. A missed repeat shows one more similar card; a wrong drop leaves the
+earlier card on screen. Not yet measured on real calls: the live r114 answer is the evidence for the problem, not for the threshold.
+
 ## Not measured here
 
 Real speech recognition output (the fixtures are clean text with the recognizer's chunk rhythm), Italian and Turkish (the

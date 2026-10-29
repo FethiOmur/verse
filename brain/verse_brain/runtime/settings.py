@@ -11,6 +11,7 @@ import copy
 from dataclasses import dataclass, field
 
 from .follow import FollowParams
+from .repeat import RepeatParams
 from .own import OwnParams
 
 from ..prep.model import HAIKU, OPUS, PREP_MODEL
@@ -106,6 +107,9 @@ class Config:
     follow: FollowParams = field(default_factory=FollowParams)
     own: OwnParams = field(default_factory=OwnParams)     # room route: the owner's own voice told by text (runtime/own.py)
     follow_tick_s: float = 0.1         # timer resolution of the machine (pauses, embed timeouts, the 4 s end)
+    follow_repeat: RepeatParams = field(default_factory=RepeatParams)   # a follow line that restates a shown line or his words is dropped
+    follow_repeat_wait_s: float = 0.6  # the embedding check of a follow card waits this long, then the lexical rule alone decides
+    card_size: bool = True             # the card follows the question: short / normal / deep (runtime/size.py); False = every card as before
     # F2 incremental summary (lowest priority: never competes with S/F/D)
     summary_every_turns: int = 6        # finalized turns (both speakers) between rolling passes
     summary_every_s: float = 180.0      # ...or this much speech (audio clock), whichever comes first

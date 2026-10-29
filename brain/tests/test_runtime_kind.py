@@ -270,7 +270,7 @@ def test_question_and_missing_kind_are_unchanged():
 
     base = run(go(None))
     assert len(base[0].by_route("F")) == 1 and len(base[0].by_route("D")) == 1
-    assert base[0].by_route("F")[0].tail == prompt.fast_tail(QUESTION, "en", final=True)
+    assert base[0].by_route("F")[0].tail == prompt.fast_tail(QUESTION, "en", final=True, size="normal")
     assert not any("STATEMENT CHECK" in c.tail for c in base[0].calls)
     for kind in ("question", "weird"):
         other = run(go(kind))

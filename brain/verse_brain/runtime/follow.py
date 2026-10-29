@@ -84,6 +84,8 @@ class FollowParams:
     refresh_new_words: int = 4
     end_silence_s: float = 4.0       # the owner silent this long after the remote spoke again ends follow mode
     min_gap_after_fail_s: float = 4.0
+    repeat_backoff_max: int = 2      # each follow card that came out as nothing new (NONE, or every line a repeat) makes the next refresh
+                                     # wait one more `refresh_gap_s` and `refresh_new_words`, up to this many extra steps
     carry_back_s: float = 1.0        # his turn that began this long before the question's last word still counts as an answer to it
 
 
@@ -425,6 +427,7 @@ class FollowMachine:
         self.c_count = 0
         self.last_c_t: float = -1e9
         self.fail_t: float = -1e9
+        self.nothing_new = 0                           # follow cards in a row that showed nothing (NONE / only repeats)
         self.refreshed_at_word_t: float | None = None  # last_word_t at the last refresh decision (one refresh per pause)
         self.remote_at: float | None = None
         self.final_seen = False
@@ -842,24 +845,38 @@ class FollowMachine:
         if self.mode == "watch":
             self.diverged_at = None
 
-    def c_done(self) -> None:
+    def c_done(self, shown: bool = True) -> None:
+        """The C call is over. `shown` False: it ended with nothing new for the screen (the model wrote NONE, or the repeat guard
+        dropped every line): the next refresh then needs more fresh material and a longer wait (`repeat_backoff_max`)."""
         self.c_in_flight = False
+        self.nothing_new = 0 if shown else self.nothing_new + 1
+
+    def shown_texts(self) -> list[str]:
+        """Every line that reached his screen this turn, in arrival order (the original card, the bank card, D's detail lines and
+        every follow card): what a new follow card must not restate."""
+        return [ln.text for cid in self.order for ln in self.cards[cid].lines]
 
     def _new_words_since_c(self, after: float | None = None) -> int:
-        """Content words said since the last C call (or since `after`) that are news for the card on screen: words that match a
-        card that is not on screen (the original, the bank's, D's, an older follow card) are him going back over old ground."""
+        """Distinct content stems said since the last C call (or since `after`) that are news: not said earlier in his answer, not on
+        any card line of this turn (the original, the bank's, D's, every follow card: he is going back over old ground, or saying
+        what is on screen), and not matched to a card that is not on screen. A restated idea brings no news however long it takes."""
         if self.c_launch_t is None:
             return 0
         since = self.c_launch_t if after is None else max(self.c_launch_t, after)
         vis = self.visible_id
-        n = 0
-        for t in self.toks():
-            if not t.content or t.t <= since:
+        toks = self.toks()
+        seen: set[str] = {t.stem for t in toks if t.content and t.t <= since}
+        for cid in self.order:
+            for ln in self.cards[cid].lines:
+                seen |= ln.stems
+        new: set[str] = set()
+        for t in toks:
+            if not t.content or t.t <= since or t.stem in seen:
                 continue
             if t.matched and t.card is not None and t.card != vis:
                 continue
-            n += 1
-        return n
+            new.add(t.stem)
+        return len(new)
 
     def _note_all_covered(self) -> None:
         if not self._all_covered():
@@ -875,7 +892,8 @@ class FollowMachine:
         p = self.p
         if self.ended or self.c_in_flight or self.mode != "following" or self.last_word_t is None:
             return
-        if now - self.last_c_t < p.refresh_gap_s:
+        step = 1 + min(self.nothing_new, p.repeat_backoff_max)
+        if now - self.last_c_t < p.refresh_gap_s * step:
             return
         if self.refreshed_at_word_t == self.last_word_t:
             return
@@ -889,7 +907,7 @@ class FollowMachine:
             # goes on with enough new material after the last point.
             after = self.all_covered_t if self.all_covered_t is not None else now
         n = self._new_words_since_c(after)
-        if n < p.refresh_new_words:
+        if n < p.refresh_new_words * step:
             return
         self.refreshed_at_word_t = self.last_word_t
         self.stats["refresh"] += 1
