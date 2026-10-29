@@ -247,8 +247,15 @@ public struct OverlayView: View {
         a11yOverride ?? IslandA11y(reduceTransparency: systemReduceTransparency, increaseContrast: systemContrast == .increased,
                                    reduceMotion: systemReduceMotion)
     }
-    /// A card never grows past 420 pt (spec 3.2); the user's height setting can only lower that.
-    private var maxIslandHeight: CGFloat { min(CGFloat(settings.cardMaxHeight), 420) }
+    /// A card grows until the whole answer fits, up to 65 % of the screen; the user's height setting can only raise that
+    /// (owner, 29 Oct: a deep answer was cut after its first point under a 226 pt setting and the old 420 pt cap).
+    private var maxIslandHeight: CGFloat {
+        Self.islandCeiling(setting: CGFloat(settings.cardMaxHeight), screenHeight: NotchPanelController.notchScreen().frame.height)
+    }
+
+    nonisolated static func islandCeiling(setting: CGFloat, screenHeight: CGFloat) -> CGFloat {
+        max(setting, (screenHeight * 0.65).rounded())
+    }
 
     /// The size the surface has before the first measurement: the idle capsule.
     private var compactSize: CGSize { CGSize(width: metrics.capsuleWidth(wide: false), height: metrics.capsuleHeight) }
