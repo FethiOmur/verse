@@ -46,7 +46,11 @@ def _rx(*parts: str) -> re.Pattern[str]:
 
 _DEEP = _rx(
     # English
-    r"\b(?:walk|talk|take)\s+(?:me|us)\s+through\b", r"\btell\s+(?:me|us)(?:\s+more)?\s+about\b", r"\bdescribe\b", r"\bexplain\b",
+    r"\b(?:walk|talk|take)\s+(?:me|us)\s+through\b",
+    # "tell me about", also with words between ("tell me briefly / a bit / a little more about"): the owner wants the real answer
+    # even when the asker says "briefly" (29 Oct)
+    r"\btell\s+(?:me|us)(?:\s+[\w']+){0,3}?\s+about\b", r"\babout\s+(?:yourself|your\s+(?:background|career|journey|experience|"
+    r"story|path|profile|role|work))\b", r"\bintroduce\s+yourself\b", r"\bwho\s+are\s+you$", r"\byour\s+background\b", r"\bdescribe\b", r"\bexplain\b",
     r"\belaborate\b", r"\bgive\s+(?:me|us)\s+an?\s+(?:example|overview|summary)\b", r"\bfor\s+example\b",
     r"\ba\s+time\s+(?:when|that|you)\b", r"\b(?:situation|instance|moment)\s+(?:where|when|in which)\b",
     r"\bhow\s+did\s+you\s+(?:design|build|architect|approach|decide|handle|structure|implement|solve|manage|work|make|choose|"
@@ -126,6 +130,8 @@ def points_cap(size: str, tier: str, card_lines: int | None = None) -> int:
     if tier == "D":
         return rule.d_points
     cap = rule.f_points
+    if size == "deep":                # a real question gets the full card whatever the session's card_lines says (owner, 29 Oct)
+        return cap
     return min(cap, max(card_lines - 1, 0)) if card_lines else cap
 
 
@@ -139,13 +145,14 @@ def size_line(size: str | None, card_lines: int | None = None) -> str:
         return ("CARD SIZE: SHORT. This is small talk or a logistics check, not a question that needs an answer card. Write the SAY "
                 f"line only: one short spoken line, at most {rule.say_words} words. No \"- \" lines (this overrides the two-points "
                 "rule above). Then the BANK line.\n")
-    if card_lines:
+    if card_lines and size == "normal":
         return ""
     if size == "normal":
         return (f"CARD SIZE: NORMAL. The SAY line (at most {rule.say_words} words) and one or two \"- \" lines: write the second only "
                 "when it adds something the first does not. This overrides the two-points rule above. Then the BANK line.\n")
+    over = " This overrides the card-size directive above: a question like this gets the full card." if card_lines else ""
     return (f"CARD SIZE: DEEP. This question asks for a real answer. The SAY line may be up to {rule.say_words} words (two short "
-            "sentences are fine) and both \"- \" lines should be full, concrete points. Then the BANK line.\n")
+            f"sentences are fine) and both \"- \" lines should be full, concrete points.{over} Then the BANK line.\n")
 
 
 def deep_size_line(size: str | None) -> str:
@@ -154,5 +161,6 @@ def deep_size_line(size: str | None) -> str:
         return ""
     n = RULES[size].d_points
     if size == "deep":
-        return ""
+        return ("CARD SIZE: DEEP. This question asks for a real answer: write 2 to 4 detail points, never OPENER_OK alone (this "
+                "overrides a card-size directive above).\n")
     return f"CARD SIZE: {size.upper()}. Write at most {n} detail point{'s' if n != 1 else ''} (this overrides the 2 to 4 above).\n"

@@ -59,6 +59,8 @@ async def ask(text, tmp_path=None, call=None, **cfg):
     ("Do you have experience with Kubernetes?", "normal"), ("Hi, what languages do you use?", "normal"),
     ("Do you have any questions for us?", "normal"), ("What video codecs did you use?", "normal"),
     ("Walk me through the architecture of the extraction pipeline", "deep"), ("Tell me about yourself", "deep"),
+    ("tell me briefly about yourself", "deep"), ("Tell me a little bit about your background", "deep"),
+    ("Could you introduce yourself?", "deep"), ("So, who are you?", "deep"), ("Who are you working with now", "normal"),
     ("How did you design the invoice pipeline at your last company", "deep"),
     ("Tell me about a time you disagreed with a teammate", "deep"),
     ("okay hello can you hear me great so walk me through the design", "deep"),
@@ -77,7 +79,8 @@ def test_a_long_multi_part_question_is_deep():
 def test_caps_per_class_and_the_call_json_cap():
     assert [points_cap(s, "F") for s in ("short", "normal", "deep")] == [0, 2, 2]
     assert [points_cap(s, "D") for s in ("short", "normal", "deep")] == [0, 2, 4]
-    assert points_cap("deep", "F", card_lines=2) == 1 and points_cap("normal", "F", card_lines=1) == 0
+    assert points_cap("normal", "F", card_lines=2) == 1 and points_cap("normal", "F", card_lines=1) == 0
+    assert points_cap("deep", "F", card_lines=2) == 2, "a real question gets the full card whatever card_lines says"
     assert points_cap("deep", "C") == 3
 
 
@@ -105,18 +108,29 @@ def test_a_deep_question_gets_the_longer_say_and_the_full_set():
     assert "CARD SIZE: DEEP" in t.by_route("F")[0].tail and "up to 32 words" in t.by_route("F")[0].tail
     assert len(shown(em, "F")) == 3, "SAY and the two points of the F tier"
     d = t.by_route("D")
-    assert d and "CARD SIZE" not in d[0].tail, "D keeps its 2 to 4 points"
+    assert d and "CARD SIZE: DEEP" in d[0].tail and "2 to 4 detail points" in d[0].tail, "D keeps its 2 to 4 points"
     assert len(shown(em, "D")) == 4, "D wrote five points; four is its maximum"
 
 
 def test_the_call_json_cap_is_enforced_in_code(tmp_path):
     (tmp_path / "a").mkdir()
     (tmp_path / "b").mkdir()
-    t, em = run(ask("Walk me through the architecture of the extraction pipeline", tmp_path / "a", call={"card_lines": 2}))
+    (tmp_path / "c").mkdir()
+    t, em = run(ask("what did the pilot achieve?", tmp_path / "a", call={"card_lines": 2}))
     assert shown(em, "F") == ["SAY: Sure, here is the short version.", "- I led Lantern."], "the whole card is two lines"
-    assert "CARD SIZE: DEEP" not in t.by_route("F")[0].tail, "the directive in the system prompt wins over the class"
+    assert "CARD SIZE" not in t.by_route("F")[0].tail, "the directive in the system prompt wins over a normal class"
     t, em = run(ask("Yes, can you hear me?", tmp_path / "b", call={"card_lines": 3}))
     assert "CARD SIZE: SHORT" in t.by_route("F")[0].tail and shown(em, "F") == ["SAY: Sure, here is the short version."]
+
+
+def test_a_deep_question_beats_the_call_json_cap(tmp_path):
+    """Owner, 29 Oct: "tell me about yourself" got two lines because the session's call.json said card_lines 2."""
+    t, em = run(ask("tell me briefly about yourself", tmp_path, call={"card_lines": 2}))
+    f = t.by_route("F")[0]
+    assert "CARD SIZE: DEEP" in f.tail and "overrides the card-size directive" in f.tail
+    assert len(shown(em, "F")) == 3, "SAY and both points, not the two-line card"
+    d = t.by_route("D")
+    assert d and "CARD SIZE: DEEP" in d[0].tail and len(shown(em, "D")) == 4
 
 
 def test_with_the_setting_off_every_card_is_as_before():

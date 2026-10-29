@@ -57,14 +57,16 @@ class CallDirectives:
             if deep:
                 lines.append(f"- Card size: the card on his screen is at most {n} short line{'s' if n != 1 else ''} and the opener is "
                              "already on it. When the opener is right, write OPENER_OK and nothing else: no points. After "
-                             "OPENER_WRONG write one point of at most 8 words (keywords) that gives the right direction.")
+                             "OPENER_WRONG write one point of at most 8 words (keywords) that gives the right direction. "
+                             "A CARD SIZE: DEEP line in the request wins over this.")
             elif n == 1:
                 lines.append("- Card size: the whole card is ONE short line. Write the SAY line only (keywords, at most 10 words, at "
                              "most one number), no \"- \" lines, then the BANK line.")
             else:
                 lines.append(f"- Card size: the whole card is at most {n} short lines: the SAY line and {n - 1} \"- \" "
                              f"line{'s' if n != 2 else ''} (keywords, at most 8 words each, at most one number in the whole card), then "
-                             + OWNER.fill("the BANK line. Write fewer words, not full sentences: {owner} says the rest himself."))
+                             + OWNER.fill("the BANK line. Write fewer words, not full sentences: {owner} says the rest himself. A CARD SIZE: "
+                                         "DEEP line in the request wins over this."))
         if self.prefer_bank:
             if deep:
                 lines.append("- Prepared answers: when a PREPARED DEEP ANSWER is shown, take your points from it, in its words, cut to size.")

@@ -16,7 +16,7 @@
       "type": "text"
      },
      {
-      "text": "Language: English\nOPENER ALREADY SHOWN: (none)\nCURRENT QUESTION (finished): how did you build the invoice pipeline?",
+      "text": "Language: English\nOPENER ALREADY SHOWN: (none)\nCARD SIZE: DEEP. This question asks for a real answer: write 2 to 4 detail points, never OPENER_OK alone (this overrides a card-size directive above).\nCURRENT QUESTION (finished): how did you build the invoice pipeline?",
       "type": "text"
      }
     ],

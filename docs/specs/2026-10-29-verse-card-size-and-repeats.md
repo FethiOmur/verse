@@ -43,3 +43,13 @@ every card to the old shape (no tail line, no cap, D always).
 
 Cost: the follow card is on screen when the call is over, not word by word (about one second later), because the guard needs all of
 its lines. Open: the 0.86 threshold rests on 13 hand-written pairs (`docs/follow-tuning.md`), not on real calls.
+
+## Update 29 Oct (evening): deep beats the call.json cap
+
+Owner, live test: "tell me briefly about yourself" got a two-line card. Two causes: the lexicon missed "tell me <words> about", and
+the session's `call.json` `card_lines: 2` capped every class, deep included. Now:
+
+- `tell me (up to three words) about`, `about yourself / your background ...`, `introduce yourself` and a bare `who are you` are deep.
+  "briefly" does not shrink the card: the owner wants the real answer.
+- A deep question ignores `card_lines`: F shows SAY and both points, D writes 2 to 4 points (never OPENER_OK alone). The tails say
+  so, and the call.json directive text names the DEEP line as the exception. `card_lines` still caps normal questions.
