@@ -6018,6 +6018,22 @@
         }
       }
     },
+    "No Anthropic API key. Add it in Settings, then start again.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna chiave API Anthropic. Aggiungila in Impostazioni, poi riavvia."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic API anahtarı yok. Ayarlar’dan ekle, sonra yeniden başlat."
+          }
+        }
+      }
+    },
     "No brief yet. Verse can sum up your %lld past meetings with %@: what was said, what was promised and what is still open.": {
       "localizations": {
         "en": {
@@ -6052,6 +6068,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Henüz brifing yok. Verse, %@ ile yapılan geçmiş toplantıyı özetleyebilir: ne konuşuldu, neler vaat edildi, neler açık kalıyor."
+          }
+        }
+      }
+    },
+    "No connection": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna rete"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantı yok"
           }
         }
       }
@@ -6724,22 +6756,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Toplantı algılandığında başlatmayı öner"
-          }
-        }
-      }
-    },
-    "Offline": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Offline"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Çevrimdışı"
           }
         }
       }
@@ -9920,6 +9936,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bu satır artık bu transkriptte yok."
+          }
+        }
+      }
+    },
+    "The Anthropic API key was not accepted. Check it in Settings, then start again.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La chiave API Anthropic non è stata accettata. Controllala in Impostazioni, poi riavvia."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic API anahtarı kabul edilmedi. Ayarlar’dan kontrol et, sonra yeniden başlat."
           }
         }
       }

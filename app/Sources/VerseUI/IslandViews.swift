@@ -103,7 +103,7 @@ enum IslandWidth {
     static func width(kind: IslandKind, state: OverlayState, metrics: NotchMetrics, cardWidth: CGFloat, forcePracticeCapsule: Bool = false) -> CGFloat {
         switch kind {
         case .capsule:
-            // Listening (354): someone is talking, a tag names who the question is for, or a short status ("Offline") needs
+            // Listening (354): someone is talking, a tag names who the question is for, or a short status ("No connection") needs
             // its wing. Otherwise the quiet capsule (266).
             let listening = state.status != nil || state.timeCue != nil || (state.running && (state.addresseeTag != nil || state.remoteSpeaking))
             return listening ? metrics.listeningWidth : metrics.capsuleWidth(wide: false)

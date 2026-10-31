@@ -1,5 +1,5 @@
 """The me layer at run time: the ABOUT ALEX RIVERA block and its cache layout, conflicts with the pack, library retrieval on the
-embedding thread (F never waits, D waits at most 150 ms), the golden request without the layer, and the local fallback prompt.
+embedding thread (F never waits, D waits at most 150 ms), and the golden request without the layer.
 
 Fictional person (Dana Reyes) only; the embedder is a fake whose cosines are set exactly."""
 
@@ -14,18 +14,15 @@ import time
 from pathlib import Path
 
 import pytest
-from test_runtime_fallback import FakeBackend
 from test_runtime_helpers import FIX, exchange, rolling_calls, run, settle, turn  # noqa: F401
 
-from verse_brain.runtime import local_llm as ll
 from verse_brain.runtime.embed import PREFIX
 from verse_brain.runtime.engine import Brain
 from verse_brain.runtime.fake import FakeTransport, default_responder
-from verse_brain.runtime.local_llm import LocalGemma
 from verse_brain.runtime.me import Chunk, Hit, conflicts, load_me, model_sha, select_hits, write_emb
-from verse_brain.runtime.prompt import NO_PACK_LINE, Turn, build_request, fast_tail, render_about_block
+from verse_brain.runtime.prompt import NO_PACK_LINE, render_about_block
 from verse_brain.runtime.protocol import ListEmitter
-from verse_brain.runtime.settings import Config, route_params
+from verse_brain.runtime.settings import Config
 
 ME_DIR = Path(__file__).resolve().parent / "fixtures" / "me"
 PROFILE = ME_DIR / "profile"
@@ -463,78 +460,6 @@ def test_follow_card_tail_names_the_me_layer_as_grounding_only_when_it_is_on():
                      "the meeting pack and ABOUT ALEX RIVERA have nothing grounded", "When none of them has anything for his topic"):
         assert sentence in on, sentence
     assert "the pack cannot support" not in on and "a point they cannot support" in on
-
-
-# ---------------------------------------------------------------- the G1 fallback prompt
-def big_about(sections: dict[str, int]) -> str:
-    """A me.md-shaped ABOUT ALEX RIVERA block with `n` long lines per section (ids m0xx, m1xx, ... as in me.md)."""
-    out = []
-    for i, (name, n) in enumerate(sections.items()):
-        out.append(f"## {name}")
-        out += [f"[m{i * 100 + j + 1:03d}] {name.lower()} item {j} " + "detail " * 30 + "| file:x.md" for j in range(n)]
-    return render_about_block("\n".join(out), None)
-
-
-SECTION_COUNTS = {"WHO I AM": 3, "EXPERIENCE": 4, "PROJECTS": 6, "SKILLS": 8, "NUMBERS": 10, "STORIES": 6, "LOOKING FOR": 1}
-
-
-def ids_in(text: str, prefix: str) -> list[str]:
-    return [l[1:5] for l in text.splitlines() if l.startswith(f"[{prefix}")]
-
-
-def test_local_prompt_with_a_pack_keeps_who_numbers_and_projects_in_3000_chars():
-    out = ll.trim_me(big_about(SECTION_COUNTS), 3000, with_pack=True)
-    assert len(out) <= 3000
-    assert [l for l in out.splitlines() if l.startswith("## ")] == ["## WHO I AM", "## PROJECTS", "## NUMBERS"]
-    assert len(ids_in(out, "m0")) == 3 and len(ids_in(out, "m4")) >= 3          # WHO I AM whole, NUMBERS first in the budget
-    assert len(ids_in(out, "m2")) < 6                                            # PROJECTS gives way first
-    assert "EXPERIENCE" not in out and "STORIES" not in out and "SKILLS" not in out
-
-
-def test_local_prompt_unprepared_trims_in_the_build_order():
-    block = big_about(SECTION_COUNTS)
-    small = ll.trim_me(block, len(block) - 200, with_pack=False)               # a little over: only the last story goes
-    assert ids_in(small, "m5") == [f"m50{j}" for j in range(1, 6)] and len(ids_in(small, "m3")) == 8
-    more = ll.trim_me(block, len(block) - 2200, with_pack=False)               # all of STORIES' tail, then the tail of SKILLS
-    assert ids_in(more, "m5") == ["m501"] and 0 < len(ids_in(more, "m3")) < 8
-    assert len(ids_in(more, "m2")) == 6 and len(ids_in(more, "m1")) == 4          # PROJECTS and EXPERIENCE come after SKILLS
-    for out in (small, more, ll.trim_me(block, 9500, with_pack=False)):
-        assert len(ids_in(out, "m4")) == 10 and len(ids_in(out, "m0")) == 3       # NUMBERS and WHO I AM are never trimmed
-    assert len(ll.trim_me(block, 9500, with_pack=False)) <= 9500
-    # the STYLE GUIDE section stays whole and does not count against the budget
-    styled = render_about_block("\n".join(["## WHO I AM", "[m001] x " * 20, "## STORIES"] + [f"[m5{j:02d}] " + "story " * 60 for j in range(6)]),
-                                "### Tone\n- relaxed\n")
-    out = ll.trim_me(styled, 600, with_pack=False)
-    assert "## STYLE GUIDE" in out and "### Tone" in out
-
-
-def test_gemma_gets_the_me_layer_inside_the_9500_char_prefix():
-    block = big_about(SECTION_COUNTS)
-    pack = (FIX / "pack.md").read_text(encoding="utf-8")
-    be = FakeBackend()
-    local = LocalGemma(Config(), backend=be)
-
-    async def go():
-        prepared = build_request("F", route_params("F"), pack, [], fast_tail("tell me about yourself", "en", True), block)
-        async for _ in local.stream(prepared):
-            pass
-        unprepared = build_request("F", route_params("F"), "", [Turn("t0", "remote", "hi there")],
-                                   fast_tail("tell me about yourself", "en", True), block)
-        async for _ in local.stream(unprepared):
-            pass
-        await local.aclose()
-
-    run(go())
-    assert len(be.convs) == 2                                               # another frozen prefix: another conversation
-    first = be.sent[0]
-    assert first.startswith("ABOUT ALEX RIVERA") and len(first.split(ll.PACK_HEADER)[0]) <= 3002
-    assert len(first.split(ll.TRANSCRIPT_HEADER)[0]) <= 9500
-    second = be.sent[1]
-    assert second.startswith("ABOUT ALEX RIVERA") and "(none: unprepared call)" in second
-    assert len(second.split(ll.PACK_HEADER)[0]) <= 9500 + 2
-    parts = ll.split_request(build_request("F", route_params("F"), pack, [], "tail", block))
-    assert parts.me == block and parts.system.startswith("You are Verse") and "ABOUT ALEX RIVERA" in parts.system
-    assert ll.split_request(build_request("F", route_params("F"), pack, [], "tail")).me == ""
 
 
 # ---------------------------------------------------------------- the real model: where the floor sits

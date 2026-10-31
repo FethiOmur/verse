@@ -196,7 +196,7 @@ final class OverlayModelTests: XCTestCase {
         let m = model(c)
         m.apply(status("offline", "network unreachable"))
         XCTAssertEqual(m.state.status, .offline)
-        XCTAssertEqual(m.state.status?.shortTitle, "Offline")
+        XCTAssertEqual(m.state.status?.shortTitle, "No connection")
         XCTAssertEqual(m.state.activity, .offline)
         m.apply(status("ready"))
         XCTAssertNil(m.state.status, "back online clears the chip")
@@ -207,6 +207,16 @@ final class OverlayModelTests: XCTestCase {
         XCTAssertEqual(m.state.status?.title, "Max API credit used up")
         XCTAssertEqual(m.state.status?.detail, "Credit used up until 1 December")
         XCTAssertTrue(m.state.status?.needsPanel ?? false)
+
+        // Online-only: a missing or rejected key is named (the brain sends a `reason`), never the Keychain's raw text.
+        m.apply(.brain(obj(["type": "status", "state": "error", "message": "No API key: Keychain item service=x missing (exit 44)", "reason": "no_api_key"])))
+        XCTAssertEqual(m.state.status, .error("No Anthropic API key. Add it in Settings, then start again."))
+        m.apply(.brain(obj(["type": "status", "state": "error", "message": "API key rejected (401 )", "reason": "invalid_api_key"])))
+        XCTAssertEqual(m.state.status, .error("The Anthropic API key was not accepted. Check it in Settings, then start again."))
+        m.apply(.brain(obj(["type": "status", "state": "error", "message": "request rejected: 400"])))
+        XCTAssertEqual(m.state.status, .error("request rejected: 400"), "no reason: the brain's message as before")
+        m.apply(.brain(obj(["type": "status", "state": "offline", "message": "no connection (network error)", "reason": "no_connection"])))
+        XCTAssertEqual(m.state.status, .offline)
 
         m.apply(.status(state: "restarting", message: "brain process ended unexpectedly; restarting"))
         XCTAssertEqual(m.state.status, .restarting)

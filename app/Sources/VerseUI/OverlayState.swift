@@ -76,7 +76,7 @@ public enum OverlayStatus: Equatable, Sendable {
     /// The short text in the capsule chip.
     public var title: String {
         switch self {
-        case .offline: return L10n.tr("Offline")
+        case .offline: return L10n.tr("No connection")
         case .rateLimited: return L10n.tr("Rate limited")
         case .creditExhausted: return L10n.tr("Max API credit used up")
         case .restarting: return L10n.tr("Restarting")
@@ -90,7 +90,7 @@ public enum OverlayStatus: Equatable, Sendable {
     /// The few words that fit the capsule's wing.
     public var shortTitle: String {
         switch self {
-        case .offline: return L10n.tr("Offline")
+        case .offline: return L10n.tr("No connection")
         case .rateLimited: return L10n.tr("Rate limited")
         case .creditExhausted: return L10n.tr("No credit")
         case .restarting: return L10n.tr("Restarting")
@@ -488,7 +488,17 @@ public struct OverlayReducer: Sendable {
 
     mutating func setPrompt(_ p: MeetingPrompt?) { state.meetingPrompt = p }
 
-    private mutating func applyStatus(_ st: String, message: String) {
+    /// The sentence for a `reason` the brain put on a `status` event (brain/verse_brain/runtime/engine.py: NO_API_KEY,
+    /// INVALID_API_KEY). Without one the brain's own English `message` is shown, as before.
+    static func reasonText(_ reason: String?) -> String? {
+        switch reason {
+        case "no_api_key": return L10n.tr("No Anthropic API key. Add it in Settings, then start again.")
+        case "invalid_api_key": return L10n.tr("The Anthropic API key was not accepted. Check it in Settings, then start again.")
+        default: return nil
+        }
+    }
+
+    private mutating func applyStatus(_ st: String, message: String, reason: String? = nil) {
         switch st {
         case "warming": state.activity = .warming
         case "ready":
@@ -502,7 +512,7 @@ public struct OverlayReducer: Sendable {
         case "credit_exhausted": state.status = .creditExhausted(message)
         case "refusal": break   // the fast tiers show nothing; D still answers
         case "restarting": state.status = .restarting
-        case "error": state.status = .error(message)
+        case "error": state.status = .error(Self.reasonText(reason) ?? message)
         case "permission_denied": state.status = .permission(message)
         case "listen_failed": state.status = .error(message)
         default: break
@@ -713,7 +723,7 @@ public struct OverlayReducer: Sendable {
             turns[tid, default: TurnInfo()].covered[cid, default: []].insert(Int(p))
             refreshCard(now: now)
         case "status":
-            applyStatus(o[string: "state"] ?? "", message: o[string: "message"] ?? "")
+            applyStatus(o[string: "state"] ?? "", message: o[string: "message"] ?? "", reason: o[string: "reason"])
         case "notice":
             // `me_missing`: the profile files named in `start` do not exist. A status that never covers a card (openCard
             // takes it down). The other notice (`me_conflicts`) is for the Me page, not the island.

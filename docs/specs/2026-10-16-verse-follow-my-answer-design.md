@@ -32,7 +32,7 @@ Divergence detection is the core of this spec.
 | Toggle | Settings → Meetings: "Follow my answer" (default **on**). The brain gets it in `start`. |
 | Teleprompter | When the meeting-card prompter is on, a follow card calls `replaceUnread(with:)` with the new SAY, so the read prefix stays. |
 | Cost | One Haiku call per divergence plus refreshes. No cap (the owner). Report the count per meeting in `summary.md` metrics. |
-| Fallback | When degraded (G1 local Gemma), C runs on Gemma the same way as F does. If Gemma can't, no follow card and the original stays. |
+| Fallback | When degraded (G1 local Gemma), C runs on Gemma the same way as F does. If Gemma can't, no follow card and the original stays. Removed 2026-10-31: Verse is online-only. |
 
 Rejected:
 - **Detection in Swift.** Swift has no semantic matcher and no card meaning, and duplicating the embedder would cost RAM.

@@ -73,7 +73,7 @@ New Swift module `VersePrompter` (library target). It depends on `VerseSpeech` a
 - Matcher lost (no commit for 8 s while speaking): keep the position, show a small "lost: click a word" hint.
   Voice-paced mode keeps working.
 - In a meeting, the prompter listens only to the mic channel. Remote audio never moves the script.
-- Brain `script` failure: show the error in the editor. The local Gemma fallback (G1) applies the same way as for answers.
+- Brain `script` failure: show the error in the editor. The local Gemma fallback (G1) applies the same way as for answers. Removed 2026-10-31: Verse is online-only.
 
 ## 5. Phases (each one is its own work package)
 

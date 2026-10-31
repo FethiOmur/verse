@@ -52,7 +52,7 @@ from typing import Awaitable, Callable
 from ..prep.model import spend_usd
 from ..prep.voice import VOICE_HEADING
 from ..sim.checks import answer_checks, check_lines
-from .engine import usage_obj
+from .engine import INVALID_API_KEY, NO_CONNECTION, NO_CREDIT, usage_obj
 from .fake import CallInfo, Script, lines_script
 from .prompt import EPHEMERAL, LANG_NAME, bp2_index
 from .protocol import Emitter
@@ -478,7 +478,7 @@ class SimRuntime:
                 raise Offline(f"{type(last).__name__} after {self.config.prewarm_attempts} attempts")
         except Offline as e:
             self._offline = True
-            self._status("offline", f"pre-warm failed: {e}")
+            self._status("offline", f"no connection ({e})", reason=NO_CONNECTION)
         except TransportError as e:
             self._on_error("prewarm", e)
         else:
@@ -504,7 +504,7 @@ class SimRuntime:
             except Offline:
                 if not self._offline:
                     self._offline = True
-                    self._status("offline", "ping failed")
+                    self._status("offline", "no connection (ping failed)", reason=NO_CONNECTION)
             except TransportError as e:
                 log.warning("sim keep-alive failed: %s", e)
 
@@ -514,15 +514,15 @@ class SimRuntime:
         if isinstance(e, CreditExhausted):
             if self._halted is None:
                 self._halted = "credit_exhausted"
-                self._status("credit_exhausted", "Max API credit used up")
+                self._status("credit_exhausted", "Max API credit used up", reason=NO_CREDIT)
         elif isinstance(e, AuthFailed):
             if self._halted is None:
                 self._halted = "auth"
-                self._status("error", f"API key rejected ({e})")
+                self._status("error", f"API key rejected ({e})", reason=INVALID_API_KEY)
         elif isinstance(e, Offline):
             if not self._offline:
                 self._offline = True
-                self._status("offline", f"{task}: network error")
+                self._status("offline", f"no connection ({task}: network error)", reason=NO_CONNECTION)
         elif isinstance(e, RateLimited):
             self._status("rate_limited", f"{task}: 429 from the API")
         else:

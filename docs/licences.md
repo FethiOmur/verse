@@ -115,6 +115,8 @@ resolved at run time with a public fallback. Fine for a directly distributed app
 
 ## Local degraded-mode brain (G1, brain)
 
+**Removed 2026-10-31: Verse is online-only.** The local Gemma 4 E4B fallback and its code were deleted; this section is kept as history. EmbeddingGemma and `litert-lm-api` stay (memory search and the paraphrase matcher).
+
 Checked 2026-10-15 (`brain/verse_brain/runtime/local_llm.py`, `fallback.py`). Gemma answers only while the API is offline,
 rate-limited or out of credit; it runs in the brain process through `litert-lm-api` (already listed above, Apache-2.0).
 No new Python dependency.

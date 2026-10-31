@@ -117,7 +117,7 @@ final class L10nSweepTests: XCTestCase {
     // MARK: Models
 
     func testModelStringsFollowTheLanguage() {
-        XCTAssertEqual(OverlayStatus.offline.title, "Offline")
+        XCTAssertEqual(OverlayStatus.offline.title, "No connection")
         XCTAssertEqual(HomeSession.title(forFolder: "adhoc-20261016-1432-room"), "Call at 14:32")
         L10nState.shared.apply(.it)
         XCTAssertEqual(OverlayStatus.rateLimited.title, "Limite raggiunto")

@@ -16,10 +16,10 @@ answers S/F from the pack's answer bank: both for replays). `--no-embed` turns t
 matcher (EmbeddingGemma, LiteRT-LM) off; without it the matcher loads at `start` and stays off by itself when
 `litert_lm` or the model is missing.
 
-G1 degraded mode (meetings, not `--fake`): the transport is wrapped so that local Gemma 4 E4B answers while the API is
-offline, rate-limited or out of credit (runtime/fallback.py). `--no-fallback` turns it off, `--local-prewarm` (or
-VERSE_LOCAL_PREWARM=1) loads it at session start. `VERSE_SIMULATE_API=offline|rate_limited|overloaded|credit` makes every
-API call fail (no key read, no network) to exercise the fallback.
+Verse is online-only: there is no local model. With no connection, no API key or a rejected key the brain says so in a
+`status` event with a `reason` (`no_connection`, `no_api_key`, `invalid_api_key`, `no_credit`; see runtime/engine.py).
+`VERSE_SIMULATE_API=offline|rate_limited|overloaded|auth|credit` makes every API call fail (no key read, no network) to
+exercise those messages live.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ import logging
 import os
 import sys
 
-from .engine import Brain
+from .engine import NO_API_KEY, Brain
 from .protocol import Emitter, parse_line
 from .settings import Config
 from .ask import AskRuntime
@@ -103,15 +103,15 @@ async def amain(args) -> int:
     key = None
     sim_fault = None
     if not args.fake:
-        from .fallback import simulated_fault
+        from .fake import simulated_fault
 
         sim_fault = simulated_fault(os.environ.get("VERSE_SIMULATE_API", ""))
     if args.fake:
         from .fake import FakeTransport, bank_responder
 
         transport = FakeTransport(bank_responder if args.fake_bank else None)
-    elif sim_fault is not None:   # live check of the local fallback: every API call fails, no key, no network
-        from .fallback import FaultTransport
+    elif sim_fault is not None:   # live check of the failure messages: every API call fails, no key, no network
+        from .fake import FaultTransport
 
         transport = FaultTransport(None, sim_fault)
     else:
@@ -121,12 +121,11 @@ async def amain(args) -> int:
         try:
             key = read_api_key()
         except KeychainError as e:
-            emitter.status("error", str(e))
+            emitter.status("error", f"No API key: {e}", reason=NO_API_KEY)
             return 2
         transport = AnthropicTransport(key)
         del key  # the SDK clients hold the only copy
-    cfg = Config(budget_usd=args.budget_usd, fallback_enabled=not args.no_fallback,
-                 local_prewarm=args.local_prewarm or os.environ.get("VERSE_LOCAL_PREWARM") == "1")
+    cfg = Config(budget_usd=args.budget_usd)
     factory = None
     if (args.embed or not args.fake) and not args.no_embed:
         from .embed import LiteRtEmbedder
@@ -169,12 +168,7 @@ async def amain(args) -> int:
                         return 2
                     runtime = _memory_runtime(msg["type"], client, args, emitter, cfg)
                 else:
-                    brain_transport, brain_emitter = transport, emitter
-                    if not args.fake and cfg.fallback_enabled:   # G1: Gemma as the degraded-mode brain (meetings only)
-                        from .fallback import wrap
-
-                        brain_transport, brain_emitter = wrap(transport, emitter, cfg)
-                    runtime = Brain(brain_transport, brain_emitter, cfg, embedder_factory=factory)
+                    runtime = Brain(transport, emitter, cfg, embedder_factory=factory)
             await runtime.handle(msg)
             if runtime.stopped.is_set():
                 break
@@ -193,9 +187,6 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-embed", action="store_true", help="turn the F3 paraphrase matcher off")
     ap.add_argument("--embed", action="store_true", help="with --fake: load the embedding model anyway (replays)")
     ap.add_argument("--fake-bank", action="store_true", help="with --fake: S/F answer from the pack's answer bank (replays)")
-    ap.add_argument("--no-fallback", action="store_true", help="never switch to local Gemma (G1 degraded mode)")
-    ap.add_argument("--local-prewarm", action="store_true",
-                    help="load Gemma and prime the pack at session start even when the API is healthy (also VERSE_LOCAL_PREWARM=1)")
     ap.add_argument("--no-api", action="store_true",
                     help="serve only memory_index_start: no Keychain read, no API client (the memory index writer needs neither)")
     ap.add_argument("--log-level", default="WARNING")

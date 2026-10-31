@@ -80,6 +80,14 @@ from .transport import (AuthFailed, BadRequest, CreditExhausted, Offline, Overlo
 
 log = logging.getLogger("verse.runtime")
 
+# Verse is online-only, so a failure that stops answers must be named. Every such `status` event carries one of these in its
+# `reason` key (additive; `state` and `message` are as before). The app shows a localized sentence for each
+# (app/Sources/VerseUI/OverlayState.swift, `OverlayReducer.reasonText`); `message` stays English, for the log.
+NO_CONNECTION = "no_connection"      # state offline: the API cannot be reached (network down, DNS, timeout)
+NO_API_KEY = "no_api_key"            # state error: no key in the Keychain (runtime/__main__.py, before any call)
+INVALID_API_KEY = "invalid_api_key"  # state error: the API answered 401/403
+NO_CREDIT = "no_credit"              # state credit_exhausted: billing error / 402
+
 # A bank hit that lands after its turn was closed as statement/fragment still answers the turn when it comes within this
 # many seconds of the turn's arrival and no newer turn has started. The paraphrase matcher is the only source of such hits
 # (Swift's n-gram hits precede their turn on the pipe): a job takes ~20 ms on the GPU, up to ~0.6 s on a busy CPU
@@ -567,10 +575,10 @@ class Brain:
     def _status(self, state: str, message: str = "", **extra) -> None:
         self.emitter.status(state, message, **extra)
 
-    def _halt(self, state: str, message: str) -> None:
+    def _halt(self, state: str, message: str, **extra) -> None:
         if self.halted is None:
             self.halted = state
-            self._status(state, message)
+            self._status(state, message, **extra)
             for c in self.calls:
                 if not c.done.is_set():
                     c.discard()
@@ -693,12 +701,12 @@ class Brain:
                 raise Offline(f"{type(last).__name__} after {self.config.prewarm_attempts} attempts")
         except Offline as e:
             self.offline = True
-            self._status("offline", f"pre-warm failed: {e}")
+            self._status("offline", f"no connection ({e})", reason=NO_CONNECTION)
         except CreditExhausted:
-            self._halt("credit_exhausted", "Max API credit used up")
+            self._halt("credit_exhausted", "Max API credit used up", reason=NO_CREDIT)
             return
         except AuthFailed as e:
-            self._halt("error", f"API key rejected ({e})")
+            self._halt("error", f"API key rejected ({e})", reason=INVALID_API_KEY)
             return
         except TransportError as e:
             self._status("error", f"pre-warm failed: {e}")
@@ -892,7 +900,7 @@ class Brain:
             except Offline:
                 if not self.offline:
                     self.offline = True
-                    self._status("offline", "ping failed")
+                    self._status("offline", "no connection (ping failed)", reason=NO_CONNECTION)
                 continue
             except TransportError as e:
                 log.warning("ping error: %s", e)
@@ -1016,13 +1024,13 @@ class Brain:
     def on_call_error(self, call: Call, e: TransportError) -> None:
         log.warning("call %s (%s) failed: %s", call.id, call.tier, e)
         if isinstance(e, CreditExhausted):
-            self._halt("credit_exhausted", "Max API credit used up")
+            self._halt("credit_exhausted", "Max API credit used up", reason=NO_CREDIT)
         elif isinstance(e, AuthFailed):
-            self._halt("error", f"API key rejected ({e})")
+            self._halt("error", f"API key rejected ({e})", reason=INVALID_API_KEY)
         elif isinstance(e, Offline):
             if not self.offline:
                 self.offline = True
-                self._status("offline", "network error")
+                self._status("offline", "no connection (network error)", reason=NO_CONNECTION)
             st = self.ts.get(call.turn_id)
             if st is not None and st.finished and call.tier in ("F", "D") and not call.discarded:
                 self.pending_turn = call.turn_id

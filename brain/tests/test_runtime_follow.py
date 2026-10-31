@@ -17,8 +17,6 @@ from test_runtime_helpers import FAST_OK, FIX, lines_script, settle, turn
 from verse_brain.runtime.engine import Brain
 from verse_brain.runtime.fake import FakeTransport, Script, default_responder
 from verse_brain.runtime.follow import FollowParams
-from verse_brain.runtime.local_llm import classify
-from verse_brain.runtime.prompt import build_request
 from verse_brain.runtime.protocol import ListEmitter
 from verse_brain.runtime.settings import Config, route_params, tuple_of
 from verse_brain.runtime.transport import BadRequest
@@ -304,13 +302,11 @@ def test_summary_md_carries_the_follow_counts(tmp_path):
     assert "## Metrics" in md and "Follow my answer: 1 divergences" in md
 
 
-def test_the_c_route_is_the_f_tuple_and_gemma_answers_it_like_f():
+def test_the_c_route_is_the_f_tuple():
     assert tuple_of(route_params("C")) == tuple_of(route_params("F")) == tuple_of(route_params("S"))
-    req = build_request("C", route_params("C"), "PACK", [], "tail")
-    assert classify("C", req) == "answer"
 
 
-# ---------------------------------------------------------------------------------------------- degraded mode (Gemma)
+# ---------------------------------------------------------------------------------------------- prompt cache
 def test_pre_warm_and_follow_call_share_one_prompt_cache_entry():
     async def go():
         b, t, em, sess, fol = make()
@@ -326,51 +322,6 @@ def test_pre_warm_and_follow_call_share_one_prompt_cache_entry():
     c = c_calls(t)[0].request
     assert warm["system"] == c["system"] and tuple_of(warm) == tuple_of(c)
     assert warm["messages"][0]["content"][0] == c["messages"][0]["content"][0], "the cached pack block is byte-identical"
-
-
-def _degraded_rig(**cfg):
-    from test_runtime_fallback import rig as fb_rig
-    from verse_brain.runtime.transport import Offline
-    b0, em, ft, prim, api, backend = fb_rig(fault=Offline("simulated"), follow=FAST_PARAMS, follow_tick_s=0.02, **cfg)
-    b = Brain(ft, b0.emitter, b0.config, embedder_factory=lambda: ConceptEmbedder())      # divergence needs the embedder
-    b.start_background = False
-    return b, em, ft, prim, api, backend
-
-
-def test_in_degraded_mode_the_follow_card_is_written_by_gemma_like_f():
-    async def go():
-        b, em, ft, prim, api, backend = _degraded_rig()
-        await b.handle({"type": "start", "session_dir": str(FIX), "lang": "en", "follow": True})
-        await asyncio.sleep(0.3)
-        await question(b)
-        assert ft.degraded
-        backend.reply = C_CANNED             # Gemma's next answer is a follow card, not the original card again
-        await me(b, OFF_CARD)
-        await asyncio.sleep(0.4)
-        await settle(b, 8.0)
-        return em, backend
-
-    em, backend = run(go())
-    fol = [e for e in em.events if e["type"] == "follow"]
-    assert fol and fol[0]["reason"] == "diverged"
-    assert any("FOLLOW MY ANSWER" in m for m in backend.sent), "Gemma got the follow instructions in its message"
-    assert [e for e in em.events if e["type"] == "delta" and e["tier"] == "C" and e["card_id"] == fol[0]["card_id"]]
-
-
-def test_when_gemma_cannot_write_the_follow_card_the_original_stays():
-    async def go():
-        b, em, ft, prim, api, backend = _degraded_rig()
-        await b.handle({"type": "start", "session_dir": str(FIX), "lang": "en", "follow": True})
-        await question(b)
-        backend.fail_send = True                 # Gemma breaks after the first answer
-        await me(b, OFF_CARD)
-        await asyncio.sleep(0.4)
-        await settle(b, 8.0)
-        return em
-
-    em = run(go())
-    assert not [e for e in em.events if e["type"] == "follow"]
-    assert not [e for e in em.events if e["type"] == "delta" and e["tier"] == "C"]
 
 
 def test_a_bug_in_the_follow_machine_turns_it_off_and_never_touches_the_answer(monkeypatch):

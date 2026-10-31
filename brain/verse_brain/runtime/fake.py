@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 from ..owner import OWNER
-from .transport import Ev, TransportError
+from .transport import (AuthFailed, CreditExhausted, Ev, Offline, Overloaded, RateLimited, Transport, TransportError)
 
 
 @dataclass
@@ -200,3 +200,48 @@ def bank_responder(info: CallInfo) -> Script:
                 if say:
                     return lines_script("\n".join([say, *pts[:2], f"BANK: {e.group(1)}"]))
     return default_responder(info)
+
+
+class FaultTransport:
+    """A transport that fails every call with `fault` (until `fault_for_s` has passed), else delegates to `inner`.
+    Tests, and `VERSE_SIMULATE_API` (a live check of the no-connection / bad-key / no-credit messages without the network or the key)."""
+
+    def __init__(self, inner: Transport | None = None, fault: TransportError | None = None,
+                 fault_for_s: float | None = None) -> None:
+        self.inner = inner
+        self.fault = fault
+        self._until = None if fault_for_s is None else time.monotonic() + fault_for_s
+        self.calls = 0
+
+    def _check(self) -> None:
+        self.calls += 1
+        if self.fault is not None and (self._until is None or time.monotonic() < self._until):
+            raise type(self.fault)(str(self.fault), retry_after=self.fault.retry_after, status=self.fault.status)
+        if self.inner is None:
+            raise Offline("no transport")
+
+    async def open_stream(self, route, request, lane):
+        self._check()
+        return await self.inner.open_stream(route, request, lane)
+
+    async def create(self, route, request, lane):
+        self._check()
+        return await self.inner.create(route, request, lane)
+
+    async def ping(self, model, lane):
+        self._check()
+        return await self.inner.ping(model, lane)
+
+    async def aclose(self) -> None:
+        if self.inner is not None:
+            await self.inner.aclose()
+
+
+def simulated_fault(name: str) -> TransportError | None:
+    name = (name or "").strip().lower()
+    return {"offline": Offline("simulated offline"),
+            "rate_limited": RateLimited("simulated 429", retry_after=5.0, status=429),
+            "overloaded": Overloaded("simulated overloaded", status=529),
+            "auth": AuthFailed("simulated 401", status=401),
+            "credit": CreditExhausted("simulated billing error", status=402),
+            "credit_exhausted": CreditExhausted("simulated billing error", status=402)}.get(name)
