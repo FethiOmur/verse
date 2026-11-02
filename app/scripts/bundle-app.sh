@@ -46,8 +46,16 @@ for b in "$(dirname "$BIN")"/*.bundle; do
   [ -e "$b" ] && cp -R "$b" "$OUT/Contents/Resources/"
 done
 
-codesign --force --sign - --timestamp=none "$OUT"
+# Sign with a stable identity when this Mac has one: macOS ties the calendar, microphone and audio-capture permissions to the
+# signature's designated requirement. An ad-hoc signature pins them to the cdhash, which changes with every build, so the
+# calendar permission silently stopped applying (2 Nov: no meeting matched its invite). VERSE_SIGN_IDENTITY overrides; "-" is ad hoc.
+IDENTITY="${VERSE_SIGN_IDENTITY:-}"
+if [ -z "$IDENTITY" ]; then
+  IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(Developer ID Application: [^"]*\)".*/\1/p' | head -1)
+fi
+[ -z "$IDENTITY" ] && IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | sed -n 's/.*"\(Apple Development: [^"]*\)".*/\1/p' | head -1)
+codesign --force --sign "${IDENTITY:--}" --timestamp=none "$OUT"
 codesign --verify --strict "$OUT"
 plutil -lint "$OUT/Contents/Info.plist" >/dev/null
-echo "bundle-app: $OUT"
+echo "bundle-app: $OUT (signed: ${IDENTITY:-ad hoc})"
 echo "bundle-app: bundle id $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$OUT/Contents/Info.plist"), LSUIElement $(/usr/libexec/PlistBuddy -c 'Print :LSUIElement' "$OUT/Contents/Info.plist"), brain $BRAIN_DIR"

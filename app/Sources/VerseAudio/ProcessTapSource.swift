@@ -14,9 +14,12 @@ public enum TapRoutePreference: String, Sendable, Codable {
     case auto, bundleID, pidList
 }
 
-/// Default bundle IDs of the meeting apps (Brave's audio comes from `com.brave.Browser.helper`).
+/// Default bundle IDs of the meeting apps (a Chromium browser's audio comes from its `.helper` process). Every browser a Meet call
+/// can run in is listed: a call in a browser missing here reaches Verse only through the mic, labelled as the owner (2 Nov, Chrome).
 public let defaultRemoteBundleIDs = ["com.brave.Browser", "com.brave.Browser.helper", "ai.perplexity.comet", "ai.perplexity.comet.helper",
-                                     "us.zoom.xos", "com.microsoft.teams2"]
+                                     "com.google.Chrome", "com.google.Chrome.helper", "com.microsoft.edgemac", "com.microsoft.edgemac.helper",
+                                     "company.thebrowser.Browser", "company.thebrowser.Browser.helper", "com.apple.Safari",
+                                     "org.mozilla.firefox", "us.zoom.xos", "com.microsoft.teams2"]
 
 /// Core Audio process tap on the meeting app -> private aggregate device that holds only the tap (no output
 /// sub-device, so AirPods are never pulled into an aggregate or switched to headset mode) -> IOProc.

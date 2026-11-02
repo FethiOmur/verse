@@ -157,6 +157,7 @@ public final class MeetingCoordinator: ObservableObject {
                 }
             }
             if settings.useCalendar {
+                recheckCalendarAccess()
                 if upcomingTask == nil {
                     upcomingTask = Task { [weak self] in
                         while !Task.isCancelled {
@@ -380,6 +381,22 @@ public final class MeetingCoordinator: ObservableObject {
     }
 
     // MARK: calendar permission (Settings)
+
+    /// The calendar setting is on but macOS no longer applies the permission (a new signature, a reset): ask again instead of
+    /// matching every call to no event in silence (2 Nov: the prepared session was never picked). Logged either way.
+    private var accessRechecked = false
+    private func recheckCalendarAccess() {
+        guard !accessRechecked else { return }
+        accessRechecked = true
+        let status = calendar.authorization()
+        host?.log("calendar access: \(status)")
+        guard status == .notDetermined else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            _ = try? await self.calendar.ensureAccess()
+            self.host?.log("calendar access after asking: \(self.calendar.authorization())")
+        }
+    }
 
     /// Asks for Calendar access (the system prompt appears once) and reports the result. Turns the calendar setting on
     /// only when access was granted.

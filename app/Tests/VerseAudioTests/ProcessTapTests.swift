@@ -91,6 +91,7 @@ final class ProcessTapTests: XCTestCase {
         XCTAssertTrue(AudioProcesses.matches("com.brave.Browser.helper", targets: t))
         XCTAssertTrue(AudioProcesses.matches("com.brave.Browser.helper.renderer", targets: t))
         XCTAssertTrue(AudioProcesses.matches("us.zoom.xos", targets: t))
+        XCTAssertTrue(AudioProcesses.matches("com.google.Chrome.helper.renderer", targets: t), "a Meet call in Chrome (2 Nov)")
         XCTAssertFalse(AudioProcesses.matches("com.brave.BrowserX", targets: t))
         XCTAssertFalse(AudioProcesses.matches(nil, targets: t))
         XCTAssertFalse(AudioProcesses.matches("com.apple.Music", targets: t))
