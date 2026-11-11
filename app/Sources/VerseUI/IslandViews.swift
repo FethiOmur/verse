@@ -76,7 +76,8 @@ enum IslandKind {
     case card(OverlayCard)
 
     static func resolve(_ s: OverlayState, prompterOpen: Bool) -> IslandKind {
-        if let st = s.status, st.needsPanel { return .statusPanel(st) }
+        // A per-call error in a running session gives way to an answer card (review H6); everything else keeps its panel.
+        if let st = s.status, st.needsPanel, !(st.yieldsToCard && s.running && s.card != nil) { return .statusPanel(st) }
         if let p = s.meetingPrompt { return .prompt(p) }
         if let sim = s.sim { return .sim(sim) }
         if prompterOpen { return .prompter }

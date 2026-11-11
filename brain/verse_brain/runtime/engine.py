@@ -45,6 +45,8 @@ Output contract towards Swift (in addition to the plan's event list):
   id `now-<n>`, past the cue, kind and addressee gates. `control lang` changes the session language from then on.
   `control route` (+ optional `room_auto`, `follow`) does the same for the audio route: Swift swaps its listen pipeline in
   place and the session, transcript, cached prefix and open turns go on; only the room gate and follow mode follow the route.
+- History replay: a brain restarted mid-call by Swift's supervisor gets the call's finalized turns so far in `history` (after its
+  `ready`, before any live line). They join the transcript and nothing is fired for them (`on_history`).
 """
 
 from __future__ import annotations
@@ -71,7 +73,7 @@ from .repeat import embed_all, filter_card, his_chunks
 from .size import FOLLOW_POINTS, card_size, points_cap
 from .prompt import (STATEMENT_SAY_WORDS, WARMUP_TAIL, Turn, build_request, card_now_tail, deep_tail, fast_tail,
                      files_block, final_tail, follow_tail, rolling_tail, statement_tail)
-from .protocol import LANGS, REMOTE_SPEAKERS, Emitter, Session, load_session, msg_lang, turn_kind
+from .protocol import LANGS, REMOTE_SPEAKERS, Emitter, Session, history_turns, load_session, msg_lang, turn_kind
 from .ratelimit import ModelLimiter
 from .settings import HAIKU, MODEL_ROUTE, SONNET, Config, route_params
 from .summary import Running, parse_lines, render_markdown
@@ -87,6 +89,11 @@ NO_CONNECTION = "no_connection"      # state offline: the API cannot be reached 
 NO_API_KEY = "no_api_key"            # state error: no key in the Keychain (runtime/__main__.py, before any call)
 INVALID_API_KEY = "invalid_api_key"  # state error: the API answered 401/403
 NO_CREDIT = "no_credit"              # state credit_exhausted: billing error / 402
+BAD_SESSION = "bad_session"          # state error: the session folder given in `start` cannot be read (fatal at start)
+INTERNAL = "internal"                # state error: a message handler raised; the brain logged it and goes on (runtime/__main__.py)
+# Only these make Swift give up at start (app/Sources/VerseTurns/VerseRunner.swift `fatalAtStart`). A transient API error during
+# the pre-warm (5xx, overloaded, 429, a 400 on the warm-up request) is not one of them: the brain retries, then sends `ready` with
+# `degraded: true` and the call runs; the first real call opens the connection the pre-warm could not.
 
 # A bank hit that lands after its turn was closed as statement/fragment still answers the turn when it comes within this
 # many seconds of the turn's arrival and no newer turn has started. The paraphrase matcher is the only source of such hits
@@ -604,6 +611,8 @@ class Brain:
             self.on_turn(msg)
         elif t == "bank_hit":
             self.on_bank_hit(msg)
+        elif t == "history":
+            self.on_history(msg)
         elif t == "control":
             a = msg.get("action")
             if a == "stop":
@@ -657,7 +666,7 @@ class Brain:
         try:
             self.session = load_session(msg["session_dir"])
         except (OSError, KeyError, ValueError) as e:
-            self._status("error", f"cannot read session folder: {type(e).__name__}")
+            self._status("error", f"cannot read session folder: {type(e).__name__}", reason=BAD_SESSION)
             return
         self.lang = msg.get("lang", "en")
         if self.session.call is not None and self.session.call.language:    # call.json names the language of the cards
@@ -679,26 +688,9 @@ class Brain:
         self._follow_want = bool(msg.get("follow", self.config.follow_default))
         self._follow_start(msg)
         self._status("warming", f"pre-warming {HAIKU} and {SONNET}")
+        degraded: TransportError | None = None
         try:
-            # Open every lane now (pre-warm on one lane, ping on the other) so no connection is opened at t = 0.
-            # 5-8 % of fresh connections on the owner's network stall 10-50 s (bench/RESULTS.md): bound each attempt and
-            # retry on the other lane instead of giving up on the first stall.
-            last: Exception | None = None
-            for attempt in range(self.config.prewarm_attempts):
-                warm_lane, ping_lane = attempt % 2, (attempt + 1) % 2
-                try:
-                    await asyncio.wait_for(asyncio.gather(
-                        self._warm(HAIKU, "prewarm", warm_lane), self._warm(SONNET, "prewarm", warm_lane),
-                        *(self._ping_one(m, ping_lane) for m in (HAIKU, SONNET))),
-                        timeout=self.config.prewarm_attempt_s)
-                    last = None
-                    break
-                except (Offline, asyncio.TimeoutError) as e:
-                    last = e
-                    if attempt + 1 < self.config.prewarm_attempts:
-                        self._status("warming", f"pre-warm attempt {attempt + 1} stalled ({type(e).__name__}); retrying on lane {(attempt + 1) % 2}")
-            if last is not None:
-                raise Offline(f"{type(last).__name__} after {self.config.prewarm_attempts} attempts")
+            degraded = await self._prewarm()
         except Offline as e:
             self.offline = True
             self._status("offline", f"no connection ({e})", reason=NO_CONNECTION)
@@ -708,13 +700,61 @@ class Brain:
         except AuthFailed as e:
             self._halt("error", f"API key rejected ({e})", reason=INVALID_API_KEY)
             return
-        except TransportError as e:
-            self._status("error", f"pre-warm failed: {e}")
+        except TransportError as e:   # a 400 on the warm-up request, or an unmapped SDK error: not a reason to drop the call
+            degraded = e
         else:
-            self._status("ready", f"warm; spend so far ${self.spend:.4f}", **self._ready_extra())
+            if degraded is None:
+                self._status("ready", f"warm; spend so far ${self.spend:.4f}", **self._ready_extra())
+        if degraded is not None:
+            # Pre-warm is an optimization: start anyway. The keep-alive loop tries the warm call again on its next check
+            # (not after keepalive_idle_s), and the first S/F/D call opens its connection itself if that fails too.
+            for m in self.last_call_mono:
+                self.last_call_mono[m] = 0.0
+            log.warning("pre-warm failed (%s); starting without a warm connection", degraded)
+            self.emitter.metric("", "prewarm_degraded", kind=degraded.kind, status=degraded.status)
+            self._status("ready", f"pre-warm failed ({degraded.kind}: {degraded}); starting anyway", degraded=True,
+                         **self._ready_extra())
         if self.start_background:
             self.bg.append(self._spawn(self._ping_loop()))
             self.bg.append(self._spawn(self._keepalive_loop()))
+
+    async def _prewarm(self) -> TransportError | None:
+        """Opens every lane now (pre-warm on one lane, ping on the other) so no connection is opened at t = 0.
+
+        5-8 % of fresh connections on the owner's network stall 10-50 s (bench/RESULTS.md): each attempt is bounded and a stall
+        is retried on the other lane. A transient API answer (5xx / `overloaded_error` / 429) is retried too, after a short
+        backoff (a 429's `retry-after` is honoured up to `prewarm_retry_max_wait_s`), within the time the stall attempts would
+        take. Returns None when warm, or the last transient error when every attempt got one (the caller starts degraded).
+        Raises Offline when the last attempt stalled or had no connection; auth, credit and 400 errors propagate at once."""
+        cfg = self.config
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + cfg.prewarm_attempts * cfg.prewarm_attempt_s
+        last: BaseException | None = None
+        for attempt in range(cfg.prewarm_attempts):
+            warm_lane, ping_lane = attempt % 2, (attempt + 1) % 2
+            more = attempt + 1 < cfg.prewarm_attempts
+            try:
+                await asyncio.wait_for(asyncio.gather(
+                    self._warm(HAIKU, "prewarm", warm_lane), self._warm(SONNET, "prewarm", warm_lane),
+                    *(self._ping_one(m, ping_lane) for m in (HAIKU, SONNET))),
+                    timeout=cfg.prewarm_attempt_s)
+                return None
+            except (Offline, asyncio.TimeoutError) as e:
+                last = e
+                if more:
+                    self._status("warming", f"pre-warm attempt {attempt + 1} stalled ({type(e).__name__}); retrying on lane {(attempt + 1) % 2}")
+            except (Overloaded, RateLimited) as e:
+                last = e
+                if more:
+                    wait = cfg.prewarm_backoff_s * (2 ** attempt)
+                    if e.retry_after is not None:
+                        wait = max(wait, e.retry_after)
+                    wait = min(wait, cfg.prewarm_retry_max_wait_s, max(0.0, deadline - loop.time()))
+                    self._status("warming", f"pre-warm attempt {attempt + 1} failed ({e.kind}); retrying in {wait:.1f} s")
+                    await asyncio.sleep(wait)
+        if isinstance(last, TransportError) and not isinstance(last, Offline):
+            return last
+        raise Offline(f"{type(last).__name__} after {cfg.prewarm_attempts} attempts")
 
     def _load_me(self, spec: object) -> None:
         """`start.me`: the permanent profile. Absent or null: today's behaviour. Named but unreadable: a `me_missing` notice and
@@ -1328,6 +1368,36 @@ class Brain:
         if not agree and st.bank_hit.via == "embed":
             # Haiku retracts a paraphrase hit: the overlay drops its opener, and D is not handed that entry either
             st.bank_hit = None
+
+    # ------------------------------------------------------------------ history replay after a restart of this process
+    def on_history(self, msg: dict) -> None:
+        """`history` (runtime/protocol.py): the finalized turns of this call from before this process was started (Swift restarted
+        a brain that crashed mid-call). They join the transcript after what is already there, so later cards, the rolling notes and
+        the final summary see the whole call. Nothing is fired for them: no S/F/D, no bank or library match, no follow feed, no
+        card, no API call. A turn id the brain already knows (a live turn, a repeated replay) is skipped. The replay neither counts
+        towards nor starts a rolling pass: it is not new speech."""
+        if self.session is None or self.closing or self.stopped.is_set():
+            log.warning("history ignored (%s)", "no session yet" if self.session is None else "stopping")
+            return
+        turns, trimmed = history_turns(msg)
+        known = {t.turn_id for t in self.turns} | set(self.ts)
+        added = skipped = 0
+        for it in turns:
+            tid = it["turn_id"]
+            if tid in known:
+                skipped += 1
+                continue
+            known.add(tid)
+            self.turns.append(Turn(tid, it["speaker"], it["text"]))
+            ta = it.get("t_audio_end")
+            if isinstance(ta, (int, float)) and not isinstance(ta, bool):
+                self._last_audio_end = float(ta) if self._last_audio_end is None else max(self._last_audio_end, float(ta))
+            added += 1
+        if added:
+            self._rolled_n += added
+            self._roll_t0 = self._last_audio_end
+        self.emitter.metric("", "history_replayed", turns=added, skipped=skipped, trimmed=trimmed)
+        self._ev("history", turns=added, skipped=skipped, trimmed=trimmed)
 
     # ------------------------------------------------------------------ endpoint: select S or fire F; decide D
     def on_turn(self, msg: dict) -> None:

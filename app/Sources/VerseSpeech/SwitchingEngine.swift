@@ -36,6 +36,7 @@ final class SwitchingEngine: TranscriptionEngine, @unchecked Sendable {
     private var router: Task<Void, Never>?
     private var appleFlush: Task<Void, Never>?
     private var switched = false
+    private var failureHandler: (@Sendable (String) -> Void)?
 
     init(lang: String, apple: any TranscriptionEngine,
          makeLocal: (@Sendable () async throws -> any TranscriptionEngine)?, unavailableReason: String? = nil) {
@@ -67,6 +68,17 @@ final class SwitchingEngine: TranscriptionEngine, @unchecked Sendable {
             self.status = status
         }
         apple.attach(channel: channel, status: status)
+    }
+
+    /// Review H8: the failure of whichever engine is active goes up (Apple before the switch, the local engine after it). Apple's
+    /// own end after the switch is intended and is not passed on.
+    func setFailureHandler(_ handler: @escaping @Sendable (String) -> Void) {
+        lock.withLockUnchecked { failureHandler = handler }
+        apple.setFailureHandler { [weak self] msg in
+            guard let self else { return }
+            let h = self.lock.withLockUnchecked { self.switched ? nil : self.failureHandler }
+            h?(msg)
+        }
     }
 
     private func report(_ s: ListenStatus) {
@@ -149,6 +161,7 @@ final class SwitchingEngine: TranscriptionEngine, @unchecked Sendable {
             // Turn boundary: start the local engine on a fresh stream at this sample, then let Apple flush.
             let boundary = silence.time
             let (localIn, cont) = AsyncStream.makeStream(of: AnalyzerInput.self, bufferingPolicy: .unbounded)
+            if let h = lock.withLockUnchecked({ failureHandler }) { engine.setFailureHandler(h) }
             do {
                 try await engine.start(input: localIn) { r in
                     var r = r

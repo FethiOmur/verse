@@ -292,7 +292,11 @@ async def build_async(
         snippets = await asyncio.to_thread(_make_snippets, vault, g.bank, g.glossary, warnings)
     else:
         snippets = []
-    conflicts = apply_conflicts(book, g, snippets)  # marks facts, bank entries and snippets; must run before the pack
+    try:
+        conflicts = apply_conflicts(book, g, snippets)  # marks facts, bank entries and snippets; must run before the pack
+    except Exception as e:  # the model calls are already paid for: a failed check must not lose the run
+        conflicts = []
+        warnings.append(f"conflict check failed ({type(e).__name__}: {e}); the pack has no conflict marks")
     voice = load_voice(voice_path)  # None (no path, no file) leaves the pack exactly as before
     pack, pack_tokens, trimmed = await fit_pack(g.facts, g.glossary, g.bank, snippets, model.count_tokens, TOKEN_CAP, voice)
 

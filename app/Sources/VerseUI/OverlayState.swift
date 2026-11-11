@@ -1,4 +1,5 @@
 import Foundation
+import VerseAudio
 import VerseTurns
 
 /// A fact chip on the card: `€42K budget · prep note`.
@@ -109,7 +110,7 @@ public enum OverlayStatus: Equatable, Sendable {
             return k == "microphone"
                 ? L10n.tr("Verse needs the microphone to hear your side of the call. Allow it in System Settings, then press Start again.")
                 : L10n.tr("Verse needs System Audio Recording to hear the meeting app. Allow it in System Settings, then press Start again.")
-        case .restarting: return L10n.tr("The brain stopped; restarting it once.")
+        case .restarting: return L10n.tr("The brain stopped; restarting it.")
         case .stopConfirm: return L10n.tr("Verse keeps listening if you don't.")
         case .meMissing: return L10n.tr("Verse answers without it. Build it on the Me page.")
         default: return nil
@@ -122,6 +123,14 @@ public enum OverlayStatus: Equatable, Sendable {
         case .permission, .creditExhausted, .error, .stopConfirm, .meMissing: return true
         default: return false
         }
+    }
+
+    /// While a session runs, an answer card is shown over this status instead of behind it (review H6): one failed call must
+    /// not hide every later card until Dismiss. The status stays in the state (the capsule's chip) and its panel comes back
+    /// when no card is open.
+    public var yieldsToCard: Bool {
+        if case .error = self { return true }
+        return false
     }
 }
 
@@ -309,6 +318,29 @@ public struct OverlayReducer: Sendable {
     public private(set) var state = OverlayState()
     public var config: OverlayConfig
     public var bank: [String: BankOpener]
+    /// The `.error` on screen came from the brain in a running call and is about one call: the next card with content
+    /// clears it (`clearPerCallStatus`).
+    private var clearableError = false
+    /// What failed for good, per channel: a capture (`capture_failed`) and a recognizer (`speech_failed`) are tracked apart, so
+    /// one channel's recovery never takes down another channel's (or the other kind's) failure, and a second failure never
+    /// replaces the first. The panel shows every entry still here.
+    private var failures: [ChannelFailure: String] = [:]
+    /// The `.error` message the failures last put up, so a recovery only takes down (or rewrites) its own panel.
+    private var failurePanel: String?
+
+    /// One channel's permanent failure. `channel` nil: the issue text named no channel.
+    private struct ChannelFailure: Hashable, Sendable {
+        enum Kind: Int, Sendable { case capture, speech }
+        var kind: Kind
+        var channel: Channel?
+
+        /// Panel order: the meeting channel first, then the microphone, then unknown; capture before recognition.
+        var order: Int {
+            let c: Int
+            switch channel { case .remote?: c = 0; case .me?: c = 1; case nil: c = 2 }
+            return c * 2 + kind.rawValue
+        }
+    }
 
     /// Streamed text per call id: finished lines and the line being written.
     private struct Lines: Sendable {
@@ -386,6 +418,9 @@ public struct OverlayReducer: Sendable {
         topicTurn = [:]
         lastAudible = -.infinity
         callCue = nil
+        clearableError = false
+        failures = [:]
+        failurePanel = nil
     }
 
     /// Sets (or, with nil, removes) the call's time cue. `tick` moves `state.timeCue` with the clock.
@@ -403,7 +438,7 @@ public struct OverlayReducer: Sendable {
         case .outbound(let o): applyOutbound(o, now: now)
         case .status(let st, let m): applyStatus(st, message: m)
         case .issue(let code, let m):
-            if code == "permission_denied" { state.status = .permission(m.contains("microphone") ? "microphone" : "audioCapture") }
+            applyIssue(code, message: m)
         case .level(let remote, let me): applyLevel(remoteDbfs: remote, meDbfs: me, now: now)
         case .metric(let o):
             if o[string: "stage"] == "session_t0" {
@@ -512,10 +547,82 @@ public struct OverlayReducer: Sendable {
         case "credit_exhausted": state.status = .creditExhausted(message)
         case "refusal": break   // the fast tiers show nothing; D still answers
         case "restarting": state.status = .restarting
-        case "error": state.status = .error(Self.reasonText(reason) ?? message)
+        case "error":
+            state.status = .error(Self.reasonText(reason) ?? message)
+            // A brain error in a running call (one failed request, an internal error) goes away with the next card that has
+            // content. A missing or rejected key, no credit or a bad session folder stays until dismissed.
+            clearableError = state.running && !Self.lastingErrorReasons.contains(reason ?? "")
+            return
         case "permission_denied": state.status = .permission(message)
         case "listen_failed": state.status = .error(message)
         default: break
+        }
+        // Any other status replaces the error; `listen_failed` is an error of its own that no card can clear.
+        if st == "listen_failed" { clearableError = false } else if case .error? = state.status {} else { clearableError = false }
+    }
+
+    /// A runtime problem of the listen session (VerseRunner `issue`). Review H5/H8: a channel whose capture or recognizer died
+    /// for good is an error no card clears, like `listen_failed`; a capture that came back takes its own error down. A recovered
+    /// recognizer (`speech_recovered`) and a rebuilt capture with no error showing change nothing on screen: the channel works.
+    /// Failures are kept per channel and kind (the channel is read from the issue text, see `ListenError.channel(inIssueMessage:)`):
+    /// the panel stays until every failed channel has recovered and names the ones still down.
+    private mutating func applyIssue(_ code: String, message m: String) {
+        let channel = ListenError.channel(inIssueMessage: m)
+        switch code {
+        case "permission_denied": state.status = .permission(m.contains("microphone") ? "microphone" : "audioCapture")
+        case "capture_failed", "speech_failed":
+            failures[ChannelFailure(kind: code == "capture_failed" ? .capture : .speech, channel: channel)] = m
+            let panel = failureText
+            state.status = .error(panel)
+            failurePanel = panel
+            clearableError = false
+        case "capture_recovered": recover(.capture, channel: channel)
+        case "speech_recovered": recover(.speech, channel: channel)
+        default: break
+        }
+    }
+
+    /// Every failure still standing, one line each, in a fixed order.
+    private var failureText: String {
+        failures.sorted { $0.key.order < $1.key.order }.map(\.value).joined(separator: "\n")
+    }
+
+    /// A channel's capture or recognizer works again: its failure goes; the panel shows what is left, or goes too. A recovery
+    /// whose text names no channel is applied only when exactly one failure of that kind stands (nothing to guess between).
+    private mutating func recover(_ kind: ChannelFailure.Kind, channel: Channel?) {
+        let key: ChannelFailure
+        if let channel {
+            key = ChannelFailure(kind: kind, channel: channel)
+        } else {
+            let ofKind = failures.keys.filter { $0.kind == kind }
+            guard ofKind.count == 1, let only = ofKind.first else { return }
+            key = only
+        }
+        guard failures.removeValue(forKey: key) != nil else { return }
+        // Only the panel the failures put up is changed; a status that replaced it since stays.
+        guard let shown = failurePanel, state.status == .error(shown) else { return }
+        if failures.isEmpty {
+            state.status = nil
+            failurePanel = nil
+        } else {
+            let panel = failureText
+            state.status = .error(panel)
+            failurePanel = panel
+        }
+    }
+
+    /// `reason`s of a brain `status error` that are not about one call (brain/verse_brain/runtime/engine.py).
+    static let lastingErrorReasons: Set<String> = ["no_api_key", "invalid_api_key", "no_credit", "bad_session"]
+
+    /// A new card with content proves the brain answers again: a per-call error and the rate-limit chip go (review H6; the
+    /// brain never sends the `ready` that would clear `rate_limited`).
+    private mutating func clearPerCallStatus() {
+        guard state.running else { return }
+        if state.status == .rateLimited {
+            state.status = nil
+        } else if clearableError, case .error? = state.status {
+            state.status = nil
+            clearableError = false
         }
     }
 
@@ -855,6 +962,7 @@ public struct OverlayReducer: Sendable {
         if card != before {
             touch(now)
             if card.say != nil || !card.bullets.isEmpty, state.activity == .thinking { state.activity = .listening }
+            if card.say != nil || !card.bullets.isEmpty || !card.deepPoints.isEmpty { clearPerCallStatus() }
         }
         state.card = card
     }

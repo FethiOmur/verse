@@ -1,6 +1,7 @@
 @preconcurrency import AVFoundation
 import CoreMedia
 import Foundation
+import os
 import Speech
 import VerseAudio
 
@@ -37,10 +38,15 @@ public protocol TranscriptionEngine: AnyObject, Sendable {
     /// Called once by the session before `prepare()`: where this engine reports status lines (`ListenStatus`)
     /// for the given channel. Engines with nothing to report ignore it.
     func attach(channel: Channel, status: @escaping @Sendable (ListenStatus) -> Void)
+    /// Called by the owner before `start()`: where the engine reports that it stopped producing results because of an error
+    /// while its input was still running (review H8). Not called for errors during `finish()`/`cancel()`. Engines that cannot
+    /// fail that way ignore it.
+    func setFailureHandler(_ handler: @escaping @Sendable (String) -> Void)
 }
 
 public extension TranscriptionEngine {
     func attach(channel: Channel, status: @escaping @Sendable (ListenStatus) -> Void) {}
+    func setFailureHandler(_ handler: @escaping @Sendable (String) -> Void) {}
 }
 
 public enum EngineKind: String, Sendable, Codable {
@@ -114,7 +120,20 @@ final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
     let kind: Kind
     private var analyzer: SpeechAnalyzer?
     private var resultsTask: Task<Void, Error>?
-    private var startResults: ((@escaping @Sendable (EngineResult) -> Void) -> Task<Void, Error>)?
+    private var startResults: ((@escaping @Sendable (EngineResult) -> Void, @escaping @Sendable (Error) -> Void) -> Task<Void, Error>)?
+    private let failureLock = OSAllocatedUnfairLock()
+    private var failureHandler: (@Sendable (String) -> Void)?
+    /// `finish()` or `cancel()` was called: a results error from here on is part of the shutdown, not a mid-call failure.
+    private var ending = false
+
+    func setFailureHandler(_ handler: @escaping @Sendable (String) -> Void) {
+        failureLock.withLockUnchecked { failureHandler = handler }
+    }
+
+    private func resultsFailed(_ error: Error) {
+        let h = failureLock.withLockUnchecked { ending ? nil : failureHandler }
+        h?("\(engineName) results failed: \(error)")
+    }
 
     init(lang: String, kind: Kind) {
         self.lang = lang
@@ -138,8 +157,13 @@ final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
                                       reportingOptions: [.volatileResults, .fastResults],
                                       attributeOptions: [.audioTimeRange, .transcriptionConfidence])
             module = m
-            startResults = { onResult in
-                Task { for try await r in m.results { onResult(Self.map(r.text, r.range, r.isFinal)) } }
+            startResults = { onResult, onError in
+                Task {
+                    do { for try await r in m.results { onResult(Self.map(r.text, r.range, r.isFinal)) } } catch {
+                        if !Task.isCancelled { onError(error) }
+                        throw error
+                    }
+                }
             }
         case .dictation:
             let supported = await DictationTranscriber.supportedLocales.map { $0.identifier(.bcp47) }
@@ -150,8 +174,13 @@ final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
                                          reportingOptions: [.volatileResults, .frequentFinalization],
                                          attributeOptions: [.audioTimeRange, .transcriptionConfidence])
             module = m
-            startResults = { onResult in
-                Task { for try await r in m.results { onResult(Self.map(r.text, r.range, r.isFinal)) } }
+            startResults = { onResult, onError in
+                Task {
+                    do { for try await r in m.results { onResult(Self.map(r.text, r.range, r.isFinal)) } } catch {
+                        if !Task.isCancelled { onError(error) }
+                        throw error
+                    }
+                }
             }
         }
         // Installs the model if it is missing (a background download, no UI). en_US, it_IT and the tr_TR
@@ -183,16 +212,18 @@ final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
         guard let analyzer, let startResults else {
             throw ListenError.speechUnavailable(lang: lang, reason: "engine not prepared")
         }
-        resultsTask = startResults(onResult)
+        resultsTask = startResults(onResult, { [weak self] e in self?.resultsFailed(e) })
         try await analyzer.start(inputSequence: input)
     }
 
     func finish() async throws {
+        failureLock.withLockUnchecked { ending = true }
         try await analyzer?.finalizeAndFinishThroughEndOfInput()
         _ = try await resultsTask?.value
     }
 
     func cancel() async {
+        failureLock.withLockUnchecked { ending = true }
         await analyzer?.cancelAndFinishNow()
         resultsTask?.cancel()
     }

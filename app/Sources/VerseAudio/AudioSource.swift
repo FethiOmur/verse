@@ -16,4 +16,12 @@ public protocol AudioCaptureSource: AnyObject, Sendable {
     /// Whether the captured app is currently producing output. `nil` when the question does not apply
     /// (mic, memory clip). Used to tell real silence from a dead stream.
     func targetIsProducingOutput() -> Bool?
+
+    /// Where a live source reports that it rebuilt itself after a device or format change, or could not (review H5).
+    /// Set before `start`. Finite sources never call it.
+    func setEventHandler(_ handler: @escaping @Sendable (CaptureEvent) -> Void)
+}
+
+public extension AudioCaptureSource {
+    func setEventHandler(_ handler: @escaping @Sendable (CaptureEvent) -> Void) {}
 }

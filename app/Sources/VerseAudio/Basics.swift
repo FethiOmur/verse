@@ -71,9 +71,39 @@ public enum ListenError: Error, Sendable, Equatable, CustomStringConvertible {
     case speechUnavailable(lang: String, reason: String)
     case sourceFailed(String)
     case alreadyStarted
+    /// Runtime (review H5): a live source rebuilt itself after an audio device or format change and delivers audio again.
+    case captureRecovered(Channel, String)
+    /// Runtime (review H5): a live source stopped (device change) and could not rebuild itself; the channel is silent.
+    case captureFailed(Channel, String)
+    /// Runtime (review H8): a channel's recognizer failed mid-call and a fresh engine took over from that point.
+    case speechRecovered(Channel, String)
+    /// Runtime (review H8): a channel's recognizer failed mid-call and could not be replaced; the channel gets no text.
+    case speechFailed(Channel, String)
+
+    private static func side(_ c: Channel) -> String { c == .me ? "your microphone channel" : "the meeting audio channel" }
+
+    /// The channel a runtime capture/speech issue is about (nil for issues that are not about one channel).
+    public var channel: Channel? {
+        switch self {
+        case .captureRecovered(let c, _), .captureFailed(let c, _), .speechRecovered(let c, _), .speechFailed(let c, _): return c
+        case .deadStream(let c): return c
+        default: return nil
+        }
+    }
+
+    /// The channel named in an issue's `description` (VerseRunner forwards an issue as code + message only). The first
+    /// channel named wins, so a reason text quoted later in the message cannot flip it. Nil when the text names none.
+    public static func channel(inIssueMessage message: String) -> Channel? {
+        let hits = Channel.allCases.compactMap { c in message.range(of: side(c)).map { (c, $0.lowerBound) } }
+        return hits.min { $0.1 < $1.1 }?.0
+    }
 
     public var description: String {
         switch self {
+        case .captureRecovered(let c, let m): return "audio capture on \(Self.side(c)) restarted after a device change (\(m))"
+        case .captureFailed(let c, let m): return "audio capture on \(Self.side(c)) stopped and could not be restarted: \(m)"
+        case .speechRecovered(let c, let m): return "speech recognition on \(Self.side(c)) failed and was restarted: \(m)"
+        case .speechFailed(let c, let m): return "speech recognition on \(Self.side(c)) failed and could not be restarted: \(m)"
         case .permissionDenied(let k): return "permission denied: \(k.rawValue)"
         case .deadStream(let c): return "dead stream on \(c.rawValue): exact-zero audio while the app is playing"
         case .tapFailed(let m): return "process tap failed: \(m)"
@@ -94,6 +124,10 @@ public enum ListenError: Error, Sendable, Equatable, CustomStringConvertible {
         case .speechUnavailable: return "speech_unavailable"
         case .sourceFailed: return "source_failed"
         case .alreadyStarted: return "already_started"
+        case .captureRecovered: return "capture_recovered"
+        case .captureFailed: return "capture_failed"
+        case .speechRecovered: return "speech_recovered"
+        case .speechFailed: return "speech_failed"
         }
     }
 }

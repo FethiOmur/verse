@@ -137,7 +137,8 @@ for sig in [SIGINT, SIGTERM, SIGHUP] {
         stderr("verse-run: stopping (signal \(sig))")
         if n == 1 {
             runner.requestStop()
-            DispatchQueue.global().asyncAfter(deadline: .now() + 6) {
+            // The runner waits up to `stopGraceSeconds` for the final summary; cutting it sooner leaves a DRAFT summary.md.
+            DispatchQueue.global().asyncAfter(deadline: .now() + RunOptions.stopBudgetSeconds) {
                 BrainProcess.killAll()
                 exit(130)
             }

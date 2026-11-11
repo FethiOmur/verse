@@ -57,6 +57,9 @@ You may join two fragments of one line with an ellipsis.
 - If the sources cannot support an answer point, leave the point out. Never fill a gap with a plausible guess. \
 A bank entry with fewer than three points is better than one with an invented point.
 - Write each question and point in the language of the question; write paraphrases in the language of their key.
+- `opener`, `point` and `deep` are read aloud by {owner} himself: always first person ("I", "my"; "io", "mio"; \
+"ben", "benim"), never his name, "he", "lui", "il candidato" or any third-person description of him, even when the \
+source describes him in the third person.
 
 Coverage: cover what a person in this meeting would plausibly ask {owner}: experience, decisions, numbers, \
 trade-offs, recent work (from the commits), weaknesses and how he handles them, and questions he may ask back. \

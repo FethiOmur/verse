@@ -60,7 +60,9 @@ final class ChannelPipeline: @unchecked Sendable {
     /// or away) the pipeline feeds zeros itself at real-time pace. Without that, the last words before a pause
     /// stay unrecognized until audio resumes (measured: the volatile "budget" waited out a 3 s gap). Audio that
     /// arrives for a stretch already filled with zeros is trimmed so the timeline never shifts.
-    func start(clock: SessionClock, onResult: @escaping @Sendable (EngineResult, TimeInterval) -> Void) async throws {
+    /// `onIssue` gets the source's runtime capture events (rebuilt after a device change, or failed for good; review H5).
+    func start(clock: SessionClock, onIssue: @escaping @Sendable (ListenError) -> Void = { _ in },
+               onResult: @escaping @Sendable (EngineResult, TimeInterval) -> Void) async throws {
         guard let format else { throw ListenError.speechUnavailable(lang: engine.lang, reason: "not prepared") }
         let (items, itemCont) = AsyncStream.makeStream(of: FeedItem.self, bufferingPolicy: .unbounded)
         let (inputs, inputCont) = AsyncStream.makeStream(of: AnalyzerInput.self, bufferingPolicy: .unbounded)
@@ -139,12 +141,21 @@ final class ChannelPipeline: @unchecked Sendable {
         lock.withLockUnchecked { tickerTask = ticker }
 
         startedAt = clock.now()
+        let channel = self.channel
+        source.setEventHandler { ev in onIssue(Self.issue(for: ev, channel: channel)) }
         try source.start(clock: clock,
                          onChunk: { itemCont.yield(.audio($0)) },
                          onEnd: { [weak self] in
                              self?.lock.withLockUnchecked { self?.ended = true }
                              self?.finishFeed()
                          })
+    }
+
+    static func issue(for event: CaptureEvent, channel: Channel) -> ListenError {
+        switch event {
+        case .rebuilt(let why): return .captureRecovered(channel, why)
+        case .failed(let why): return .captureFailed(channel, why)
+        }
     }
 
     private func finishFeed() {

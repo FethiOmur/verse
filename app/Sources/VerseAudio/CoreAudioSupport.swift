@@ -27,8 +27,9 @@ enum CA {
         AudioObjectPropertyAddress(mSelector: sel, mScope: scope, mElement: kAudioObjectPropertyElementMain)
     }
 
-    static func array<T>(_ obj: AudioObjectID, _ sel: AudioObjectPropertySelector, _ type: T.Type) throws -> [T] {
-        var a = address(sel)
+    static func array<T>(_ obj: AudioObjectID, _ sel: AudioObjectPropertySelector, _ type: T.Type,
+                         scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal) throws -> [T] {
+        var a = address(sel, scope)
         var size: UInt32 = 0
         try check(AudioObjectGetPropertyDataSize(obj, &a, 0, nil, &size), "GetPropertyDataSize")
         let count = Int(size) / MemoryLayout<T>.stride

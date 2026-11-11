@@ -90,6 +90,7 @@ class Source:
     kind: str  # "prep" | "vault" | "commit"
     ref: str
     quote: str
+    span: str = ""  # the document text the quote pieces matched (normalized); numbers are read from here, not from `quote`
 
     def as_dict(self) -> dict:
         return {"kind": self.kind, "ref": self.ref, "quote": self.quote}
@@ -118,12 +119,14 @@ class SourceBook:
         if low.startswith("vault:") or re.fullmatch(r"v\d+", low):
             key = h.split(":", 1)[-1].upper()
             rec = self.vault.get(key)
-            if rec and self.supports(rec.text, quote):
-                return Source("vault", f"vault:{rec.source}", q)
+            span = self.match(rec.text, quote) if rec else None
+            if rec and span is not None:
+                return Source("vault", f"vault:{rec.source}", q, span)
             return None
         c = self._commit(h)
-        if c and self.supports(c.line() + " " + c.line_text(), quote):  # the line as shown to the model, or its parts
-            return Source("commit", f"commit:{c.repo}@{c.hash}", q)
+        span = self.match(c.line() + " " + c.line_text(), quote) if c else None  # the line as shown to the model, or its parts
+        if c and span is not None:
+            return Source("commit", f"commit:{c.repo}@{c.hash}", q, span)
         return None
 
     def _commit(self, h: str):
@@ -134,32 +137,49 @@ class SourceBook:
         return None
 
     def _prep(self, low: str, quote: str) -> Source | None:
-        m = re.search(r"(\d+)", low)
-        claimed = int(m.group(1)) if m else 1
-        nq = self._strip_ellipsis(quote)
-        pieces = [norm(p) for p in nq if len(norm(p)) >= 4]
+        pieces = self._pieces(quote)
         if not pieces:
             return None
         lines = [norm(x) for x in self.prep_lines]
-        # single-line match -> exact line number
+        # every piece, in order, inside one line
         for i, ln in enumerate(lines, start=1):
-            if all(p in ln for p in pieces):
-                return Source("prep", f"prep:L{i}", quote)
-        # quote spans a line break
-        joined = " ".join(lines)
-        if all(p in joined for p in pieces):
-            first = pieces[0]
-            for i in range(len(lines)):
-                if first in " ".join(lines[i : i + 3]):
-                    return Source("prep", f"prep:L{i + 1}", quote)
-            return Source("prep", f"prep:L{min(max(claimed, 1), len(lines) or 1)}", quote)
+            span = _in_order(ln, pieces)
+            if span is not None:
+                return Source("prep", f"prep:L{i}", quote, span[1])
+        # quote spans a line break: a window of three lines, the first piece starting in its first line
+        for i in range(len(lines)):
+            span = _in_order(" ".join(lines[i : i + 3]), pieces)
+            if span is not None and span[0] <= len(lines[i]):
+                return Source("prep", f"prep:L{i + 1}", quote, span[1])
         return None
 
     @staticmethod
     def _strip_ellipsis(quote: str) -> list[str]:
         return [p.strip() for p in re.split(r"…|\.\.\.", quote) if p.strip()]
 
+    def _pieces(self, quote: str) -> list[str]:
+        """Normalized pieces of a quote split on ellipses. None is dropped: a short piece must be found too."""
+        return [n for n in (norm(p) for p in self._strip_ellipsis(quote)) if n]
+
+    def match(self, doc: str, quote: str) -> str | None:
+        """The matched document text when every piece of the quote occurs in `doc`, in order; else None."""
+        pieces = self._pieces(quote)
+        found = _in_order(norm(doc), pieces) if pieces else None
+        return found[1] if found else None
+
     def supports(self, doc: str, quote: str) -> bool:
-        pieces = [norm(p) for p in self._strip_ellipsis(quote) if len(norm(p)) >= 4]
-        nd = norm(doc)
-        return bool(pieces) and all(p in nd for p in pieces)
+        return self.match(doc, quote) is not None
+
+
+def _in_order(doc: str, pieces: list[str]) -> tuple[int, str] | None:
+    """(start of the first piece, the pieces as found, joined by a space) when all occur in order, never overlapping."""
+    pos = 0
+    first = -1
+    for p in pieces:
+        k = doc.find(p, pos)
+        if k < 0:
+            return None
+        if first < 0:
+            first = k
+        pos = k + len(p)
+    return first, " ".join(pieces)

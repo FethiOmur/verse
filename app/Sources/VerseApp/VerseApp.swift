@@ -141,11 +141,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var sim = SimController(settings: settings, simSettings: simSettings, meeting: controller)
     lazy var conversation = ConversationController(settings: settings, meeting: controller)
     lazy var home = HomeContext(settings: settings, controller: controller, simSettings: simSettings, sim: sim, conversation: conversation)
-    private var quitting = false
+    private var quitGate = QuitGate()
     private var testWindow: NSWindow?
     private var signalSources: [DispatchSourceSignal] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // A write to a child that already exited (the brain, prep, git) must fail with EPIPE, not kill the app (review H3).
+        signal(SIGPIPE, SIG_IGN)
         NSApp.setActivationPolicy(.accessory)
         // Once, off the main thread, before any model load: removes compile bundles that killed runs left in the Core ML cache.
         E5BundleCacheCleaner.startOnce { FileLog.shared.write($0) }
@@ -239,21 +241,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RunLoop.main.perform(inModes: [.default, .modalPanel]) { MainActor.assumeIsolated { NSApp.terminate(nil) } }
     }
 
+    /// Quit during a call stops it the way Stop does, with the same grace for the brain's final summary (the old 6 s cut it off);
+    /// a second Quit while that runs kills the brain and quits at once. Quit with nothing running is instant. SIGTERM, SIGINT and
+    /// SIGHUP arrive here too (`terminateSoon`), so they behave the same.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        if quitting { return .terminateNow }
-        quitting = true
-        SimReportWindow.closeAll()
-        if !controller.running, !sim.running {
+        switch quitGate.quit(sessionActive: controller.running || sim.running) {
+        case .force:
+            FileLog.shared.write("quit again while the call was ending: killing the brain")
             BrainProcess.killAll()
             return .terminateNow
+        case .now:
+            SimReportWindow.closeAll()
+            BrainProcess.killAll()
+            return .terminateNow
+        case .graceful(let budget):
+            SimReportWindow.closeAll()
+            FileLog.shared.write(String(format: "quit during a call: stopping it, waiting up to %.0f s for the summary", budget))
+            Task { @MainActor in
+                controller.meeting.end()
+                await sim.shutdown()
+                await controller.shutdown(timeout: budget)
+                NSApp.reply(toApplicationShouldTerminate: true)
+            }
+            return .terminateLater
         }
-        Task { @MainActor in
-            controller.meeting.end()
-            await sim.shutdown()
-            await controller.shutdown()
-            NSApp.reply(toApplicationShouldTerminate: true)
-        }
-        return .terminateLater
     }
 
     func applicationWillTerminate(_ notification: Notification) {

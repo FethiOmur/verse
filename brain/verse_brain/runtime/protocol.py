@@ -75,6 +75,20 @@ MEMORY_ASK_IN_TYPES = {"memory_ask_start", "brief_start"}
 BRIEF_OUT_TYPES = {"brief_done", "brief_error"}
 BRIEF_ERROR_KINDS = ASK_ERROR_KINDS | {"no_sessions"}
 IN_TYPES |= MEMORY_ASK_IN_TYPES
+# History replay (brain restart mid-call), additive. When Swift's supervisor (app/Sources/VerseTurns/VerseRunner.swift) restarts a
+# brain that crashed during a call, the new process starts with an empty transcript. Once it reports ready, Swift sends the call's
+# finalized turns so far in one line: `history{turns:[{turn_id,speaker,text,t_audio_end?,addressee?,kind?,lang?}, ...]}`, oldest
+# first, before any live line (a question re-sent to the restarted brain may come between two `history` lines, which keeps the
+# transcript in spoken order). `speaker` is "remote" | "me" | "room". The brain appends them to its transcript and fires nothing
+# for them (engine.Brain.on_history). Both sides keep the newest HISTORY_MAX_TURNS turns within HISTORY_MAX_CHARS characters of
+# text: about 60k tokens, a few hours of talk, well under the context the brain gives a whole transcript elsewhere
+# (settings.ASK_CONTEXT_MAX_TOKENS) and far under the 4 MiB stdin line limit (runtime/__main__.py).
+HISTORY_IN_TYPES = {"history"}
+HISTORY_MAX_TURNS = 600
+HISTORY_MAX_CHARS = 240_000
+HISTORY_SPEAKERS = {"remote", "me", "room"}
+ADDRESSEES = {"me", "other", "unknown"}
+IN_TYPES |= HISTORY_IN_TYPES
 
 
 class Emitter:
@@ -144,7 +158,60 @@ def parse_line(line: str) -> dict | None:
     msg = json.loads(line)
     if not isinstance(msg, dict) or msg.get("type") not in IN_TYPES:
         raise ValueError(f"unknown message type: {msg.get('type') if isinstance(msg, dict) else type(msg).__name__}")
+    # The handlers index `turn_id` directly; a line without one is rejected here (logged, skipped) instead of raising later.
+    if msg["type"] in TURN_ID_TYPES and not isinstance(msg.get("turn_id"), str):
+        raise ValueError(f"{msg['type']} without a string turn_id")
+    # A turn's text is stored in the transcript before anything else reads it: a non-string there would break every later request.
+    if msg["type"] in ("partial", "turn") and not isinstance(msg.get("text"), str):
+        raise ValueError(f"{msg['type']} without a string text")
+    # The speaker is a dict key when the transcript is rendered: an unhashable one would fail every later card and the summary.
+    if msg["type"] in ("partial", "turn") and "speaker" in msg and not isinstance(msg["speaker"], str):
+        raise ValueError(f"{msg['type']} with a non-string speaker")
+    if msg["type"] == "history":
+        _check_history(msg)
     return msg
+
+
+TURN_ID_TYPES = {"partial", "turn", "bank_hit"}
+
+
+def _is_number(v: object) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _check_history(msg: dict) -> None:
+    """A `history` line is taken whole or not at all: every turn needs a string `turn_id` and `text` and a known `speaker`; the
+    optional keys, when present, must have their type (a wrong one would reach the transcript or the event log)."""
+    turns = msg.get("turns")
+    if not isinstance(turns, list):
+        raise ValueError("history without a turns list")
+    for i, t in enumerate(turns):
+        if not isinstance(t, dict):
+            raise ValueError(f"history turn {i} is not an object")
+        if not isinstance(t.get("turn_id"), str) or not isinstance(t.get("text"), str):
+            raise ValueError(f"history turn {i} without a string turn_id and text")
+        if t.get("speaker") not in HISTORY_SPEAKERS:
+            raise ValueError(f"history turn {i} with an unknown speaker")
+        if "t_audio_end" in t and t["t_audio_end"] is not None and not _is_number(t["t_audio_end"]):
+            raise ValueError(f"history turn {i} with a non-numeric t_audio_end")
+        for key, allowed in (("addressee", ADDRESSEES), ("kind", TURN_KINDS), ("lang", LANGS)):
+            if key in t and t[key] is not None and t[key] not in allowed:
+                raise ValueError(f"history turn {i} with an unknown {key}")
+
+
+def history_turns(msg: dict) -> tuple[list[dict], int]:
+    """The turns of a validated `history` line, bounded: the newest HISTORY_MAX_TURNS whose texts add up to at most
+    HISTORY_MAX_CHARS characters (oldest first, as sent), and how many older ones were left out."""
+    turns: list[dict] = msg["turns"]
+    kept: list[dict] = []
+    chars = 0
+    for t in reversed(turns):
+        if len(kept) >= HISTORY_MAX_TURNS or chars + len(t["text"]) > HISTORY_MAX_CHARS:
+            break
+        kept.append(t)
+        chars += len(t["text"])
+    kept.reverse()
+    return kept, len(turns) - len(kept)
 
 
 @dataclass

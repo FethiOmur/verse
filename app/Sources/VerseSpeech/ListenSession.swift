@@ -92,8 +92,17 @@ public actor ListenSession {
 
         var built: [Channel: ChannelPipeline] = [:]
         let sink = config.statusSink
+        let issueCont = issueContinuation
+        let env = environment, base = config
+        // Review H8: every channel's recognizer is wrapped so a mid-call failure is reported and the language's Apple engine
+        // takes over from that point instead of the channel going silent.
         func makeEngine(for channel: Channel) throws -> any TranscriptionEngine {
-            let engine = try environment.makeEngine(config)
+            let primary = try environment.makeEngine(config)
+            let engine = RecoveringEngine(primary: primary, channel: channel, makeFallback: {
+                var c = base
+                c.engineKind = EngineFactory.defaultKind(for: base.lang)
+                return try env.makeEngine(c)
+            }, report: { issueCont.yield($0) })
             engine.attach(channel: channel, status: { sink?($0) })
             return engine
         }
@@ -137,11 +146,12 @@ public actor ListenSession {
         let counters = self.counters
         let remoteEnvelope = built[.remote]?.envelope
         let roomRoute = config.micAsRemote
+        let issueCont = issueContinuation
 
         for (channel, p) in built {
             let micEnvelope = p.envelope
             do {
-                try await p.start(clock: clock) { r, origin in
+                try await p.start(clock: clock, onIssue: { issueCont.yield($0) }) { r, origin in
                     let event = TranscriptEvent(channel: channel, text: r.text, isFinal: r.isFinal,
                                                 audioStart: origin + r.start, audioEnd: origin + r.end,
                                                 emittedAt: clock.now(), lang: lang, confidence: r.confidence)
@@ -160,13 +170,15 @@ public actor ListenSession {
                 }
             } catch {
                 for q in built.values { q.stopSource() }
+                // Review S1: the recognizers are released too. `discardPrepared()` cannot do it (the session counts as
+                // started) and nothing else would: each failed start used to keep a Nemotron model (~600 MB) claimed.
+                for q in built.values { await q.engine.cancel() }
                 cont.finish()
                 throw error
             }
         }
 
         let pipelinesList = Array(built.values)
-        let issueCont = issueContinuation
         watchdog = Task.detached(priority: .utility) {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(250))

@@ -97,6 +97,8 @@ class Config:
     ping_every_s: float = 30.0
     prewarm_attempts: int = 3
     prewarm_attempt_s: float = 12.0   # a healthy pre-warm takes ~1-2 s; longer means a stalled connection
+    prewarm_backoff_s: float = 1.0    # wait before retrying a pre-warm that got 5xx/overloaded/429 (doubles per attempt)
+    prewarm_retry_max_wait_s: float = 8.0   # a 429 retry-after is honoured up to this; pre-warm never decides whether the call runs
     offline_ping_every_s: float = 5.0
     keepalive_idle_s: float = 240.0
     keepalive_check_s: float = 10.0

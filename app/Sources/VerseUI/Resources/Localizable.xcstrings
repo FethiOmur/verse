@@ -10020,18 +10020,18 @@
         }
       }
     },
-    "The brain stopped; restarting it once.": {
+    "The brain stopped; restarting it.": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Il cervello si è fermato; lo riavvio una volta."
+            "value": "Il cervello si è fermato; lo riavvio."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Beyin durdu; bir kez yeniden başlatılıyor."
+            "value": "Beyin durdu; yeniden başlatılıyor."
           }
         }
       }

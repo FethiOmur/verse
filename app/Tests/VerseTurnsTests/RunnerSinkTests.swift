@@ -114,9 +114,10 @@ final class RunnerSinkTests: XCTestCase {
         return out + text.keys.sorted().map { "\($0): \(text[$0]!)" }
     }
 
-    /// A brain that crashes after `ready` is restarted once and gets the latest question again; a second crash stops
-    /// listening and ends the run with `status error`. No brain process is left behind.
-    func testSupervisorRestartOnce() async throws {
+    /// A brain that crashes after `ready` is restarted (up to `maxBrainRestarts`, 3 by default) and each restarted brain gets
+    /// the latest question again. When the last restart crashes too, the run reports `status error` but keeps listening:
+    /// the next question still reaches the transcript (review H4), it just goes to no brain. No brain process is left behind.
+    func testSupervisorRestartsThenKeepsListening() async throws {
         let session = try sampleSession()
         defer { session.delete() }
         let fake = try CrashingBrain()
@@ -130,11 +131,14 @@ final class RunnerSinkTests: XCTestCase {
         o.brainDir = fake.dir
         o.drainSeconds = 3
         o.readyTimeout = 10
+        o.restartBackoffSeconds = 0.05
         o.sink = rec.sink
+        let transcript = session.dir.appendingPathComponent("transcript.jsonl")
+        o.transcriptURL = transcript
         let t0 = Date()
         let code = await VerseRunner(options: o).run()
         let events = rec.all
-        XCTAssertEqual(code, 1)
+        XCTAssertEqual(code, 1, "a run whose brain was given up on still ends with 1")
         XCTAssertEqual(events.last, .ended(exitCode: 1))
 
         let statuses = events.compactMap { e -> String? in
@@ -142,22 +146,51 @@ final class RunnerSinkTests: XCTestCase {
             if case .brain(let o) = e, o.type == "status" { return o[string: "state"] }
             return nil
         }
-        XCTAssertEqual(statuses.filter { $0 == "restarting" }.count, 1, "statuses: \(statuses)")
-        XCTAssertEqual(statuses.filter { $0 == "ready" }.count, 2, "statuses: \(statuses)")
+        let n = o.maxBrainRestarts
+        XCTAssertEqual(n, 3, "default")
+        XCTAssertEqual(statuses.filter { $0 == "restarting" }.count, n, "statuses: \(statuses)")
+        XCTAssertEqual(statuses.filter { $0 == "ready" }.count, n + 1, "statuses: \(statuses)")
         XCTAssertEqual(statuses.last, "error", "statuses: \(statuses)")
-        XCTAssertLessThan(statuses.firstIndex(of: "restarting")!, statuses.lastIndex(of: "error")!)
+        XCTAssertLessThan(statuses.lastIndex(of: "restarting")!, statuses.lastIndex(of: "error")!)
 
         let log = fake.stdinLog
-        XCTAssertEqual(fake.invocations, 2, "the brain must be restarted exactly once; stdin log:\n\(log.joined(separator: "\n"))")
+        XCTAssertEqual(fake.invocations, n + 1, "the brain must be restarted \(n) times; stdin log:\n\(log.joined(separator: "\n"))")
         let firstTurns = log.filter { $0.hasPrefix("1 ") && $0.contains("\"type\":\"turn\"") }
-        let resent = log.filter { $0.hasPrefix("2 ") && $0.contains("\"type\":\"turn\"") }
         XCTAssertEqual(firstTurns.count, 1)
-        XCTAssertEqual(resent.count, 1, "the latest question must be re-sent once to the restarted brain")
-        XCTAssertTrue(resent.first?.contains("\"turn_id\":\"r1\"") ?? false, "re-sent: \(resent)")
-        XCTAssertTrue(log.contains { $0.hasPrefix("2 ") && $0.contains("\"type\":\"start\"") }, "restart must send start again")
-        // Listening stopped at the second crash: the second question (6 s later) never reached a brain.
-        XCTAssertFalse(log.contains { $0.contains("Lantern deliver") }, "listening went on after the second crash")
-        XCTAssertLessThan(Date().timeIntervalSince(t0), 30)
+        for i in 2...(n + 1) {
+            let resent = log.filter { $0.hasPrefix("\(i) ") && $0.contains("\"type\":\"turn\"") }
+            XCTAssertEqual(resent.count, 1, "brain \(i) must get the latest question once")
+            XCTAssertTrue(resent.first?.contains("\"turn_id\":\"r1\"") ?? false, "re-sent to \(i): \(resent)")
+            XCTAssertTrue(log.contains { $0.hasPrefix("\(i) ") && $0.contains("\"type\":\"start\"") }, "restart \(i) must send start again")
+        }
+        // The brain is gone for good, but listening went on: the second question (6 s later) is in the transcript and
+        // reached no brain.
+        XCTAssertFalse(log.contains { $0.contains("Lantern deliver") }, "a question was sent to a brain after it was given up on")
+        let text = (try? String(contentsOf: transcript, encoding: .utf8)) ?? ""
+        XCTAssertTrue(text.lowercased().contains("lantern"), "listening stopped with the brain; transcript:\n\(text)")
+        XCTAssertLessThan(Date().timeIntervalSince(t0), 40)
+        for pid in fake.pids { XCTAssertTrue(processIsGone(pid), "brain \(pid) still running") }
+    }
+
+    /// Review H2: at the end of a run the brain gets time for its final summary merge after `control stop`. A brain that
+    /// needs 5 s to finish (the old grace was 3 s, then SIGTERM) completes and exits by itself.
+    func testStopWaitsForTheFinalMerge() async throws {
+        let session = try sampleSession()
+        defer { session.delete() }
+        let fake = try CrashingBrain(stopSeconds: 5)
+        defer { fake.delete() }
+        let fixture = try SayFixture.make(voice: "Samantha", text: "Thanks everyone, that is all for today.")
+        defer { fixture.delete() }
+
+        var o = RunOptions(sessionDir: session.dir)
+        o.file = fixture.file
+        o.brainDir = fake.dir
+        o.drainSeconds = 1
+        o.readyTimeout = 10
+        o.sink = SinkRecorder().sink
+        XCTAssertGreaterThanOrEqual(o.stopGraceSeconds, 50, "default grace covers the brain's 45 s merge timeout")
+        _ = await VerseRunner(options: o).run()
+        XCTAssertTrue(fake.merged, "the brain was killed before its final merge finished")
         for pid in fake.pids { XCTAssertTrue(processIsGone(pid), "brain \(pid) still running") }
     }
 
@@ -219,10 +252,11 @@ final class RunnerSinkTests: XCTestCase {
 
 /// A fake `brain/` whose "python" is a shell script: it answers `start` with `ready` and exits with status 1 on the
 /// first `turn` (a crash). It counts its invocations and logs every stdin line with the invocation number.
+/// With `stopSeconds`, `control stop` takes that long (a final summary merge) and then writes `merged` before it exits.
 struct CrashingBrain {
     let dir: URL
 
-    init() throws {
+    init(stopSeconds: Int = 0) throws {
         dir = FileManager.default.temporaryDirectory.appendingPathComponent("verse-fakebrain-\(UUID().uuidString)", isDirectory: true)
         let fm = FileManager.default
         try fm.createDirectory(at: dir.appendingPathComponent("verse_brain"), withIntermediateDirectories: true)
@@ -238,7 +272,7 @@ struct CrashingBrain {
           case "$line" in
             *'"type":"start"'*) echo '{"type":"status","state":"ready","message":""}' ;;
             *'"type":"turn"'*) exit 1 ;;
-            *'"action":"stop"'*) exit 0 ;;
+            *'"action":"stop"'*) sleep \(stopSeconds); echo ok > "$D/merged"; exit 0 ;;
           esac
         done
         """
@@ -249,6 +283,7 @@ struct CrashingBrain {
 
     var invocations: Int { Int((try? String(contentsOf: dir.appendingPathComponent("count"), encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "") ?? 0 }
     var stdinLog: [String] { ((try? String(contentsOf: dir.appendingPathComponent("stdin.log"), encoding: .utf8)) ?? "").split(separator: "\n").map(String.init) }
+    var merged: Bool { FileManager.default.fileExists(atPath: dir.appendingPathComponent("merged").path) }
     var pids: [Int32] { ((try? String(contentsOf: dir.appendingPathComponent("pids"), encoding: .utf8)) ?? "").split(separator: "\n").compactMap { Int32($0) } }
 
     func delete() { try? FileManager.default.removeItem(at: dir) }

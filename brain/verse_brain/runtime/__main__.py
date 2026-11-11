@@ -30,8 +30,9 @@ import json
 import logging
 import os
 import sys
+import time
 
-from .engine import NO_API_KEY, Brain
+from .engine import INTERNAL, NO_API_KEY, Brain
 from .protocol import Emitter, parse_line
 from .settings import Config
 from .ask import AskRuntime
@@ -47,6 +48,41 @@ async def _stdin_lines():
         if not line:
             return
         yield line.decode("utf-8", errors="replace")
+
+
+class HandlerGuard:
+    """Keeps the meeting brain serving when one of its message handlers raises (review H4): one bad line or one bug in a rarely
+    used path must not end the call. Each failure is logged (the traceback once per message type and exception type, a
+    one-line warning after that) and reported as a non-fatal `status error` with reason `internal`, at most once per
+    `every_s` so a handler that fails on every partial does not flood the app."""
+
+    def __init__(self, emitter: Emitter, every_s: float = 30.0) -> None:
+        self.emitter = emitter
+        self.every_s = every_s
+        self.count = 0
+        self._seen: set[tuple[str, str]] = set()
+        self._last_status: float | None = None
+
+    async def handle(self, runtime, msg: dict) -> None:
+        try:
+            await runtime.handle(msg)
+        except Exception as e:  # noqa: BLE001 - see the class doc
+            self.count += 1
+            mtype, etype = str(msg.get("type")), type(e).__name__
+            log = logging.getLogger("verse.runtime")
+            if (mtype, etype) in self._seen:
+                log.warning("handler error again: %s in %s (%d so far)", etype, mtype, self.count)
+            else:
+                self._seen.add((mtype, etype))
+                log.exception("handler error in %s; the brain goes on", mtype)
+            now = time.monotonic()
+            if self._last_status is None or now - self._last_status >= self.every_s:
+                self._last_status = now
+                try:
+                    self.emitter.status("error", f"internal error handling {mtype} ({etype}); the call goes on", reason=INTERNAL)
+                    self.emitter.metric("", "handler_error", msg_type=mtype, error=etype, count=self.count)
+                except Exception:  # noqa: BLE001 - reporting must not fail the loop either
+                    pass
 
 
 def _index_runtime(args, emitter):
@@ -132,6 +168,7 @@ async def amain(args) -> int:
 
         factory = lambda: LiteRtEmbedder(cfg.embed_model, cfg.embed_backend)  # noqa: E731
     runtime = None
+    guard = HandlerGuard(emitter)
     try:
         async for raw in _stdin_lines():
             try:
@@ -169,7 +206,10 @@ async def amain(args) -> int:
                     runtime = _memory_runtime(msg["type"], client, args, emitter, cfg)
                 else:
                     runtime = Brain(transport, emitter, cfg, embedder_factory=factory)
-            await runtime.handle(msg)
+            if isinstance(runtime, Brain):
+                await guard.handle(runtime, msg)
+            else:
+                await runtime.handle(msg)
             if runtime.stopped.is_set():
                 break
     finally:

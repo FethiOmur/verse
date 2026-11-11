@@ -124,6 +124,11 @@ final class NemotronEngine: TranscriptionEngine, @unchecked Sendable {
     private var released = false
     private var _loadSeconds: Double?
     private let errorSlot = OSAllocatedUnfairLock<String?>(initialState: nil)
+    private var failureHandler: (@Sendable (String) -> Void)?
+
+    func setFailureHandler(_ handler: @escaping @Sendable (String) -> Void) {
+        lock.withLockUnchecked { failureHandler = handler }
+    }
 
     /// Seconds `prepare()` waited for the model (nil before it finished).
     var loadSeconds: Double? { lock.withLockUnchecked { _loadSeconds } }
@@ -184,9 +189,12 @@ final class NemotronEngine: TranscriptionEngine, @unchecked Sendable {
         await manager.reset()
         let chunkSamples = await manager.config.chunkSamples
         let slot = errorSlot
+        let onFailure = lock.withLockUnchecked { failureHandler }
         let task = Task<Void, Never>.detached(priority: .userInitiated) {
-            await Self.run(manager: manager, chunkSamples: chunkSamples, input: input, onResult: onResult) { msg in
+            await Self.run(manager: manager, chunkSamples: chunkSamples, input: input, onResult: onResult) { msg, midStream in
                 slot.withLock { $0 = msg }
+                // Review H8: a decode error while audio still comes in used to end the run silently.
+                if midStream { onFailure?("Nemotron decode failed: \(msg)") }
             }
         }
         lock.withLockUnchecked { runTask = task }
@@ -224,7 +232,7 @@ final class NemotronEngine: TranscriptionEngine, @unchecked Sendable {
     }
 
     private static func run(manager: StreamingNemotronAsrManager, chunkSamples: Int, input: AsyncStream<AnalyzerInput>,
-                            onResult: @Sendable (EngineResult) -> Void, fail: @Sendable (String) -> Void) async {
+                            onResult: @Sendable (EngineResult) -> Void, fail: @Sendable (String, Bool) -> Void) async {
         var tracker = NemotronUtteranceTracker()
         var silence = SilenceTracker()
         var fed = 0                       // samples at 16 kHz handed to the decoder
@@ -252,7 +260,7 @@ final class NemotronEngine: TranscriptionEngine, @unchecked Sendable {
             do {
                 _ = try await manager.process(audioBuffer: buf)
             } catch {
-                fail("\(error)")
+                fail("\(error)", true)
                 return
             }
             let chunks = fed / chunkSamples
@@ -273,7 +281,7 @@ final class NemotronEngine: TranscriptionEngine, @unchecked Sendable {
             emit(tracker.ingest(tokens(timings)))
             if let f = tracker.finalizeOpen() { emit([f]) }
         } catch {
-            fail("\(error)")
+            fail("\(error)", false)
         }
     }
 }

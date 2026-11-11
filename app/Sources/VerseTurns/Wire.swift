@@ -199,6 +199,59 @@ public enum OutboundEvent: Codable, Sendable, Equatable {
     }
 }
 
+/// One finalized turn of the call as a restarted brain gets it back in `history` (brain/verse_brain/runtime/protocol.py).
+public struct HistoryTurn: Sendable, Equatable {
+    public var turnID: String
+    public var speaker: Speaker
+    public var text: String
+    public var addressee: Addressee
+    public var kind: TurnKind
+    public var tAudioEnd: Double
+    public var lang: String?
+
+    public init(turnID: String, speaker: Speaker, text: String, addressee: Addressee, kind: TurnKind, tAudioEnd: Double, lang: String? = nil) {
+        self.turnID = turnID
+        self.speaker = speaker
+        self.text = text
+        self.addressee = addressee
+        self.kind = kind
+        self.tAudioEnd = tAudioEnd
+        self.lang = lang
+    }
+
+    /// The turn of a `turn` event; nil for any other event.
+    public init?(_ ev: OutboundEvent, lang: String?) {
+        guard case .turn(let id, let speaker, let text, let addressee, let t, let kind) = ev else { return nil }
+        self.init(turnID: id, speaker: speaker, text: text, addressee: addressee, kind: kind, tAudioEnd: t, lang: lang)
+    }
+
+    /// The bounds both sides keep (protocol.py `HISTORY_MAX_TURNS`, `HISTORY_MAX_CHARS`): about 60k tokens of text, far under the
+    /// brain's 4 MiB stdin line limit.
+    public static let maxTurns = 600
+    public static let maxChars = 240_000
+
+    /// The newest turns within the bounds, oldest first.
+    public static func bounded(_ turns: [HistoryTurn]) -> [HistoryTurn] {
+        var kept: [HistoryTurn] = []
+        var chars = 0
+        for t in turns.reversed() {
+            // Unicode scalars, as Python's len() counts them, so the brain never trims what Swift kept.
+            let n = t.text.unicodeScalars.count
+            if kept.count >= maxTurns || chars + n > maxChars { break }
+            kept.append(t)
+            chars += n
+        }
+        return kept.reversed()
+    }
+
+    var object: [String: Any] {
+        var o: [String: Any] = ["turn_id": turnID, "speaker": speaker.rawValue, "text": text, "addressee": addressee.rawValue,
+                                "kind": kind.rawValue, "t_audio_end": Text.ms(tAudioEnd)]
+        if let lang { o["lang"] = lang }
+        return o
+    }
+}
+
 /// The messages Swift sends to the brain that are not turn events.
 public enum BrainCommand: Sendable, Equatable {
     /// `follow`: the brain may watch the owner's own speech and send follow cards (spec "follow my answer"). Always sent
@@ -218,6 +271,9 @@ public enum BrainCommand: Sendable, Equatable {
     /// (room route only) and `follow` (the user's setting, not yet gated by the route) are sent when the brain cannot know
     /// them from `start`: a call that began in the meeting never got `room_auto`, one that began in the room got `follow:false`.
     case setRoute(AudioRoute, roomAuto: RoomAuto? = nil, follow: Bool? = nil)
+    /// A restarted brain's transcript of the call so far (oldest first, bounded by `HistoryTurn.bounded`): the brain stores the
+    /// turns and fires nothing for them.
+    case history([HistoryTurn])
 
     public func jsonLine() -> String {
         var obj: [String: Any]
@@ -236,6 +292,8 @@ public enum BrainCommand: Sendable, Equatable {
             obj = ["type": "control", "action": "route", "route": route.rawValue]
             if let roomAuto { obj["room_auto"] = roomAuto.rawValue }
             if let follow { obj["follow"] = follow }
+        case .history(let turns):
+            obj = ["type": "history", "turns": HistoryTurn.bounded(turns).map(\.object)]
         }
         let d = (try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys, .withoutEscapingSlashes])) ?? Data("{}".utf8)
         return String(decoding: d, as: UTF8.self)

@@ -47,6 +47,7 @@ read; roles are matched against a fixed list of one-holder titles (`ROLE` below)
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import TYPE_CHECKING, Iterable
@@ -89,6 +90,20 @@ MONTHS = {
     **{m: i for i, m in enumerate(
         ["ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim", "kasım", "aralık"], 1)},
 }
+def _fold(s: str) -> str:
+    """Case- and diacritic-insensitive key: ı/İ/I -> i, combining marks stripped (kasim, KASIM, Kasım all agree)."""
+    s = unicodedata.normalize("NFD", s.replace("İ", "i").replace("I", "i").replace("ı", "i").casefold())
+    return "".join(c for c in s if not unicodedata.combining(c))
+
+
+_MONTH_FOLD = {_fold(k): v for k, v in MONTHS.items()}
+
+
+def _month(name: str) -> int | None:
+    """Month number for any spelling the month regex can match; None (never an exception) for an unknown one."""
+    return _MONTH_FOLD.get(_fold(name))
+
+
 _MONTH_RE = "|".join(sorted((re.escape(m) for m in MONTHS), key=len, reverse=True))
 
 CURRENCY = {"€": "EUR", "eur": "EUR", "euro": "EUR", "euros": "EUR", "$": "USD", "usd": "USD", "dollar": "USD",
@@ -419,9 +434,11 @@ def _scope(sent: str) -> frozenset[str]:
             t.add(f"d:{int(m['m'])}-{int(m['d'])}")
     for rx in (_S_DMON, _S_MOND):
         for m in rx.finditer(sent):
-            t.add(f"d:{MONTHS[m['mon'].casefold()]}-{int(m['d'])}")
+            if _month(m["mon"]) is not None:
+                t.add(f"d:{_month(m['mon'])}-{int(m['d'])}")
     for m in _MON_Y.finditer(sent):
-        t.add(f"m:{MONTHS[m['mon'].casefold()]}")
+        if _month(m["mon"]) is not None:
+            t.add(f"m:{_month(m['mon'])}")
     for m in _QUARTER.finditer(sent):
         t.add(f"q:{m['q'] or m['q2']}")
     for m in _HALF.finditer(sent):
@@ -530,7 +547,7 @@ def _noun_phrase(sent: str, first: str, pos: int) -> list[str]:
         if not m:
             break
         w = m.group(1)
-        if w.casefold() in STOP or w.casefold() in CUT_AFTER or w.casefold() in MONTHS or len(w) < 2:
+        if w.casefold() in STOP or w.casefold() in CUT_AFTER or _month(w) is not None or len(w) < 2:
             break
         words.append(w)
         pos = m.end()
@@ -594,13 +611,19 @@ def _sentence_mentions(sent: str, ref: str, src_kind: str, sid: tuple[str, int, 
         mo, d = int(m["m"]), int(m["d"])
         date_hit(m, span_of(m["y"], mo, d, mo, d), f"{m['y']}-{mo:02d}-{d:02d}")
     for m in _D_MON_Y.finditer(sent):
-        mo, d = MONTHS[m["mon"].casefold()], int(m["d"])
+        mo, d = _month(m["mon"]), int(m["d"])
+        if mo is None:
+            continue
         date_hit(m, span_of(m["y"], mo, d, mo, d), f"{m['y']}-{mo:02d}-{d:02d}")
     for m in _MON_D_Y.finditer(sent):
-        mo, d = MONTHS[m["mon"].casefold()], int(m["d"])
+        mo, d = _month(m["mon"]), int(m["d"])
+        if mo is None:
+            continue
         date_hit(m, span_of(m["y"], mo, d, mo, d), f"{m['y']}-{mo:02d}-{d:02d}")
     for m in _MON_Y.finditer(sent):
-        mo = MONTHS[m["mon"].casefold()]
+        mo = _month(m["mon"])
+        if mo is None:
+            continue
         date_hit(m, span_of(m["y"], mo, 1, mo), f"{m['y']}-{mo:02d}", (m["mon"].casefold(),))
     for m in _QUARTER.finditer(sent):
         q, y = int(m["q"] or m["q2"]), m["y"] or m["y2"]
@@ -650,7 +673,7 @@ def _sentence_mentions(sent: str, ref: str, src_kind: str, sid: tuple[str, int, 
         if not free(m.start(), m.end()):
             continue
         unit_w = m["unit"].casefold()
-        if unit_w in STOP or unit_w in MONTHS or unit_w in CURRENCY or unit_w in ("to", "and", "or"):
+        if unit_w in STOP or _month(unit_w) is not None or unit_w in CURRENCY or unit_w in ("to", "and", "or"):
             continue
         tok = m["a1"]
         if re.fullmatch(r"(?:19|20)\d{2}", tok) and not m["s1"]:

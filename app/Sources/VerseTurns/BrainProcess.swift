@@ -80,6 +80,9 @@ public final class BrainProcess: @unchecked Sendable {
         var env = ProcessInfo.processInfo.environment
         env["PYTHONUNBUFFERED"] = "1"
         process.environment = env
+        // A write after the brain exited must fail with EPIPE, not end this whole process with SIGPIPE (review H3). The
+        // app also ignores SIGPIPE globally (VerseApp); this covers every other host of BrainProcess (CLIs, tests).
+        _ = fcntl(stdin.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
     }
 
     public var pid: Int32 { process.processIdentifier }
@@ -130,11 +133,16 @@ public final class BrainProcess: @unchecked Sendable {
         lineContinuation.finish()
     }
 
-    /// Writes one JSON line. Failures (the brain is gone) are ignored on purpose: the exit shows up as the end of `lines`.
+    /// Writes one JSON line. Failures (the brain is gone) are not reported: the exit shows up as the end of `lines`.
+    /// The first failed write (EPIPE: no SIGPIPE, see `init`) marks stdin closed, so later sends are no-ops.
     public func send(_ line: String) {
         let closed = lock.withLockUnchecked { stdinClosed }
         guard !closed else { return }
-        try? stdin.fileHandleForWriting.write(contentsOf: Data((line + "\n").utf8))
+        do {
+            try stdin.fileHandleForWriting.write(contentsOf: Data((line + "\n").utf8))
+        } catch {
+            closeStdin()
+        }
     }
 
     private func closeStdin() {

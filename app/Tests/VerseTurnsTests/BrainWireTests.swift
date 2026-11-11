@@ -160,6 +160,36 @@ final class BrainWireTests: XCTestCase {
         XCTAssertTrue(processIsGone(pid), "brain process \(pid) survived killAll")
     }
 
+    /// A write to a brain that already exited must not end this process with SIGPIPE (review H3): the pipe's write end
+    /// is set to F_SETNOSIGPIPE, the write error is swallowed and later sends are no-ops. Without that the test runner
+    /// itself dies with status 141 at the first `send`.
+    func testSendToExitedBrainDoesNotRaiseSIGPIPE() async throws {
+        // An unknown flag makes argparse exit at once (status 2) without reading stdin.
+        let brain = try BrainProcess(brainDir: try brainDir(), extraArgs: ["--no-such-flag"])
+        try brain.start()
+        let end = Date().addingTimeInterval(10)
+        while brain.isRunning, Date() < end { try await Task.sleep(for: .milliseconds(20)) }
+        XCTAssertFalse(brain.isRunning, "the brain was expected to exit on a bad flag")
+        for i in 0..<50 {
+            brain.send(OutboundEvent.partial(turnID: "r\(i)", speaker: .remote, text: "still talking", cue: false, tAudioEnd: Double(i)).jsonLine())
+        }
+        await brain.shutdown()   // sends `stop` to the dead pipe as well
+        XCTAssertFalse(brain.isRunning)
+    }
+
+    /// Review H1: only a missing/rejected key, no credit, an unreadable session folder, a dead brain or no answer end the run
+    /// at start. A transient pre-warm failure (`ready` with `degraded`, `offline`, `rate_limited`) or an `internal` error
+    /// does not.
+    func testOnlyKeyCreditAndSessionErrorsAreFatalAtStart() {
+        XCTAssertTrue(VerseRunner.fatalAtStart(state: nil, reason: nil), "timeout")
+        XCTAssertTrue(VerseRunner.fatalAtStart(state: "exited", reason: nil))
+        XCTAssertTrue(VerseRunner.fatalAtStart(state: "credit_exhausted", reason: "no_credit"))
+        for r in ["no_api_key", "invalid_api_key", "bad_session"] { XCTAssertTrue(VerseRunner.fatalAtStart(state: "error", reason: r), r) }
+        XCTAssertFalse(VerseRunner.fatalAtStart(state: "error", reason: nil), "an error without a fatal reason lets the call run")
+        XCTAssertFalse(VerseRunner.fatalAtStart(state: "error", reason: "internal"))
+        for s in ["ready", "offline", "rate_limited"] { XCTAssertFalse(VerseRunner.fatalAtStart(state: s, reason: nil), s) }
+    }
+
     // MARK: helper
 
     private func runBrainPython(_ code: String, stdin: String) throws -> String {

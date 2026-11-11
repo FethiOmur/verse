@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field
 
 from .parse import ParsedOutput, RawBank, RawFact, RawSrc, RawTerm, RawText
-from .sources import Source, SourceBook, norm, numbers_in, numbers_supported
+from .sources import Source, SourceBook, norm, numbers_in, numbers_supported, significant_numbers
 
 FACT_KINDS = ("number", "date", "name")
 
@@ -68,7 +68,7 @@ def _check_text(t: RawText, book: SourceBook, what: str, where: str, g: Grounded
         good, _bad = _verify(t.srcs, book)
         if not good:
             reason = "unsupported_quote"
-        elif not numbers_supported(text, [s.quote for s in good]):
+        elif not numbers_supported(text, [s.span or s.quote for s in good]):
             reason = "unsupported_number"
     if reason:
         claimed = "; ".join(f"{s.handle} | {s.quote}" for s in t.srcs)
@@ -124,7 +124,7 @@ def _ground_facts(raw: list[RawFact], book: SourceBook, g: Grounded) -> None:
         srcs = _check_text(f.text, book, "fact", f.kind, g)
         if srcs is None:
             continue
-        if not _value_supported(f.kind, f.value, [s.quote for s in srcs]):
+        if not _value_supported(f.kind, f.value, [s.span or s.quote for s in srcs]):
             g.dropped.append(Dropped("fact", "value_not_in_quote", f"{text} [{f.value}]", f.kind))
             _bump(g, "facts_dropped_value_not_in_quote")
             continue
@@ -171,6 +171,11 @@ def _ground_bank(raw: list[RawBank], book: SourceBook, langs: list[str], cap: in
             g.dropped.append(Dropped("entry", "duplicate", q, ""))
             _bump(g, "entries_dropped_duplicate")
             continue
+        opener = _ground_opener(e.opener, q, g)
+        if not opener:
+            g.dropped.append(Dropped("entry", "opener_unsupported_number", q, "", e.opener.strip()))
+            _bump(g, "entries_dropped_opener")
+            continue
         points: list[str] = []
         point_srcs: list[list[Source]] = []
         srcs: list[Source] = []
@@ -205,12 +210,62 @@ def _ground_bank(raw: list[RawBank], book: SourceBook, langs: list[str], cap: in
         bank_id = f"b{len(g.bank) + 1:03d}"
         g.point_sources[bank_id] = {"points": point_srcs, "deep": deep_srcs}
         g.bank.append({
-            "id": bank_id, "lang": lang, "question": q, "paraphrases": paras, "opener": e.opener.strip(),
+            "id": bank_id, "lang": lang, "question": q, "paraphrases": paras, "opener": opener,
             "points": points, "deep": deep, "sources": [s.as_dict() for s in _dedupe_sources(srcs)],
         })
         if len(g.bank) >= cap:
             break
     g.stats["paraphrase_lists_under_3"] = few_para
+
+
+_MONTH_WORDS: dict[str, int] = {}
+for _i, _names in enumerate([
+    ("january", "jan", "gennaio"), ("february", "feb", "febbraio"), ("march", "mar", "marzo"),
+    ("april", "apr", "aprile"), ("may", "maggio"), ("june", "jun", "giugno"), ("july", "jul", "luglio"),
+    ("august", "aug", "agosto"), ("september", "sep", "sept", "settembre"), ("october", "oct", "ottobre"),
+    ("november", "nov", "novembre"), ("december", "dec", "dicembre"),
+], start=1):
+    for _n in _names:
+        _MONTH_WORDS[_n] = _i
+_AMBIGUOUS_MONTHS = {"may", "march"}  # also ordinary English words
+_WORD = re.compile(r"[A-Za-z]+")
+
+
+def _months_in(text: str) -> set[int]:
+    """Month numbers named in `text`. "may"/"march" count only when capitalised mid-sentence or next to a number."""
+    out: set[int] = set()
+    first = True
+    for m in _WORD.finditer(text):
+        num = _MONTH_WORDS.get(m.group().lower())
+        is_first, first = first, False
+        if num is None:
+            continue
+        if m.group().lower() in _AMBIGUOUS_MONTHS:
+            near_number = bool(re.match(r"\.?\s*\d", text[m.end():])) or bool(re.search(r"\d(?:st|nd|rd|th)?\s+(?:of\s+)?$", text[:m.start()]))
+            if not (near_number or (m.group()[0].isupper() and not is_first)):
+                continue
+        out.add(num)
+    return out
+
+
+def _ground_opener(opener: str, question: str, g: Grounded) -> str:
+    """The opener is read aloud with no source line, so it may not state a number or date its question does not carry.
+    Sentences with an unsupported number are cut (recorded in `dropped`); returns "" when nothing is left."""
+    allowed = numbers_in(question)
+    allowed_months = _months_in(question)
+    keep: list[str] = []
+    for sent in re.split(r"(?<=[.!?])\s+", opener.strip()):
+        if not sent:
+            continue
+        if not all(any(abs(n - h) < 1e-9 for h in allowed) for n in significant_numbers(sent)):
+            g.dropped.append(Dropped("opener", "unsupported_number", sent, question))
+            _bump(g, "opener_sentences_dropped_unsupported_number")
+        elif not _months_in(sent) <= allowed_months:
+            g.dropped.append(Dropped("opener", "unsupported_month", sent, question))
+            _bump(g, "opener_sentences_dropped_unsupported_month")
+        else:
+            keep.append(sent)
+    return " ".join(keep)
 
 
 def _dedupe(xs: list[str]) -> list[str]:

@@ -115,6 +115,33 @@ final class IslandTests: XCTestCase {
         XCTAssertEqual(kindName(IslandKind.resolve(s, prompterOpen: false)), "prompt", "Offline is a wing, not a panel")
     }
 
+    /// Review H6: one failed call's `status error` in a running session no longer hides the cards after it. The next card
+    /// shows over the error, and its first content clears the error (and a stuck rate-limit chip). An error about the key,
+    /// the credit or the session folder is not cleared by a card.
+    func testPerCallErrorGivesWayToTheNextCardAndClearsWithContent() {
+        let m = OverlayModel(config: OverlayConfig(cardTimeout: 45, otherNames: []), bank: [:], clock: { 1000 })
+        m.sessionStarting(lang: "en")
+        m.apply(status("ready"))
+        m.apply(.metric(obj(["type": "metric", "stage": "session_t0", "turn_id": ""])))
+        m.apply(status("error", "F: 529 overloaded_error"))
+        XCTAssertEqual(kindName(IslandKind.resolve(m.state, prompterOpen: false)), "status", "no card yet: the panel shows")
+
+        m.apply(turn("r1", "Can you walk me through Lantern?"))
+        XCTAssertEqual(kindName(IslandKind.resolve(m.state, prompterOpen: false)), "card", "the new card is not hidden")
+        for e in stream("f0001", "r1", "F", "SAY: Sure, the short version.") { m.apply(e) }
+        XCTAssertNil(m.state.status, "content in the next card clears the per-call error")
+
+        m.apply(status("rate_limited"))
+        m.apply(turn("r2", "And what did it cost?"))
+        for e in stream("f0002", "r2", "F", "SAY: About two weeks of work.") { m.apply(e) }
+        XCTAssertNil(m.state.status, "the rate-limit chip goes with the next answer")
+
+        m.apply(.brain(obj(["type": "status", "state": "error", "message": "API key rejected (401 )", "reason": "invalid_api_key"])))
+        m.apply(turn("r3", "Who else was on the team?"))
+        for e in stream("f0003", "r3", "F", "SAY: Two engineers and a designer.") { m.apply(e) }
+        XCTAssertNotNil(m.state.status, "a rejected key is not a per-call error")
+    }
+
     private func kindName(_ k: IslandKind) -> String {
         switch k {
         case .capsule: return "capsule"

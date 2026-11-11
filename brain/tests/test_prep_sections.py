@@ -53,7 +53,7 @@ class SectionFake:
         for r, (no, text) in enumerate(items[:quota]):
             q = SHARED_Q if r == 0 else f"What happened with {text.split(':')[0].lower()}?"
             out += ["@BANK", "lang: en", f"question: {q}", "para.en: Tell me more.", "para.en: What was that about?",
-                    "para.en: Can you explain?", f"opener: Here is the short version of item {no}.",
+                    "para.en: Can you explain?", "opener: Here is the short version of that item.",
                     f"point: {text}", f"src: prep:L{no} | {text}", "@END", ""]
         text = "\n".join(out) + "\n"
         if n in self.truncate_calls:
