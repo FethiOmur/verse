@@ -74,7 +74,19 @@ class FakeEmbedder:
         self.closed = True
 
 
-PARA = [("end up where", {"b001": 0.90, "b005": 0.85})]
+PARA = [("end up where", {"b001": 0.93, "b005": 0.85})]
+
+# The accept rule before the 2026-11-11 retune (settings.py): the "fix disabled" reference for the regression tests below.
+OLD_RULE = {"embed_threshold": 0.865, "embed_margin": 0.02, "embed_consecutive": 2}
+
+# An off-bank question that spikes on its short prefix and decays as more words arrive, with the cosines the live brain
+# recorded for "What would you change about Compass if you joined?" in eval/out/f3-embed/d09 (0.914 -> 0.901 -> 0.890 on one
+# entry, margin 0.06 -> 0.03). First matching rule wins, so the longest text comes first.
+SPIKE = [("if you joined", {"b009": 0.8903, "b015": 0.862}),
+         ("compass if you", {"b009": 0.9007, "b015": 0.8427}),
+         ("about compass", {"b009": 0.914, "b015": 0.852})]
+SPIKE_PARTIALS = ("What would you change about Compass", "What would you change about Compass if you",
+                  "What would you change about Compass if you joined")
 
 
 def fast_responder(fast: str):
@@ -96,6 +108,7 @@ def make(embedder=None, responder=None, factory=None, **cfg):
 
 async def start(b: Brain) -> None:
     await b.handle({"type": "start", "session_dir": str(ESESSION), "lang": "en"})
+    await b.warmed()
     end = time.monotonic() + 5
     while b.embed is not None and b.embed.state == "loading" and time.monotonic() < end:
         await asyncio.sleep(0.01)
@@ -131,29 +144,29 @@ def run(coro):
 
 # ---------------------------------------------------------------- hits and gates
 
-def test_paraphrase_hits_after_two_consecutive_partials():
+def test_paraphrase_hits_after_three_consecutive_partials():
     async def go():
         fe = FakeEmbedder(PARA)
         b, t, em = make(fe, fast_responder(FAST_B001))
         await start(b)
-        await partial(b, "q1", "How did you end up where")
-        await idle(b)
-        after_one = len(embed_hits(em))
-        await partial(b, "q1", "How did you end up where you are")
-        await idle(b)
-        after_two = list(embed_hits(em))
-        await partial(b, "q1", "How did you end up where you are today")
-        await idle(b)
+        counts = []
+        for text in ("How did you end up where", "How did you end up where you are",
+                     "How did you end up where you are today"):
+            counts.append(len(embed_hits(em)))
+            await partial(b, "q1", text)
+            await idle(b)
+        after_three = list(embed_hits(em))
         await turn(b, "q1", "How did you end up where you are today")
         await settle(b)
-        return b, t, em, fe, after_one, after_two
+        return b, t, em, fe, counts, after_three
 
-    b, t, em, fe, after_one, after_two = run(go())
-    assert after_one == 0, "one partial is not enough"
-    assert len(after_two) == 1
-    hit = after_two[0]
+    b, t, em, fe, counts, after_three = run(go())
+    assert counts == [0, 0, 0], "one or two partials are not enough"
+    assert len(after_three) == 1
+    hit = after_three[0]
     assert (hit["turn_id"], hit["bank_id"], hit["via"]) == ("q1", "b001", "embed")
-    assert hit["score"] == pytest.approx(0.90, abs=1e-3)
+    assert hit["score"] == pytest.approx(0.93, abs=1e-3)
+    assert not em.of("metric", stage="embed_final_queued"), "the turn closed with its hit: no final-text pass"
     assert len(embed_hits(em)) == 1, "the same hit is not repeated"
     assert all(n.startswith("verse-embed") for n in fe.threads), fe.threads
     # Haiku's BANK line is checked against the embed hit
@@ -194,8 +207,69 @@ def test_distractor_gives_no_hit():
     assert fe.queries, "the partials were evaluated"
     assert not embed_hits(em)
     # above the threshold but too close to the runner-up
-    em, fe = run(go([("do you have", {"b009": 0.90, "b015": 0.897})]))
+    em, fe = run(go([("do you have", {"b009": 0.91, "b015": 0.907})]))
     assert not embed_hits(em)
+
+
+async def _ask(b: Brain, tid: str, partials, final_text: str) -> None:
+    for text in partials:
+        await partial(b, tid, text)
+        await idle(b)
+    await turn(b, tid, final_text)
+    await idle(b)
+    await settle(b)
+
+
+def test_prefix_spike_on_an_offbank_question_gives_no_card():
+    """The f3-embed replay's wrong card: an off-bank question whose 5-8 word prefixes score above the old threshold on one
+    entry, two partials in a row, and then decay. Neither the partials nor the final-text pass may show a card."""
+    async def go(**cfg):
+        fe = FakeEmbedder(SPIKE)
+        b, t, em = make(fe, **cfg)
+        await start(b)
+        await _ask(b, "q1", SPIKE_PARTIALS, SPIKE_PARTIALS[-1] + "?")
+        return em, fe
+
+    em, fe = run(go())
+    assert not embed_hits(em), embed_hits(em)
+    assert len(fe.queries) == 4, fe.queries                       # three partials and the final text were all evaluated
+    assert em.of("metric", stage="embed_final_queued", turn_id="q1")
+    # the fixture is a real spike: the rule before the retune shows it as a card for b009
+    em_old, _ = run(go(**OLD_RULE))
+    assert [h["bank_id"] for h in embed_hits(em_old)] == ["b009"]
+
+
+def test_score_between_the_old_and_new_threshold_gives_no_card():
+    """0.89 on every partial and on the final text: a hit under the old 0.865 threshold, none under 0.90."""
+    words = "What have you been doing in the last few months".split()
+    partials = [" ".join(words[:n]) for n in range(5, len(words) + 1)]
+
+    async def go(**cfg):
+        fe = FakeEmbedder([("what have you been", {"b001": 0.89, "b005": 0.84})])
+        b, t, em = make(fe, **cfg)
+        await start(b)
+        await _ask(b, "q1", partials, " ".join(words) + "?")
+        return em
+
+    assert not embed_hits(run(go()))
+    assert [h["bank_id"] for h in embed_hits(run(go(**OLD_RULE)))] == ["b001"]
+
+
+def test_final_text_pass_completes_a_paraphrase_two_partials_short():
+    """A paraphrase accepted on two partials only (the question ended): the final-text pass shows the card at the endpoint."""
+    async def go():
+        fe = FakeEmbedder(PARA)
+        b, t, em = make(fe, fast_responder(FAST_B001))
+        await start(b)
+        await _ask(b, "q1", ("How did you end up where", "How did you end up where you are"),
+                   "How did you end up where you are?")
+        return em
+
+    em = run(go())
+    hits = embed_hits(em)
+    assert [(h["turn_id"], h["bank_id"]) for h in hits] == [("q1", "b001")]
+    finals = [m for m in em.of("metric", stage="embed", turn_id="q1") if m.get("final")]
+    assert len(finals) == 1 and finals[0]["accepted"] is True
 
 
 def test_no_hit_without_question_cue():
@@ -254,7 +328,7 @@ def test_haiku_disagrees_retracts_embed_hit():
         fe = FakeEmbedder(PARA)
         b, t, em = make(fe, fast_responder(FAST_B005))
         await start(b)
-        for text in ("How did you end up where", "How did you end up where you are"):
+        for text in ("How did you end up where", "How did you end up where you", "How did you end up where you are"):
             await partial(b, "q1", text)
             await idle(b)
         await turn(b, "q1", "How did you end up where you are")
@@ -419,6 +493,8 @@ def test_real_model_paraphrase_and_distractor():
             for n in range(1, len(w) + 1):
                 await partial(b, tid, " ".join(w[:n]))
                 await idle(b, timeout=10)
+            await turn(b, tid, sentence)          # the endpoint: the final-text pass runs as in a live call
+            await idle(b, timeout=10)
 
         await say("q1", "Where do you feel you fall short at work these days?")
         await say("q2", "How long until you could begin if you accepted our offer?")

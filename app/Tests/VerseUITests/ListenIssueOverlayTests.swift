@@ -4,7 +4,8 @@ import VerseTurns
 @testable import VerseUI
 import XCTest
 
-/// Review H5/H8: a channel whose capture or recognizer died mid-call shows on the overlay; a recovery that works shows nothing.
+/// Review H5/H8: a channel whose capture or recognizer died mid-call shows on the overlay; a recovery that works shows a brief
+/// "reconnected" notice (there was a gap in the transcript) that goes by itself and gives way to a card.
 final class ListenIssueOverlayTests: XCTestCase {
     private func running() -> OverlayReducer {
         var r = OverlayReducer()
@@ -17,14 +18,18 @@ final class ListenIssueOverlayTests: XCTestCase {
         r.apply(.issue(code: "capture_failed", message: "audio capture on your microphone channel stopped"), now: 1)
         XCTAssertEqual(r.state.status, .error("audio capture on your microphone channel stopped"))
         r.apply(.issue(code: "capture_recovered", message: "restarted"), now: 2)
+        XCTAssertEqual(r.state.status, .reconnected([.audio]), "the failure panel goes; the notice says it came back")
+        r.tick(now: 2 + r.config.noticeDuration)
         XCTAssertNil(r.state.status)
     }
 
-    func testSpeechFailureStaysAndRecoveredIssuesChangeNothing() {
+    func testSpeechFailureStaysAndRecoveredIssuesOnlyNotify() {
         var r = running()
         r.apply(.issue(code: "speech_recovered", message: "Nemotron failed; Apple took over"), now: 1)
         r.apply(.issue(code: "capture_recovered", message: "restarted"), now: 1)
-        XCTAssertNil(r.state.status, "a channel that works again needs nothing on screen")
+        XCTAssertEqual(r.state.status, .reconnected([.transcription, .audio]), "two recoveries at once: one notice")
+        r.tick(now: 1 + r.config.noticeDuration)
+        XCTAssertNil(r.state.status, "a channel that works again needs nothing on screen once the notice went")
         r.apply(.issue(code: "speech_failed", message: "speech recognition on the meeting audio channel failed"), now: 2)
         XCTAssertEqual(r.state.status, .error("speech recognition on the meeting audio channel failed"))
         r.apply(.issue(code: "capture_recovered", message: "restarted"), now: 3)
@@ -35,6 +40,27 @@ final class ListenIssueOverlayTests: XCTestCase {
     // MARK: per channel (the issue text names the channel: `ListenError.description`)
 
     private func issue(_ e: ListenError) -> RunnerEvent { .issue(code: e.code, message: e.description) }
+
+    /// The issue's own `channel` field decides the channel; the text is read only when the field is absent. Here the second
+    /// failure's text names no channel and the recovery's text names none either: only the field tells them apart.
+    func testTheIssuesChannelFieldIsUsedBeforeTheText() {
+        var r = running()
+        r.apply(.issue(code: "capture_failed", message: "meeting audio stopped", channel: .remote), now: 1)
+        r.apply(.issue(code: "capture_failed", message: "input device gone", channel: .me), now: 2)
+        r.apply(.issue(code: "capture_recovered", message: "default input device changed", channel: .me), now: 3)
+        XCTAssertEqual(shown(r), "meeting audio stopped", "the microphone came back; the meeting audio is still down")
+        r.apply(.issue(code: "capture_recovered", message: "restarted", channel: .remote), now: 4)
+        XCTAssertEqual(r.state.status, .reconnected([.meetingAudio]))
+    }
+
+    /// A field that disagrees with the text wins (the text may quote a reason that names the other channel).
+    func testTheFieldWinsOverAChannelNamedInTheText() {
+        var r = running()
+        r.apply(.issue(code: "capture_failed", message: "stopped after the meeting audio channel changed device", channel: .me), now: 1)
+        r.apply(.issue(code: "capture_failed", message: ListenError.captureFailed(.remote, "x").description), now: 2)
+        r.apply(.issue(code: "capture_recovered", message: "back", channel: .me), now: 3)
+        XCTAssertEqual(shown(r), ListenError.captureFailed(.remote, "x").description, "no field: the text's channel (remote) is used")
+    }
 
     private func shown(_ r: OverlayReducer) -> String? {
         if case .error(let m)? = r.state.status { return m }
@@ -53,7 +79,9 @@ final class ListenIssueOverlayTests: XCTestCase {
         XCTAssertTrue(m?.contains("your microphone channel") == true, m ?? "")
         XCTAssertFalse(m?.contains("the meeting audio channel") == true, m ?? "")
         r.apply(issue(.captureRecovered(.me, "default input device changed")), now: 4)
-        XCTAssertNil(r.state.status, "every failed channel recovered")
+        XCTAssertEqual(r.state.status, .reconnected([.microphone]), "every failed channel recovered: only the notice is left")
+        r.tick(now: 4 + r.config.noticeDuration)
+        XCTAssertNil(r.state.status)
     }
 
     /// A second failure does not overwrite the first: the panel names both channels.
@@ -104,5 +132,74 @@ final class ListenIssueOverlayTests: XCTestCase {
         XCTAssertNil(ListenError.channel(inIssueMessage: "restarted"))
         XCTAssertEqual(ListenError.captureFailed(.me, "x").channel, .me)
         XCTAssertNil(ListenError.tapFailed("x").channel)
+    }
+
+    // MARK: the "reconnected" notice
+
+    /// A recovered microphone or meeting audio says so by name, for `noticeDuration`, then goes by itself.
+    func testRecoveredCaptureShowsANoticeThatGoesByItself() {
+        var r = running()
+        r.apply(issue(.captureRecovered(.me, "default input device changed")), now: 10)
+        XCTAssertEqual(r.state.status, .reconnected([.microphone]))
+        XCTAssertEqual(r.state.status?.title, "Microphone reconnected")
+        XCTAssertEqual(r.state.status?.detail, "A few seconds may be missing from the transcript.")
+        XCTAssertEqual(r.state.status?.needsPanel, true)
+        r.tick(now: 10 + r.config.noticeDuration - 0.5)
+        XCTAssertEqual(r.state.status, .reconnected([.microphone]), "still within its time")
+        r.tick(now: 10 + r.config.noticeDuration)
+        XCTAssertNil(r.state.status)
+
+        r.apply(issue(.captureRecovered(.remote, "default output device changed")), now: 20)
+        XCTAssertEqual(r.state.status?.title, "Meeting audio reconnected")
+        r.apply(issue(.captureRecovered(.me, "default input device changed")), now: 21)
+        XCTAssertEqual(r.state.status?.title, "Audio reconnected", "AirPods: both channels came back")
+        r.tick(now: 20 + r.config.noticeDuration)
+        XCTAssertNotNil(r.state.status, "the second recovery started the time again")
+        r.tick(now: 21 + r.config.noticeDuration)
+        XCTAssertNil(r.state.status)
+
+        r.apply(issue(.speechRecovered(.remote, "Nemotron decode failed")), now: 30)
+        XCTAssertEqual(r.state.status?.title, "Transcription restarted")
+    }
+
+    /// The notice never hides a real status, and gives way to an answer card like a per-call error (`yieldsToCard`).
+    func testNoticeYieldsToCardsAndNeverReplacesARealStatus() {
+        var r = running()
+        r.apply(.status(state: "offline", message: ""), now: 1)
+        r.apply(issue(.captureRecovered(.me, "x")), now: 2)
+        XCTAssertEqual(r.state.status, .offline, "No connection stays")
+
+        var c = running()
+        c.apply(issue(.captureRecovered(.me, "x")), now: 1)
+        c.apply(.outbound(["type": .string("turn"), "turn_id": .string("t1"), "speaker": .string("remote"),
+                           "addressee": .string("me"), "kind": .string("question"), "text": .string("What is the budget?")]), now: 2)
+        XCTAssertNotNil(c.state.card)
+        guard case .card = IslandKind.resolve(c.state, prompterOpen: false) else {
+            return XCTFail("the card shows over the notice: \(IslandKind.resolve(c.state, prompterOpen: false))")
+        }
+        var idle = c.state
+        idle.card = nil
+        guard case .statusPanel(.reconnected) = IslandKind.resolve(idle, prompterOpen: false) else { return XCTFail("no card: the notice shows") }
+    }
+
+    /// Nothing to say outside a call; a session that ends takes the notice with it.
+    func testNoticeOnlyInARunningCall() {
+        var r = OverlayReducer()
+        r.apply(issue(.captureRecovered(.me, "x")), now: 1)
+        XCTAssertNil(r.state.status)
+        var s = running()
+        s.apply(issue(.captureRecovered(.me, "x")), now: 1)
+        s.apply(.ended(exitCode: 0), now: 2)
+        XCTAssertNil(s.state.status)
+    }
+
+    /// The localized strings exist in Italian and Turkish.
+    func testNoticeStringsAreLocalized() {
+        for key in ["Microphone reconnected", "Meeting audio reconnected", "Audio reconnected", "Transcription restarted",
+                    "Reconnected", "Restarted", "A few seconds may be missing from the transcript."] {
+            for lang in ["it", "tr"] {
+                XCTAssertNotEqual(L10n.tr(String.LocalizationValue(key), locale: Locale(identifier: lang)), key, "\(key) [\(lang)]")
+            }
+        }
     }
 }

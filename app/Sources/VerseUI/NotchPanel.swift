@@ -48,10 +48,13 @@ public final class NotchPanelController {
     private var layoutPending = false
 
     private let onRetry: () -> Void
+    /// Kept for the root view's rebuild when the display changes (the permission panel's "Open System Settings").
+    let onOpenSettings: (String) -> Void
 
     public init(model: OverlayModel, settings: AppSettings, prompter: PrompterModel = PrompterModel(),
                 onOpenSettings: @escaping (String) -> Void, onRetry: @escaping () -> Void = {}) {
         self.onRetry = onRetry
+        self.onOpenSettings = onOpenSettings
         self.model = model
         self.settings = settings
         self.prompter = prompter
@@ -73,9 +76,7 @@ public final class NotchPanelController {
         panel.becomesKeyOnlyIfNeeded = true
         panel.title = "Verse overlay"
 
-        let root = OverlayView(model: model, settings: settings, prompter: prompter, metrics: metrics, onOpenSettings: onOpenSettings,
-                               onRetry: onRetry, onSizeChange: { [weak self] size in self?.contentSizeChanged(size) })
-        let host = OverlayHostingView(rootView: AnyView(root.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)))
+        let host = OverlayHostingView(rootView: makeRootView())
         host.sizingOptions = []
         // The hosting view sits inside a plain container so it never drives the window's size itself (as a window's
         // content view it resizes the window from inside the display cycle, which AppKit aborts on).
@@ -91,7 +92,8 @@ public final class NotchPanelController {
         }
         // Nothing running and nothing to read: no window on screen. The sink runs one hop late, so it reads the model as it
         // is now: a value delivered late (the prompt cleared just before a meeting's Start) must not hide the new call.
-        stateSub = model.$state.receive(on: RunLoop.main).sink { [weak self] _ in
+        // (`objectWillChange` fires for every change of the state but the level bars, which never decide visibility.)
+        stateSub = model.objectWillChange.receive(on: RunLoop.main).sink { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.hideIfIdle()
             }
@@ -151,13 +153,32 @@ public final class NotchPanelController {
         let s = Self.notchScreen()
         let m = Self.metrics(for: s)
         screen = s
-        if m != metrics {
-            metrics = m
-            let root = OverlayView(model: model, settings: settings, prompter: prompter, metrics: metrics, onOpenSettings: { _ in },
-                                   onRetry: onRetry, onSizeChange: { [weak self] size in self?.contentSizeChanged(size) })
-            hostingView?.rootView = AnyView(root.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top))
-        }
+        apply(metrics: m)
         layout()
+    }
+
+    /// New notch metrics (a display change): the root view is rebuilt for them, with the callbacks from `init`.
+    func apply(metrics m: NotchMetrics) {
+        guard m != metrics else { return }
+        metrics = m
+        hostingView?.rootView = makeRootView()
+    }
+
+    /// The overlay for the current metrics, with the callbacks from `init` every time it is built (at launch and on
+    /// each display change).
+    func makeOverlayView() -> OverlayView {
+        OverlayView(model: model, settings: settings, prompter: prompter, metrics: metrics,
+                    onOpenSettings: onOpenSettings, onRetry: onRetry,
+                    onSizeChange: { [weak self] size in self?.contentSizeChanged(size) })
+    }
+
+    /// The overlay the hosting view shows now (tests read its callbacks).
+    private(set) var rootOverlay: OverlayView?
+
+    private func makeRootView() -> AnyView {
+        let view = makeOverlayView()
+        rootOverlay = view
+        return AnyView(view.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top))
     }
 
     /// Called from SwiftUI's layout pass: the window frame is never changed right there, only on the next turn of the

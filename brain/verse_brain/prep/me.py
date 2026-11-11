@@ -43,6 +43,7 @@ from .sources import MAX_QUOTE_CHARS, MIN_QUOTE_CHARS, SourceBook, norm, numbers
 from .. import extensions
 from ..owner import OWNER
 from .vault import DEFAULT_VAULT
+from .voice import attempt_max_tokens, failed_with_usage, spent_usd, sum_usage
 
 PROFILE_DIR = Path("~/Library/Application Support/Verse/profile")
 SESSIONS_DIR = Path("~/Library/Application Support/Verse/sessions")
@@ -516,20 +517,22 @@ async def generate(model: PrepModel, docs: list[Doc], previous: str, reserved: l
     """One distillation call (a second only when nothing usable came back). -> (raw lines, summed usage, stats)."""
     user = render_user(docs, previous, reserved)
     in_tokens = await model.count_request_tokens(SYSTEM, user)
-    pin, pout = PRICES[model.model][:2]
-    max_tokens = min(MAX_OUTPUT_TOKENS, int((budget_usd - in_tokens * pin / 1e6) / (pout / 1e6)))
-    if max_tokens < 8000:
-        raise MeError(f"budget ${budget_usd:.2f} leaves only {max_tokens} output tokens; raise --budget-usd or shrink the sources")
     total, problem = Usage(), ""
-    for _ in range(attempts):
+    for i in range(attempts):
+        # each call is sized from the budget left after the earlier ones, so all attempts together fit `budget_usd`
+        max_tokens = attempt_max_tokens(model, in_tokens + len(problem) // 3, budget_usd, spent_usd(model.model, total))
+        if max_tokens < 8000:
+            err = MeError(f"budget ${budget_usd:.2f} leaves only {max_tokens} output tokens"
+                          + (" after the first attempt" if i else "") + "; raise --budget-usd or shrink the sources")
+            raise failed_with_usage(err, model.model, total) if i else err
         res = await model.generate(SYSTEM, user + (f"\n\nYour previous answer was rejected: {problem}" if problem else ""), max_tokens)
-        total = Usage(total.input + res.usage.input, total.output + res.usage.output,
-                      total.cache_read + res.usage.cache_read, total.cache_write + res.usage.cache_write)
+        total = sum_usage(total, res.usage)
         lines, bad = parse_output(res.text)
         if lines:
             return lines, total, {"unreadable": bad, "input_tokens": in_tokens}
         problem = "no line could be read. Use the formats of the instructions, with SRC: S<k> \"<quote>\" at the end."
-    raise MeError(f"the profile model returned nothing usable after {attempts} attempts: {problem}")
+    raise failed_with_usage(MeError(f"the profile model returned nothing usable after {attempts} attempts: {problem}"),
+                            model.model, total)
 
 
 class FakeMeModel:
@@ -800,6 +803,24 @@ def stale_sources(paths: Paths, docs: list[Doc]) -> list[str]:
     return out
 
 
+def _record_failed_spend(paths: Paths, spent: float) -> None:
+    """A build that failed after paying for model calls adds that to `spend_usd_total` in the meta already on disk (the
+    profile itself is untouched), so the running total does not under-report. With no meta yet nothing is created (a failed
+    first build leaves no files); the spend is then only in the error text."""
+    if spent <= 0 or not paths.meta.is_file():
+        return
+    try:
+        meta = json.loads(paths.meta.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    meta["spend_usd_total"] = round(float(meta.get("spend_usd_total", 0.0)) + spent, 6)
+    meta["last_failed_spend_usd"] = round(spent, 6)
+    try:
+        _atomic(paths.meta, json.dumps(meta, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
+    except OSError:
+        pass
+
+
 async def build_profile(profile_dir: Path, *, model: PrepModel, refresh: bool = False, budget_usd: float = 0.5,
                         embedder_factory: Callable[[], object] | None = None, embed_model_path: str | None = None,
                         vault: Path = DEFAULT_VAULT, now: Callable[[], datetime] | None = None,
@@ -838,7 +859,11 @@ async def build_profile(profile_dir: Path, *, model: PrepModel, refresh: bool = 
         previous = "\n".join(f"## {s}\n" + "\n".join(l.text for l in pm[s] if l.id in gen_ids)
                              for s in SECTIONS if s != NOTES and any(l.id in gen_ids for l in pm[s]))
         reserved = [l.id for ls in pm.values() for l in ls if l.id and l.id not in gen_ids] + [d["id"] for d in meta.get("deleted", [])]
-    raws, usage, stats = await generate(model, docs, previous, reserved, budget_usd=budget_usd)
+    try:
+        raws, usage, stats = await generate(model, docs, previous, reserved, budget_usd=budget_usd)
+    except MeError as e:
+        _record_failed_spend(paths, float(getattr(e, "spend_usd", 0.0)))
+        raise
     dropped: dict[str, int] = {}
     if stats.get("unreadable"):
         dropped["unreadable"] = stats["unreadable"]
@@ -855,7 +880,10 @@ async def build_profile(profile_dir: Path, *, model: PrepModel, refresh: bool = 
         per_section[r.section] = per_section.get(r.section, 0) + 1
         generated.append(line)
     if not generated:
-        raise MeError("no line of the model's profile could be verified against the sources; nothing was written")
+        spend_failed = spent_usd(model.model, usage)
+        _record_failed_spend(paths, spend_failed)
+        raise MeError("no line of the model's profile could be verified against the sources; nothing was written"
+                      + (f" (spent ${spend_failed:.4f})" if model.model in PRICES else ""))
     notes = notes_lines(paths.notes.read_text(encoding="utf-8")) if paths.notes.is_file() else []
     merged = merge(prev_md, meta, generated, notes)
 

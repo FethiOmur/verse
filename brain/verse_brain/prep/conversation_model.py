@@ -60,6 +60,8 @@ class ResearchOutput:
     fetch_count: int = 0
     usage: Usage = field(default_factory=Usage)
     stop_reason: str | None = "end_turn"
+    lost_searches: int = 0  # searches charged (inside `searches`) for a turn that died mid-stream and was run again
+    cost_estimated: bool = False  # true when a lost turn's tokens and searches could only be estimated
 
 
 T = TypeVar("T")
@@ -198,11 +200,13 @@ class AnthropicConversationModel(AnthropicPrepModel):
 
     async def _stream_turn(self, system: str, messages: list[dict], tools: list[dict], max_tokens: int):
         """One streaming request with the research tools; returns the final message."""
+        self._stream_started = False
         async with self._client.messages.stream(
             model=self.model, max_tokens=max_tokens, system=system, messages=messages, tools=tools,
             thinking={"type": "adaptive"}, output_config={"effort": "high"},
         ) as stream:
             async for ev in stream:
+                self._stream_started = True  # from here a server tool may already have run (and been billed)
                 if self._progress and getattr(ev, "type", "") == "content_block_stop":
                     b = _as_dict(getattr(ev, "content_block", None))
                     inp = b.get("input") or {}
@@ -222,13 +226,34 @@ class AnthropicConversationModel(AnthropicPrepModel):
             if searches_left <= 0 and fetches_left <= 0:
                 out.errors.append("tool budget reached while the turn was still paused")
                 break
-            tools: list[dict] = []
-            if searches_left > 0:
-                tools.append({"type": WEB_SEARCH_TOOL, "name": "web_search", "max_uses": searches_left})
-            if fetches_left > 0:
-                tools.append({"type": WEB_FETCH_TOOL, "name": "web_fetch", "max_uses": fetches_left,
-                              "max_content_tokens": FETCH_CONTENT_TOKENS})
-            final = await retry_transient(lambda: self._stream_turn(system, messages, tools, max_tokens))
+            lost = 0  # searches charged for attempts of this turn that died after their stream started
+
+            async def attempt() -> object:
+                nonlocal lost
+                tools: list[dict] = []
+                left = searches_left - lost
+                if left > 0:
+                    tools.append({"type": WEB_SEARCH_TOOL, "name": "web_search", "max_uses": left})
+                if fetches_left > 0:
+                    tools.append({"type": WEB_FETCH_TOOL, "name": "web_fetch", "max_uses": fetches_left,
+                                  "max_content_tokens": FETCH_CONTENT_TOKENS})
+                if not tools:
+                    raise PrepError("the search budget was used up by a research turn that dropped and had to be retried")
+                self._stream_started = False
+                try:
+                    return await self._stream_turn(system, messages, tools, max_tokens)
+                except _transient_types():
+                    if self._stream_started:  # the lost attempt may have run (and been billed for) every search it was allowed
+                        lost += max(left, 0)
+                    raise
+
+            try:
+                final = await retry_transient(attempt)
+            finally:
+                if lost:  # charged even when the retries ran out, so the caller's cap and cost line stay honest
+                    out.searches += lost
+                    out.lost_searches += lost
+                    out.cost_estimated = True
             u = final.usage
             usage.input += u.input_tokens or 0
             usage.output += u.output_tokens or 0

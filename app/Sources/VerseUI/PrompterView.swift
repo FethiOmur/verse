@@ -53,9 +53,9 @@ struct PrompterTextView: View {
         let current = PrompterIslandType.current(fontSize: fontSize, scale: scale)
         let other = PrompterIslandType.other(fontSize: fontSize, scale: scale)
         let words = model.page.words
-        // Lines break as if every word were in the current line (the largest type), so no line is ever too wide.
-        let layout = PrompterLayout.make(wordWidths: PrompterTextMeasure.widths(of: words.map(\.text), fontSize: current),
-                                         spaceWidth: PrompterTextMeasure.spaceWidth(size: current, weight: .semibold), maxWidth: textWidth)
+        // Lines break as if every word were in the current line (the largest type), so no line is ever too wide. Cached on
+        // the model: this body runs once per word read.
+        let layout = model.layout(currentSize: current, maxWidth: textWidth)
         let ranges = model.wordRanges
         let window = PrompterLineWindow(currentLine: layout.line(ofWordPosition: Double(ranges.read.count)), lineCount: layout.lines.count)
         VStack(alignment: .leading, spacing: 8) {
@@ -142,6 +142,10 @@ struct PrompterPanelView: View {
         .transaction { $0.animation = nil }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("verse.prompter")
+        // The hint is in the interface language; the raw (English) reason goes to the log.
+        .onChange(of: model.hint, initial: true) { _, hint in
+            if case .fellBack(let reason, _)? = hint { FileLog.shared.write("prompter: fell back to classic: \(reason)") }
+        }
     }
 
     private var controls: some View {

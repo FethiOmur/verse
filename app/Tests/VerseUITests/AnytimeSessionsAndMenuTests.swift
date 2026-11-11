@@ -104,6 +104,106 @@ final class AnytimeSessionsAndMenuTests: XCTestCase {
         XCTAssertFalse(c.running)
     }
 
+    // MARK: practice owns the microphone (review V1)
+
+    /// A controller whose launches are recorded instead of run, over a root with one prepared session.
+    private func recording() throws -> (VerseController, () -> [LaunchRequest]) {
+        let r = try root()
+        let d = r.appendingPathComponent("mara-northwindlabs", isDirectory: true)
+        try FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
+        try Data().write(to: d.appendingPathComponent("pack.md"))
+        let c = controller()
+        c.sessionsRoot = r
+        c.refreshSessions()
+        c.eventsAround = { _ in [] }
+        c.routeFacts = { QuickStart.RouteFacts(phoneCallActive: false, meetingAppHoldsMic: true) }
+        var launches: [LaunchRequest] = []
+        c.launchOverride = { launches.append($0) }
+        return (c, { launches })
+    }
+
+    /// While a practice interview runs no Start of any kind launches a meeting, and ⌥⌘V (which would start one) arms on the
+    /// first press and ends the practice on the second.
+    func testAPracticeBlocksEveryStartAndHotKeyTwiceEndsIt() throws {
+        let (c, launches) = try recording()
+        var ended = 0
+        c.startBlocked = { true }
+        c.blockedStop = { ended += 1 }
+        c.start()
+        c.startNow()
+        c.start(remoteFile: URL(fileURLWithPath: "/tmp/remote.wav"))
+        c.retry()
+        XCTAssertEqual(launches(), [], "nothing starts on top of the practice")
+        c.startStopKeyPressed()
+        XCTAssertEqual(ended, 0, "the first press only arms")
+        XCTAssertTrue(c.stopArmed)
+        c.startStopKeyPressed()
+        XCTAssertEqual(ended, 1, "the second press ends the practice")
+        XCTAssertFalse(c.stopArmed)
+        XCTAssertEqual(launches(), [])
+    }
+
+    func testWithoutAPracticeStopTheHotKeyDoesNothingDuringPractice() throws {
+        let (c, launches) = try recording()
+        c.startBlocked = { true }
+        c.startStopKeyPressed()
+        c.startStopKeyPressed()
+        XCTAssertFalse(c.stopArmed)
+        XCTAssertEqual(launches(), [])
+    }
+
+    /// The app binds the practice controller: the block follows its running state.
+    func testBindPracticeFollowsThePracticesRunningState() {
+        let defaults = UserDefaults(suiteName: "verse.tests.\(UUID().uuidString)")!
+        let c = VerseController(settings: AppSettings(defaults: defaults), launch: LaunchOptions(arguments: []))
+        let sim = SimController(settings: c.settings, simSettings: SimSettings(defaults: defaults), meeting: c)
+        XCTAssertFalse(c.startBlocked())
+        c.bindPractice(sim)
+        XCTAssertFalse(c.startBlocked(), "no practice running")
+        XCTAssertNotNil(c.blockedStop)
+        sim.setPhaseForPreview(.running)
+        XCTAssertTrue(c.startBlocked())
+        sim.setPhaseForPreview(.finished)
+        XCTAssertFalse(c.startBlocked())
+    }
+
+    // MARK: Retry repeats the failed start (review U4)
+
+    func testRetryAfterAStartNowOnTheRoomRouteRunsTheSameSessionAgain() throws {
+        let (c, launches) = try recording()
+        c.chooseRoute(.room)
+        c.startNow()
+        XCTAssertEqual(launches().count, 1)
+        let first = launches()[0]
+        XCTAssertEqual(first.route, .room)
+        XCTAssertEqual(first.mode, .unprepared)
+        XCTAssertTrue(first.anytimeStart)
+        c.retry()
+        XCTAssertEqual(launches().count, 2)
+        XCTAssertEqual(launches()[1], first, "the same folder, route and language, not a prepared meeting-route Start")
+    }
+
+    func testRetryAfterAPlayAsRemoteRunKeepsTheFile() throws {
+        let (c, launches) = try recording()
+        let url = URL(fileURLWithPath: "/tmp/remote.wav")
+        c.start(remoteFile: url)
+        XCTAssertEqual(launches().first?.remoteFile, url)
+        c.retry()
+        XCTAssertEqual(launches().count, 2)
+        XCTAssertEqual(launches()[1].remoteFile, url)
+        XCTAssertEqual(launches()[1].mode, .prepared)
+    }
+
+    func testRetryAfterAPreparedStartIsAPreparedStart() throws {
+        let (c, launches) = try recording()
+        c.start()
+        c.retry()
+        XCTAssertEqual(launches().map(\.mode), [.prepared, .prepared])
+        XCTAssertEqual(launches().map(\.route), [.meeting, .meeting])
+        XCTAssertEqual(launches().map(\.name), ["mara-northwindlabs", "mara-northwindlabs"])
+        XCTAssertNil(launches()[1].remoteFile)
+    }
+
     func testUnpreparedFoldersAreNotSessionsToPick() throws {
         let r = try root()
         for name in ["adhoc-20261016-1432-room", "mara-northwindlabs"] {

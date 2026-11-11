@@ -82,15 +82,18 @@ public enum RunnerEvent: Sendable, Equatable {
     case chip([String: JSONValue])
     /// A metric the runner measures itself (`session_t0`, `turn_sent`, `first_text`).
     case metric([String: JSONValue])
-    /// A status the runner makes itself: `restarting` and `error` (brain supervision), `permission_denied`
-    /// (message = `audioCapture` | `microphone`, sink only), `listen_failed` (sink only).
+    /// A status the runner makes itself: `restarting` and `error` (brain supervision), `warming` (listening already runs while the
+    /// brain is still warming up), `permission_denied` (message = `audioCapture` | `microphone`, sink only), `listen_failed` (sink only).
     case status(state: String, message: String)
-    /// A problem the listen session reported while running (`{type:"issue", code, message}`).
-    case issue(code: String, message: String)
+    /// A problem the listen session reported while running (`{type:"issue", code, message, channel?}`). `channel` (`remote` | `me`)
+    /// is set when the issue is about one channel, nil otherwise (and for a line from an older runner, which did not carry it).
+    case issue(code: String, message: String, channel: Channel? = nil)
     /// Raw loudness of the last 200 ms per channel in dBFS (nil: exact silence or no such channel), about ten times a
     /// second (sink only; nothing is printed). It moves the "Listening" label with the sound, before any text exists.
     case level(remoteDbfs: Double?, meDbfs: Double?)
-    /// A line sent to the brain (`partial`, `turn`, `bank_hit`), with `dir:"to_brain"`.
+    /// A line sent to the brain (`partial`, `turn`, `bank_hit`), with `dir:"to_brain"`. While the first brain is still warming up
+    /// the lines are shown here as they are heard but held from the brain: its finalized turns reach it as `history` once it is
+    /// ready, the newest question live (`VerseRunner` warm start).
     case outbound([String: JSONValue])
     /// The run is over (sink only). Exit code as `run()` returns it.
     case ended(exitCode: Int32)
@@ -100,7 +103,10 @@ public enum RunnerEvent: Sendable, Equatable {
         switch self {
         case .brain(let o), .chip(let o), .metric(let o), .outbound(let o): return o
         case .status(let st, let m): return ["type": .string("status"), "state": .string(st), "message": .string(m)]
-        case .issue(let c, let m): return ["type": .string("issue"), "code": .string(c), "message": .string(m)]
+        case .issue(let c, let m, let ch):
+            var o: [String: JSONValue] = ["type": .string("issue"), "code": .string(c), "message": .string(m)]
+            if let ch { o["channel"] = .string(ch.rawValue) }
+            return o
         case .ended, .level: return nil
         }
     }
@@ -113,9 +119,32 @@ public enum RunnerEvent: Sendable, Equatable {
         case "chip": return .chip(o)
         case "metric": return .metric(o)
         case "status": return .status(state: o[string: "state"] ?? "", message: o[string: "message"] ?? "")
-        case "issue": return .issue(code: o[string: "code"] ?? "", message: o[string: "message"] ?? "")
+        case "issue": return .issue(code: o[string: "code"] ?? "", message: o[string: "message"] ?? "",
+                                    channel: o[string: "channel"].flatMap(Channel.init(rawValue:)))
         default: return .metric(o)
         }
+    }
+}
+
+/// What the app says when a run ended normally but the brain was given up on mid-call (it crashed past
+/// `RunOptions.maxBrainRestarts`, or never became ready): listening and the transcript went on, the answers did not.
+public enum RunEndNote {
+    /// A short title and one sentence. `since`: when the answers stopped (the runner's `answers_off` metric).
+    public static func answersOff(since: Date, summaryWritten: Bool, timeZone: TimeZone = .current) -> (title: String, detail: String) {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = timeZone
+        f.dateFormat = "HH:mm"
+        let summary = summaryWritten ? "The summary was written." : "No summary could be written."
+        return ("Call ended · answers were off for part of it",
+                "Verse stopped answering at \(f.string(from: since)) because the brain stopped working; the transcript of the whole call is complete. \(summary)")
+    }
+
+    /// Whether `summary.md` in the session folder was written during the run that started at `since`.
+    public static func summaryWritten(sessionDir: URL, since: Date) -> Bool {
+        let url = sessionDir.appendingPathComponent("summary.md")
+        guard let a = try? FileManager.default.attributesOfItem(atPath: url.path), let m = a[.modificationDate] as? Date else { return false }
+        return m >= since.addingTimeInterval(-1) && (a[.size] as? Int ?? 0) > 0
     }
 }
 
@@ -161,6 +190,11 @@ public struct RunOptions: Sendable {
     /// ... and how long the brain must be quiet before that wait ends early.
     public var quietSeconds = 3.0
     public var readyTimeout = 45.0
+    /// Whether listening waits for the brain's first readiness answer (`readyTimeout` at most). nil (the default): only for a
+    /// file or memory source, which loses nothing by waiting and keeps replays and their latency numbers comparable. Live audio
+    /// is heard at once: a slow pre-warm must not lose speech (a stalled network once delayed listening by 35 s); what is heard
+    /// before the brain is ready reaches it as `history` when it is, the newest question live.
+    public var waitForBrainBeforeListening: Bool?
     public var format = OutputFormat.json
     /// Also print the partial/turn/bank_hit lines that go to the brain.
     public var echoOutbound = false
@@ -219,6 +253,9 @@ public struct RunOptions: Sendable {
 /// Nothing here writes audio. The brain is killed on every way out: normal end, `requestStop()` (SIGINT/SIGTERM) and errors.
 /// Supervision: when the brain exits unexpectedly it is restarted with the same session, up to `maxBrainRestarts` times with
 /// backoff; after that the run reports `status error` and goes on listening and writing the transcript without answers.
+/// Live audio does not wait for the brain: listening starts next to its pre-warm, and what is heard before it is ready reaches
+/// it as `history` (the newest question live). At the end, a brain that is still warming up or due to be restarted is given
+/// the call so far before `control stop`, so the final summary covers it.
 public final class VerseRunner: @unchecked Sendable {
     /// What the run loop consumes. Times are the run's own (they continue across a listen swap, see `Leg.offset`); `ended`
     /// names the listen pipeline whose stream finished.
@@ -308,6 +345,11 @@ public final class VerseRunner: @unchecked Sendable {
         /// restarted brain gets: it starts with an empty transcript otherwise.
         var history: [HistoryTurn] = []
         var brainFailed = false
+        /// The brain's start ended with a reason that ends the session (`fatalAtStart`: no or rejected key, no credit, bad session).
+        var brainFatal = false
+        /// The route and language the current brain process was started with (its `start` line), so a switch made before it
+        /// was ready can be told to it when it goes live.
+        var brainStartedWith: (route: AudioRoute, lang: String)?
         /// The turn engine of the running session, for the brain's paraphrase hits (`noteBrainBankHit`).
         var engine: TurnEngine?
         // listen swap
@@ -320,6 +362,8 @@ public final class VerseRunner: @unchecked Sendable {
         var pendingSwap: PendingSwap?
         /// `RunOptions.seconds` ran out: the run ends, no switch starts.
         var limitReached = false
+        /// The run is ending (stop, time limit, a fatal brain start): no switch starts, a pending one gives up.
+        var ending: Bool { stopRequested || limitReached || brainFatal }
         var listenFailed = false
         var swaps = 0
         // interim AUTO language
@@ -385,7 +429,9 @@ public final class VerseRunner: @unchecked Sendable {
 
     // MARK: run
 
-    /// Runs to the end. Exit code: 0 ok, 1 failure, 2 bad session folder, 3 permission denied.
+    /// Runs to the end. Exit code: 0 ok (also when the brain was given up on mid-call: the transcript is complete, `answers_off`
+    /// said when the answers stopped), 1 failure (the brain's start was fatal, or listening failed), 2 bad session folder,
+    /// 3 permission denied.
     public func run() async -> Int32 {
         let code = await runInner()
         closeTranscript()
@@ -419,7 +465,9 @@ public final class VerseRunner: @unchecked Sendable {
         state.withLock { $0.engine = engine }
         openTranscript()
 
-        // The brain first: its pre-warm must be done before the first question is heard.
+        // The brain starts warming, and listening starts at once next to it: speech is never lost to a slow pre-warm (a stalled
+        // network once delayed listening by 35 s). Until the brain is ready the turns it would get are held; it gets them as
+        // `history` when it is (the newest question live), see `superviseFirstStart`.
         let brainDir: URL
         do {
             brainDir = try BrainProcess.locateBrainDir(explicit: o.brainDir)
@@ -433,28 +481,22 @@ public final class VerseRunner: @unchecked Sendable {
             await b?.shutdown(grace: grace)
             await r?.value
         }
-
-        let readyState = await startAndWaitReady()
-        if readyState == Self.stoppedWhileStarting {
-            // Stop pressed while the brain was still warming: end at once instead of waiting out readyTimeout.
-            log("stop requested while the brain was starting")
-            await stopBrain()
-            return 0
+        let startup = Task { [weak self] in await self?.superviseFirstStart() }
+        let source: ListenConfig.Source = o.source ?? (o.file.map { .file($0) } ?? .live)
+        var isLive = false
+        if case .live = source { isLive = true }
+        if o.waitForBrainBeforeListening ?? !isLive {
+            await startup.value
+            let (fatal, stopped) = state.withLock { ($0.brainFatal, $0.stopRequested) }
+            if fatal || stopped {
+                log(fatal ? "the brain cannot serve this call; stopping" : "stop requested while the brain was starting")
+                await stopBrain()
+                return fatal ? 1 : 0
+            }
         }
-        let (readyReason, brainAlive) = state.withLock { ($0.readyReason, $0.brain?.isRunning ?? false) }
-        if Self.fatalAtStart(state: readyState, reason: readyReason) || !brainAlive {
-            log("brain did not become ready (\(readyState ?? "timeout")\(readyReason.map { ", \($0)" } ?? "")); stopping")
-            await stopBrain()
-            return 1
-        }
-        if readyState == "error" {
-            log("the brain reported a non-fatal error at start (\(readyReason ?? "no reason")); the call goes on")
-        }
-        state.withLock { if $0.phase == .starting { $0.phase = .running } }
         let firstPID = brainPID
 
         // Listening.
-        let source: ListenConfig.Source = o.source ?? (o.file.map { .file($0) } ?? .live)
         let environment = o.listenEnvironment ?? .system
         let session = ListenSession(config: listenConfig(route: o.route, lang: o.lang, source: source), environment: environment)
         let stream: AsyncStream<TranscriptEvent>
@@ -467,16 +509,22 @@ public final class VerseRunner: @unchecked Sendable {
             } else {
                 emitSinkOnly(.status(state: "listen_failed", message: e.description))
             }
+            startup.cancel()
             await stopBrain()
             return e.code == "permission_denied" ? 3 : 1
         } catch {
             log("listen failed: \(error)")
             emitSinkOnly(.status(state: "listen_failed", message: "\(error)"))
+            startup.cancel()
             await stopBrain()
             return 1
         }
         // A failed brain does not stop listening (review H4): the transcript goes on without answers.
-        let stopEarly = state.withLock { s -> Bool in s.session = session; s.listening = true; return s.stopRequested }
+        let (stopEarly, warming) = state.withLock { s -> (Bool, Bool) in
+            s.session = session
+            s.listening = true
+            return (s.stopRequested || s.brainFatal, s.phase == .starting)
+        }
         let now0 = await session.now()
         let origin = await session.channelOrigin(.remote) ?? 0
         let originMe = await session.channelOrigin(.me)
@@ -486,6 +534,10 @@ public final class VerseRunner: @unchecked Sendable {
                                  "source": "verse-run", "lang": o.lang, "fake_brain": o.fakeBrain, "brain_pid": Int(firstPID)]
         if let originMe { t0["origin_me"] = Text.ms(originMe) }
         emitJSON(t0)
+        if warming, !stopEarly {
+            // The capsule says the brain is warming while the transcript already runs (the brain's `ready` clears it).
+            emitJSON(["type": "status", "state": "warming", "message": Self.warmingWhileListening])
+        }
         if stopEarly { await session.stop() }
 
         let (inputs, cont) = AsyncStream.makeStream(of: Input.self, bufferingPolicy: .unbounded)
@@ -519,7 +571,12 @@ public final class VerseRunner: @unchecked Sendable {
         }
 
         /// The cut-over of a listen swap, run by the loop once the old pipeline's stream has ended (so every result it
-        /// still had to deliver has gone through the engine). False: the run is over (stopped, or the new pipeline did not start).
+        /// still had to deliver has gone through the engine). False: the run is over (stopped, or neither the new pipeline nor
+        /// the previous configuration could be started again).
+        ///
+        /// Review M6: when the new pipeline does not start (a device taken or a permission revoked between its prepare and its
+        /// start), the previous route and language are started again in a fresh pipeline: the switch is not applied
+        /// (`switchListening` returns false, an `issue` `swap_failed` says why) and the call goes on as it was.
         func cutOver(_ p: PendingSwap) async -> Bool {
             let old = leg
             old.cancelTasks()
@@ -528,42 +585,55 @@ public final class VerseRunner: @unchecked Sendable {
             //    first words can be taken for a continuation. Turn numbers go on in the same engine.
             let endOfOld = old.offset + (await old.session.now())
             dispatch(await engine.flush(at: endOfOld))
-            // 2. The engine, the run and the brain learn the new route and language. The control lines follow the flushed turns
-            //    on the brain's stdin, so the brain sees one continuous stream: old turns, the control, new turns.
-            let follow = o.follow && p.route != .room
-            await engine.reconfigure(lang: p.lang, roomMode: p.route == .room, roomAuto: p.route == .room ? o.roomAuto : nil,
-                                     emitMePartials: follow)
-            state.withLock { s in s.route = p.route; s.lang = p.lang }
-            if p.route != route0 {
-                sendControl(.setRoute(p.route, roomAuto: p.route == .room ? o.roomAuto : nil, follow: o.follow))
-            }
-            if p.lang != lang0 { sendControl(.setLanguage(p.lang)) }
-            // 3. The new pipeline's clock starts now; its times continue where the old one's ended.
+            // 2. The new pipeline's clock starts now; its times continue where the old one's ended. Its events wait in the input
+            //    stream until this returns, so the engine and the brain can be told the new settings after it has started.
             let offset = old.offset + (await old.session.now())
-            let next: AsyncStream<TranscriptEvent>
+            var started: (session: ListenSession, stream: AsyncStream<TranscriptEvent>, route: AudioRoute, lang: String)?
             do {
-                next = try await p.next.start()
+                started = (p.next, try await p.next.start(), p.route, p.lang)
             } catch {
-                log("listen swap failed: \(error)")
-                emitSinkOnly(.status(state: "listen_failed", message: "\(error)"))
-                state.withLock { $0.listenFailed = true }
-                p.resume(false)
-                return false
+                log("listen swap failed: \(error); going back to \(route0.rawValue) / \(lang0)")
+                emitJSON(["type": "issue", "code": "swap_failed",
+                          "message": "could not switch to \(p.route.rawValue) / \(p.lang) (\(error)); still listening in \(route0.rawValue) / \(lang0)"])
+                let back = ListenSession(config: listenConfig(route: route0, lang: lang0, source: source), environment: environment)
+                do {
+                    started = (back, try await back.start(), route0, lang0)
+                } catch {
+                    log("restarting the previous listen configuration failed too: \(error)")
+                    emitSinkOnly(.status(state: "listen_failed", message: "\(error)"))
+                    state.withLock { $0.listenFailed = true }
+                    p.resume(false)
+                    return false
+                }
+            }
+            guard let started else { p.resume(false); return false }
+            let applied = started.session === p.next
+            if applied {
+                // 3. The engine, the run and the brain learn the new route and language. The control lines follow the flushed
+                //    turns on the brain's stdin, so the brain sees one continuous stream: old turns, the control, new turns.
+                let follow = o.follow && p.route != .room
+                await engine.reconfigure(lang: p.lang, roomMode: p.route == .room, roomAuto: p.route == .room ? o.roomAuto : nil,
+                                         emitMePartials: follow)
+                state.withLock { s in s.route = p.route; s.lang = p.lang }
+                if p.route != route0 {
+                    sendControl(.setRoute(p.route, roomAuto: p.route == .room ? o.roomAuto : nil, follow: o.follow))
+                }
+                if p.lang != lang0 { sendControl(.setLanguage(p.lang)) }
             }
             let startedWall = Date().timeIntervalSince1970
-            leg = startLeg(Leg(gen: old.gen + 1, session: p.next, offset: offset, route: p.route), stream: next, into: cont)
+            leg = startLeg(Leg(gen: old.gen + 1, session: started.session, offset: offset, route: started.route), stream: started.stream, into: cont)
             legs.append(leg)
-            if detector.auto && o.autoShadow { await p.next.setShadow(shadowConfig(offset: offset)) }
+            if detector.auto && o.autoShadow { await started.session.setShadow(shadowConfig(offset: offset)) }
             let ended = state.withLock { s -> Bool in
-                s.session = p.next
-                s.swaps += 1
-                return s.stopRequested || s.limitReached
+                s.session = started.session
+                if applied { s.swaps += 1 }
+                return s.ending
             }
-            emitJSON(["type": "metric", "turn_id": "", "stage": "listen_swap", "route": p.route.rawValue, "lang": p.lang,
-                      "from_route": route0.rawValue, "from_lang": lang0,
+            emitJSON(["type": "metric", "turn_id": "", "stage": applied ? "listen_swap" : "listen_swap_reverted",
+                      "route": started.route.rawValue, "lang": started.lang, "from_route": route0.rawValue, "from_lang": lang0,
                       "gap_ms": Text.ms((startedWall - p.stoppedAtWall) * 1000), "offset": Text.ms(offset), "source": "verse-run"])
-            if ended { await p.next.stop() }
-            p.resume(true)
+            if ended { await started.session.stop() }
+            p.resume(applied)
             return true
         }
 
@@ -630,7 +700,7 @@ public final class VerseRunner: @unchecked Sendable {
                 let (swap, over) = state.withLock { s -> (PendingSwap?, Bool) in
                     let p = s.pendingSwap
                     s.pendingSwap = nil
-                    return (p, s.stopRequested || s.limitReached)
+                    return (p, s.ending)
                 }
                 if let swap {
                     if over { swap.resume(false); break loop }
@@ -674,12 +744,24 @@ public final class VerseRunner: @unchecked Sendable {
         if let m = await last.session.channelOrigin(.me) { summary["origin_me"] = Text.ms(m + last.offset) }
         emitJSON(summary)
 
+        if state.withLock({ $0.brainFatal }) {
+            // The brain's start ended the session (no or rejected key, no credit, bad session): its status said why. What was
+            // heard until then is in transcript.jsonl; there is no brain to answer or summarize it.
+            startup.cancel()
+            for l in legs { await l.session.stop() }
+            await stopBrain()
+            return 1
+        }
         // Let the brain finish what it has started, then give it time for the final summary merge (review H2: a 3 s grace
-        // cut the merge off and left summary.md a draft).
+        // cut the merge off and left summary.md a draft). A brain that is still warming up, or one that is due to be restarted,
+        // is first given the call so far, so the merge still covers it.
         await drain()
+        startup.cancel()
+        prepareBrainForMerge(dir: brainDir)
         for l in legs { await l.session.stop() }
         await stopBrain(grace: o.stopGraceSeconds)
-        return state.withLock { $0.brainFailed || $0.listenFailed } ? 1 : 0
+        // A brain given up on mid-call is not a failed run (the transcript is complete; `answers_off` said when answers stopped).
+        return state.withLock { $0.listenFailed } ? 1 : 0
     }
 
     /// The listen configuration of one pipeline: which route it is (the room route's microphone is the remote channel and has
@@ -733,11 +815,18 @@ public final class VerseRunner: @unchecked Sendable {
         }
         let issues = Task { [weak self] in
             for await issue in session.issues {
-                self?.emitJSON(["type": "issue", "code": issue.code, "message": issue.description])
+                self?.emitJSON(Self.issueObject(issue))
             }
         }
         leg.tasks = [ticker, issues] + (levelTask.map { [$0] } ?? [])
         return leg
+    }
+
+    /// The line printed for a runtime issue of the listen session: `channel` (`remote` | `me`) only when it is about one.
+    static func issueObject(_ issue: ListenError) -> [String: Any] {
+        var o: [String: Any] = ["type": "issue", "code": issue.code, "message": issue.description]
+        if let c = issue.channel { o["channel"] = c.rawValue }
+        return o
     }
 
     // MARK: switching the route or the language mid-call
@@ -759,9 +848,9 @@ public final class VerseRunner: @unchecked Sendable {
         let source: ListenConfig.Source = o.source ?? (o.file.map { .file($0) } ?? .live)
         if case .file = source { return false }
         let plan: (route: AudioRoute, lang: String)? = state.withLock { s in
-            // A failed brain (no answers) still lets the call switch route or language: the transcript follows.
-            guard s.listening, !s.swapping, !s.stopRequested, !s.limitReached, s.phase == .running || s.phase == .failed,
-                  s.session != nil else { return nil }
+            // A failed brain (no answers) still lets the call switch route or language: the transcript follows. So does a brain
+            // that is still warming up: it is told the new route and language when it goes live (`replayToBrain`).
+            guard s.listening, !s.swapping, !s.ending, s.phase != .restarting, s.session != nil else { return nil }
             let route = newRoute ?? s.route, lang = newLang ?? s.lang
             guard route != s.route || lang != s.lang else { return nil }
             s.swapping = true
@@ -780,7 +869,7 @@ public final class VerseRunner: @unchecked Sendable {
         }
         let ok = await withCheckedContinuation { (c: CheckedContinuation<Bool, Never>) in
             let old: ListenSession? = state.withLock { s in
-                guard s.listening, !s.stopRequested, !s.limitReached, let cur = s.session else { return nil }
+                guard s.listening, !s.ending, let cur = s.session else { return nil }
                 s.pendingSwap = PendingSwap(next: next, route: plan.route, lang: plan.lang,
                                             stoppedAtWall: Date().timeIntervalSince1970, continuation: c)
                 return cur
@@ -802,10 +891,13 @@ public final class VerseRunner: @unchecked Sendable {
         return args
     }
 
-    /// Starts a brain process and its stdout reader, and makes it the current one.
+    /// Starts a brain process and its stdout reader, sends it `start` (the call's current route and language) and makes it the
+    /// current one. The `start` line is on its stdin before anything else can be written to it.
     private func spawnBrain(dir: URL) throws {
         let b = try BrainProcess(brainDir: dir, extraArgs: brainArgs(), onStderr: { [logFn] l in logFn("[brain] " + l) })
         try b.start()
+        let (route, lang) = state.withLock { ($0.route, $0.lang) }
+        b.send(startCommand().jsonLine())
         let reader = Task { [weak self] in
             for await line in b.lines { self?.handleBrainLine(line) }
             self?.brainEnded(b, dir: dir)
@@ -815,6 +907,7 @@ public final class VerseRunner: @unchecked Sendable {
             s.reader = reader
             s.ready = nil
             s.readyReason = nil
+            s.brainStartedWith = (route, lang)
         }
     }
 
@@ -850,11 +943,42 @@ public final class VerseRunner: @unchecked Sendable {
         }
     }
 
-    /// Sends `start` to the current brain and waits for its first readiness status.
-    private func startAndWaitReady() async -> String? {
+    /// Waits for the current brain's first readiness status (its `start` went out with `spawnBrain`).
+    private func waitCurrentReady() async -> String? {
         guard let b = state.withLock({ $0.brain }) else { return Self.brainExited }
-        b.send(startCommand().jsonLine())
         return await waitReady(timeout: options.readyTimeout, brain: b)
+    }
+
+    /// The first brain's start, next to listening (which does not wait for it). Ready (or `offline`, `rate_limited`, a non-fatal
+    /// `error`): the brain goes live and gets what was heard meanwhile (`replayToBrain`). A fatal start (`fatalAtStart`: no or
+    /// rejected key, no credit, bad session) ends the session: listening stops, the transcript keeps what was heard, the
+    /// brain's status says why. No answer in `readyTimeout`: the brain is given up on like after its last crash (answers off,
+    /// the transcript goes on). The process ending before any status is a crash: `brainEnded` restarts it.
+    private func superviseFirstStart() async {
+        var r = await waitCurrentReady()
+        if r == Self.brainExited, let reader = state.withLock({ $0.reader }) {
+            // The process can exit before its last line (`status error`, reason `no_api_key`) has been read: read it first.
+            await reader.value
+            r = state.withLock { $0.ready } ?? Self.brainExited
+        }
+        if Task.isCancelled { return }
+        let (reason, phase, brain) = state.withLock { ($0.readyReason, $0.phase, $0.brain) }
+        guard phase == .starting else { return }
+        switch r {
+        case Self.stoppedWhileStarting?, Self.brainExited?:
+            return   // the end of the run gives a warming brain the call for its merge; a crash is `brainEnded`'s
+        case nil:
+            if state.withLock({ $0.shuttingDown }) { return }
+            failBrain("the brain did not become ready within \(Int(options.readyTimeout)) s")
+            if let brain { Task { await brain.shutdown(grace: 1) } }
+        case let r? where Self.fatalAtStart(state: r, reason: reason):
+            log("the brain cannot serve this call (\(r)\(reason.map { ", \($0)" } ?? "")); ending the session")
+            let session = state.withLock { s -> ListenSession? in s.brainFatal = true; return s.session }
+            await session?.stop()
+        case let r?:
+            if r == "error" { log("the brain reported a non-fatal error at start (\(reason ?? "no reason")); the call goes on") }
+            replayToBrain(from: .starting, reason: "warm_start")
+        }
     }
 
     /// The `reason` values of a brain `status error` that end the run at start (brain/verse_brain/runtime/engine.py): no key,
@@ -875,13 +999,15 @@ public final class VerseRunner: @unchecked Sendable {
     }
 
     private func brainEnded(_ b: BrainProcess, dir: URL) {
-        enum Next { case nothing, reportStartup, restart(Int), fail }
+        enum Next { case nothing, restart(Int), fail }
         let next: Next = state.withLock { s in
             guard !s.shuttingDown, s.brain === b else { return .nothing }
             switch s.phase {
-            case .starting: return .reportStartup
             case .failed: return .nothing
-            case .running, .restarting:
+            case .starting where s.ready.map({ Self.fatalAtStart(state: $0, reason: s.readyReason) }) ?? false:
+                return .nothing   // it said why it cannot serve (no key, no credit): `superviseFirstStart` ends the session
+            case .starting, .running, .restarting:
+                // A first brain that dies while warming up is restarted like one that dies mid-call: listening already runs.
                 if s.restarts < options.maxBrainRestarts {
                     s.restarts += 1
                     s.phase = .restarting
@@ -893,9 +1019,6 @@ public final class VerseRunner: @unchecked Sendable {
         }
         switch next {
         case .nothing: return
-        case .reportStartup:
-            log("the brain process ended unexpectedly")
-            emitJSON(["type": "status", "state": "error", "message": "brain process ended unexpectedly"])
         case .restart(let n):
             let delay = options.restartBackoffSeconds * pow(2, Double(n - 1))
             log("the brain process ended unexpectedly; restart \(n) of \(options.maxBrainRestarts) in \(delay) s")
@@ -914,8 +1037,17 @@ public final class VerseRunner: @unchecked Sendable {
     private func failBrain(_ message: String) {
         state.withLock { s in s.phase = .failed; s.brainFailed = true }
         log(message + "; answers are off, listening goes on")
-        emitJSON(["type": "status", "state": "error", "message": message + "; answers are off, the transcript goes on"])
+        let shown = message + "; answers are off, the transcript goes on"
+        emitJSON(["type": "status", "state": "error", "message": shown])
+        // For the front end's end of the run: answers stopped here, the run itself goes on and ends normally (exit 0).
+        emitJSON(["type": "metric", "turn_id": "", "stage": Self.answersOffStage, "message": shown,
+                  "t": Text.ms(Date().timeIntervalSince1970), "source": "verse-run"])
     }
+
+    /// The `metric` stage the runner emits when it gives the brain up (answers off for the rest of the call).
+    public static let answersOffStage = "answers_off"
+    /// The message of the runner's `status warming` while it listens and the brain is not ready yet.
+    public static let warmingWhileListening = "listening; the brain is still warming up"
 
     private func restartBrain(dir: URL) async {
         let go = state.withLock { s in !s.shuttingDown && !s.stopRequested && s.phase == .restarting }
@@ -928,31 +1060,38 @@ public final class VerseRunner: @unchecked Sendable {
             failBrain("could not restart the brain: \(error)")
             return
         }
-        let r = await startAndWaitReady()
+        let r = await waitCurrentReady()
         let reason = state.withLock { $0.readyReason }
         guard let r, r != Self.stoppedWhileStarting, !Self.fatalAtStart(state: r, reason: reason) else {
             // A crash during the restart is handled by brainEnded (the next restart, or the last one failing); a hang or a
             // fatal status is not. A newer restart owns the run once `brain` is another process.
-            let (phase, current) = state.withLock { ($0.phase, $0.brain) }
-            if phase == .restarting, current === mine, mine?.isRunning ?? false {
+            let (phase, current, closing) = state.withLock { ($0.phase, $0.brain, $0.shuttingDown) }
+            if !closing, phase == .restarting, current === mine, mine?.isRunning ?? false {
                 failBrain("the restarted brain did not become ready (\(r ?? "timeout"))")
             }
             return
         }
-        // The restarted brain knows nothing of the call: it gets the finalized turns so far (`history`, no cards for them), with the
-        // question it is to answer again re-sent live in its place in the order, all before any live line (the send lock; the phase
-        // turns `running` inside it, so a turn finalized from here on goes live and is not in the snapshot: none lost, none twice).
+        replayToBrain(from: .restarting, reason: "restart")
+    }
+
+    /// A brain that knows nothing of the call yet goes live: the first one once it is ready (it was warming while the call was
+    /// already heard) or a restarted one. It gets the finalized turns so far (`history`, no cards for them), with the question it
+    /// is to answer re-sent live in its place in the order, all before any live line (the send lock; the phase turns `running`
+    /// inside it, so a turn finalized from here on goes live and is not in the snapshot: none lost, none twice). A route or
+    /// language switched since its `start` is told to it first.
+    private func replayToBrain(from phase: BrainPhase, reason: String) {
         let replay: (resend: OutboundEvent?, lang: String?, before: [HistoryTurn], after: [HistoryTurn])? = brainSendLock.withLock {
-            let taken: (OutboundEvent?, String?, [HistoryTurn], BrainProcess?)? = state.withLock { s in
-                guard s.phase == .restarting else { return nil }
+            let taken: (OutboundEvent?, String?, [HistoryTurn], BrainProcess?, [BrainCommand])? = state.withLock { s in
+                guard s.phase == phase, !s.shuttingDown else { return nil }
                 s.phase = .running
                 let q = s.pendingQuestion
                 s.pendingQuestion = nil
                 if let q { s.lastQuestion = (q, Date()); s.lastTurnSent = Date() }
-                return (q, q.flatMap { s.questionLang[$0.turnID] }, s.history, s.brain)
+                return (q, q.flatMap { s.questionLang[$0.turnID] }, s.history, s.brain, catchUpControls(&s))
             }
             guard let taken, let b = taken.3 else { return nil }
-            let (resend, lang, history, _) = taken
+            let (resend, lang, history, _, controls) = taken
+            for c in controls { b.send(c.jsonLine()) }
             let (before, after) = Self.replayPlan(history: history, resend: resend)
             if !before.isEmpty { b.send(BrainCommand.history(before).jsonLine()) }
             if let resend { b.send(resend.jsonLine(lang: lang)) }
@@ -960,14 +1099,72 @@ public final class VerseRunner: @unchecked Sendable {
             return (resend, lang, before, after)
         }
         guard let replay else { return }
+        let who = phase == .starting ? "warmed-up" : "restarted"
         if replay.before.count + replay.after.count > 0 {
-            log("replayed \(replay.before.count + replay.after.count) turns to the restarted brain")
+            log("replayed \(replay.before.count + replay.after.count) turns to the \(who) brain")
             emitJSON(["type": "metric", "turn_id": "", "stage": "history_replay", "turns": replay.before.count + replay.after.count,
-                      "before_resend": replay.before.count, "after_resend": replay.after.count, "source": "verse-run"])
+                      "before_resend": replay.before.count, "after_resend": replay.after.count, "reason": reason, "source": "verse-run"])
         }
         if let resend = replay.resend {
-            log("re-sending \(resend.turnID) to the restarted brain")
-            if options.echoOutbound { echoOutbound(resend, lang: replay.lang) } else { emitSinkOnly(.outbound(outboundObject(resend, lang: replay.lang))) }
+            log("sending \(resend.turnID) live to the \(who) brain")
+            // A question heard during the warm-up was already shown as outbound when it was heard.
+            if phase == .restarting {
+                if options.echoOutbound { echoOutbound(resend, lang: replay.lang) } else { emitSinkOnly(.outbound(outboundObject(resend, lang: replay.lang))) }
+            }
+        }
+    }
+
+    /// The `control route` / `control lang` lines that bring a brain started with another route or language up to the call's
+    /// current ones (a switch made while it was warming up). Called under the state lock.
+    private func catchUpControls(_ s: inout State) -> [BrainCommand] {
+        guard let w = s.brainStartedWith else { return [] }
+        var out: [BrainCommand] = []
+        if w.route != s.route {
+            out.append(.setRoute(s.route, roomAuto: s.route == .room ? options.roomAuto : nil, follow: options.follow))
+        }
+        if w.lang != s.lang { out.append(.setLanguage(s.lang)) }
+        s.brainStartedWith = (s.route, s.lang)
+        return out
+    }
+
+    /// The end of the run, before `control stop`: a brain that has not been given the call yet gets it, so its final merge
+    /// covers it. Still warming up: the finalized turns as `history` (the brain reads them and the stop during its pre-warm,
+    /// review L3). Due to be restarted (Stop or Quit during the backoff): a brain is started now for the merge alone, with
+    /// `start`, the `history` and then the stop, without waiting for its `ready`. Running or given up on: nothing.
+    private func prepareBrainForMerge(dir: URL) {
+        brainSendLock.withLock {
+            let snap: (BrainPhase, BrainProcess?, [HistoryTurn]) = state.withLock { s in
+                let snap = (s.phase, s.brain, s.history)
+                s.shuttingDown = true   // no restart and no replay from here on; the brain's exit is expected
+                return snap
+            }
+            let (phase, current, history) = snap
+            var target: BrainProcess?
+            switch phase {
+            case .running, .failed: return
+            case .starting:
+                target = current?.isRunning ?? false ? current : nil
+            case .restarting:
+                if let current, current.isRunning {
+                    target = current       // a restart already under way (started, not ready yet)
+                } else {
+                    do {
+                        try spawnBrain(dir: dir)
+                        target = state.withLock { $0.brain }
+                        log("started a brain for the final summary (the restart was still waiting)")
+                    } catch {
+                        log("could not start a brain for the final summary: \(error)")
+                        return
+                    }
+                }
+            }
+            guard let target else { return }
+            let controls = state.withLock { s in catchUpControls(&s) }
+            for c in controls { target.send(c.jsonLine()) }
+            let kept = HistoryTurn.bounded(history)
+            if !kept.isEmpty { target.send(BrainCommand.history(kept).jsonLine()) }
+            emitJSON(["type": "metric", "turn_id": "", "stage": "history_replay", "turns": kept.count, "before_resend": kept.count,
+                      "after_resend": 0, "reason": phase == .starting ? "stop_while_warming" : "stop_while_restarting", "source": "verse-run"])
         }
     }
 
@@ -984,7 +1181,7 @@ public final class VerseRunner: @unchecked Sendable {
         let end = Date().addingTimeInterval(timeout)
         while Date() < end {
             if let r = state.withLock({ $0.ready }) { return r }
-            if state.withLock({ $0.stopRequested }) { return Self.stoppedWhileStarting }
+            if state.withLock({ $0.stopRequested || $0.shuttingDown }) { return Self.stoppedWhileStarting }
             if !brain.isRunning { return state.withLock({ $0.ready }) ?? Self.brainExited }
             try? await Task.sleep(for: .milliseconds(25))
         }
@@ -1059,29 +1256,34 @@ public final class VerseRunner: @unchecked Sendable {
             if case .turn = ev { appendTranscript(ev, lang: t.lang) }
             if ev.isForBrain {
                 let question = isAnswerableQuestion(ev)
-                let sent: Bool = brainSendLock.withLock {
-                    let target: BrainProcess? = state.withLock { s in
-                        // Recorded with the phase decision: a turn is either in a restarted brain's `history` or sent to it live.
+                let shown: Bool = brainSendLock.withLock {
+                    let (target, held): (BrainProcess?, Bool) = state.withLock { s in
+                        // Recorded with the phase decision: a turn is either in a new brain's `history` or sent to it live.
                         if let h = HistoryTurn(ev, lang: t.lang) {
                             s.history.append(h)
                             if s.history.count > HistoryTurn.maxTurns { s.history.removeFirst(s.history.count - HistoryTurn.maxTurns) }
                         }
                         switch s.phase {
-                        case .running, .starting:
+                        case .running:
                             if question { s.lastQuestion = (ev, Date()); s.questionLang[ev.turnID] = t.lang }
-                            return s.brain
+                            return (s.brain, false)
+                        case .starting:
+                            // Listening runs while the first brain warms up: held for it (history, the newest question live).
+                            if question { s.pendingQuestion = ev; s.questionLang[ev.turnID] = t.lang }
+                            return (nil, true)
                         case .restarting:
                             if question { s.pendingQuestion = ev; s.questionLang[ev.turnID] = t.lang }
-                            return nil
+                            return (nil, false)
                         case .failed:
-                            return nil
+                            return (nil, false)
                         }
                     }
                     target?.send(ev.jsonLine(lang: t.lang, cue: t.cue))
-                    return target != nil
+                    return target != nil || held
                 }
-                // Dropped while the brain restarts: the latest question is re-sent and the finalized turns are replayed.
-                guard sent else { continue }
+                // Dropped while the brain restarts: the latest question is re-sent and the finalized turns are replayed. Held while
+                // the first brain warms up: shown now (the front end follows the call), sent when it is ready.
+                guard shown else { continue }
                 if options.echoOutbound { echoOutbound(ev, lang: t.lang, cue: t.cue) } else { emitSinkOnly(.outbound(outboundObject(ev, lang: t.lang, cue: t.cue))) }
             } else if case .chip = ev {
                 if let d = try? JSONSerialization.jsonObject(with: Data(ev.jsonLine().utf8)) as? [String: Any] { emitJSON(d) }

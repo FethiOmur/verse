@@ -12,8 +12,8 @@ the brain because the brain already receives every remote `partial` and holds th
   `embed_consecutive` consecutive evaluated partials of the turn (F3: short prefixes lock on the wrong entry).
 - If `litert_lm` or the model is missing, or the engine fails, the path logs once and stays off; nothing else changes.
 
-Query and document prefix: the symmetric "sentence similarity" task prompt (`bench/embed`, mode `sym`, which the
-0.865 / 0.005 thresholds were tuned on).
+Query and document prefix: the symmetric "sentence similarity" task prompt (`bench/embed`, mode `sym`; the accept rule in
+`settings.py` was measured on its vectors and on the stored replay `eval/out/f3-embed`).
 """
 
 from __future__ import annotations
@@ -60,7 +60,10 @@ class LiteRtEmbedder:
         try:
             litert_lm.set_min_log_severity(litert_lm.LogSeverity.ERROR)
             be = litert_lm.Backend.GPU() if backend == "gpu" else litert_lm.Backend.CPU()
-            self._eng = litert_lm.EmbeddingEngine(path, backend=be, cache_dir=os.path.join(os.path.dirname(path), "cache"))
+            # The engine refuses to start when its cache folder is missing (a freshly installed model has none).
+            cache_dir = os.path.join(os.path.dirname(path), "cache")
+            os.makedirs(cache_dir, exist_ok=True)
+            self._eng = litert_lm.EmbeddingEngine(path, backend=be, cache_dir=cache_dir)
         except Exception as e:  # noqa: BLE001 - any engine failure turns the path off
             raise EmbedUnavailable(f"engine failed to load: {type(e).__name__}: {e}") from e
 
@@ -71,6 +74,12 @@ class LiteRtEmbedder:
         eng, self._eng = getattr(self, "_eng", None), None
         if eng is not None:
             eng.close()
+
+
+def accepted(top1: float, second: float, threshold: float, margin: float) -> bool:
+    """One evaluation passes the score gates (the consecutive-partials gate is counted by the caller). Shared by the engine
+    and eval/rescore_bank.py, which re-decides stored replays with it."""
+    return top1 >= threshold and top1 - second >= margin
 
 
 def unit(v: list[float]) -> list[float]:

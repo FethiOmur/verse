@@ -37,6 +37,9 @@ func usage() -> Never {
       --brain-dir DIR     the brain/ folder (default: found next to the repo, or VERSE_BRAIN_DIR)
       --fake-brain        brain with canned replies (no network, no key)
       --budget-usd N      optional spend cap passed to the brain (default: none)
+      --listen-at-once    with --file/--me-file: start the audio before the brain is ready, as live audio always does
+                          (the default for a file is to wait for the brain so replays stay comparable)
+      --restart-backoff N seconds before the first restart of a crashed brain, doubling after (default 1)
     """)
     exit(2)
 }
@@ -48,6 +51,7 @@ func parse(_ args: [String]) -> RunOptions {
     var bundles: [String]?, brainDir: String?, fake = false, budget: Double?
     var turn = TurnConfig()
     var drain: Double?, format = OutputFormat.json, echo = false, trace = false
+    var listenAtOnce = false, restartBackoff: Double?
     var it = args.dropFirst().makeIterator()
     func value(_ k: String) -> String {
         guard let v = it.next() else { stderr("verse-run: missing value for \(k)"); usage() }
@@ -77,6 +81,8 @@ func parse(_ args: [String]) -> RunOptions {
             guard let f = OutputFormat(rawValue: value(k)) else { stderr("verse-run: --format must be json or text"); usage() }
             format = f
         case "--echo": echo = true
+        case "--listen-at-once": listenAtOnce = true
+        case "--restart-backoff": restartBackoff = Double(value(k))
         case "--trace": trace = true
         case "--drain": drain = Double(value(k))
         case "--brain-dir": brainDir = value(k)
@@ -114,6 +120,8 @@ func parse(_ args: [String]) -> RunOptions {
     if let drain { opts.drainSeconds = drain }
     opts.format = format
     opts.echoOutbound = echo
+    if listenAtOnce { opts.waitForBrainBeforeListening = false }
+    if let restartBackoff { opts.restartBackoffSeconds = restartBackoff }
     opts.trace = trace
     o = opts
     return o!

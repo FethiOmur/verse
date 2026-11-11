@@ -46,7 +46,7 @@ def read_commits(repo: Path, since: str = "14.days") -> list[Commit]:
         "--pretty=format:%h%x09%ad%x09%s", "--date=short",
     ]
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        r = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace", timeout=60)
     except Exception as e:  # noqa: BLE001
         raise GitError(f"git failed for {repo.name}: {type(e).__name__}") from None
     if r.returncode != 0:

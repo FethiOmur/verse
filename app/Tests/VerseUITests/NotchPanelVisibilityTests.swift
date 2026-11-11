@@ -33,6 +33,23 @@ struct NotchPanelVisibilityTests {
         #expect(panel.isVisible)
     }
 
+    /// V7: a display change rebuilds the root view; the permission panel's "Open System Settings" must still reach the
+    /// controller's callback afterwards (it used to get a no-op closure).
+    @Test
+    func displayChangeKeepsOpenSettings() {
+        _ = NSApplication.shared
+        let model = OverlayModel(config: OverlayConfig(cardTimeout: .infinity), clock: { 1000 })
+        var opened: [String] = []
+        let panel = NotchPanelController(model: model, settings: AppSettings(defaults: scratchDefaults()),
+                                         onOpenSettings: { opened.append($0) })
+        defer { panel.close() }
+
+        panel.apply(metrics: NotchMetrics(notchWidth: 200, notchHeight: 38, hasNotch: true))
+        panel.apply(metrics: NotchMetrics(notchWidth: 186, notchHeight: 28, hasNotch: false))
+        panel.rootOverlay?.onOpenSettings("microphone")
+        #expect(opened == ["microphone"])
+    }
+
     @Test
     func idleModelStillHidesThePanel() async throws {
         _ = NSApplication.shared

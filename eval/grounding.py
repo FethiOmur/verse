@@ -28,6 +28,26 @@ COMMON_CAPS = {
 }
 
 
+# Same normalisation as brain/verse_brain/prep/sources.py `norm`, replicated here so the eval stays stdlib-only and does not import
+# the brain (which is edited separately). Both sides of a quote check go through it: markdown `*`, `_`, backticks, curly quotes,
+# dashes and non-breaking spaces must not make a real quote look absent. tests/test_grounding_run.py pins one case.
+_MAP = str.maketrans({"\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"', "\u2013": "-", "\u2014": "-", "\u2212": "-",
+                      "\u00a0": " ", "*": "", "_": "", "`": ""})
+_WS = re.compile(r"\s+")
+
+
+def norm(s: str) -> str:
+    return _WS.sub(" ", s.translate(_MAP)).strip().casefold()
+
+
+def evidence_found(evidence: str | None, pack: str) -> bool | None:
+    """True/False: is the judge's quote in the pack (after `norm` on both sides). None when it gave no quote (nothing to check)."""
+    ev = norm(evidence or "")
+    if not ev:
+        return None
+    return ev in norm(pack)
+
+
 def norm_num(s: str) -> str:
     s = s.lower().replace(",", "").rstrip(".%")
     return NUMBER_WORDS.get(s, s)

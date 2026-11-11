@@ -178,4 +178,94 @@ final class CaptureRebuildTests: XCTestCase {
         XCTAssertTrue(stalled(last: nil, built: 5), "no callback since the tap was built 5 s ago")
         XCTAssertFalse(stalled(last: nil, built: 8), "a fresh tap gets its grace period")
     }
+
+    // MARK: silent tap (calls back with exact zeros while the meeting app plays)
+
+    /// Drives a watch with one exact-zero buffer every 10 ms from `from` to `to` and a check every second; returns the actions.
+    private func runZeros(_ w: inout SilentTapWatch, from: Double, to: Double, producing: Bool? = true) -> [(Double, SilentTapWatch.Action)] {
+        var out: [(Double, SilentTapWatch.Action)] = []
+        var t = from, nextCheck = from.rounded(.up)
+        while t < to {
+            w.buffer(zero: true, at: t)
+            if t >= nextCheck {
+                let a = w.check(now: t, lastCallback: t, producing: { producing })
+                if a != .none { out.append((t, a)) }
+                nextCheck += 1
+            }
+            t += 0.01
+        }
+        return out
+    }
+
+    /// Strong evidence only: the tap calls back, every buffer is exact zero and the app reports running output for the whole
+    /// `firstProbeAfter`. Then at most two quiet probes per zero run, the second 30 s after the first, then nothing.
+    func testSilentTapProbesAfterSustainedZerosWithABudget() {
+        var w = SilentTapWatch()
+        let actions = runZeros(&w, from: 0, to: 120)
+        XCTAssertEqual(actions.count, 2, "\(actions)")
+        guard actions.count == 2, case .probe(1, let s1) = actions[0].1, case .probe(2, _) = actions[1].1 else { return XCTFail("\(actions)") }
+        XCTAssertEqual(actions[0].0, 10, accuracy: 1.01, "first probe after 10 s of zeros")
+        XCTAssertEqual(s1, 10, accuracy: 1.01)
+        XCTAssertEqual(actions[1].0 - actions[0].0, 30, accuracy: 1.01, "backoff before the second")
+    }
+
+    /// A silent remote side in an app that is not playing (or unknown) never probes; an interruption of "producing" restarts
+    /// the wait.
+    func testSilentTapNeedsTheAppPlayingTheWholeTime() {
+        var a = SilentTapWatch()
+        XCTAssertTrue(runZeros(&a, from: 0, to: 60, producing: false).isEmpty, "app not playing: ordinary silence")
+        var b = SilentTapWatch()
+        XCTAssertTrue(runZeros(&b, from: 0, to: 60, producing: nil).isEmpty, "unknown counts as no")
+        var c = SilentTapWatch()
+        XCTAssertTrue(runZeros(&c, from: 0, to: 8).isEmpty)
+        XCTAssertTrue(runZeros(&c, from: 8, to: 9, producing: false).isEmpty, "output paused for a moment")
+        let after = runZeros(&c, from: 9, to: 25)
+        guard let first = after.first, case .probe(1, _) = first.1 else { return XCTFail("\(after)") }
+        XCTAssertGreaterThanOrEqual(first.0, 19, "the 10 s count restarts when the app plays again")
+    }
+
+    /// A tap that stopped calling back is the stall watchdog's case, not this one.
+    func testSilentTapIgnoresATapThatStoppedCallingBack() {
+        var w = SilentTapWatch()
+        w.buffer(zero: true, at: 0)
+        for t in stride(from: 1.0, through: 30, by: 1) {
+            XCTAssertEqual(w.check(now: t, lastCallback: 0.5, producing: { true }), .none, "t=\(t)")
+        }
+        XCTAssertEqual(w.probes, 0)
+    }
+
+    /// Audio within the confirm window after a probe: the probe repaired the tap, reported once. Audio later than that is the
+    /// remote side talking again: nothing is reported, and the budget starts over for the next zero run.
+    func testSilentTapReportsRecoveryOnlyRightAfterAProbe() {
+        var w = SilentTapWatch()
+        let probes = runZeros(&w, from: 0, to: 11)
+        guard let p = probes.first?.0 else { return XCTFail("no probe") }
+        w.buffer(zero: false, at: p + 1)
+        XCTAssertEqual(w.check(now: p + 1.5, lastCallback: p + 1, producing: { true }), .recovered)
+        XCTAssertEqual(w.check(now: p + 2.5, lastCallback: p + 2, producing: { true }), .none, "said once")
+        XCTAssertEqual(w.probes, 0, "a non-zero buffer ends the zero run and its budget")
+
+        var late = SilentTapWatch()
+        let lp = runZeros(&late, from: 0, to: 11)
+        guard let q = lp.first?.0 else { return XCTFail("no probe") }
+        _ = runZeros(&late, from: 11, to: q + 8)
+        late.buffer(zero: false, at: q + 8)
+        XCTAssertEqual(late.check(now: q + 8.5, lastCallback: q + 8, producing: { true }), .none, "8 s after the probe: not its doing")
+    }
+
+    /// A rebuild only the silent probe asked for is not reported at once (`.rebuilt` would claim a repair that may not have
+    /// happened); with any other cause it is.
+    func testQuietProbeRebuildIsNotReported() {
+        XCTAssertFalse(ProcessTapSource.reportRebuild(tapChanged: false, stall: false, appRebuild: false, probe: true))
+        XCTAssertTrue(ProcessTapSource.reportRebuild(tapChanged: true, stall: false, appRebuild: false, probe: true))
+        XCTAssertTrue(ProcessTapSource.reportRebuild(tapChanged: false, stall: true, appRebuild: false, probe: true))
+        XCTAssertTrue(ProcessTapSource.reportRebuild(tapChanged: false, stall: false, appRebuild: true, probe: true))
+        XCTAssertTrue(ProcessTapSource.reportRebuild(tapChanged: true, stall: false, appRebuild: false, probe: false))
+    }
+
+    /// Review M7: a failed PID-list refresh keeps the old list, so the next notification (even with the same list) retries.
+    func testFailedPIDRefreshKeepsTheOldList() {
+        XCTAssertEqual(ProcessTapSource.objectsAfterRefresh(old: [1, 2], attempted: [1, 2, 3], failed: true), [1, 2])
+        XCTAssertEqual(ProcessTapSource.objectsAfterRefresh(old: [1, 2], attempted: [1, 2, 3], failed: false), [1, 2, 3])
+    }
 }

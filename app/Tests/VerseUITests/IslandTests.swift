@@ -172,7 +172,7 @@ final class IslandTests: XCTestCase {
         XCTAssertEqual(w(tagged), 354, "the tag needs the listening wing")
         var offline = idle
         offline.status = .offline
-        XCTAssertEqual(w(offline), 354, "\"Offline\" needs its wing")
+        XCTAssertGreaterThanOrEqual(w(offline), 354, "\"No connection\" needs its wing (wider when it would not fit, V10)")
         var card = idle
         card.card = OverlayCard(turnID: "r", question: "q")
         XCTAssertEqual(w(card), 600)

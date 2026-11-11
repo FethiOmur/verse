@@ -21,6 +21,7 @@ _MAP = str.maketrans({
     " ": " ", "*": "", "_": "", "`": "",
 })
 _WS = re.compile(r"\s+")
+_HEX_KEY = re.compile(r"[0-9a-f]{7,40}")
 
 
 def norm(s: str) -> str:
@@ -34,6 +35,8 @@ _SUFFIX = re.compile(r"\s?([kKmM])\b")
 
 
 def _to_float(tok: str) -> float:
+    if re.fullmatch(r"0[.,]\d{3}", tok):  # 0.125 is a decimal, never "0125" thousands
+        return float(tok.replace(",", "."))
     if re.fullmatch(r"\d{1,3}([.,]\d{3})+", tok):  # thousands separators (1,500 / 1.500 / 12,345,678)
         return float(re.sub(r"[.,]", "", tok))
     if re.fullmatch(r"\d+[.,]\d+", tok):  # decimal comma or point
@@ -131,6 +134,8 @@ class SourceBook:
 
     def _commit(self, h: str):
         key = h.split(":", 1)[-1].strip().lower()
+        if not _HEX_KEY.fullmatch(key):  # an empty or short key would prefix-match the first commit
+            return None
         for ch, c in self.commits.items():
             if ch == key or ch.startswith(key) or key.startswith(ch):
                 return c

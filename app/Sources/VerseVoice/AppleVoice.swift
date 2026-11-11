@@ -105,30 +105,75 @@ private final class RunnerBox: @unchecked Sendable {
     }
 }
 
+/// What the runner needs from `AVSpeechSynthesizer` (tests drive a fake that reports back when told).
 @MainActor
-private final class SpeechRunner: NSObject, AVSpeechSynthesizerDelegate {
-    private let synth = AVSpeechSynthesizer()
+protocol SpeechSynth: AnyObject {
+    var isSpeaking: Bool { get }
+    var isPaused: Bool { get }
+    func speak(_ utterance: AVSpeechUtterance)
+    @discardableResult func stopSpeaking(at boundary: AVSpeechBoundary) -> Bool
+}
+
+extension AVSpeechSynthesizer: SpeechSynth {}
+
+/// An utterance with the runner's serial number, so a late callback can be told from the current one (an object
+/// identity could be reused once the synthesizer releases the old utterance).
+final class SerialUtterance: AVSpeechUtterance, @unchecked Sendable {
+    let serial: Int
+
+    init(string: String, serial: Int) {
+        self.serial = serial
+        super.init(string: string)
+    }
+
+    required init?(coder: NSCoder) {
+        serial = 0
+        super.init(coder: coder)
+    }
+}
+
+/// Speaks one utterance at a time and waits for it.
+///
+/// Each wait is tied to its utterance (U2): `stopSpeaking` reports `didCancel` for the old utterance later, after the next
+/// `speak` already waits. Without the serial check, the stale callback ended the new line at once: in a practice
+/// interview Skip or Repeat made the new question count as spoken, and the mic opened while the voice still talked.
+@MainActor
+final class SpeechRunner: NSObject, AVSpeechSynthesizerDelegate {
+    private let synth: any SpeechSynth
     private var waiter: CheckedContinuation<Void, any Error>?
+    /// The serial of the utterance `waiter` waits for.
+    private var current: Int?
+    private var nextSerial = 0
     private var watchdog: Task<Void, Never>?
 
-    override init() {
+    override convenience init() {
+        let s = AVSpeechSynthesizer()
+        self.init(synth: s)
+        s.delegate = self
+    }
+
+    /// Tests pass a fake and report its callbacks through `utteranceEnded`.
+    init(synth: any SpeechSynth) {
+        self.synth = synth
         super.init()
-        synth.delegate = self
     }
 
     func speak(_ text: String, voice: AVSpeechSynthesisVoice?) async throws {
         stop()
-        let u = AVSpeechUtterance(string: text)
+        nextSerial += 1
+        let id = nextSerial
+        let u = SerialUtterance(string: text, serial: id)
         u.voice = voice
         // A synthesizer that never reports back (no output device, a broken voice) must not hang the interview.
         let limit = max(15.0, Double(text.count) * 0.25 + 10)
         try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, any Error>) in
             waiter = c
+            current = id
             watchdog = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
-                guard !Task.isCancelled else { return }
-                self?.synth.stopSpeaking(at: .immediate)
-                self?.finish(.failure(VoiceError.audio("speech did not finish")))
+                guard !Task.isCancelled, let self, self.current == id else { return }
+                self.synth.stopSpeaking(at: .immediate)
+                self.finish(.failure(VoiceError.audio("speech did not finish")))
             }
             synth.speak(u)
         }
@@ -140,19 +185,28 @@ private final class SpeechRunner: NSObject, AVSpeechSynthesizerDelegate {
         finish(.success(()))
     }
 
+    /// The synthesizer finished or cancelled an utterance. Only the one being waited for ends the wait.
+    func utteranceEnded(_ id: Int?) {
+        guard id == current else { return }
+        finish(.success(()))
+    }
+
     private func finish(_ r: Swift.Result<Void, any Error>) {
         watchdog?.cancel()
         watchdog = nil
+        current = nil
         guard let w = waiter else { return }
         waiter = nil
         w.resume(with: r)
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.finish(.success(())) }
+        let id = (utterance as? SerialUtterance)?.serial
+        Task { @MainActor in self.utteranceEnded(id) }
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.finish(.success(())) }
+        let id = (utterance as? SerialUtterance)?.serial
+        Task { @MainActor in self.utteranceEnded(id) }
     }
 }

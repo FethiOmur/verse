@@ -3,13 +3,41 @@ import Foundation
 
 /// EventKit implementation of `CalendarBackend`. Needs `NSCalendarsFullAccessUsageDescription` in the host's
 /// Info.plist (the `verse-meet` tool embeds one) and the user's Calendar permission.
+///
+/// The store is rebuilt whenever the authorization status changes (S9): a store made before access was granted (in
+/// Settings, or through another store's prompt) keeps returning no events. Apple: "If you request events before
+/// prompting people for access with this method, you'll need to reset the event store" (`requestFullAccessToEvents`).
 public final class EventKitBackend: CalendarBackend, @unchecked Sendable {
-    private let store = EKEventStore()
+    private let lock = NSLock()
+    private let status: @Sendable () -> EKAuthorizationStatus
+    private let makeStore: @Sendable () -> EKEventStore
+    private var cached: EKEventStore?
+    private var cachedFor: EKAuthorizationStatus?
 
-    public init() {}
+    public convenience init() {
+        self.init(status: { EKEventStore.authorizationStatus(for: .event) }, makeStore: { EKEventStore() })
+    }
+
+    /// Tests inject the status and count the stores made.
+    init(status: @escaping @Sendable () -> EKAuthorizationStatus, makeStore: @escaping @Sendable () -> EKEventStore) {
+        self.status = status
+        self.makeStore = makeStore
+    }
+
+    /// The store for the current authorization; a new one after the status changed.
+    func currentStore() -> EKEventStore {
+        let now = status()
+        return lock.withLock {
+            if let s = cached, cachedFor == now { return s }
+            let s = makeStore()
+            cached = s
+            cachedFor = now
+            return s
+        }
+    }
 
     public func authorization() -> CalendarAuthorization {
-        switch EKEventStore.authorizationStatus(for: .event) {
+        switch status() {
         case .fullAccess: return .fullAccess
         case .writeOnly: return .writeOnly
         case .denied: return .denied
@@ -20,12 +48,13 @@ public final class EventKitBackend: CalendarBackend, @unchecked Sendable {
     }
 
     public func requestFullAccess() async throws -> Bool {
-        try await store.requestFullAccessToEvents()
+        try await currentStore().requestFullAccessToEvents()
     }
 
-    public func accountCount() -> Int { store.sources.count }
+    public func accountCount() -> Int { currentStore().sources.count }
 
     public func entries(from: Date, to: Date) -> [CalendarEntry] {
+        let store = currentStore()
         let predicate = store.predicateForEvents(withStart: from, end: to, calendars: nil)
         return store.events(matching: predicate).compactMap { e in
             if e.status == .canceled { return nil }

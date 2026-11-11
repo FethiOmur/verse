@@ -122,7 +122,7 @@ struct VerseMeetCLI {
         let now = table.snapshot()
         let known = MeetingApp.known
         let micNow = now.filter(\.isRunningInput)
-        let micKnown = micNow.filter { p in known.contains { $0.matches(p.bundleID) } }
+        let micKnown = micNow.filter { p in known.contains { $0.matches(p) } }
         out("watching \(Int(seconds)) s | processes with mic input now: \(micNow.count) (in meeting apps: \(micKnown.count)) | calendar: \(useCalendar ? (source.authorization() == .fullAccess ? "on" : "not authorised, skipped") : "off")")
         let lookup: @Sendable (Date) async -> [MeetingEvent] = { when in
             useCalendar ? source.overlapping(now: when) : []

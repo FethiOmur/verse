@@ -121,6 +121,9 @@ class Config:
     summary_partial_stale_s: float = 5.0   # a remote partial untouched this long no longer counts as "a turn is open"
     final_max_tokens: int = 1500        # the Sonnet merge writes a whole summary; 600 (D) would truncate it
     final_timeout_s: float = 45.0       # `control stop` waits this long for the merge, then closes with the draft
+    stop_warm_wait_s: float = 10.0      # `control stop` during the pre-warm with live lines queued (turns, partials) waits this long
+                                        # for the pre-warm so they are answered in order, then takes them into the transcript only.
+                                        # With nothing live queued (Swift sends only `history` before `ready`) it does not wait.
     # spend
     budget_usd: float | None = None    # None = no cap (the owner: the Max credit pays, no limits)
     # F3 paraphrase matcher (EmbeddingGemma 2 text 270M, LiteRT-LM) next to Swift's n-gram matcher. Every gate is
@@ -129,10 +132,27 @@ class Config:
     embed_model: str = ("~/Library/Application Support/Verse/models/embeddinggemma-2-text-270m-litert/"
                         "embeddinggemma-2-text-270m.litertlm")
     embed_backend: str = "gpu"
-    embed_threshold: float = 0.865     # top-1 cosine (F3 tuning, bench/embed/results/analysis_gpu_sym.txt)
-    embed_margin: float = 0.02         # over the runner-up entry; 0.005 (F3) gave 9.7 % wrong hits in replay, 0.02 gives 4.3 % (12/24 paraphrase hits)
+    # Accept rule (2026-11-11 retune, criterion 2 of the eval gates on wrong hits among SHOWN hits <= 5 %). Cosine with the
+    # sentence-similarity prefix, EmbeddingGemma 2 text 270M (GPU):
+    # - bench/embed/results/emb_gpu_sym.npz, full text: right-entry paraphrases top-1 p10/p50/p90 0.875/0.906/0.941 (n=49);
+    #   paraphrases whose top-1 is the WRONG entry 0.867/0.881/0.914 (n=11); the 40 off-bank distractors 0.800/0.841/0.869,
+    #   max 0.880. Margins over the runner-up overlap (wrong-entry p90 0.024 vs right-entry p50 0.034): the margin cannot
+    #   separate them, the threshold and the consecutive rule have to.
+    # - eval/out/f3-embed (stored live replay, 193 evaluated partials): off-bank questions spike on 5-6 word prefixes and
+    #   decay with more words ("What would you change about Compass if you joined?" 0.914 -> 0.901 -> 0.890 on one entry;
+    #   "How would you measure success for the dispatcher pilot?" 0.920 -> 0.896 -> 0.888). The old rule (0.865, margin 0.02,
+    #   2 in a row) shows those as wrong cards: 12/24 paraphrase hits, 4 wrong final hits = 11.4 % of 35 shown (with the
+    #   final-text pass 15/24, 6 wrong = 14.3 %). This rule: 13/24 paraphrase hits, 0 wrong (0 of 34 shown), with the
+    #   final-text pass carrying most of the hits (4/24 from partials alone), so a paraphrase card shows about 0.57 s (p50) /
+    #   0.74 s (p90) after the question's acoustic end instead of during it. On the bench's 60 paraphrases + 40 distractors:
+    #   32/60 hits, 2 wrong ids, 0 distractor hits. Neighbours: 0.895 gives 14/24 with 1 wrong (2.8 %); 2 in a row instead of
+    #   3 gives 13/24, cards at 0.32 / 0.60 s, but shows the Compass spike as a wrong card. it/tr are not calibrated
+    #   (embed_langs below). Replay numbers from the stored partial scores re-decided offline; the final-text pass did not
+    #   exist when f3-embed was recorded and is approximated by the turn's last evaluated partial.
+    embed_threshold: float = 0.90      # top-1 cosine: above every bench distractor (max 0.880) and the wrong-entry median (0.881)
+    embed_margin: float = 0.005        # over the runner-up entry; 0.0-0.01 give the same replay result, 0.01 loses 2 bench hits
     embed_min_words: int = 5           # words in the partial
-    embed_consecutive: int = 2         # the same entry on this many consecutive evaluated partials
+    embed_consecutive: int = 3         # the same entry on this many consecutive evaluated partials (2 lets prefix spikes through)
     embed_langs: tuple[str, ...] = ("en",)   # thresholds were tuned on English only
     # One more match on the final text when a remote turn closes with no bank hit yet (partials that never matched, or a
     # statement/fragment whose cue never showed). A single evaluation is enough there (the consecutive-partials gate

@@ -23,12 +23,26 @@ REPO = HERE.parent
 REPORT = REPO / "docs" / "eval-report-v1.md"
 
 
+# Criterion 2 gates on a pair (eval review E4): wrong hits among the hits that were shown, AND a floor on the paraphrase hit rate. Without the
+# floor a matcher that never fires scores 0 % wrong and passes. OWNER: set this floor. 0.5 is a placeholder default, not a decision.
+PARAPHRASE_HIT_FLOOR = 0.5
+WRONG_HIT_MAX = 0.05
+
+# Folders the audio watch polls (run_replay.py, run_twotrack.py). The model folder is skipped inside the watch.
+WATCHED_LOCATIONS = ("the per-dialogue session copy", "~/Library/Application Support/Verse/sessions", "brain/tests/out")
+NOT_WATCHED = "$TMPDIR, ~/Library/Caches, the app's container and the model folder"
+
+
 def f(x, nd=2, unit=""):
     return "n/a" if x is None else f"{x:.{nd}f}{unit}"
 
 
 def pc(x):
     return "n/a" if x is None else f"{100 * x:.0f} %"
+
+
+def pc1(x):
+    return "n/a" if x is None else f"{100 * x:.1f} %"
 
 
 def lat_cell(s):
@@ -39,6 +53,82 @@ def lat_status(s, p50_max, p90_max):
     if not s["n"]:
         return "not measured"
     return "met" if s["p50"] <= p50_max and s["p90"] <= p90_max else "missed"
+
+
+def bank_gate(bank: dict) -> dict:
+    """Criterion 2: wrong hits among shown hits (<= WRONG_HIT_MAX) and paraphrase hit rate (>= PARAPHRASE_HIT_FLOOR)."""
+    shown = bank["hits"] + bank["wrong_hits"]               # right-entry hits plus hits left on a wrong entry or an off-bank utterance
+    wrong_rate = bank["wrong_hits"] / shown if shown else None
+    para = bank["by_category"]["paraphrase"]
+    para_rate = para["hit"] / para["n"] if para["n"] else None
+    reasons = []
+    if wrong_rate is None:
+        reasons.append("no hit was shown at all")
+    elif wrong_rate > WRONG_HIT_MAX:
+        reasons.append(f"wrong hits among shown hits {pc1(wrong_rate)} > {pc1(WRONG_HIT_MAX)}")
+    if para_rate is not None and para_rate < PARAPHRASE_HIT_FLOOR:
+        reasons.append(f"paraphrase hit rate {pc(para_rate)} < floor {pc(PARAPHRASE_HIT_FLOOR)}")
+    if para_rate is None and not reasons:
+        status = "not measured"
+    else:
+        status = "missed" if reasons else "met"
+    return {"shown_hits": shown, "wrong_shown": bank["wrong_hits"], "wrong_rate_shown": wrong_rate, "paraphrase_rate": para_rate,
+            "status": status, "reason": "; ".join(reasons)}
+
+
+def criterion2_row(bank: dict) -> str:
+    g = bank_gate(bank)
+    cat = bank["by_category"]
+    return (f"| 2 | Blind paraphrase bank hit rate, English | wrong hits among shown hits <= {pc(WRONG_HIT_MAX)} and paraphrase hit rate >= {pc(PARAPHRASE_HIT_FLOOR)} "
+            f"(floor is a placeholder: the owner sets it) | wrong hits among shown hits {g['wrong_shown']}/{g['shown_hits']} = {pc1(g['wrong_rate_shown'])}; "
+            f"paraphrase hit rate {pc(g['paraphrase_rate'])} ({cat['paraphrase']['hit']}/{cat['paraphrase']['n']}); hit rate on the right entry {pc(bank['hit_rate'])} "
+            f"({bank['hits']}/{bank['banked_questions']}; exact {cat['exact']['hit']}/{cat['exact']['n']}); wrong hit left on screen {bank['wrong_hits']}/{bank['utterances_probed']} "
+            f"utterances probed = {pc(bank['wrong_hit_rate'])} (wrong at any moment: {bank['wrong_hits_transient']}/{bank['utterances_probed']} = {pc(bank['wrong_hit_rate_transient'])}); "
+            f"wrong and confirmed by Haiku {bank['wrong_after_haiku']}/{bank['utterances_probed']}"
+            f"{'; ' + g['reason'] if g['reason'] else ''} | {g['status']} |")
+
+
+def audio_row(fs: dict) -> str:
+    wd = list(fs.values())
+    ok = all(x["audio_watch"]["pass"] and not x["session_audio_added"] for x in wd) if wd else False
+    return (f"| 7 | No audio file written in the watched locations | none in {', '.join(WATCHED_LOCATIONS)} | filesystem watch (250 ms polls) over those locations during all {len(wd)} dialogues: "
+            f"{'no audio file appeared there' if ok else 'AUDIO FILE FOUND, see below'}; temp audio removed after every dialogue. A file created and deleted between two polls is missed, "
+            f"and {NOT_WATCHED} are not watched, so this is not a claim about the whole machine | {'met' if ok else 'missed'} |")
+
+
+def grounding_row(gr: dict) -> str:
+    vio = len(gr.get("violations", []))
+    unj = len(gr.get("unjudged", []))
+    head = (f"| 6 | No suggestion states a number, date or fact absent from the pack | zero | {gr['lines_checked']} lines shown: {gr['auto_supported']} passed the string check "
+            f"({gr['unresolved_by_string_check']} did not); Haiku read all {gr['judged']} in {gr.get('judge_passes', 1)} passes and flagged {gr.get('haiku_flagged', 0)}")
+    if gr.get("violation_rule") == "either judge":
+        ps, ag = gr["pass_summary"], gr["judge_agreement"]
+        lo, hi = ps["violations_range"]
+        mid = (f" (per pass {lo}-{hi}, union {ps['violations_union']}); Sonnet read {ag['read_by_both']} lines; a line is a violation when either judge flags it, "
+               f"so {vio} unsupported ({unj} not judged); the judges agree on {ag['both_flagged']} of {ag['read_by_both']} flagged "
+               f"(Haiku only {ag['first_only']}, Sonnet only {ag['second_only']})")
+        if gr.get("evidence_not_in_pack"):
+            mid += f"; {gr['evidence_not_in_pack']} 'supported' verdicts quoted evidence that is not in the pack and count as flagged"
+        violations_total = vio
+    else:     # scores.json written before the either-judge rule: Sonnet's veto removed lines, its verdicts on cleared lines are in cleared_lines
+        either = vio + len(gr.get("cleared_lines", []))
+        mid = (f"; Sonnet cleared {gr.get('cleared_by_second_opinion', 0)}, so {vio} confirmed by Sonnet ({unj} not judged) "
+               f"(old rule, Sonnet could veto; {either} flagged by either judge under the current rule; the judges' quotes were not stored, so the "
+               f"{gr.get('evidence_not_in_pack', 'n/a')} verdicts with quotes not found in the pack could not be re-examined)")
+        violations_total = max(vio, either)
+    gstat = "met" if violations_total == 0 and unj == 0 else ("missed" if violations_total else "not fully measured")
+    return head + mid + f" | {gstat} |"
+
+
+def audio_watch_by_dialogue(run_dir: Path) -> dict:
+    """audio-watch result per dialogue from <id>.meta.json; retry attempts (<id>.try1.meta.json) are not the scored run and are skipped."""
+    fs = {}
+    for mf in sorted(run_dir.glob("*.meta.json")):
+        if ".try" in mf.name:
+            continue
+        m = json.loads(mf.read_text())
+        fs[m["id"]] = {"audio_watch": m["audio_watch"], "session_audio_added": [p for p in m["session_files_added"] if p.lower().endswith(tuple(checks.AUDIO_EXT))]}
+    return fs
 
 
 def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) -> str:
@@ -95,13 +185,7 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
     overall = "met" if all(s == "met" for s in statuses) else ("missed" if "missed" in statuses else "not measured")
     w(f"| 1 | Section 6 latency targets in replay (en) | all five paths within target | see the latency table: {'; '.join(f'{n.split(',')[0].lower()} {st}' for (n, *_), st in zip(lat_rows, statuses))} | {overall} |")
     w("| 1b | ... in one live Meet call per language | all paths | no live call run | not measured |")
-    wr = bank["wrong_hit_rate"]
-    w(f"| 2 | Blind paraphrase bank hit rate, English | wrong-hit rate <= 5 % | hit rate on the right entry {pc(bank['hit_rate'])} "
-      f"({bank['hits']}/{bank['banked_questions']}; exact {bank['by_category']['exact']['hit']}/{bank['by_category']['exact']['n']}, "
-      f"paraphrase {bank['by_category']['paraphrase']['hit']}/{bank['by_category']['paraphrase']['n']}); wrong hit left on screen {bank['wrong_hits']}/{bank['utterances_probed']} "
-      f"= {pc(wr)} (wrong at any moment: {bank['wrong_hits_transient']}/{bank['utterances_probed']} = {pc(bank['wrong_hit_rate_transient'])}); "
-      f"wrong and confirmed by Haiku {bank['wrong_after_haiku']}/{bank['utterances_probed']} | "
-      f"{'met on the wrong-hit rate; paraphrase hit rate ' + pc(bank['by_category']['paraphrase']['hit'] / bank['by_category']['paraphrase']['n'] if bank['by_category']['paraphrase']['n'] else None) if wr is not None and wr <= 0.05 else 'missed'} |")
+    w(criterion2_row(bank))
     w("| 2b | ... Italian, Turkish (Turkish separately) | wrong-hit rate <= 5 % | English only in this package | not measured |")
     r3 = adr["three_speaker_no_say"] / adr["three_speaker_n"] if adr["three_speaker_n"] else None
     w(f"| 3 | Questions to others get no SAY line (3-speaker replays) | >= 90 % | {adr['three_speaker_no_say']}/{adr['three_speaker_n']} = {pc(r3)} "
@@ -111,18 +195,10 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
     w(f"| 5 | Question detection, questions to the user | precision and recall >= 80 % | precision {pc(det['precision'])} "
       f"({det['true_positive_turns']}/{det['predicted_turns']}), recall {pc(det['recall'])} ({det['covered']}/{det['positives']}) | {'met' if ok_d else 'missed'} |")
     if gr.get("lines_checked"):
-        vio = len(gr.get("violations", []))
-        unj = len(gr.get("unjudged", []))
-        gstat = "met" if vio == 0 and unj == 0 else ("missed" if vio else "not fully measured")
-        w(f"| 6 | No suggestion states a number, date or fact absent from the pack | zero | {gr['lines_checked']} lines shown: {gr['auto_supported']} passed the string check "
-          f"({gr['unresolved_by_string_check']} did not); Haiku read all {gr['judged']} in {gr.get('judge_passes', 1)} passes and flagged {gr.get('haiku_flagged', 0)}; "
-          f"Sonnet cleared {gr.get('cleared_by_second_opinion', 0)}, so {vio} unsupported ({unj} not judged) | {gstat} |")
+        w(grounding_row(gr))
     else:
         w("| 6 | No suggestion states a number, date or fact absent from the pack | zero | no suggestion lines were produced | not measured |")
-    wd = [m for m in fs.values()]
-    audio_ok = all(x["audio_watch"]["pass"] and not x["session_audio_added"] for x in wd) if wd else False
-    w(f"| 7 | No audio file written anywhere | none | filesystem watch (250 ms polls) over the session folder, the app's Verse folder and the brain's output folder during all {len(wd)} dialogues: "
-      f"{'no audio file appeared' if audio_ok else 'AUDIO FILE FOUND, see below'}; temp audio removed after every dialogue | {'met' if audio_ok else 'missed'} |")
+    w(audio_row(fs))
     w(f"| 8 | API key never in logs or files | none | {scan['files_scanned']} files scanned (everything under eval/out (every recorded stdout line, stderr log, metadata and score file, the spend ledger) and this report): exact Keychain key and key-shaped strings "
       f"{'not found' if scan['pass'] else 'FOUND'} | {'met' if scan['pass'] else 'missed'} |")
     w(f"| 9 | Cost per 30-minute meeting measured | measured | ${f(cost['usd_per_30_min'], 3)} per 30 min of replayed dialogue (${f(cost['total_usd'], 3)} over {f(cost['replay_minutes'], 1)} min, "
@@ -174,11 +250,15 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
     for m in bank["wrong_detail"][:10]:
         w(f"  - ({m['category']}) \"{m['text']}\" -> {m['bank_ids']} (expected {m['expected']})")
     w("")
-    if gr.get("violations") or gr.get("unjudged"):
+    if gr.get("violations") or gr.get("unjudged") or gr.get("cleared_lines"):
         w("## Grounding findings")
         w("")
         for v in gr.get("violations", []):
-            w(f"- {v['dialogue']} ({v['category']}): \"{v['line']}\" (string check: {v['unresolved']}; judge: {v.get('judge_claim')})")
+            who = f", written by tier {v['tier']}, flagged by {v['flagged_by']}" if v.get("flagged_by") else ""
+            w(f"- {v['dialogue']} ({v['category']}{who}): \"{v['line']}\" (string check: {v['unresolved']}; judge: {v.get('judge_claim')})")
+        if gr.get("violation_rule") != "either judge":
+            for v in gr.get("cleared_lines", []):
+                w(f"- {v['dialogue']} ({v['category']}): \"{v['line']}\" (flagged by Haiku, cleared by Sonnet; a violation under the either-judge rule; judge: {v.get('judge_claim')})")
         for v in gr.get("unjudged", [])[:10]:
             w(f"- not judged: {v['dialogue']}: \"{v['line']}\" ({v['unresolved']})")
         w("")
@@ -215,10 +295,7 @@ def main() -> int:
     from paths import OUT
     run_dir = OUT / a.run
     scores = json.loads((run_dir / "scores.json").read_text())
-    fs = {}
-    for mf in sorted(run_dir.glob("*.meta.json")):
-        m = json.loads(mf.read_text())
-        fs[m["id"]] = {"audio_watch": m["audio_watch"], "session_audio_added": [p for p in m["session_files_added"] if p.lower().endswith(tuple(checks.AUDIO_EXT))]}
+    fs = audio_watch_by_dialogue(run_dir)
     notes_f = HERE / "report_notes.md"
     notes = notes_f.read_text() if notes_f.exists() else ""
     import subprocess

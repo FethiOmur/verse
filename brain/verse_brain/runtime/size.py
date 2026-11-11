@@ -11,7 +11,9 @@ cannot put more on the screen than the class allows.
             question: a longer SAY (<= 32 words) and the full set of points (F two, D up to four).
 
 The class is a lexicon, not a model: a question matches `deep` first (a turn that holds a greeting AND a real question is a real
-question), then `short` (only for turns of <= SHORT_MAX_WORDS words), else `normal`. English, Italian and Turkish.
+question), then `short` (only for turns of <= SHORT_MAX_WORDS words, and only when the whole turn is the phrase: once the matched
+phrase and the fillers are taken away nothing substantive may remain, so "Do you see any risks in this approach?" is a question,
+not a hearing check), else `normal`. English, Italian and Turkish.
 """
 
 from __future__ import annotations
@@ -73,7 +75,7 @@ _DEEP = _rx(
     r"\bneden\s+(?:se[cç]|karar|tercih|kullan)\w*", r"\bmimari\w*", r"\b[oö]rnek\s+ver\w*", r"\bad[iı]m\s+ad[iı]m\b", r"\bbir\s+(?:kez|zaman)\w*\s+(?:ne\s+zaman|sana|size)\b",
 )
 
-_SHORT = _rx(
+_SHORT_PARTS = (
     # English: hearing, seeing, connection, readiness, pleasantries
     r"\b(?:can|could|do|does|did|will|would)\s+(?:you|u)\s+(?:still\s+|now\s+)?(?:hear|see)\b", r"\bhear\s+(?:me|us|it)\b",
     r"\bsee\s+(?:me|us|my\s+screen|the\s+screen|my\s+slides?)\b", r"\b(?:is|are)\s+(?:my|the|our)\s+(?:audio|sound|video|"
@@ -90,17 +92,48 @@ _SHORT = _rx(
     r"\b(?:beni|bizi)\s+duy\w*", r"\bduy(?:uyor|abiliyor)\w*", r"\bsesim\b", r"\bg[oö]r(?:uyor|ebiliyor)\w*\s+mu\w*",
     r"\bekran[iı]m[iı]?\s+g[oö]r\w*", r"\bhaz[iı]r\s+m[iı]s[iı]n\w*", r"\bba[sş]layal[iı]m\b",
 )
+_SHORT = _rx(*_SHORT_PARTS)
+_SHORT_EACH = tuple(_rx(part) for part in _SHORT_PARTS)      # every phrase on its own, so overlapping matches all count as covered
 
 # Greetings and pleasantries: small talk only when that is all the turn is (a greeting in front of a real question is no reason to
 # shrink the card).
 GREETING_MAX_WORDS = 5
-_GREETING = _rx(
+_GREETING_PARTS = (
     r"\b(?:hello|hi|hey|welcome|thanks|thank\s+you|bye|goodbye|take\s+care|good\s+(?:morning|afternoon|evening))\b",
     r"\bhow\s+(?:are\s+you|are\s+things|is\s+it\s+going|was\s+your\s+(?:day|weekend))\b", r"\bhow's\s+it\s+going\b",
     r"\bnice\s+to\s+(?:meet|see)\s+you\b",
     r"\bcome\s+(?:stai|sta|state|va)\b", r"\b(?:ciao|buongiorno|buonasera|salve|grazie|pronto|prego)\b",
     r"\b(?:merhaba|g[uü]nayd[iı]n|iyi\s+g[uü]nler|te[sş]ekk[uü]r\w*)\b", r"\bnas[iı]ls[iı]n\w*",
 )
+_GREETING = _rx(*_GREETING_PARTS)
+_GREETING_EACH = tuple(_rx(part) for part in _GREETING_PARTS)
+
+# Words that may stand next to a logistics phrase or a greeting without making the turn a real question: acknowledgements,
+# pronouns and articles, answers to "can you hear me" ("okay", "clearly") and the question particles of Italian and Turkish.
+_FILLERS = frozenset("""
+yes yeah yep yup ok okay uh um er erm ah oh so well sorry please just quick quickly again now still sure right alright all
+and then hi hello hey thanks thank you me us it i we my our the a an there here
+good fine clearly clear loud enough properly great perfect
+si sì allora ecco eh ma mi ci
+evet tamam peki mu mi mı mü musun musunuz müsün müsünüz misin misiniz mısın mısınız
+""".split())
+LOGISTICS_STRAY_WORDS = 0     # nothing substantive may stand next to a logistics phrase
+GREETING_STRAY_WORDS = 1      # ... except a name next to a greeting ("Hi Alex, how are you?")
+
+
+def _leftover(flat: str, parts: tuple[re.Pattern[str], ...]) -> int:
+    """How many substantive words of `flat` lie outside every phrase of `parts` (fillers do not count)."""
+    covered = [False] * len(flat)
+    for rx in parts:
+        for m in rx.finditer(flat):
+            covered[m.start():m.end()] = [True] * (m.end() - m.start())
+    left, pos = 0, 0
+    for w in flat.split(" "):
+        start = flat.index(w, pos)
+        pos = start + len(w)
+        if not any(covered[start:pos]) and w not in _FILLERS:
+            left += 1
+    return left
 
 
 def _words(text: str) -> list[str]:
@@ -115,8 +148,12 @@ def card_size(text: str, lang: str = "en") -> str:  # noqa: ARG001 - the lexicon
     flat = " ".join(words)
     if _DEEP.search(flat) or len(words) >= DEEP_MIN_WORDS:
         return "deep"
-    if len(words) <= SHORT_ANY_WORDS or (len(words) <= SHORT_MAX_WORDS and _SHORT.search(flat)) \
-            or (len(words) <= GREETING_MAX_WORDS and _GREETING.search(flat)):
+    if len(words) <= SHORT_ANY_WORDS:
+        return "short"
+    if len(words) <= SHORT_MAX_WORDS and _SHORT.search(flat) and _leftover(flat, _SHORT_EACH) <= LOGISTICS_STRAY_WORDS:
+        return "short"
+    if len(words) <= GREETING_MAX_WORDS and _GREETING.search(flat) \
+            and _leftover(flat, _GREETING_EACH + _SHORT_EACH) <= GREETING_STRAY_WORDS:
         return "short"
     return "normal"
 

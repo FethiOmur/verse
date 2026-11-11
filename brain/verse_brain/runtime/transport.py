@@ -109,6 +109,7 @@ def _retry_after(headers) -> float | None:
 
 def map_sdk_error(e: BaseException) -> TransportError:
     import anthropic
+    import httpx2
 
     if isinstance(e, anthropic.RateLimitError):
         return RateLimited("429 rate_limit", retry_after=_retry_after(e.response.headers), status=429)
@@ -124,6 +125,10 @@ def map_sdk_error(e: BaseException) -> TransportError:
         # 400s: the message is the API's validation text (no key material); keep it short for the log.
         return BadRequest(f"{e.status_code} {etype}: {(getattr(e, 'message', '') or '')[:200]}", status=e.status_code)
     if isinstance(e, (anthropic.APIConnectionError, anthropic.APITimeoutError)):
+        return Offline(type(e).__name__)
+    # Errors raised while iterating the SSE stream are not wrapped by the SDK: they arrive as raw httpx2 exceptions.
+    # (httpx2.TimeoutException is a TransportError too; both named for clarity.)
+    if isinstance(e, (httpx2.TransportError, httpx2.TimeoutException)):
         return Offline(type(e).__name__)
     return TransportError(type(e).__name__)
 

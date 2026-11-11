@@ -29,7 +29,8 @@ public struct MeetingPrompt: Equatable, Sendable {
     public var acceptLabel: String
     /// nil: only the accept button (information).
     public var dismissLabel: String?
-    /// Work in progress after the accept button ("Preparing from the invite…"): both buttons wait.
+    /// Work in progress after the accept button ("Preparing from the invite…"): the accept button waits; the quiet one
+    /// stays live and cancels the work.
     public var busy: Bool
     /// The island's layout of a start prompt (UI redesign spec 3.2, state 0): a small meta line ("Comet is using the
     /// microphone"), the meeting title, and one line of what Start will use. nil: the island shows `title` and

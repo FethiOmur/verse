@@ -97,10 +97,10 @@ enum ChatLog {
 
     /// Any chat file: a session's `chat.jsonl`, or `memory/chats/all.jsonl` and `memory/chats/<entity-id>.jsonl`.
     static func load(url: URL) -> Loaded {
-        guard let data = try? Data(contentsOf: url), let text = String(data: data, encoding: .utf8) else {
-            return Loaded(turns: [], nextIndex: 1)
-        }
-        return parse(text)
+        guard let data = try? Data(contentsOf: url) else { return Loaded(turns: [], nextIndex: 1) }
+        // Lenient decoding: a writer caught mid-character must not empty the chat (and restart the ids at q1). The
+        // incomplete last line does not parse as JSON and `parse` skips it.
+        return parse(String(decoding: data, as: UTF8.self))
     }
 
     static func parse(_ text: String) -> Loaded {

@@ -115,6 +115,7 @@ final class BrainLifecycleTests: XCTestCase {
         ]
         var o = RunOptions(sessionDir: session.dir)
         o.listenEnvironment = rig.environment()
+        o.waitForBrainBeforeListening = true   // brain 1 must be live for the question it crashes on
         o.brainDir = fake.dir
         o.seconds = 17
         o.drainSeconds = 1

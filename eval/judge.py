@@ -17,6 +17,9 @@ import checks  # noqa: E402
 
 MODEL = "claude-haiku-5-5"
 SECOND_MODEL = "claude-sonnet-5-5"   # second opinion on the lines Haiku flags
+# Which model writes the lines of each tier in the live runtime (report.py "Setup": Haiku 5.5 for S/F, Sonnet 5.5 for D). A judge that is
+# the same model as the writer of a line is "own model": its verdict on that line is logged as such and can never clear the line.
+TIER_MODEL = {"S": MODEL, "F": MODEL, "D": SECOND_MODEL}
 PRICES = {MODEL: (0.10, 0.50), SECOND_MODEL: (2.00, 10.00)}   # USD per million tokens (brain/verse_brain/prep/model.py PRICES)
 
 SYSTEM = (
@@ -30,6 +33,10 @@ SYSTEM = (
     "\"supported\": true|false, \"evidence\": <a short exact quote from the notes that supports the line, or null>, "
     "\"unsupported_claim\": <short text or null>}."
 )
+
+
+def own_model(tier: str, judge_model: str) -> bool:
+    return TIER_MODEL.get(tier) == judge_model
 
 
 class JudgeError(RuntimeError):

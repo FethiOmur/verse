@@ -612,15 +612,6 @@ struct HomeColumnPage<Content: View>: View {
 
 // MARK: - Cloud voice keys
 
-/// Which cloud voices have a key saved. Read once off the view update (a Keychain query inside a view body can re-enter
-/// layout), then published.
-@MainActor
-final class HomeVoiceKeys: ObservableObject {
-    @Published private(set) var saved: Set<VoiceKind> = []
-
-    func refresh() {
-        saved = Set([VoiceKind.elevenlabs, .openai].filter { VoiceKeys.hasKey($0) })
-    }
-
-    func isAvailable(_ kind: VoiceKind) -> Bool { SimSettings.isAvailable(kind, hasKey: { saved.contains($0) }) }
-}
+/// Which cloud voices have a key saved. Shares `HomeVoiceKeyAvailability` (SettingsView.swift), which reads the Keychain
+/// off the main thread and then publishes.
+typealias HomeVoiceKeys = HomeVoiceKeyAvailability

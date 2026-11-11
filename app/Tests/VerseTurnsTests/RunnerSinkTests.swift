@@ -138,8 +138,16 @@ final class RunnerSinkTests: XCTestCase {
         let t0 = Date()
         let code = await VerseRunner(options: o).run()
         let events = rec.all
-        XCTAssertEqual(code, 1, "a run whose brain was given up on still ends with 1")
-        XCTAssertEqual(events.last, .ended(exitCode: 1))
+        // A brain given up on mid-call is a normal end: the transcript is complete; `answers_off` tells the front end when the
+        // answers stopped (it used to end with 1 and the app showed an error panel for a complete call).
+        XCTAssertEqual(code, 0, "a run whose brain was given up on ends normally")
+        XCTAssertEqual(events.last, .ended(exitCode: 0))
+        let off = events.compactMap { e -> [String: JSONValue]? in
+            if case .metric(let m) = e, m[string: "stage"] == VerseRunner.answersOffStage { return m }
+            return nil
+        }
+        XCTAssertEqual(off.count, 1, "one answers_off when the brain is given up on")
+        XCTAssertTrue(off.first?[string: "message"]?.contains("answers are off") ?? false)
 
         let statuses = events.compactMap { e -> String? in
             if case .status(let st, _) = e { return st }

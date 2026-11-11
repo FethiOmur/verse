@@ -36,11 +36,66 @@ public protocol CommandRunning: Sendable {
 }
 
 /// Runs a child process; stdout is read in full, stderr goes to a temp file so neither pipe can block.
+///
+/// Cancelling the calling task stops the child (S2: dismissing "Preparing…" or quitting used to cancel only the Swift
+/// task while the Python prep went on spending up to its budget). It gets SIGINT first, so the prep's own cleanup runs
+/// (its `.<id>.tmp` folder is removed, nothing is renamed into a session), then SIGTERM and SIGKILL if it is still alive
+/// after `graceSeconds` each. The call then throws `CancellationError`.
 public struct ProcessCommandRunner: CommandRunning {
-    public init() {}
+    public var graceSeconds: Double
+
+    public init(graceSeconds: Double = 3) {
+        self.graceSeconds = graceSeconds
+    }
+
+    /// The child of one run, shared between the reading thread and the cancellation handler.
+    private final class Child: @unchecked Sendable {
+        private let lock = NSLock()
+        private var process: Process?
+        private var cancelled = false
+
+        /// Records the started process; false when the run was cancelled first (the caller then stops it itself).
+        func started(_ p: Process) -> Bool {
+            lock.withLock { process = p; return !cancelled }
+        }
+
+        var isCancelled: Bool { lock.withLock { cancelled } }
+
+        func cancel(grace: Double) {
+            let p: Process? = lock.withLock { cancelled = true; return process }
+            if let p { Self.stop(p, grace: grace) }
+        }
+
+        static func stop(_ p: Process, grace: Double) {
+            guard p.isRunning else { return }
+            p.interrupt()
+            DispatchQueue.global().asyncAfter(deadline: .now() + grace) {
+                guard p.isRunning else { return }
+                p.terminate()
+                DispatchQueue.global().asyncAfter(deadline: .now() + grace) {
+                    if p.isRunning { kill(p.processIdentifier, SIGKILL) }
+                }
+            }
+        }
+    }
 
     public func run(executable: URL, arguments: [String], workingDirectory: URL) async throws -> CommandResult {
-        try await Task.detached {
+        let child = Child()
+        let grace = graceSeconds
+        return try await withTaskCancellationHandler {
+            try await Task.detached {
+                try Self.runBlocking(executable: executable, arguments: arguments, workingDirectory: workingDirectory,
+                                     child: child, grace: grace)
+            }.value
+        } onCancel: {
+            child.cancel(grace: grace)
+        }
+    }
+
+    private static func runBlocking(executable: URL, arguments: [String], workingDirectory: URL,
+                                    child: Child, grace: Double) throws -> CommandResult {
+        if child.isCancelled { throw CancellationError() }
+        do {
             let process = Process()
             process.executableURL = executable
             process.arguments = arguments
@@ -57,13 +112,15 @@ public struct ProcessCommandRunner: CommandRunning {
             process.standardError = errHandle
             process.standardInput = FileHandle.nullDevice
             try process.run()
+            if !child.started(process) { Child.stop(process, grace: grace) }
             let data = out.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
+            if child.isCancelled { throw CancellationError() }
             let err = (try? Data(contentsOf: errURL)) ?? Data()
             return CommandResult(status: process.terminationStatus,
                                  stdout: String(decoding: data, as: UTF8.self),
                                  stderr: String(decoding: err, as: UTF8.self))
-        }.value
+        }
     }
 }
 

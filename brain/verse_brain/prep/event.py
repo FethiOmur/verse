@@ -51,6 +51,11 @@ def _parse_dt(s: object) -> datetime | None:
         return None
 
 
+def _comparable(dt: datetime) -> datetime:
+    """A naive time is read as local time, so naive and aware values can be compared."""
+    return dt if dt.tzinfo is not None else dt.astimezone()
+
+
 def _when(event: dict) -> str:
     start, end = _parse_dt(event.get("start")), _parse_dt(event.get("end"))
     if start is None:
@@ -58,9 +63,9 @@ def _when(event: dict) -> str:
     day = f"{start:%A} {start.day} {start:%B %Y}"
     tz = start.strftime("%z")
     zone = f" (UTC{tz[:3]}:{tz[3:]})" if tz else ""
-    if end is None or end <= start:
+    if end is None or _comparable(end) <= _comparable(start):
         return f"{day}, {start:%H:%M}{zone}"
-    minutes = int((end - start).total_seconds() // 60)
+    minutes = int((_comparable(end) - _comparable(start)).total_seconds() // 60)
     return f"{day}, {start:%H:%M} to {end:%H:%M}{zone}, {minutes} minutes"
 
 

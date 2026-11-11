@@ -48,6 +48,9 @@ public final class VerseController: ObservableObject {
     @Published public private(set) var sessionSpend = 0.0
     @Published public private(set) var monthSpend = 0.0
     @Published public private(set) var lastExitCode: Int32?
+    /// The note of the last run that ended normally but with answers off for part of it (the brain was given up on mid-call);
+    /// nil otherwise.
+    @Published public private(set) var lastRunNote: String?
     /// Anytime calls: how the running (or last) session was started. UI hooks; the island and menu read them.
     @Published public private(set) var route: AudioRoute = .meeting
     @Published public private(set) var sessionMode: SessionMode = .prepared
@@ -76,6 +79,8 @@ public final class VerseController: ObservableObject {
     private var runner: VerseRunner?
     private var runTask: Task<Void, Never>?
     private var runStartedAt = Date()
+    /// When the runner gave the brain up in this run (`answers_off`), and the status message it showed for it.
+    private var answersOff: (at: Date, message: String)?
     private var runSessionDir: URL?
     private var runWasFake = false
     private var cancellables: Set<AnyCancellable> = []
@@ -105,8 +110,14 @@ public final class VerseController: ObservableObject {
     }
     /// Event id -> prepared session, as the calendar prep remembered it.
     public var eventSessions = EventSessionMap()
-    /// Something else (the practice interview) owns the microphone: a hot key Start does nothing.
+    /// Something else (the practice interview) owns the microphone: no Start of any kind runs (`bindPractice` sets it).
     public var startBlocked: () -> Bool = { false }
+    /// What ⌥⌘V twice does while `startBlocked` holds: end the practice interview (`bindPractice` sets it). Nil: the key does nothing then.
+    public var blockedStop: (() -> Void)?
+    /// How the last run (or the last start attempt) was started, for the error panel's Retry (review U4).
+    private(set) var retryPlan: RetryPlan?
+    /// Tests only: replaces the runner, so a start can be seen without a brain or a microphone.
+    var launchOverride: ((LaunchRequest) -> Void)?
     /// Where the unprepared session folders go. Tests point it at a temp folder.
     public var sessionsRoot: URL = SessionCatalog.root
 
@@ -226,6 +237,11 @@ public final class VerseController: ObservableObject {
             log("start ignored: running=\(running) stopping=\(stopping)")
             return
         }
+        guard !startBlocked() else {
+            log("start ignored: the microphone is in use by the practice interview")
+            return
+        }
+        retryPlan = .prepared
         refreshSessions()
         guard !settings.sessionName.isEmpty else {
             log("start ignored: no session")
@@ -250,6 +266,7 @@ public final class VerseController: ObservableObject {
             log("start now ignored: the microphone is in use by the practice interview")
             return
         }
+        retryPlan = .now
         refreshSessions()
         let now = clock()
         let events = meeting.settings.useCalendar ? eventsAround(now) : []
@@ -272,6 +289,10 @@ public final class VerseController: ObservableObject {
     /// `anytimeStart`: the session came from Start now (or a route/language change of one), so the island shows the start
     /// card with its route and language chips.
     private func launchSession(name: String, mode: SessionMode, route: AudioRoute, lang requested: String, anytimeStart: Bool = false) {
+        let request = LaunchRequest(name: name, mode: mode, route: route, lang: requested, anytimeStart: anytimeStart,
+                                    remoteFile: remoteFileOverride)
+        retryPlan = .launch(request)
+        if let launchOverride { launchOverride(request); return }
         let dir = SessionCatalog.url(name, root: sessionsRoot)
         // "auto" starts in English (the fastest engine) and lets the call's own speech pick the language.
         let auto = requested == AppSettings.autoLanguage
@@ -307,6 +328,8 @@ public final class VerseController: ObservableObject {
         runWasFake = fakeBrain
         runStartedAt = Date()
         sessionSpend = 0
+        answersOff = nil
+        lastRunNote = nil
         self.route = route
         sessionMode = mode
         callLanguage = lang
@@ -352,6 +375,19 @@ public final class VerseController: ObservableObject {
 
     public func startStopKeyPressed() {
         if stopping { return }
+        // A practice interview owns the microphone (review V1): ⌥⌘V never starts a meeting on top of it. Twice ends the
+        // practice, as it stops a meeting; without a practice stop the key does nothing.
+        if !running, startBlocked() {
+            guard let endPractice = blockedStop else {
+                log("⌥⌘V ignored: the microphone is in use by the practice interview")
+                return
+            }
+            if startStopKeyAction(running: true) == .stop {
+                log("practice ended by ⌥⌘V twice")
+                endPractice()
+            }
+            return
+        }
         switch startStopKeyAction() {
         case .start: startNow()
         case .arm: break
@@ -359,6 +395,12 @@ public final class VerseController: ObservableObject {
             log("stop by ⌥⌘V twice")
             Task { await stop() }
         }
+    }
+
+    /// Wires the practice interview in (the app does it once at launch): no Start runs while it does, and ⌥⌘V twice ends it.
+    public func bindPractice(_ sim: SimController) {
+        startBlocked = { [weak sim] in sim?.running ?? false }
+        blockedStop = { [weak sim] in sim?.endInterview() }
     }
 
     private func setStopArmed(_ on: Bool) {
@@ -473,6 +515,10 @@ public final class VerseController: ObservableObject {
     /// path as `--file`) while the real microphone stays "me", so the app can be tested without a meeting app.
     public func start(remoteFile url: URL) {
         guard !running, !stopping else { return }
+        guard !startBlocked() else {
+            log("start ignored: the microphone is in use by the practice interview")
+            return
+        }
         remoteFileOverride = url
         start()
         if !running { remoteFileOverride = nil }
@@ -534,6 +580,18 @@ public final class VerseController: ObservableObject {
                                             isTest: runWasFake || remoteFileOverride != nil || testFile != nil))
         }
         remoteFileOverride = nil
+        // A brain given up on mid-call is a normal end (the runner exits 0): the transcript is complete, answers were off for the
+        // rest of the call. The error it showed then goes; a note says what happened instead.
+        if code == 0, let off = answersOff, let dir = runSessionDir {
+            if overlay.state.status == .error(off.message) { overlay.dismissStatus() }
+            let note = RunEndNote.answersOff(since: off.at, summaryWritten: RunEndNote.summaryWritten(sessionDir: dir, since: runStartedAt))
+            lastRunNote = note.title + " " + note.detail
+            log("run ended normally with answers off since \(off.at)")
+            if overlay.state.meetingPrompt == nil {
+                overlay.showPrompt(MeetingPrompt(kind: .saved, title: note.title, subtitle: note.detail, acceptLabel: L10n.tr("OK")))
+                showPanel()
+            }
+        }
         // Never fail silently: a failed run without a status of its own says what the log said last.
         if code != 0 {
             let detail = lastLogLine.map { L10n.tr("The session ended: \($0)") } ?? L10n.tr("The session ended with an error (code \(code)).")
@@ -550,7 +608,10 @@ public final class VerseController: ObservableObject {
         if case .status(let st, let m) = e { log("status \(st) \(m)") }
         if case .brain(let o) = e, o.type == "status" { log("brain status \(o[string: "state"] ?? "") \(o[string: "message"] ?? "")") }
         if case .metric(let o) = e, o[string: "stage"] == "session_t0" {
-            log(String(format: "ready after %.1f s", Date().timeIntervalSince(runStartedAt)))
+            log(String(format: "listening after %.1f s", Date().timeIntervalSince(runStartedAt)))
+        }
+        if case .metric(let o) = e, o[string: "stage"] == VerseRunner.answersOffStage, answersOff == nil {
+            answersOff = (Date(), o[string: "message"] ?? "")
         }
         feedOverlay(e)
         prompter.meetingCard(overlay.state.card)
@@ -582,10 +643,28 @@ public final class VerseController: ObservableObject {
         SpendLedger.record(sessionDir: dir, startedAt: runStartedAt, costUSD: sessionSpend)
     }
 
-    /// The error panel's Retry: clears the message and starts again.
+    /// The error panel's Retry: clears the message and starts again the way the failed run was started (review U4): the same
+    /// session folder, route, language and remote test file; a Start now that failed before it had a folder plans again.
     public func retry() {
         overlay.dismissStatus()
-        start()
+        guard !running, !stopping, !switching else {
+            log("retry ignored: running=\(running) stopping=\(stopping) switching=\(switching)")
+            return
+        }
+        guard !startBlocked() else {
+            log("retry ignored: the microphone is in use by the practice interview")
+            return
+        }
+        switch retryPlan {
+        case nil, .prepared?: start()
+        case .now?: startNow()
+        case .launch(let r)?:
+            log("retry session=\(r.name) mode=\(r.mode.rawValue) route=\(r.route.rawValue)")
+            remoteFileOverride = r.remoteFile
+            if r.mode == .prepared { settings.sessionName = r.name }
+            launchSession(name: r.name, mode: r.mode, route: r.route, lang: r.lang, anytimeStart: r.anytimeStart)
+            if !running { remoteFileOverride = nil }
+        }
     }
 
     private func showPanel() {
@@ -644,4 +723,26 @@ public enum SystemSettingsLink {
     @MainActor public static func open(permission: String) {
         NSWorkspace.shared.open(url(permission: permission))
     }
+}
+
+/// One session launch, as `VerseController.launchSession` got it: what Retry repeats.
+struct LaunchRequest: Equatable, Sendable {
+    var name: String
+    var mode: SessionMode
+    var route: AudioRoute
+    /// As requested ("auto" stays "auto").
+    var lang: String
+    var anytimeStart: Bool
+    /// "Play test file as remote…": the file that was the remote channel.
+    var remoteFile: URL?
+}
+
+/// What the error panel's Retry does (review U4).
+enum RetryPlan: Equatable, Sendable {
+    /// `start()` failed before it launched anything (no session): start it again.
+    case prepared
+    /// Start now failed before it launched anything (no session folder): plan again.
+    case now
+    /// A launched run failed: launch the same one again.
+    case launch(LaunchRequest)
 }

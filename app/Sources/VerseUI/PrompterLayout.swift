@@ -42,15 +42,16 @@ public struct PrompterWordRanges: Equatable, Sendable {
 
 /// The one-line notice under the text, if any. Highest priority first.
 public enum PrompterHint: Equatable, Sendable {
-    /// The requested mode could not start; the prompter runs in classic mode.
-    case fellBack(reason: String)
+    /// The requested mode could not start; the prompter runs in classic mode. `reason` is the raw text (for the log);
+    /// the hint shows `cause`, in the interface language.
+    case fellBack(reason: String, cause: PrompterFallbackCause = .other)
     /// Word tracking heard speech but found no match for a while.
     case lost
     case done
 
     public init?(state: PrompterState) {
-        if case .fellBackToClassic(let reason)? = state.notice {
-            self = .fellBack(reason: reason)
+        if case .fellBackToClassic(let reason, let cause)? = state.notice {
+            self = .fellBack(reason: reason, cause: cause)
         } else if state.isLost, state.mode == .wordTracking {
             self = .lost
         } else if state.isDone {
@@ -60,13 +61,21 @@ public enum PrompterHint: Equatable, Sendable {
         }
     }
 
-    public var text: String {
+    public var text: String { text(locale: nil) }
+
+    /// The hint in the interface language (`locale` overrides it, for tests).
+    func text(locale: Locale?) -> String {
         switch self {
-        case .fellBack(let reason):
-            let short = reason.count > 90 ? String(reason.prefix(88)) + "…" : reason
-            return L10n.tr("Classic mode: \(short)")
-        case .lost: return L10n.tr("Lost: click a word")
-        case .done: return L10n.tr("End of script")
+        case .fellBack(_, let cause):
+            switch cause {
+            case .noSpeechSource, .speechUnavailable: return L10n.tr("Classic mode: speech recognition is not available.", locale: locale)
+            case .noLevelSource: return L10n.tr("Classic mode: the microphone level is not available.", locale: locale)
+            case .permissionDenied: return L10n.tr("Classic mode: Verse needs microphone access.", locale: locale)
+            case .microphoneFailed: return L10n.tr("Classic mode: the microphone did not start.", locale: locale)
+            case .other: return L10n.tr("Classic mode: listening could not start.", locale: locale)
+            }
+        case .lost: return L10n.tr("Lost: click a word", locale: locale)
+        case .done: return L10n.tr("End of script", locale: locale)
         }
     }
 

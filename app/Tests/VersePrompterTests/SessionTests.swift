@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import VerseAudio
 @testable import VersePrompter
 import VerseSpeech
 
@@ -33,7 +34,17 @@ struct SessionTests {
         let session = PrompterSession(script: Self.script, mode: .voicePaced, clock: ManualClock(), autoTick: false)
         await session.start()
         #expect(await session.state.mode == .classic)
+        // V13: the UI words the cause in the interface language; the English reason is only for the log.
+        #expect(await session.state.notice == .fellBackToClassic(reason: "No microphone level source is available.", cause: .noLevelSource))
         await session.stop()
+    }
+
+    @Test
+    func fallbackCausesFromListenErrors() {
+        #expect(PrompterSession.cause(of: ListenError.permissionDenied(.microphone)) == .permissionDenied)
+        #expect(PrompterSession.cause(of: ListenError.micFailed("x")) == .microphoneFailed)
+        #expect(PrompterSession.cause(of: ListenError.speechUnavailable(lang: "tr", reason: "x")) == .speechUnavailable)
+        #expect(PrompterSession.cause(of: ThrowingTranscriptSource.Failure()) == .other)
     }
 
     @Test

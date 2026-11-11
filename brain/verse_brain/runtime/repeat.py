@@ -7,7 +7,9 @@ in code: every line of a new follow card is compared with
     * every line that reached his screen this turn (the original card, the detail lines, every earlier follow card), and
     * the last sentences of his own answer in this turn,
 
-and a line is a repeat when EITHER
+and a line is a repeat when neither carries a figure the other lacks (two lines that both hold numbers and hold different ones state
+different facts: "cost 1,900 euros" is no repeat of "saved 9,500 euros"; decided before the two rules, so the lexical rule cannot
+drop the very line whose new figure is worth showing) and EITHER
 
     * the cosine of the two lines' embeddings (the follow machine's own EmbeddingGemma path, same prefix, same vector cache) is
       at least `RepeatParams.embed_dup` (0.86), or
@@ -28,7 +30,7 @@ from dataclasses import dataclass
 from operator import mul
 from typing import Callable, Sequence
 
-from .follow import content_stems, unit
+from .follow import content_stems, numbers_of, unit
 
 
 @dataclass(frozen=True)
@@ -90,11 +92,16 @@ def find_repeat(text: str, refs: Sequence[str], vecs: dict[str, list[float]] | N
     `vecs`: unit vectors by text (None or missing texts: the lexical rule alone)."""
     p = p or RepeatParams()
     tv = vecs.get(text) if vecs else None
+    nums = numbers_of(text)
     for ref in refs:
         if not ref:
             continue
         if ref == text:
             return ref, "same", 1.0
+        if nums:
+            ref_nums = numbers_of(ref)
+            if ref_nums and ref_nums != nums:
+                continue
         lex = lex_overlap(text, ref, p)
         if lex >= p.lex_dup:
             return ref, "lex", lex

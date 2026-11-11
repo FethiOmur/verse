@@ -140,6 +140,7 @@ final class RealAutoLanguageCheck: XCTestCase {
         defer { session.delete() }
         var o = RunOptions(sessionDir: session.dir)
         o.listenEnvironment = env
+        o.waitForBrainBeforeListening = true
         o.source = nil
         o.lang = "it"
         o.route = .meeting

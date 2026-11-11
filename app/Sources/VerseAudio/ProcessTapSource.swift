@@ -67,13 +67,19 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
     private let ioQueue = DispatchQueue(label: "verse.tap.io", qos: .userInteractive)
     private let controlQueue = DispatchQueue(label: "verse.tap.control")
     private let controlKey = DispatchSpecificKey<Bool>()
-    private(set) public var route: TapRoute?
-    private(set) public var tapFormatDescription = ""
+    /// The silent-tap probe asked the next pass to rebuild (see `SilentTapWatch`).
+    private var silentProbePending = false
+    // Review M7: written on the control queue (and by `start`), read from anywhere: behind `lock`.
+    private var route_: TapRoute?
+    private var tapFormatDescription_ = ""
+    private var fallbackReason_: String?
+    public var route: TapRoute? { lock.withLockUnchecked { route_ } }
+    public var tapFormatDescription: String { lock.withLockUnchecked { tapFormatDescription_ } }
     /// PID route: one line per process-list refresh (count of matching objects and the set-description status).
     public var refreshLog: [String] { lock.withLockUnchecked { refreshLog_ } }
     private var refreshLog_: [String] = []
     /// Errors from the bundle-ID attempt when `auto` fell back to the PID list.
-    private(set) public var fallbackReason: String?
+    public var fallbackReason: String? { lock.withLockUnchecked { fallbackReason_ } }
 
     public init(bundleIDs: [String] = defaultRemoteBundleIDs,
                 preference: TapRoutePreference = .auto,
@@ -196,7 +202,7 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
     /// no property change. A running tap delivers buffers of zeros during silence, so missing callbacks are never ordinary
     /// silence; the check also requires the meeting app to be sending audio to an output (unknown counts as no) and fires once
     /// per stall (latched until a callback arrives). A tap that keeps calling back with exact zeros while the app plays is not
-    /// covered here: that looks the same as a silent remote side, and only `DeadStreamDetector` reports it (no rebuild).
+    /// covered here: that looks the same as a silent remote side. `SilentTapWatch` handles it with a bounded, quiet probe.
     static func isStalled(now: TimeInterval, lastCallback: TimeInterval?, builtAt: TimeInterval, threshold: TimeInterval,
                           latched: Bool, producing: () -> Bool?) -> Bool {
         guard !latched, now - (lastCallback ?? builtAt) >= threshold else { return false }
@@ -214,11 +220,32 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
     private func checkStall() {
         let s = ioState.snapshot()
         let ids = bundleIDs
-        guard Self.isStalled(now: HostTime.nowSeconds(), lastCallback: s.lastCallback, builtAt: s.builtAt, threshold: Self.stallThreshold,
+        let now = HostTime.nowSeconds()
+        checkSilent(now: now, ids: ids)
+        guard Self.isStalled(now: now, lastCallback: s.lastCallback, builtAt: s.builtAt, threshold: Self.stallThreshold,
                              latched: s.latched, producing: { AudioProcesses.anyOutputRunning(ids) }) else { return }
         ioState.latch()
         lock.withLockUnchecked { stallPending = true }
         trigger("no audio callbacks for \(Int(Self.stallThreshold)) s while the meeting app plays")
+    }
+
+    /// The tap calls back, but with exact zeros while the meeting app plays (see `SilentTapWatch`): a quiet probe rebuild, and
+    /// a `.rebuilt` report only when audio came back right after one.
+    private func checkSilent(now: TimeInterval, ids: [String]) {
+        switch ioState.checkSilent(now: now, producing: { AudioProcesses.anyOutputRunning(ids) }) {
+        case .none:
+            return
+        case .probe(let attempt, let silentFor):
+            lock.withLockUnchecked { silentProbePending = true }
+            trigger("tap delivered only digital zero for \(Int(silentFor)) s while the meeting app played (probe \(attempt))")
+        case .recovered:
+            let h = lock.withLockUnchecked { () -> (@Sendable (CaptureEvent) -> Void)? in
+                guard !stopped_ else { return nil }
+                refreshLog_.append("silent tap probe: audio came back")
+                return eventHandler
+            }
+            h?(.rebuilt("meeting audio came back after rebuilding a tap that delivered only digital zero"))
+        }
     }
 
     private func trigger(_ reason: String) {
@@ -241,7 +268,7 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
                 try startTap(.bundleID, clock: clock, onChunk: onChunk)
             } catch {
                 teardownTap()
-                fallbackReason = "\(error)"
+                lock.withLockUnchecked { fallbackReason_ = "\(error)" }
                 try startTap(.pidList, clock: clock, onChunk: onChunk)
             }
         }
@@ -279,8 +306,11 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
 
         let format = (try? CA.scalar(tid, kAudioTapPropertyFormat, AudioStreamBasicDescription())) ?? AudioStreamBasicDescription()
         let sampleRate = format.mSampleRate > 0 ? format.mSampleRate : 48000
-        tapFormatDescription = "\(Int(sampleRate)) Hz, \(format.mChannelsPerFrame) ch"
-        lock.withLockUnchecked { builtRate = format.mSampleRate; builtChannels = format.mChannelsPerFrame }
+        lock.withLockUnchecked {
+            tapFormatDescription_ = "\(Int(sampleRate)) Hz, \(format.mChannelsPerFrame) ch"
+            builtRate = format.mSampleRate
+            builtChannels = format.mChannelsPerFrame
+        }
         // The IOProc below labels every chunk with this rate, so a format change must rebuild the tap (review H5).
         var fa = CA.address(kAudioTapPropertyFormat)
         let formatBlock: AudioObjectPropertyListenerBlock = { [weak self] _, _ in self?.trigger("tap format changed") }
@@ -328,6 +358,7 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
                     mono[f] = s / Float(channels)
                 }
             }
+            if !mono.isEmpty { io.audio(zero: !mono.contains { $0 != 0 }) }
             let t = inInputTime.pointee.mHostTime != 0
                 ? clock.sessionTime(hostTime: inInputTime.pointee.mHostTime)
                 : clock.now() - Double(mono.count) / sampleRate
@@ -340,7 +371,7 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
         } catch {
             throw ListenError.tapFailed("\(error)")
         }
-        self.route = route
+        lock.withLockUnchecked { route_ = route }
         if route == .pidList && installListener { installProcessListListener() }
     }
 
@@ -363,18 +394,36 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
         teardownTap()
         var result = "ok"
         var failed = false
-        do { try startTap(.pidList, clock: clock, onChunk: onChunk, installListener: false) } catch { result = "\(error)"; failed = true }
-        lock.withLockUnchecked { refreshLog_.append("objects \(old.count) -> \(now.count): rebuilt tap (\(result))"); broken = failed }
+        do { try startTap(.pidList, clock: clock, onChunk: onChunk, installListener: false) } catch {
+            result = "\(error)"
+            failed = true
+            teardownTap()    // whatever half of the tap was made
+        }
+        lock.withLockUnchecked {
+            refreshLog_.append("objects \(old.count) -> \(now.count): rebuilt tap (\(result))")
+            broken = failed
+            // Review M7: `makeDescription` already stored the new list. Kept, the next notification with that same list would
+            // find nothing changed and never retry; the old list makes it try again.
+            tappedObjects = Self.objectsAfterRefresh(old: old, attempted: now, failed: failed)
+        }
         // A failed refresh used to leave the remote channel silent with no signal. With no meeting process left there is nothing
         // to hear, so only a failure with processes to tap goes to the rebuilder (retries, then `.failed`).
         if failed && !now.isEmpty { trigger("process list refresh failed") }
     }
 
+    /// The process objects to remember after a PID-list refresh: the new list when the tap was built for it, else the old one,
+    /// so the next process-list notification (even one with the same list) differs and retries (review M7).
+    static func objectsAfterRefresh(old: [AudioObjectID], attempted: [AudioObjectID], failed: Bool) -> [AudioObjectID] {
+        failed ? old : attempted
+    }
+
     /// On `controlQueue`. False when the tap still exists with the format it was built for, the default output is unchanged,
-    /// the meeting app plays to the same devices at the same rates and the stall watchdog did not ask for a rebuild.
+    /// the meeting app plays to the same devices at the same rates and neither the stall watchdog nor the silent-tap probe asked
+    /// for a rebuild. Also false after a rebuild that only the silent-tap probe asked for: that one is reported later, and only
+    /// if audio comes back (`checkSilent`).
     private func rebuildIfNeeded() throws -> Bool {
-        let (stopped, clock, onChunk, tid, rate, channels, device, isBroken, builtApp) = lock.withLockUnchecked {
-            (stopped_, clock_, onChunk_, tapID, builtRate, builtChannels, builtOutputDevice, broken, builtAppOutput)
+        let (stopped, clock, onChunk, tid, rate, channels, device, isBroken, builtApp, route) = lock.withLockUnchecked {
+            (stopped_, clock_, onChunk_, tapID, builtRate, builtChannels, builtOutputDevice, broken, builtAppOutput, route_)
         }
         guard !stopped, let clock, let onChunk, let route else { return false }
         let nowDevice = Self.defaultOutputDevice()
@@ -385,8 +434,13 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
         let tapChanged = Self.needsRebuild(tapExists: tid != kAudioObjectUnknown && !isBroken, builtRate: rate, builtChannels: channels,
                                            builtDevice: device, nowRate: f?.mSampleRate, nowChannels: f?.mChannelsPerFrame, nowDevice: nowDevice)
         let appChange = Self.appOutputChange(built: builtApp, now: app.devices)
-        let stall = lock.withLockUnchecked { () -> Bool in defer { stallPending = false }; return stallPending }
-        if !tapChanged && !stall {
+        let (stall, probe) = lock.withLockUnchecked { () -> (Bool, Bool) in
+            defer { stallPending = false; silentProbePending = false }
+            return (stallPending, silentProbePending)
+        }
+        var appRebuild = false
+        if case .rebuild = appChange { appRebuild = true }
+        if !tapChanged && !stall && !probe {
             switch appChange {
             case .none: return false
             case .adopt:
@@ -406,9 +460,19 @@ public final class ProcessTapSource: AudioCaptureSource, @unchecked Sendable {
         var why = ["output device \(device) -> \(nowDevice)"]
         if case .rebuild(let m) = appChange { why.append(m) }
         if stall { why.append("stalled") }
-        let line = why.joined(separator: "; ") + ": rebuilt tap (\(tapFormatDescription))"
-        lock.withLockUnchecked { broken = false; builtOutputDevice = nowDevice; builtAppOutput = app.devices; refreshLog_.append(line) }
-        return true
+        if probe { why.append("silent tap probe") }
+        lock.withLockUnchecked {
+            broken = false
+            builtOutputDevice = nowDevice
+            builtAppOutput = app.devices
+            refreshLog_.append(why.joined(separator: "; ") + ": rebuilt tap (\(tapFormatDescription_))")
+        }
+        return Self.reportRebuild(tapChanged: tapChanged, stall: stall, appRebuild: appRebuild, probe: probe)
+    }
+
+    /// Whether a rebuild is reported as `.rebuilt` right away: always, unless the silent-tap probe was its only cause.
+    static func reportRebuild(tapChanged: Bool, stall: Bool, appRebuild: Bool, probe: Bool) -> Bool {
+        tapChanged || stall || appRebuild || !probe
     }
 
     /// The rebuild decision: no working tap, another tap format (nil = unreadable) or another default output device.
@@ -480,10 +544,25 @@ final class TapIOState: @unchecked Sendable {
     private var builtAt: TimeInterval = 0
     private var latched = false
 
+    private var silent = SilentTapWatch()
+
     /// A callback arrived: the tap delivers again (a later stall may rebuild again).
     func beat() {
         let now = HostTime.nowSeconds()
         lock.withLockUnchecked { lastCallback = now; latched = false }
+    }
+
+    /// A buffer's content: exact digital zero or not (the silent-tap watch). Survives a rebuild: the zero run goes on.
+    func audio(zero: Bool) {
+        let now = HostTime.nowSeconds()
+        lock.withLockUnchecked { silent.buffer(zero: zero, at: now) }
+    }
+
+    /// `producing` reads Core Audio, so it runs outside the lock the IOProc takes, and only during a zero run.
+    func checkSilent(now: TimeInterval, producing: () -> Bool?) -> SilentTapWatch.Action {
+        let inZeroRun = lock.withLockUnchecked { silent.zeroSince != nil }
+        let p = inZeroRun ? producing() : nil
+        return lock.withLockUnchecked { silent.check(now: now, lastCallback: lastCallback, producing: { p }) }
     }
 
     /// A new tap starts: its grace period begins. The latch stays until that tap actually calls back.

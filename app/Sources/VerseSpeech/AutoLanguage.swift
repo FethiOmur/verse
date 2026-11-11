@@ -87,6 +87,9 @@ public struct AutoLanguageDetector: Sendable {
     private var run: Run?
     private var units: [LangFinal] = []         // main finals waiting for their shadow
     private var shadows: [(f: LangFinal, used: Bool)] = []
+    /// Remote main finals already judged, with their text's best language and score: a shadow final of the same speech
+    /// that arrives after its main final was judged is weighed against it instead of voting alone (S3).
+    private var judged: [(start: TimeInterval, end: TimeInterval, lang: String?, score: Double)] = []
     private var lastRemoteEnd: TimeInterval?
     private var recentVotes: [String] = []
 
@@ -106,6 +109,7 @@ public struct AutoLanguageDetector: Sendable {
         run = nil
         units = []
         shadows = []
+        judged = []
     }
 
     /// The recognizers now run in `lang` (a pin from the chip, or a switch applied elsewhere). Counts as a switch for the dwell.
@@ -116,6 +120,7 @@ public struct AutoLanguageDetector: Sendable {
         run = nil
         units = []
         shadows = []
+        judged = []
     }
 
     /// A switch that was decided could not be applied: back to the old language, without a dwell.
@@ -167,12 +172,18 @@ public struct AutoLanguageDetector: Sendable {
             vote(for: u)
         }
         units = rest
-        // Shadow finals nobody overlapped (the main recognizer heard nothing in a language it does not speak).
+        // Shadow finals nobody overlapped (the main recognizer heard nothing in a language it does not speak). One that
+        // arrived after the main final of the same speech was judged (later than `pairGrace`) is weighed against that
+        // main text, as the pair would have been: alone it would vote unopposed and could flip the call.
         for i in shadows.indices where !shadows[i].used && t >= shadows[i].f.end + config.pairGrace {
             shadows[i].used = true
-            vote(for: nil, shadow: shadows[i].f)
+            let s = shadows[i].f
+            let late = judged.filter { min($0.end, s.end) - max($0.start, s.start) > 0.2 }
+                .max { $0.score < $1.score }
+            vote(for: nil, shadow: s, judgedMain: late.map { ($0.lang, $0.score) })
         }
         shadows.removeAll { $0.f.end < t - config.keepSeconds }
+        judged.removeAll { $0.end < t - config.keepSeconds }
 
         guard let r = run, r.lang != current, config.allowed.contains(r.lang),
               r.finals >= config.minConsecutive || r.seconds >= config.minSpeechSeconds else { return nil }
@@ -183,6 +194,7 @@ public struct AutoLanguageDetector: Sendable {
         run = nil
         units = []
         shadows = []
+        judged = []
         return d
     }
 
@@ -193,7 +205,8 @@ public struct AutoLanguageDetector: Sendable {
         return p * (confidence ?? 1)
     }
 
-    private mutating func vote(for main: LangFinal?, shadow lone: LangFinal? = nil) {
+    private mutating func vote(for main: LangFinal?, shadow lone: LangFinal? = nil,
+                               judgedMain: (lang: String?, score: Double)? = nil) {
         // The shadow finals that overlap this main final in time.
         var shadowBest: (lang: String, score: Double)?
         if let u = main {
@@ -220,11 +233,14 @@ public struct AutoLanguageDetector: Sendable {
                 if sc > (primary?.score ?? 0) { primary = (h.lang, sc) }
             }
         }
-        let sP = primary?.score ?? 0
+        // A late shadow competes with the main text it missed; that main text already voted for its own language.
+        let sP = primary?.score ?? judgedMain?.score ?? 0
+        if let u = main, u.channel == .remote { judged.append((u.start, u.end, primary?.lang, sP)) }
         var voted: String?
         if let p = primary, sP >= config.minScore, shadowBest.map({ $0.lang == p.lang || $0.score < sP + config.margin }) ?? true {
             voted = p.lang
-        } else if let s = shadowBest, s.score >= config.minScore, s.score >= sP + config.margin || sP < config.minScore {
+        } else if let s = shadowBest, s.score >= config.minScore, s.score >= sP + config.margin || sP < config.minScore,
+                  judgedMain?.lang != s.lang || sP < config.minScore {
             voted = s.lang
         }
 

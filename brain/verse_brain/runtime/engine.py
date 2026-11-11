@@ -46,7 +46,12 @@ Output contract towards Swift (in addition to the plan's event list):
   `control route` (+ optional `room_auto`, `follow`) does the same for the audio route: Swift swaps its listen pipeline in
   place and the session, transcript, cached prefix and open turns go on; only the room gate and follow mode follow the route.
 - History replay: a brain restarted mid-call by Swift's supervisor gets the call's finalized turns so far in `history` (after its
-  `ready`, before any live line). They join the transcript and nothing is fired for them (`on_history`).
+  `ready`, before any live line). They join the transcript and nothing is fired for them (`on_history`). Swift listens from the
+  start of the call without waiting for `ready`, so the first brain gets the turns heard during its warm-up the same way.
+- Start (review L3): `start` loads the session at once and runs the pre-warm as a task; the input loop keeps reading. Every
+  message that arrives before the pre-warm has ended is queued and handled, in order, right after its `ready` / `offline`
+  status (dropped when the start halts on credit or the key). `control stop` is never queued: it ends the warm-up, adds the
+  queued turns and `history` to the transcript (no cards), runs the final merge and exits.
 """
 
 from __future__ import annotations
@@ -62,7 +67,7 @@ from pathlib import Path
 from typing import Callable
 
 from ..prep.model import Usage, spend_usd
-from .embed import PREFIX, Embedder, EmbedPath, EmbedUnavailable, Job, Result
+from .embed import PREFIX, Embedder, EmbedPath, EmbedUnavailable, Job, Result, accepted
 from .events import CARD_CHARS, CARD_FULL_CHARS, EventLog, clip
 from .follow import (Covered, Diverged, Ended, FollowMachine, NeedEmbed, Refresh, clean_line, score_matrix)
 from .lines import LineAssembler
@@ -204,6 +209,8 @@ class Call:
         self.winner_lane: int | None = None
         self.new_connection: bool | None = None
         self.retries_left = 1 if tier in ("D", "A") else 0  # S/F/R/C: max_retries 0; D, A: one retry
+        # F: one immediate second attempt on a 5xx / overloaded that came before any text (review M4); S stays speculative
+        self.fast_retries_left = 1 if tier == "F" else 0
         self.follow_reason: str | None = None   # tier C: "diverged" | "refresh"
         self.follow_sent = False                # tier C: the `follow` event went out (just before its first delta)
         self.follow_t0: float = 0.0             # tier C: when the divergence / refresh was decided (time.time())
@@ -404,6 +411,15 @@ class Call:
                         await asyncio.sleep(wait)
                         self.t.pop("fire", None)
                         continue
+                    if isinstance(e, Overloaded) and self.fast_retries_left > 0 and b.retry_ok(self, e):
+                        # No wait: the answer is needed now. With hedging the second lane is kept warm, so the retry
+                        # goes there; nothing was shown yet (`retry_ok`), so no line can appear twice.
+                        self.fast_retries_left -= 1
+                        if b._hedge_after(self) is not None:
+                            self.lane = 1 - self.lane
+                        self._stage("retry_fast", kind=e.kind, lane=self.lane)
+                        self.t.pop("fire", None)
+                        continue
                     raise
         except asyncio.CancelledError:
             self.discarded = True
@@ -562,6 +578,9 @@ class Brain:
         self._follow_detected: dict[str, float] = {}      # turn_id -> time.time() of the last divergence/refresh decision
         self._follow_banks: set[str] = set()
         self.follow_counts = {"diverged": 0, "refresh": 0, "covered": 0, "c_calls": 0, "c_empty": 0, "c_repeat": 0}
+        # review L3: the pre-warm runs as a task; what arrives meanwhile waits here (None: not warming)
+        self._warm_task: asyncio.Task | None = None
+        self._warm_queue: list[dict] | None = None
 
     # ------------------------------------------------------------------ helpers
     def _spawn(self, coro) -> asyncio.Task:
@@ -605,7 +624,22 @@ class Brain:
         t = msg.get("type")
         if t == "start":
             await self.on_start(msg)
-        elif t == "partial":
+            return
+        if self._warm_queue is not None and not (t == "control" and msg.get("action") == "stop"):
+            self._warm_queue.append(msg)      # handled in order once the pre-warm has ended (`_warm_up`)
+            return
+        await self._dispatch(msg)
+
+    async def warmed(self) -> None:
+        """Waits for the pre-warm started by `start` (and the queued messages it then handles). Tests and callers that need
+        `ready` before they go on."""
+        t = self._warm_task
+        if t is not None and not t.done():
+            await asyncio.gather(t, return_exceptions=True)
+
+    async def _dispatch(self, msg: dict) -> None:
+        t = msg.get("type")
+        if t == "partial":
             self.on_partial(msg)
         elif t == "turn":
             self.on_turn(msg)
@@ -688,6 +722,70 @@ class Brain:
         self._follow_want = bool(msg.get("follow", self.config.follow_default))
         self._follow_start(msg)
         self._status("warming", f"pre-warming {HAIKU} and {SONNET}")
+        # Review L3: the pre-warm can take `prewarm_attempts * prewarm_attempt_s` (36 s) on a stalled network. It runs as a task
+        # so the input loop goes on reading: `control stop` ends it, everything else waits in `_warm_queue` until it is over.
+        self._warm_queue = []
+        self._warm_task = self._spawn(self._warm_up())
+
+    async def _warm_up(self) -> None:
+        """The pre-warm and its readiness status, then the messages that arrived meanwhile (in order). A halt (no credit, a
+        rejected key) drops them: nothing will be answered. Runs as a task; `stop()` cancels it."""
+        ok = False
+        try:
+            ok = await self._prewarm_and_report()
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:  # noqa: BLE001 - a bug here must not leave the call without `ready` and its queue unread
+            log.exception("pre-warm failed unexpectedly; starting without a warm connection")
+            self._status("ready", f"pre-warm failed ({type(e).__name__}); starting anyway", degraded=True, **self._ready_extra())
+            ok = True
+        queued, self._warm_queue = self._warm_queue or [], None
+        if not ok:
+            if queued:
+                log.warning("dropped %d messages queued during a pre-warm that halted", len(queued))
+            return
+        if self.start_background:
+            self.bg.append(self._spawn(self._ping_loop()))
+            self.bg.append(self._spawn(self._keepalive_loop()))
+        for m in queued:
+            if self.stopped.is_set():
+                return
+            try:
+                await self._dispatch(m)
+            except Exception:  # noqa: BLE001 - the input loop's HandlerGuard does not see a queued message
+                log.exception("handler error in queued %s; the brain goes on", m.get("type"))
+
+    async def _end_warm_for_stop(self) -> None:
+        """`control stop` while the pre-warm runs. Lines sent before the stop are handled in order: when live lines are queued
+        (a turn, a partial, card now) the pre-warm gets up to `stop_warm_wait_s` to finish, and they are answered as they would have
+        been. Otherwise (Swift sends only `history` before `ready`), or after that wait, the pre-warm is cancelled and the queued
+        turns and `history` join the transcript without cards, so the final merge covers them."""
+        task = self._warm_task
+        if task is None or task.done() or self._warm_queue is None:
+            return
+        live = any(m.get("type") not in ("history", "control") or m.get("action") == "card_now" for m in self._warm_queue)
+        if live:
+            await asyncio.wait({task}, timeout=self.config.stop_warm_wait_s)
+            if task.done():
+                return
+        task.cancel()
+        queued, self._warm_queue = self._warm_queue, None
+        if not queued:
+            return
+        known = {t.turn_id for t in self.turns}
+        added = 0
+        for m in queued:
+            if m.get("type") == "history":
+                self.on_history(m)
+                known = {t.turn_id for t in self.turns}
+            elif m.get("type") == "turn" and isinstance(m.get("turn_id"), str) and m["turn_id"] not in known:
+                known.add(m["turn_id"])
+                self.turns.append(Turn(m["turn_id"], str(m.get("speaker", "remote")), str(m.get("text", ""))))
+                added += 1
+        self.emitter.metric("", "warm_queue_at_stop", messages=len(queued), turns_added=added)
+
+    async def _prewarm_and_report(self) -> bool:
+        """The pre-warm and the status it ends with. False: the start halted (no credit, a rejected key)."""
         degraded: TransportError | None = None
         try:
             degraded = await self._prewarm()
@@ -696,10 +794,10 @@ class Brain:
             self._status("offline", f"no connection ({e})", reason=NO_CONNECTION)
         except CreditExhausted:
             self._halt("credit_exhausted", "Max API credit used up", reason=NO_CREDIT)
-            return
+            return False
         except AuthFailed as e:
             self._halt("error", f"API key rejected ({e})", reason=INVALID_API_KEY)
-            return
+            return False
         except TransportError as e:   # a 400 on the warm-up request, or an unmapped SDK error: not a reason to drop the call
             degraded = e
         else:
@@ -714,9 +812,7 @@ class Brain:
             self.emitter.metric("", "prewarm_degraded", kind=degraded.kind, status=degraded.status)
             self._status("ready", f"pre-warm failed ({degraded.kind}: {degraded}); starting anyway", degraded=True,
                          **self._ready_extra())
-        if self.start_background:
-            self.bg.append(self._spawn(self._ping_loop()))
-            self.bg.append(self._spawn(self._keepalive_loop()))
+        return True
 
     async def _prewarm(self) -> TransportError | None:
         """Opens every lane now (pre-warm on one lane, ping on the other) so no connection is opened at t = 0.
@@ -1250,7 +1346,7 @@ class Brain:
         top = res.top
         s1 = top[0][1] if top else -1.0
         s2 = top[1][1] if len(top) > 1 else -1.0
-        ok = bool(top) and s1 >= cfg.embed_threshold and s1 - s2 >= cfg.embed_margin
+        ok = bool(top) and accepted(s1, s2, cfg.embed_threshold, cfg.embed_margin)
         self.emitter.metric(job.turn_id, "embed", ms=round(res.ms, 2), wait_ms=round(res.wait_ms, 2),
                             top=top[0][0] if top else None, score=round(s1, 4), second=round(s2, 4),
                             words=len(tokens(job.text)), accepted=ok, final=job.final)
@@ -2309,6 +2405,7 @@ class Brain:
         """`control stop`: drop whatever S/F/D/R is in flight (as before), run the final merge, then shut down."""
         if self.stopped.is_set():
             return
+        await self._end_warm_for_stop()
         self.closing = True
         self._drop_held("stop")
         for c in self.calls:

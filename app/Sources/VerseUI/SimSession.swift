@@ -231,19 +231,19 @@ public final class SimPrep: @unchecked Sendable {
         process.environment = env
 
         let collected = LineCollector()
-        err.fileHandleForReading.readabilityHandler = { h in
-            let d = h.availableData
-            if d.isEmpty { h.readabilityHandler = nil; return }
-            for l in collected.add(d) { onLine(l) }
-        }
+        let errDrain = PipeDrain(err) { d in for l in collected.add(d) { onLine(l) } }
         let stdout = OutputBox()
-        out.fileHandleForReading.readabilityHandler = { h in
-            let d = h.availableData
-            if d.isEmpty { h.readabilityHandler = nil; return }
-            stdout.append(d)
-        }
+        let outDrain = PipeDrain(out) { d in stdout.append(d) }
         let exited: Int32 = await withCheckedContinuation { c in
             process.terminationHandler = { p in c.resume(returning: p.terminationStatus) }
+            // Checked and started under the lock `cancel()` takes, so a cancel before the start is honoured: nothing is launched.
+            lock.lock()
+            defer { lock.unlock() }
+            if cancelled {
+                process.terminationHandler = nil
+                c.resume(returning: PipeDrain.notStarted)
+                return
+            }
             do {
                 try process.run()
             } catch {
@@ -251,10 +251,13 @@ public final class SimPrep: @unchecked Sendable {
                 c.resume(returning: -1)
             }
         }
-        // Let the pipes drain.
-        try? await Task.sleep(for: .milliseconds(50))
-        out.fileHandleForReading.readabilityHandler = nil
-        err.fileHandleForReading.readabilityHandler = nil
+        if exited != PipeDrain.notStarted && exited != -1 {
+            // Read both pipes to EOF (bounded) before the handlers go: the last line is often still in the pipe.
+            await outDrain.waitForEOF()
+            await errDrain.waitForEOF()
+        }
+        outDrain.stop()
+        errDrain.stop()
         if let rest = collected.rest() { onLine(rest) }
 
         if lock.withLock({ cancelled }) { return .cancelled }

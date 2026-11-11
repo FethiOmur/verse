@@ -39,9 +39,9 @@ struct MeetingPromptView: View {
                 }
                 Spacer(minLength: 8)
                 if let d = dismissText {
+                    // Stays enabled while busy: "Not now" is the only way out of "Preparing…" and cancels the prep (V4).
                     Button(d) { onAction(.dismiss) }
                         .buttonStyle(OverlayButtonStyle(prominent: false))
-                        .disabled(prompt.busy)
                         .accessibilityIdentifier("verse.prompt.dismiss")
                 }
                 Button(prompt.acceptLabel) { onAction(.accept) }

@@ -19,7 +19,8 @@ matcher (EmbeddingGemma, LiteRT-LM) off; without it the matcher loads at `start`
 Verse is online-only: there is no local model. With no connection, no API key or a rejected key the brain says so in a
 `status` event with a `reason` (`no_connection`, `no_api_key`, `invalid_api_key`, `no_credit`; see runtime/engine.py).
 `VERSE_SIMULATE_API=offline|rate_limited|overloaded|auth|credit` makes every API call fail (no key read, no network) to
-exercise those messages live.
+exercise those messages live. `VERSE_SIMULATE_STALL_S=N` holds every API call made in the process's first N seconds until
+then (a stalled network at the start of a call: the pre-warm stalls, Swift listens without the brain; live checks and tests).
 """
 
 from __future__ import annotations
@@ -37,6 +38,34 @@ from .protocol import Emitter, parse_line
 from .settings import Config
 from .ask import AskRuntime
 from .sim import SimRuntime, sim_fake_responder
+
+
+class StallTransport:
+    """`VERSE_SIMULATE_STALL_S`: every call made before `until` (monotonic) waits until then, then goes to `inner`."""
+
+    def __init__(self, inner, stall_s: float) -> None:
+        self.inner = inner
+        self.until = time.monotonic() + stall_s
+
+    async def _hold(self) -> None:
+        left = self.until - time.monotonic()
+        if left > 0:
+            await asyncio.sleep(left)
+
+    async def open_stream(self, route, request, lane):
+        await self._hold()
+        return await self.inner.open_stream(route, request, lane)
+
+    async def create(self, route, request, lane):
+        await self._hold()
+        return await self.inner.create(route, request, lane)
+
+    async def ping(self, model, lane):
+        await self._hold()
+        return await self.inner.ping(model, lane)
+
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
 
 
 async def _stdin_lines():
@@ -161,6 +190,12 @@ async def amain(args) -> int:
             return 2
         transport = AnthropicTransport(key)
         del key  # the SDK clients hold the only copy
+    stall = os.environ.get("VERSE_SIMULATE_STALL_S", "").strip()
+    if stall:
+        try:
+            transport = StallTransport(transport, float(stall))
+        except ValueError:
+            logging.getLogger("verse.runtime").warning("VERSE_SIMULATE_STALL_S is not a number: %r", stall)
     cfg = Config(budget_usd=args.budget_usd)
     factory = None
     if (args.embed or not args.fake) and not args.no_embed:

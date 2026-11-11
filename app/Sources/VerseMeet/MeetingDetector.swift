@@ -4,26 +4,52 @@ import Foundation
 public struct MeetingApp: Sendable, Equatable {
     public var name: String
     public var bundleIDs: [String]
+    /// Shared helper processes that record for this app only when the app is the one responsible for them
+    /// (`AudioProcessInfo.responsibleBundleID`). Safari's page audio runs in WebKit helpers that every WKWebView app
+    /// has its own copy of (Mail, any web-view app), so the helper's ID alone is not Safari.
+    public var helperBundleIDs: [String]
 
-    public init(name: String, bundleIDs: [String]) {
+    public init(name: String, bundleIDs: [String], helperBundleIDs: [String] = []) {
         self.name = name
         self.bundleIDs = bundleIDs
+        self.helperBundleIDs = helperBundleIDs
     }
+
+    /// The WebKit XPC services shared by every app that embeds a web view.
+    public static let webKitHelpers = ["com.apple.WebKit.GPU", "com.apple.WebKit.WebContent"]
 
     public static let known: [MeetingApp] = [
         MeetingApp(name: "Brave", bundleIDs: ["com.brave.Browser"]),
         MeetingApp(name: "Comet", bundleIDs: ["ai.perplexity.comet"]),
         MeetingApp(name: "Chrome", bundleIDs: ["com.google.Chrome"]),
         // Safari's page processes are WebKit helpers; unverified on a live Safari call.
-        MeetingApp(name: "Safari", bundleIDs: ["com.apple.Safari", "com.apple.WebKit.GPU", "com.apple.WebKit.WebContent"]),
+        MeetingApp(name: "Safari", bundleIDs: ["com.apple.Safari"], helperBundleIDs: webKitHelpers),
         MeetingApp(name: "Arc", bundleIDs: ["company.thebrowser.Browser"]),
         MeetingApp(name: "Zoom", bundleIDs: ["us.zoom.xos"]),
         MeetingApp(name: "Teams", bundleIDs: ["com.microsoft.teams2", "com.microsoft.teams"]),
     ]
 
+    /// A WebKit helper, whose recording belongs to whichever app it works for.
+    public static func isSharedHelper(_ bundleID: String?) -> Bool {
+        guard let b = bundleID else { return false }
+        return Self.matches(b, webKitHelpers)
+    }
+
+    private static func matches(_ b: String, _ ids: [String]) -> Bool {
+        ids.contains { b == $0 || b.hasPrefix($0 + ".") }
+    }
+
+    /// The app's own processes (sub-bundles included). A shared helper never matches here.
     public func matches(_ bundleID: String?) -> Bool {
         guard let b = bundleID, !b.isEmpty else { return false }
-        return bundleIDs.contains { b == $0 || b.hasPrefix($0 + ".") }
+        return Self.matches(b, bundleIDs)
+    }
+
+    /// One process: the app's own, or one of its helpers that the app is responsible for.
+    public func matches(_ process: AudioProcessInfo) -> Bool {
+        if matches(process.bundleID) { return true }
+        guard let b = process.bundleID, Self.matches(b, helperBundleIDs), let owner = process.responsibleBundleID else { return false }
+        return matches(owner)
     }
 }
 
@@ -93,7 +119,7 @@ public actor MeetingDetector {
         let processes = table.snapshot()
         var out: [MeetingSignal] = []
         for app in config.apps {
-            let input = processes.first { $0.isRunningInput && app.matches($0.bundleID) }
+            let input = processes.first { $0.isRunningInput && app.matches($0) }
             var s = states[app.name] ?? AppState()
             if let input {
                 if s.inputSince == nil { s.inputSince = now }
@@ -156,6 +182,7 @@ public actor MeetingDetector {
 
     private static func root(of bundleID: String?, app: MeetingApp) -> String {
         guard let b = bundleID else { return app.bundleIDs[0] }
-        return app.bundleIDs.first { b == $0 || b.hasPrefix($0 + ".") } ?? b
+        // A helper the app is responsible for reports as the app itself.
+        return app.bundleIDs.first { b == $0 || b.hasPrefix($0 + ".") } ?? app.bundleIDs[0]
     }
 }

@@ -48,6 +48,7 @@ def test_handler_guard_logs_reports_once_and_keeps_serving(caplog):
 
     async def go():
         await guard.handle(b, {"type": "start", "session_dir": str(FIX), "lang": "en"})
+        await b.warmed()
         for _ in range(2):
             await guard.handle(b, {"type": "partial", "turn_id": "boom", "speaker": "remote", "text": "x", "cue": True, "t_audio_end": 0.0})
         await guard.handle(b, {"type": "turn", "turn_id": "r3", "speaker": "remote", "text": "what did the pilot achieve",

@@ -94,3 +94,43 @@ def test_lines_of_joins_pieces_until_line_done():
     got = ST.lines_of([(1.0, {"text": "SAY:", "line_done": False}), (2.0, {"text": " hi", "line_done": True}),
                        (3.0, {"text": "- x", "line_done": True})])
     assert got == [(2.0, "SAY: hi"), (3.0, "- x")]
+
+
+# ---- E6: a follow event before the first off-card word is a false divergence, and windows stop at the next labelled utterance
+
+def test_a_follow_event_before_he_leaves_the_card_is_a_false_divergence_not_a_detection():
+    events = base() + [ev(1012.0, type="follow", turn_id="r1", reason="diverged", card_id="c1")]      # off word 5 of 10 = t 15 s
+    f = ST.follow_stats(LABEL, events, META, 0.0, 1000.0)
+    row = f["rows"][0]
+    assert row["ok"] is False and "detection_ms" not in row
+    assert row["premature_follow_events"] == 1 and row["premature_ms"] == [3000]
+    assert f["false_divergences"] == 1
+
+
+def test_premature_then_correct_event_keeps_the_detection_and_reports_the_false_divergence():
+    events = base() + [ev(1012.0, type="follow", turn_id="r1", reason="diverged", card_id="c1"),
+                       ev(1017.5, type="follow", turn_id="r1", reason="diverged", card_id="c2")]
+    row = ST.follow_stats(LABEL, events, META, 0.0, 1000.0)["rows"][0]
+    assert row["ok"] is True and row["detection_ms"] == 2500 and row["premature_follow_events"] == 1
+
+
+def test_event_exactly_at_off_t_counts_as_a_detection():
+    row = ST.follow_stats(LABEL, base() + [ev(1015.0, type="follow", turn_id="r1", reason="diverged", card_id="c1")], META, 0.0, 1000.0)["rows"][0]
+    assert row["ok"] and row["detection_ms"] == 0 and row["premature_follow_events"] == 0
+
+
+LABEL2 = {"id": "tf2", "owner": "the owner", "utterances": [
+    {"speaker": "the owner", "text": "one two three four five six seven eight nine ten", "expect": "me_turn", "follow": "diverge", "off_from_word": 5},
+    {"speaker": "the owner", "text": "stays on the card", "expect": "me_turn", "follow": "none"}]}
+META2 = {"timeline": [
+    {"index": 0, "speaker": "the owner", "channel": "me", "t_start": 10.0, "t_end": 20.0},
+    {"index": 1, "speaker": "the owner", "channel": "me", "t_start": 24.0, "t_end": 26.0}]}      # starts inside the first one's 8 s tail
+
+
+def test_windows_stop_at_the_next_labelled_utterance_so_an_event_is_counted_once():
+    events = base() + [ev(1025.0, type="follow", turn_id="r1", reason="diverged", card_id="c1")]    # during the second utterance
+    f = ST.follow_stats(LABEL2, events, META2, 0.0, 1000.0)
+    assert [r["follow_events"] for r in f["rows"]] == [0, 1]
+    assert f["rows"][0]["ok"] is False and f["rows"][1]["ok"] is False
+    assert f["unlabelled_follow_events"] == 0                                    # was -1 when both windows counted the event
+    assert f["false_divergences"] == 1                                           # the event on the "none" utterance

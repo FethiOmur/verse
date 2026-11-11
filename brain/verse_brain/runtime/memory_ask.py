@@ -351,7 +351,11 @@ class MemoryAskRuntime(AskRuntime):
         price_model = model_used if model_used in PRICES else asked_model
         cost = round(spend_usd(price_model, u), 6)
         ms_total = round((time.monotonic() - t0) * 1000)
-        cites = resolve_citations(self.index, answer, self.scope) if self.index is not None else []
+        try:
+            cites = resolve_citations(self.index, answer, self.scope) if self.index is not None else []
+        except Exception as e:  # noqa: BLE001 - e.g. sqlite3.OperationalError while the indexer rewrites the database
+            log.warning("citation lookup failed: %s", type(e).__name__)
+            cites = []                  # the answer is still delivered; ask_done must not be lost with it
         self._append_chat({"type": "a", "id": a_id, "q": q_id, "t": now_iso(), "text": answer, "model": model_used,
                            "usage": u.as_dict(), "cost_usd": cost, "cost_estimated": estimated, "ms_first_token": first_ms,
                            "ms_total": ms_total, "citations": cites, "stop_reason": stop_reason, "context": "memory",

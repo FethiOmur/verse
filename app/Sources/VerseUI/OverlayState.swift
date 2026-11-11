@@ -73,6 +73,27 @@ public enum OverlayStatus: Equatable, Sendable {
     case stopConfirm
     /// The brain could not find the "me" profile files: the session runs without them (`notice{kind:"me_missing"}`).
     case meMissing
+    /// A capture or a recognizer stopped mid-call and came back by itself (`capture_recovered`, `speech_recovered`): a few
+    /// seconds of transcript may be missing. Shown for `OverlayConfig.noticeDuration`, gives way to a card, no buttons.
+    case reconnected(Set<Recovered>)
+
+    /// What came back, for `reconnected`.
+    public enum Recovered: String, Sendable, Hashable {
+        case microphone
+        case meetingAudio
+        /// A capture whose issue text named no channel.
+        case audio
+        /// A recognizer (either channel) restarted.
+        case transcription
+    }
+
+    private static func reconnectedTitle(_ parts: Set<Recovered>) -> String {
+        let audio = parts.subtracting([.transcription])
+        if audio.isEmpty { return L10n.tr("Transcription restarted") }
+        if audio == [.microphone] { return L10n.tr("Microphone reconnected") }
+        if audio == [.meetingAudio] { return L10n.tr("Meeting audio reconnected") }
+        return L10n.tr("Audio reconnected")
+    }
 
     /// The short text in the capsule chip.
     public var title: String {
@@ -85,6 +106,7 @@ public enum OverlayStatus: Equatable, Sendable {
         case .permission(let k): return k == "microphone" ? L10n.tr("Microphone access needed") : L10n.tr("Audio recording access needed")
         case .stopConfirm: return L10n.tr("Press ⌥⌘V again to stop")
         case .meMissing: return L10n.tr("Your profile was not found")
+        case .reconnected(let parts): return Self.reconnectedTitle(parts)
         }
     }
 
@@ -99,6 +121,7 @@ public enum OverlayStatus: Equatable, Sendable {
         case .permission: return L10n.tr("Needs access")
         case .stopConfirm: return L10n.tr("Stop?")
         case .meMissing: return L10n.tr("No profile")
+        case .reconnected(let parts): return parts.subtracting([.transcription]).isEmpty ? L10n.tr("Restarted") : L10n.tr("Reconnected")
         }
     }
 
@@ -113,6 +136,7 @@ public enum OverlayStatus: Equatable, Sendable {
         case .restarting: return L10n.tr("The brain stopped; restarting it.")
         case .stopConfirm: return L10n.tr("Verse keeps listening if you don't.")
         case .meMissing: return L10n.tr("Verse answers without it. Build it on the Me page.")
+        case .reconnected: return L10n.tr("A few seconds may be missing from the transcript.")
         default: return nil
         }
     }
@@ -120,7 +144,7 @@ public enum OverlayStatus: Equatable, Sendable {
     /// Statuses that need a bigger message than the capsule chip.
     public var needsPanel: Bool {
         switch self {
-        case .permission, .creditExhausted, .error, .stopConfirm, .meMissing: return true
+        case .permission, .creditExhausted, .error, .stopConfirm, .meMissing, .reconnected: return true
         default: return false
         }
     }
@@ -129,7 +153,15 @@ public enum OverlayStatus: Equatable, Sendable {
     /// not hide every later card until Dismiss. The status stays in the state (the capsule's chip) and its panel comes back
     /// when no card is open.
     public var yieldsToCard: Bool {
-        if case .error = self { return true }
+        switch self {
+        case .error, .reconnected: return true
+        default: return false
+        }
+    }
+
+    /// A short notice that goes by itself (no buttons, nothing to answer).
+    public var isTransientNotice: Bool {
+        if case .reconnected = self { return true }
         return false
     }
 }
@@ -214,6 +246,8 @@ public struct StartupPanel: Equatable, Sendable {
     public var lang = "en"
     /// The interim AUTO language mode is on: `lang` is then the language it picked.
     public var autoLang = false
+    /// Listening runs but the brain is still warming up (the runner's `status warming`): no answers yet. Cleared by `ready`.
+    public var answersWarming = false
 
     public init(phase: Phase, session: String, app: String?, transcribing: Bool = false, route: AudioRoute? = nil, lang: String = "en",
                 autoLang: Bool = false) {
@@ -229,7 +263,11 @@ public struct StartupPanel: Equatable, Sendable {
     /// The start card of an anytime session (route and language chips) rather than the plain start-up panel.
     public var isStartCard: Bool { route != nil }
 
+    private var isStarting: Bool { if case .starting = phase { return true } else { return false } }
+
     public var title: String {
+        // Listening already runs while the brain warms up: say so instead of "Ready", until the brain is ready.
+        if answersWarming, !isStarting { return L10n.tr("Listening · answers warming up") }
         if isStartCard {
             switch phase {
             case .starting: return L10n.tr("Starting…")
@@ -282,6 +320,8 @@ public struct OverlayConfig: Equatable, Sendable {
     public var audibleDbfs: Double = -50
     /// The label goes back to "Ready" after this many seconds without sound.
     public var audibleHold: TimeInterval = 2.5
+    /// How long a "reconnected" notice stays (`OverlayStatus.reconnected`).
+    public var noticeDuration: TimeInterval = 4
 
     public init(cardTimeout: TimeInterval = .infinity, otherNames: [String] = []) {
         self.cardTimeout = cardTimeout
@@ -327,6 +367,8 @@ public struct OverlayReducer: Sendable {
     private var failures: [ChannelFailure: String] = [:]
     /// The `.error` message the failures last put up, so a recovery only takes down (or rewrites) its own panel.
     private var failurePanel: String?
+    /// When the "reconnected" notice on screen goes.
+    private var noticeUntil: TimeInterval?
 
     /// One channel's permanent failure. `channel` nil: the issue text named no channel.
     private struct ChannelFailure: Hashable, Sendable {
@@ -421,6 +463,7 @@ public struct OverlayReducer: Sendable {
         clearableError = false
         failures = [:]
         failurePanel = nil
+        noticeUntil = nil
     }
 
     /// Sets (or, with nil, removes) the call's time cue. `tick` moves `state.timeCue` with the clock.
@@ -437,8 +480,8 @@ public struct OverlayReducer: Sendable {
         case .chip(let o): applyChip(o, now: now)
         case .outbound(let o): applyOutbound(o, now: now)
         case .status(let st, let m): applyStatus(st, message: m)
-        case .issue(let code, let m):
-            applyIssue(code, message: m)
+        case .issue(let code, let m, let channel):
+            applyIssue(code, message: m, channel: channel, now: now)
         case .level(let remote, let me): applyLevel(remoteDbfs: remote, meDbfs: me, now: now)
         case .metric(let o):
             if o[string: "stage"] == "session_t0" {
@@ -457,6 +500,7 @@ public struct OverlayReducer: Sendable {
             state.remoteSpeaking = false
             state.remoteBars = [0, 0, 0]
             state.meBars = [0, 0, 0]
+            if state.status?.isTransientNotice == true { state.status = nil; noticeUntil = nil }
             if code != 0, state.status == nil { state.status = .error(L10n.tr("The session ended with an error.")) }
             if code == 0, state.status == .restarting || state.status == .offline || state.status == .rateLimited { state.status = nil }
         }
@@ -465,6 +509,10 @@ public struct OverlayReducer: Sendable {
     /// Collapses a card that has had no new content for `cardTimeout`.
     public mutating func tick(now: TimeInterval) {
         if callCue != nil || state.timeCue != nil { state.timeCue = callCue?.phase(now: now) }
+        if let until = noticeUntil, now >= until {
+            noticeUntil = nil
+            if state.status?.isTransientNotice == true { state.status = nil }
+        }
         if state.remoteSpeaking, now - lastAudible >= config.audibleHold {
             state.remoteSpeaking = false
             state.remoteBars = [0, 0, 0]
@@ -535,8 +583,11 @@ public struct OverlayReducer: Sendable {
 
     private mutating func applyStatus(_ st: String, message: String, reason: String? = nil) {
         switch st {
-        case "warming": state.activity = .warming
+        case "warming":
+            state.activity = .warming
+            if state.startup != nil { state.startup?.answersWarming = true }
         case "ready":
+            state.startup?.answersWarming = false
             if case .starting? = state.startup?.phase { state.startup?.phase = .starting(step: L10n.tr("Brain ready · starting speech recognition")) }
             if state.activity == .warming || state.activity == .offline || state.activity == .idle { state.activity = .listening }
             if state.status == .offline || state.status == .rateLimited || state.status == .restarting { state.status = nil }
@@ -563,11 +614,12 @@ public struct OverlayReducer: Sendable {
 
     /// A runtime problem of the listen session (VerseRunner `issue`). Review H5/H8: a channel whose capture or recognizer died
     /// for good is an error no card clears, like `listen_failed`; a capture that came back takes its own error down. A recovered
-    /// recognizer (`speech_recovered`) and a rebuilt capture with no error showing change nothing on screen: the channel works.
-    /// Failures are kept per channel and kind (the channel is read from the issue text, see `ListenError.channel(inIssueMessage:)`):
-    /// the panel stays until every failed channel has recovered and names the ones still down.
-    private mutating func applyIssue(_ code: String, message m: String) {
-        let channel = ListenError.channel(inIssueMessage: m)
+    /// capture or recognizer then says so briefly ("Microphone reconnected", `OverlayStatus.reconnected`): there was a gap in
+    /// the transcript. Failures are kept per channel and kind (the issue's own `channel`; only when it has none, the channel the
+    /// text names, see `ListenError.channel(inIssueMessage:)`): the panel stays until every failed channel has recovered and
+    /// names the ones still down.
+    private mutating func applyIssue(_ code: String, message m: String, channel field: Channel?, now: TimeInterval) {
+        let channel = field ?? ListenError.channel(inIssueMessage: m)
         switch code {
         case "permission_denied": state.status = .permission(m.contains("microphone") ? "microphone" : "audioCapture")
         case "capture_failed", "speech_failed":
@@ -576,10 +628,27 @@ public struct OverlayReducer: Sendable {
             state.status = .error(panel)
             failurePanel = panel
             clearableError = false
-        case "capture_recovered": recover(.capture, channel: channel)
-        case "speech_recovered": recover(.speech, channel: channel)
+        case "capture_recovered":
+            recover(.capture, channel: channel)
+            let part: OverlayStatus.Recovered = channel == .me ? .microphone : channel == .remote ? .meetingAudio : .audio
+            showReconnected(part, now: now)
+        case "speech_recovered":
+            recover(.speech, channel: channel)
+            showReconnected(.transcription, now: now)
         default: break
         }
+    }
+
+    /// The "reconnected" notice, in a running call, only where nothing else is showing (an error, a permission message, "No
+    /// connection" stay) or another such notice is (the two merge and the time starts again).
+    private mutating func showReconnected(_ part: OverlayStatus.Recovered, now: TimeInterval) {
+        guard state.running else { return }
+        switch state.status {
+        case nil: state.status = .reconnected([part])
+        case .reconnected(let parts)?: state.status = .reconnected(parts.union([part]))
+        default: return
+        }
+        noticeUntil = now + config.noticeDuration
     }
 
     /// Every failure still standing, one line each, in a fixed order.

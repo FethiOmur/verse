@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 extension PostingFetcher {
     public static func fetch(_ url: URL, session: URLSession = .shared) async throws -> Posting {
@@ -32,15 +33,25 @@ extension PostingFetcher {
 
     // MARK: transport
 
+    /// The most of a response body that is read; the rest is never downloaded.
+    static let maxBodyBytes = 3_000_000
+
     static func get(_ url: URL, session: URLSession, accept: String = "*/*") async throws -> Data {
+        guard isFetchable(url) else { throw PostingError.unreadable }
         var req = URLRequest(url: url, timeoutInterval: 20)
         req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
                      forHTTPHeaderField: "User-Agent")
         req.setValue(accept, forHTTPHeaderField: "Accept")
         req.setValue("en-US,en;q=0.8", forHTTPHeaderField: "Accept-Language")
         do {
-            let (data, resp) = try await session.data(for: req)
+            let (bytes, resp) = try await session.bytes(for: req, delegate: RedirectGuard())
             if let http = resp as? HTTPURLResponse, !(200..<300).contains(http.statusCode) { throw PostingError.unreadable }
+            // Stop at the cap instead of downloading the whole body first; leaving the loop cancels the transfer.
+            var data = Data()
+            for try await b in bytes {
+                data.append(b)
+                if data.count >= maxBodyBytes { break }
+            }
             return data
         } catch let e as PostingError {
             throw e
@@ -53,8 +64,78 @@ extension PostingFetcher {
         }
     }
 
+    // MARK: address safety
+
+    /// http(s) to a host that is not loopback, link-local, private or a local name.
+    static func isFetchable(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https", let host = url.host else { return false }
+        return !isBlockedHost(host)
+    }
+
+    /// True for hosts a job posting must never be fetched from: localhost and local names, single-label names, and IP
+    /// literals in loopback, link-local, private, unique-local, carrier-grade NAT, multicast and reserved ranges (every
+    /// legacy IPv4 spelling too: `2130706433`, `0x7f.1`, `127.1`). A pure check on the host text; it does not resolve names.
+    static func isBlockedHost(_ rawHost: String) -> Bool {
+        var host = rawHost.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+        if let pct = host.firstIndex(of: "%") { host = String(host[..<pct]) }
+        while host.hasSuffix(".") { host.removeLast() }
+        guard !host.isEmpty else { return true }
+
+        if host.contains(":") {
+            var a6 = in6_addr()
+            guard inet_pton(AF_INET6, host, &a6) == 1 else { return true }
+            return isBlockedIPv6(a6)
+        }
+        if host.unicodeScalars.allSatisfy({ "0123456789abcdefx.".unicodeScalars.contains($0) }), host.contains(where: \.isNumber) {
+            var a4 = in_addr()
+            if inet_aton(host, &a4) == 1 { return isBlockedIPv4(UInt32(bigEndian: a4.s_addr)) }
+        }
+        if !host.contains(".") { return true }
+        for suffix in [".localhost", ".local", ".internal", ".localdomain", ".lan", ".home.arpa", ".intranet"] where host.hasSuffix(suffix) {
+            return true
+        }
+        return false
+    }
+
+    private static func isBlockedIPv4(_ ip: UInt32) -> Bool {
+        let a = ip >> 24, b = (ip >> 16) & 0xFF, c = (ip >> 8) & 0xFF
+        switch (a, b, c) {
+        case (0, _, _), (10, _, _), (127, _, _): return true
+        case (100, 64...127, _): return true                    // carrier-grade NAT
+        case (169, 254, _): return true                         // link-local, cloud metadata
+        case (172, 16...31, _): return true
+        case (192, 0, 0), (192, 168, _): return true
+        case (198, 18...19, _): return true                     // benchmarking
+        case (224...255, _, _): return true                     // multicast, reserved, broadcast
+        default: return false
+        }
+    }
+
+    private static func isBlockedIPv6(_ addr: in6_addr) -> Bool {
+        let b = withUnsafeBytes(of: addr) { Array($0) }
+        guard b.count == 16 else { return true }
+        if b.dropLast().allSatisfy({ $0 == 0 }) && b[15] <= 1 { return true }            // :: and ::1
+        if b[0] == 0xFE && (b[1] & 0xC0) == 0x80 { return true }                          // fe80::/10 link-local
+        if (b[0] & 0xFE) == 0xFC { return true }                                          // fc00::/7 unique local
+        if b[0] == 0xFF { return true }                                                   // multicast
+        let embedded = (UInt32(b[12]) << 24) | (UInt32(b[13]) << 16) | (UInt32(b[14]) << 8) | UInt32(b[15])
+        if b[0..<10].allSatisfy({ $0 == 0 }) && b[10] == 0xFF && b[11] == 0xFF { return isBlockedIPv4(embedded) }   // ::ffff:a.b.c.d
+        if b[0..<12].elementsEqual([0x00, 0x64, 0xFF, 0x9B, 0, 0, 0, 0, 0, 0, 0, 0]) { return isBlockedIPv4(embedded) } // 64:ff9b::/96
+        if b[0..<12].allSatisfy({ $0 == 0 }) { return isBlockedIPv4(embedded) }           // ::a.b.c.d (deprecated)
+        return false
+    }
+
+    /// Refuses a redirect to a blocked address or a non-http(s) scheme (the 3xx answer then reads as unreadable).
+    private final class RedirectGuard: NSObject, URLSessionTaskDelegate, Sendable {
+        func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+                        newRequest request: URLRequest, completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
+            guard let url = request.url, PostingFetcher.isFetchable(url) else { completionHandler(nil); return }
+            completionHandler(request)
+        }
+    }
+
     static func string(_ data: Data) -> String {
-        let capped = data.prefix(3_000_000)
+        let capped = data.prefix(maxBodyBytes)
         return String(data: capped, encoding: .utf8) ?? String(decoding: capped, as: UTF8.self)
     }
 

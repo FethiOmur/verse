@@ -149,6 +149,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // A write to a child that already exited (the brain, prep, git) must fail with EPIPE, not kill the app (review H3).
         signal(SIGPIPE, SIG_IGN)
         NSApp.setActivationPolicy(.accessory)
+        // A practice interview owns the microphone: no meeting starts on top of it (⌥⌘V included), and ⌥⌘V twice ends it.
+        controller.bindPractice(sim)
         // Once, off the main thread, before any model load: removes compile bundles that killed runs left in the Core ML cache.
         E5BundleCacheCleaner.startOnce { FileLog.shared.write($0) }
         // SIGTERM / SIGINT (e.g. `kill`, Ctrl-C on a dev run): quit the normal way, which shuts the brain down.

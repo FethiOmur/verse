@@ -10,7 +10,7 @@ public enum SessionCatalog {
     public static func list(root: URL = root) -> [String] {
         let fm = FileManager.default
         guard let names = try? fm.contentsOfDirectory(atPath: root.path) else { return [] }
-        return names.filter { fm.fileExists(atPath: root.appendingPathComponent($0).appendingPathComponent("pack.md").path) }.sorted()
+        return names.filter { !$0.hasPrefix(".") && fm.fileExists(atPath: root.appendingPathComponent($0).appendingPathComponent("pack.md").path) }.sorted()
     }
 
     public static func url(_ name: String, root: URL = root) -> URL { root.appendingPathComponent(name, isDirectory: true) }

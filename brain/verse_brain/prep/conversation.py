@@ -42,7 +42,7 @@ from .keychain import KeychainError, read_api_key, redact
 from .model import PREP_MODEL, PRICES, ModelOutput, PrepError, Usage, spend_usd
 from .pipeline import build_async
 from .sim import slugify
-from .sources import norm
+from .sources import MIN_QUOTE_CHARS, norm, numbers_supported
 from .vault import DEFAULT_VAULT, Vault, make_vault
 from .voice import DEFAULT_VOICE_PATH
 
@@ -60,6 +60,8 @@ UNVERIFIED_NO_URL = "unverified: no source page"
 UNVERIFIED_NOT_RETRIEVED = "unverified: the URL was not among the pages the search returned"
 UNVERIFIED_NOT_OFFICIAL = "unverified: entity, headquarters and founding facts need the company's own page or an official registry"
 UNVERIFIED_QUOTE = "unverified: the quote is not on the fetched page"
+UNVERIFIED_NO_QUOTE = f"unverified: the page was fetched but the fact has no evidence quote of at least {MIN_QUOTE_CHARS} characters"
+UNVERIFIED_NUMBERS = "unverified: the fact's numbers are not in the evidence quote"
 
 
 class ConversationError(PrepError):
@@ -250,10 +252,16 @@ def verify_facts(raw: list[dict], research: ResearchOutput) -> list[Fact]:
             continue
         check = "search result, quote not checkable"
         if page.fetched and page.text:
-            if evidence and norm(evidence) not in norm(page.text):
+            if len(norm(evidence)) < MIN_QUOTE_CHARS:  # a missing or one-word quote ("in", "Milan") proves nothing
+                out.append(Fact(topic, text, page.url, "unverified", UNVERIFIED_NO_QUOTE, page.title, evidence=evidence))
+                continue
+            if norm(evidence) not in norm(page.text):
                 out.append(Fact(topic, text, page.url, "unverified", UNVERIFIED_QUOTE, page.title, evidence=evidence))
                 continue
-            check = "quote found on the fetched page" if evidence else "fetched page, no quote given"
+            if not numbers_supported(text, [evidence]):
+                out.append(Fact(topic, text, page.url, "unverified", UNVERIFIED_NUMBERS, page.title, evidence=evidence))
+                continue
+            check = "quote found on the fetched page"
         out.append(Fact(topic, text, page.url, "sourced", "", page.title, page.page_age, list(page.cited), evidence, check))
     return out
 
@@ -350,13 +358,18 @@ def render_prep_note(ex: dict, facts: list[Fact], gaps: list[str], infers: list[
     return "\n".join(L).rstrip() + "\n"
 
 
+_ESTIMATE_NOTE = (" (estimated: {n} searches are charged for a research turn that dropped mid-stream and was run again; "
+                  "its tokens are not counted)")
+
+
 def render_research_md(ex: dict, facts: list[Fact], gaps: list[str], research: ResearchOutput,
                        infers: list[Inference] | None = None, *, now: datetime, cost: dict) -> str:
     L = [f"# Research: {ex['company'] or ex['title'] or 'conversation'}", "",
          f"Run {now:%Y-%m-%d %H:%M}. {research.searches} web searches, {research.fetch_count} page fetches, "
          f"{len(research.pages)} pages returned, "
          f"{sum(f.status == 'sourced' for f in facts)} sourced facts, {sum(f.status != 'sourced' for f in facts)} unverified. "
-         f"Cost ${cost['total']:.4f}.", "", "## Queries"]
+         f"Cost ${cost['total']:.4f}{_ESTIMATE_NOTE.format(n=research.lost_searches) if research.cost_estimated else ''}.",
+         "", "## Queries"]
     L += [f"- {q}" for q in research.queries] or ["- (none)"]
     L += ["", "## Fetched pages"] + ([f"- {u}" for u in research.fetches] or ["- (none)"])
     for status, head in (("sourced", "## Sourced facts"), ("unverified", "## Unverified")):
@@ -495,20 +508,32 @@ async def run_async(
     (work / "prep_note.md").write_text(note_text, encoding="utf-8")
     (work / "thread.md").write_text(render_thread_md(thread, posting, posting_url, now), encoding="utf-8")
 
+    cost = {
+        "extract": round(_usd(model.model, ex_out.usage), 6),
+        "research_tokens": round(_usd(model.model, rs.usage), 6),
+        "searches": 0.0 if getattr(model, "free", False) else round(rs.searches * SEARCH_USD, 6),
+    }
+    cost["total"] = round(sum(cost.values()), 6)
     log("prep: building the meeting session")
     try:
         session = await build_async(work / "prep_note.md", repos or [], langs or ["en"], out, max_questions, model=prep_model,
                                     vault=vault, budget_usd=budget_usd, now=now, session_id=sid, voice_path=voice_path)
     except Exception as e:
+        # the extract and research calls are already paid for: say so, and keep the figure next to the kept research
+        log(f"build failed after spending ${cost['total']:.4f} on extract and research "
+            f"(extract ${cost['extract']:.4f}, research ${cost['research_tokens']:.4f}, searches ${cost['searches']:.4f}); "
+            "the prep call's own spend is not counted")
+        try:
+            (work / "spend.json").write_text(json.dumps({**cost, "extract_usage": ex_out.usage.as_dict(),
+                                                         "research_usage": rs.usage.as_dict(), "searches_run": rs.searches},
+                                                        sort_keys=True, indent=2) + "\n", encoding="utf-8")
+        except OSError:
+            pass
         raise ConversationError(f"{describe_error(e)} (the research is kept in {work})") from e
     meta = json.loads((session / "meta.json").read_text(encoding="utf-8"))
 
-    cost = {
-        "extract": round(_usd(model.model, ex_out.usage), 6),
-        "research_tokens": round(_usd(model.model, rs.usage), 6),
-        "searches": 0.0 if getattr(model, "free", False) else round(rs.searches * SEARCH_USD, 6),
-        "prep": meta["prep_spend_usd"],
-    }
+    cost.pop("total")
+    cost["prep"] = meta["prep_spend_usd"]
     cost["total"] = round(sum(cost.values()), 6)
     (session / "thread.md").write_text((work / "thread.md").read_text(encoding="utf-8"), encoding="utf-8")
     (session / "prep_note.md").write_text(note_text, encoding="utf-8")
@@ -525,6 +550,7 @@ async def run_async(
         "pages": len(rs.pages), "inferred": len(infers),
         "facts_sourced": sourced, "facts_unverified": len(facts) - sourced, "gaps": len(gaps),
         "extract_usage": ex_out.usage.as_dict(), "research_usage": rs.usage.as_dict(), "cost_usd": cost,
+        "cost_estimated": rs.cost_estimated, "searches_lost_to_retry": rs.lost_searches,
     }
     (session / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
     shutil.rmtree(work, ignore_errors=True)  # our own staging folder; kept on failure for inspection
@@ -621,7 +647,8 @@ def conversation_main(argv: list[str], default_out: Path) -> int:
     err(f"research: {s['searches']} searches | {s['fetches']} fetches | {s['pages']} pages | {s['sourced']} sourced, "
         f"{s['unverified']} unverified, {s['inferred']} inferred")
     err(f"cost: ${c['total']:.4f} (extract ${c['extract']:.4f} | research ${c['research_tokens']:.4f} tokens + "
-        f"${c['searches']:.4f} for {s['searches']} searches | prep ${c['prep']:.4f}); fetches add tokens only")
+        f"${c['searches']:.4f} for {s['searches']} searches | prep ${c['prep']:.4f}); fetches add tokens only"
+        + (" [estimated: a retried research turn is charged its full search allowance]" if meta["conversation"]["cost_estimated"] else ""))
     for w in s["warnings"]:
         err(f"warning: {w}")
     print(session)

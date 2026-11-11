@@ -286,6 +286,30 @@ def strip_voice(pack: str) -> str:
 
 
 # ---------------------------------------------------------------- distillation
+def sum_usage(a: Usage, b: Usage) -> Usage:
+    return Usage(a.input + b.input, a.output + b.output, a.cache_read + b.cache_read, a.cache_write + b.cache_write)
+
+
+def spent_usd(model: str, usage: Usage) -> float:
+    return spend_usd(model, usage) if model in PRICES else 0.0
+
+
+def failed_with_usage(err: PrepError, model: str, usage: Usage) -> PrepError:
+    """`err` with the spend of the calls that led to it, in its text and as `.usage` (the calls were paid for even though
+    nothing usable came back)."""
+    err.usage = usage  # type: ignore[attr-defined]
+    err.spend_usd = spent_usd(model, usage)  # type: ignore[attr-defined]
+    if model in PRICES:
+        err.args = (f"{err} (spent ${err.spend_usd:.4f} on the failed calls)",)
+    return err
+
+
+def attempt_max_tokens(model: PrepModel, in_tokens: int, budget_usd: float, spent: float) -> int:
+    """Output tokens one more call may use so that everything spent so far plus this call stays within `budget_usd`."""
+    pin, pout = PRICES[model.model][:2]
+    return min(MAX_OUTPUT_TOKENS, int((budget_usd - spent - in_tokens * pin / 1e6) / (pout / 1e6)))
+
+
 def render_user(source: str) -> str:
     return f"<source>\n{source.strip()}\n</source>\n\nWrite the voice profile now."
 
@@ -299,22 +323,23 @@ async def distill_async(source: str, model: PrepModel, *, budget_usd: float = 1.
         raise PrepError(f"the voice source is {len(source)} chars; the limit is {MAX_SOURCE_CHARS}")
     user = render_user(source)
     in_tokens = await model.count_request_tokens(SYSTEM, user)
-    pin, pout = PRICES[model.model][:2]
-    max_tokens = min(MAX_OUTPUT_TOKENS, int((budget_usd - in_tokens * pin / 1e6) / (pout / 1e6)))
-    if max_tokens < 4000:
-        raise PrepError(f"budget ${budget_usd:.2f} leaves only {max_tokens} output tokens; raise it or shrink the source")
     total = Usage()
     problem = ""
-    for _ in range(attempts):
+    for i in range(attempts):
+        # each call is sized from the budget left after the earlier ones, so all attempts together fit `budget_usd`
+        max_tokens = attempt_max_tokens(model, in_tokens + len(problem) // 3, budget_usd, spent_usd(model.model, total))
+        if max_tokens < 4000:
+            err = PrepError(f"budget ${budget_usd:.2f} leaves only {max_tokens} output tokens"
+                            + (" after the first attempt" if i else "") + "; raise it or shrink the source")
+            raise failed_with_usage(err, model.model, total) if i else err
         res = await model.generate(SYSTEM, user + (f"\n\nYour previous answer was rejected: {problem}" if problem else ""), max_tokens)
-        total = Usage(total.input + res.usage.input, total.output + res.usage.output,
-                      total.cache_read + res.usage.cache_read, total.cache_write + res.usage.cache_write)
+        total = sum_usage(total, res.usage)
         try:
             text, kept = fit_profile(parse_profile(res.text))
             return text, total, kept
         except PrepError as e:
             problem = f"{e}. Keep to the seven sections and {WORD_CAP} words."
-    raise PrepError(f"voice distillation failed after {attempts} attempts: {problem}")
+    raise failed_with_usage(PrepError(f"voice distillation failed after {attempts} attempts: {problem}"), model.model, total)
 
 
 class FakeVoiceModel:

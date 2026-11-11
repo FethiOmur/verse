@@ -210,7 +210,8 @@ def test_entity_facts_need_an_official_page_and_a_real_quote():
 def test_url_matching_ignores_www_slash_fragment_and_tracking():
     assert norm_url("https://www.Example.com/a/?utm_source=x&id=2#top") == norm_url("http://example.com/a?id=2")
     assert norm_url("https://example.com/a") != norm_url("https://example.com/b")
-    raw = [{"topic": "company", "text": "T", "url": "https://brightwater-analytics.example/about/?utm_campaign=z"}]
+    raw = [{"topic": "company", "text": "T", "url": "https://brightwater-analytics.example/about/?utm_campaign=z",
+            "evidence": "route-reporting software to haulage firms"}]
     assert verify_facts(raw, ResearchOutput("", PAGES))[0].status == "sourced"
 
 

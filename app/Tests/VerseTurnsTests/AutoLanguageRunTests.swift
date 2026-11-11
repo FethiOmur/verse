@@ -178,6 +178,7 @@ private enum AutoScenario {
         defer { session.delete() }
         var o = RunOptions(sessionDir: session.dir)
         o.listenEnvironment = rig.environment()
+        o.waitForBrainBeforeListening = true
         o.source = nil
         o.lang = "it"
         o.route = .meeting

@@ -26,12 +26,19 @@ public final class ScriptEditorModel: ObservableObject {
     private let writer: any ScriptWriting
 
     @Published public var name = ScriptEditorModel.untitled
-    @Published public var text = ""
+    /// Parsed once per change (review V11: the view used to parse it four times per keystroke).
+    @Published public var text = "" {
+        didSet { if text != oldValue { script = ScriptParser.parse(text) } }
+    }
     @Published public private(set) var entries: [ScriptStore.Entry] = []
     @Published public private(set) var message: Message?
     @Published public private(set) var isWriting = false
-    /// The text before the last "Write with Verse" replaced it, so one click brings it back.
+    /// The text before the last "Write with Verse", "New script", a click on a saved script or an import replaced it, so
+    /// one click brings it back (review V5: unsaved text used to be lost without a word).
     @Published public private(set) var previousText: String?
+    /// The script the replaced text belonged to, when the replacement opened another script; restored with the text so a
+    /// later Save goes to the right file.
+    private var previousDocument: (name: String, savedFile: String?)?
 
     private var savedText = ""
     /// File name (`x.md`) the open text was loaded from or saved to; nil for a script never saved.
@@ -45,7 +52,7 @@ public final class ScriptEditorModel: ObservableObject {
 
     // MARK: state
 
-    public var script: PromptScript { ScriptParser.parse(text) }
+    public private(set) var script = ScriptParser.parse("")
     public var wordCount: Int { script.totalWordCount }
     public var pageCount: Int { script.pages.count }
 
@@ -65,23 +72,39 @@ public final class ScriptEditorModel: ObservableObject {
     }
 
     public func newScript() {
+        let setAside = setAsideUnsavedText()
         name = Self.untitled
         text = ""
         savedText = ""
         savedFile = nil
-        previousText = nil
-        message = nil
+        announce(setAside)
+    }
+
+    /// Before another script replaces the open one: unsaved text is kept for "Restore previous text".
+    private func setAsideUnsavedText() -> Bool {
+        guard isDirty, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            previousText = nil
+            previousDocument = nil
+            return false
+        }
+        previousText = text
+        previousDocument = (name, savedFile)
+        return true
+    }
+
+    private func announce(_ setAside: Bool) {
+        message = setAside ? .info(L10n.tr("Unsaved text replaced")) : nil
     }
 
     public func open(_ entry: ScriptStore.Entry) {
         do {
             let loaded = try store.read(name: entry.name)
+            let setAside = setAsideUnsavedText()
             name = entry.name
             text = loaded
             savedText = loaded
             savedFile = store.url(for: entry.name).lastPathComponent
-            previousText = nil
-            message = nil
+            announce(setAside)
         } catch {
             message = .error(L10n.tr("Could not open \(entry.name): \(error.localizedDescription)"))
         }
@@ -121,18 +144,31 @@ public final class ScriptEditorModel: ObservableObject {
         do {
             let script = try ScriptLoader.load(from: url)
             let ext = url.pathExtension.lowercased()
-            if ["md", "markdown", "txt", "text"].contains(ext) {
-                text = try String(contentsOf: url, encoding: .utf8)
-            } else {
-                text = script.pages.map(\.text).joined(separator: "\n\n---\n\n")
-            }
+            let imported = ["md", "markdown", "txt", "text"].contains(ext)
+                ? try String(contentsOf: url, encoding: .utf8)
+                : script.pages.map(\.text).joined(separator: "\n\n---\n\n")
+            _ = setAsideUnsavedText()   // the import's own message below; the restore link shows next to it
+            text = imported
             name = url.deletingPathExtension().lastPathComponent
             savedText = ""
             savedFile = nil
-            previousText = nil
             message = .info(L10n.tr("Imported \(url.lastPathComponent): \(L10n.tr("\(script.totalWordCount) words")), \(L10n.tr("\(script.pages.count) pages"))"))
         } catch {
-            message = .error(error.localizedDescription)
+            FileLog.shared.write("scripts: import of \(url.lastPathComponent) failed: \(error.localizedDescription)")
+            message = .error(Self.importErrorText(error))
+        }
+    }
+
+    /// An import failure in the interface language (the loaders' own texts are English, for the log; review V13).
+    static func importErrorText(_ error: any Error, locale: Locale? = nil) -> String {
+        switch error {
+        case ScriptLoader.LoadError.unsupportedType(let ext): return L10n.tr("Cannot import .\(ext) files. Use .md, .txt or .pptx.", locale: locale)
+        case ScriptLoader.LoadError.unreadable: return L10n.tr("Could not read the file.", locale: locale)
+        case ScriptLoader.LoadError.empty: return L10n.tr("The file has no readable text.", locale: locale)
+        case PresentationNotesExtractor.ExtractionError.unsupportedFormat: return L10n.tr("Only .pptx speaker notes can be imported.", locale: locale)
+        case PresentationNotesExtractor.ExtractionError.extractionFailed: return L10n.tr("Could not read the presentation's notes.", locale: locale)
+        case PresentationNotesExtractor.ExtractionError.noNotesFound: return L10n.tr("No presenter notes found in this presentation.", locale: locale)
+        default: return L10n.tr("Could not import the file.", locale: locale)
         }
     }
 
@@ -147,6 +183,7 @@ public final class ScriptEditorModel: ObservableObject {
         do {
             let draft = try await writer.write(topic: trimmed, seconds: seconds, use: use)
             previousText = text.isEmpty ? nil : text
+            previousDocument = nil   // only the text is replaced; the script stays the same one
             text = draft.text
             if savedFile == nil, name == Self.untitled || name.isEmpty { name = Self.title(fromTopic: trimmed) }
             var note = L10n.tr("Verse wrote \(L10n.tr("\(draft.words) words")) on \(L10n.tr("\(draft.pages) pages"))")
@@ -158,11 +195,21 @@ public final class ScriptEditorModel: ObservableObject {
         }
     }
 
-    /// Brings back the text that "Write with Verse" replaced.
+    /// Brings back the replaced text, and with it the script it belonged to when another one was opened over it.
     public func restorePreviousText() {
         guard let previous = previousText else { return }
+        if let document = previousDocument {
+            name = document.name
+            savedFile = document.savedFile
+            // What that file holds now, so "Unsaved" stays true to the disk.
+            savedText = document.savedFile.flatMap { file in
+                try? String(contentsOf: store.url(for: document.name).deletingLastPathComponent().appendingPathComponent(file),
+                            encoding: .utf8)
+            } ?? ""
+        }
         text = previous
         previousText = nil
+        previousDocument = nil
         message = .info(L10n.tr("Previous text restored"))
     }
 

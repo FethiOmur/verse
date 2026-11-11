@@ -17,16 +17,24 @@ public enum GeneralPrep {
     }
 
     /// Copies the prep files into `dir` (copies, never links: a later rebuild must not change a past session).
-    /// Returns false, having copied nothing, when the general prep is missing or empty.
+    /// Returns false, having copied nothing, when the general prep is missing or empty, or when a copy fails (the caller
+    /// then falls back to an empty pack instead of a half-seeded folder).
     static func seed(into dir: URL, root: URL) -> Bool {
         guard isAvailable(root: root) else { return false }
         let fm = FileManager.default
         let src = SessionCatalog.url(name, root: root)
+        var copied: [URL] = []
         for f in files {
             let from = src.appendingPathComponent(f), to = dir.appendingPathComponent(f)
             guard fm.fileExists(atPath: from.path) else { continue }
             try? fm.removeItem(at: to)
-            try? fm.copyItem(at: from, to: to)
+            do {
+                try fm.copyItem(at: from, to: to)
+                copied.append(to)
+            } catch {
+                for u in copied { try? fm.removeItem(at: u) }
+                return false
+            }
         }
         return true
     }

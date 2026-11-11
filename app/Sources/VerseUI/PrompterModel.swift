@@ -45,7 +45,7 @@ public final class PrompterModel: ObservableObject {
 
     private struct LayoutKey: Equatable {
         var text: String
-        var fontSize: Double
+        var currentSize: Double
         var maxWidth: Double
     }
 
@@ -88,16 +88,22 @@ public final class PrompterModel: ObservableObject {
     public var hint: PrompterHint? { PrompterHint(state: state) }
     public var wordRanges: PrompterWordRanges { PrompterWordRanges(state: state) }
 
-    /// Line breaking of the current page at `maxWidth`, cached until the page, the font size or the width changes.
-    func layout(maxWidth: CGFloat) -> PrompterLayout {
-        let key = LayoutKey(text: page.text, fontSize: settings.fontSize, maxWidth: Double(maxWidth))
+    /// Line breaking of the current page as the island sets it: every word measured in the current line's type
+    /// (`currentSize`, semibold), so no line is ever too wide. Cached until the page text, that size or the width changes:
+    /// the view asks on every published state, once per word read (review V3: it used to measure the whole page each time).
+    func layout(currentSize: CGFloat, maxWidth: CGFloat) -> PrompterLayout {
+        let key = LayoutKey(text: page.text, currentSize: Double(currentSize), maxWidth: Double(maxWidth))
         if let cached = layoutCache, cached.key == key { return cached.layout }
-        let size = CGFloat(settings.fontSize)
-        let widths = PrompterTextMeasure.widths(of: page.words.map(\.text), fontSize: size)
-        let layout = PrompterLayout.make(wordWidths: widths, spaceWidth: PrompterGeometry.spaceWidth(fontSize: size), maxWidth: maxWidth)
+        layoutMeasurements += 1
+        let widths = PrompterTextMeasure.widths(of: page.words.map(\.text), fontSize: currentSize)
+        let layout = PrompterLayout.make(wordWidths: widths, spaceWidth: PrompterTextMeasure.spaceWidth(size: currentSize, weight: .semibold),
+                                         maxWidth: maxWidth)
         layoutCache = (key, layout)
         return layout
     }
+
+    /// How many times `layout(currentSize:maxWidth:)` measured the page (tests).
+    private(set) var layoutMeasurements = 0
 
     /// Shows the prompter on a given page and state without a session (the screenshot renderer).
     func presentForPreview(page: PromptPage, state: PrompterState) {
@@ -210,6 +216,15 @@ public final class PrompterModel: ObservableObject {
         page = await session.currentPage
     }
 
+    /// Replaces the whole page with `text` (a new meeting turn) and reads it from the start.
+    private func replaceScript(with text: String) async {
+        guard let session else { return }
+        await session.replaceScript(PromptScript(pages: [PromptPage(text: text)]))
+        guard self.session === session else { return }
+        page = await session.currentPage
+        shownPageIndex = 0
+    }
+
     public func perform(_ command: PrompterCommand) async {
         switch command {
         case .toggle: await toggle()
@@ -241,7 +256,27 @@ public final class PrompterModel: ObservableObject {
     }
 
     /// The call's audio route changed in place: the card's reading follows the room route's microphone or not.
-    public func meetingRoute(room: Bool) { cardReading.roomRoute = room }
+    public func meetingRoute(room: Bool) {
+        cardReading.roomRoute = room
+        if isOpen, source.isMeetingCard, !meetingCardPrompterCanTrack {
+            Task { @MainActor in await self.closeMeetingCardPrompter() }
+        }
+    }
+
+    /// Review V6: on the room route the microphone's events arrive as `remote`, and the prompter's word tracking reads only
+    /// `me`, so a meeting-card prompter would never move and would hide the card, whose own reading (`CardReading`) does
+    /// follow the room route. There the card stays instead. Classic and voice-paced (classic without levels) need no speech.
+    private var meetingCardPrompterCanTrack: Bool {
+        !(cardReading.roomRoute && settings.mode == .wordTracking)
+    }
+
+    /// Closes a meeting-card prompter for a reason other than the user's X: the turn is not marked dismissed.
+    private func closeMeetingCardPrompter() async {
+        guard isOpen, source.isMeetingCard else { return }
+        isOpen = false
+        await teardown()
+        state = PrompterState()
+    }
 
     /// The meeting run ended: the mic stream is gone, so a card being read is closed.
     public func meetingEnded() {
@@ -263,20 +298,28 @@ public final class PrompterModel: ObservableObject {
         }
     }
 
-    /// With "Prompter on meeting cards" on: the first card with a SAY line opens the prompter on that text; every
-    /// later SAY text replaces the unread tail and keeps what was read. A card the user closed does not reopen it.
+    /// With "Prompter on meeting cards" on: the first card with a SAY line opens the prompter on that text; a later SAY
+    /// text of the same turn replaces the unread tail and keeps what was read, and a new turn starts a fresh page. A card
+    /// the user closed does not reopen it. On the room route with word tracking the card shows instead (review V6).
     public func handleMeetingCard(_ card: OverlayCard?) async {
         guard settings.followMeetingCards, let tap = meetingTap, let card else { return }
         let say = (card.say ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !say.isEmpty else { return }
         if isOpen {
             guard source.isMeetingCard, say != lastSay else { return }   // a script being read is not interrupted
+            guard meetingCardPrompterCanTrack else { await closeMeetingCardPrompter(); return }
             lastSay = say
-            currentTurn = card.turnID
-            await replaceUnread(with: say)
+            if card.turnID != currentTurn {
+                // A new turn: a fresh page with only its answer (review V3: the page used to keep every earlier answer and
+                // grow for the whole call).
+                currentTurn = card.turnID
+                await replaceScript(with: say)
+            } else {
+                await replaceUnread(with: say)
+            }
             return
         }
-        guard dismissedTurn != card.turnID else { return }
+        guard dismissedTurn != card.turnID, meetingCardPrompterCanTrack else { return }
         lastSay = say
         currentTurn = card.turnID
         await open(script: PromptScript(pages: [PromptPage(text: say)]), source: .meetingCard(tap), autostart: true)

@@ -172,7 +172,8 @@ def score_dialogue(label: dict, events: list[tuple[float, dict]], meta: dict | N
         ds = [d for tid in tids for d in deltas_by_turn.get(tid, [])]
         lines = grounding.assemble_lines(ds)
         row["say_lines"] = sum(1 for ls in lines.values() for ln in ls if ln.startswith("SAY:"))
-        row["suggestion_lines"] = [{"call": cid, "line": ln, "turn_id": next((d["turn_id"] for d in ds if d["id"] == cid), None)}
+        row["suggestion_lines"] = [{"call": cid, "line": ln, "turn_id": next((d["turn_id"] for d in ds if d["id"] == cid), None),
+                                    "tier": next((d.get("tier") for d in ds if d["id"] == cid), None)}
                                    for cid, ls in lines.items() for ln in grounding.suggestion_lines(ls)]
         if main:
             tid = main["turn_id"]
@@ -378,6 +379,8 @@ def main() -> int:
     ap.add_argument("--judge", action="store_true", help="grounding: ask the independent Haiku judge about lines with unresolved claims")
     ap.add_argument("--judge-budget-usd", type=float, default=0.25)
     ap.add_argument("--judge-passes", type=int, default=2, help="how many times Haiku reads every line (it is not deterministic)")
+    ap.add_argument("--second-on-all", action="store_true",
+                    help="grounding: the second judge (Sonnet, about 20x Haiku's price per line) reads every line, not only the ones Haiku flagged")
     ap.add_argument("--ngram-only", action="store_true", help="ignore the brain's embedding bank hits (writes scores_ngram.json)")
     a = ap.parse_args()
     global COUNT_EMBED_HITS
@@ -386,7 +389,7 @@ def main() -> int:
     run_dir = OUT / a.run
     res = score_run(run_dir)
     from grounding_run import run_grounding  # local import: keeps score.py network-free
-    res["grounding"] = run_grounding(res, Path(a.session), judge=a.judge, budget_usd=a.judge_budget_usd, run=a.run, passes=a.judge_passes)
+    res["grounding"] = run_grounding(res, Path(a.session), judge=a.judge, budget_usd=a.judge_budget_usd, run=a.run, passes=a.judge_passes, second_on_all=a.second_on_all)
     (run_dir / ("scores_ngram.json" if a.ngram_only else "scores.json")).write_text(json.dumps(res, indent=1, ensure_ascii=False) + "\n")
     ag = res["aggregate"]
     print(json.dumps({k: ag[k] for k in ("questions_to_user", "detection", "addressee", "latency")}, indent=1)[:3000])

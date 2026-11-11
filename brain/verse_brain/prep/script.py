@@ -24,7 +24,7 @@ from pathlib import Path
 
 from .. import extensions
 from .model import PRICES, PrepError, Usage, spend_usd
-from .voice import DEFAULT_VOICE_PATH, VOICE_HEADING, load_voice
+from .voice import DEFAULT_VOICE_PATH, VOICE_HEADING, failed_with_usage, load_voice, sum_usage
 
 USES = ("recording", "talk")
 # Spoken words per minute used to turn the target length into a word count. A talk has pauses and slide changes.
@@ -197,20 +197,21 @@ async def write_script_async(topic: str, seconds: int, use: str, model, *, voice
         prompt = user + (f"\n\nYour previous answer was rejected: {feedback}. Fix exactly that and answer again with the "
                          "whole script." if attempt > 1 else "")
         res = await model.generate(system, prompt, MAX_OUTPUT)
-        total = Usage(total.input + res.usage.input, total.output + res.usage.output,
-                      total.cache_read + res.usage.cache_read, total.cache_write + res.usage.cache_write)
+        total = sum_usage(total, res.usage)
         text = clean_output(res.text)
         structural, length = problems(text, target)
         if not structural and not length:
             break
     n = spoken_words(text)
     if structural:
-        raise PrepError(f"script failed after {attempts} attempts: {'; '.join(structural)}")
+        raise failed_with_usage(PrepError(f"script failed after {attempts} attempts: {'; '.join(structural)}"),
+                                getattr(model, "model", ""), total)
     warnings: list[str] = []
     if length:
         lo, hi = HARD_TOLERANCE
         if not lo * target <= n <= hi * target:
-            raise PrepError(f"script failed after {attempts} attempts: {length[0]}")
+            raise failed_with_usage(PrepError(f"script failed after {attempts} attempts: {length[0]}"),
+                                    getattr(model, "model", ""), total)
         warnings.append(length[0])
     if voice is None:
         warnings.append("no voice profile found: the script is in plain spoken English, not in your voice")

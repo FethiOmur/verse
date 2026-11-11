@@ -103,7 +103,11 @@ def _read_jsonl(p: Path | None) -> list[dict]:
     if p is None or not p.is_file():
         return []
     out = []
-    for ln in p.read_text(encoding="utf-8").splitlines():
+    try:
+        lines = p.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError):
+        return []                      # unreadable or not UTF-8: the same as a missing file, the layer goes on without it
+    for ln in lines:
         if ln.strip():
             try:
                 rec = json.loads(ln)
@@ -127,7 +131,9 @@ def load_me(spec: object) -> MeLayer | None:
         return None
     meta: dict = {}
     try:
-        meta = json.loads(core_p.with_name("me.meta.json").read_text(encoding="utf-8"))
+        loaded = json.loads(core_p.with_name("me.meta.json").read_text(encoding="utf-8"))
+        if isinstance(loaded, dict):
+            meta = loaded
     except (OSError, json.JSONDecodeError, UnicodeDecodeError):
         pass
     try:

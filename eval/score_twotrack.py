@@ -80,7 +80,7 @@ def follow_stats(label: dict, events: list[tuple[float, dict]], meta: dict, orig
     """Follow my answer: the follow cards the brain sent, per owner utterance that carries a `follow` label.
 
     Times are wall-clock ms measured from the moment the owner *spoke* the first off-card word (`off_from_word`, spread evenly over
-    the utterance's true speech interval): `detection_ms` until the brain's first `follow` event, `first_sentence_ms` until the
+    the utterance's true speech interval): `detection_ms` until the brain's first `follow` event at or after that word (earlier events are `premature_follow_events`, false divergences), `first_sentence_ms` until the
     first complete `SAY:` line of the follow card. `wall0` is the wall time of audio time 0 (`session_t0.t`; exact in
     run_follow.py, an approximation for a verse-run replay)."""
     follows = [(w, o) for w, o in events if o.get("type") == "follow"]
@@ -95,6 +95,8 @@ def follow_stats(label: dict, events: list[tuple[float, dict]], meta: dict, orig
         if o.get("type") == "metric" and o.get("stage") in ("follow_diverged", "follow_card", "follow_refresh"):
             metrics.setdefault(o["stage"], []).append(o)
     rows = []
+    starts = [wall0 + origin_m + tl[i]["t_start"] for i, _ in labelled]
+    false_div = 0
     for i, u in labelled:
         t = tl[i]
         a, b = wall0 + origin_m + t["t_start"], wall0 + origin_m + t["t_end"]
@@ -102,24 +104,37 @@ def follow_stats(label: dict, events: list[tuple[float, dict]], meta: dict, orig
         off_t = None
         if u["follow"] == "diverge":
             off_t = a + (b - a) * u["off_from_word"] / max(1, len(words))
+        # The 8 s tail after the utterance stops at the next labelled utterance's start: an event belongs to one window only.
+        later = [x for x in starts if x > a]
         win_end = b + 8.0
-        fl = [(w, o) for w, o in follows if a <= w <= win_end]
+        next_a = min(later) if later else None
+        fl = [(w, o) for w, o in follows if a <= w <= win_end and (next_a is None or w < next_a)]
         row = {"index": i, "label": u["follow"], "text": u["text"], "follow_events": len(fl),
                "reasons": [o.get("reason") for _, o in fl]}
-        if off_t is not None and fl:
-            row["detection_ms"] = round((fl[0][0] - off_t) * 1000)
-            cid = fl[0][1].get("card_id")
+        # A follow event is a correct detection only at or after the first off-card word. Earlier ones fired while he was still
+        # reading the card: false divergences (docs/follow-tuning.md says those must not happen).
+        good = [(w, o) for w, o in fl if off_t is not None and w >= off_t]
+        early = [(w, o) for w, o in fl if off_t is not None and w < off_t]
+        if off_t is not None:
+            row["premature_follow_events"] = len(early)
+            row["premature_ms"] = [round((off_t - w) * 1000) for w, _ in early]
+            false_div += len(early)
+        else:
+            false_div += len(fl)           # label "none": any follow card is a false divergence
+        if good:
+            row["detection_ms"] = round((good[0][0] - off_t) * 1000)
+            cid = good[0][1].get("card_id")
             card_lines = lines_of([(w, o) for w, o in c_deltas if o.get("card_id") == cid])
             say = next((w for w, ln in card_lines if ln.startswith("SAY:")), None)
             if say is not None:
                 row["first_sentence_ms"] = round((say - off_t) * 1000)
             row["card_points"] = sum(1 for _, ln in card_lines if ln.startswith("- "))
             row["card_text"] = "\n".join(ln for _, ln in card_lines)
-        row["ok"] = (len(fl) == 0) if u["follow"] == "none" else (len(fl) >= 1)
+        row["ok"] = (len(fl) == 0) if u["follow"] == "none" else (len(good) >= 1)
         rows.append(row)
     cov = [(o.get("card_id"), o.get("point")) for _, o in covered]
     return {"follow_events": len(follows), "c_cards": len({o.get("card_id") for _, o in c_deltas}),
-            "covered_events": len(covered), "covered": cov, "rows": rows,
+            "covered_events": len(covered), "covered": cov, "rows": rows, "false_divergences": false_div,
             "unlabelled_follow_events": len(follows) - sum(r["follow_events"] for r in rows),
             "brain_diverged_metrics": [{k: o.get(k) for k in ("reason", "unmatched", "embed", "margin", "ms", "ms_since_start")}
                                        for o in metrics.get("follow_diverged", [])],
@@ -273,7 +288,8 @@ def table(res: dict) -> str:
     f = res.get("follow")
     if f:
         lines.append(f"  follow: {f['follow_events']} follow events, {f['c_cards']} follow cards, {f['covered_events']} points struck through, "
-                     f"{f['unlabelled_follow_events']} follow events outside a labelled utterance")
+                     f"{f['unlabelled_follow_events']} follow events outside a labelled utterance, {f.get('false_divergences', 0)} false divergences "
+                     f"(follow card before he left the card, or any card on a stay-on-card utterance)")
         for r in f["rows"]:
             tail = ""
             if r["label"] == "diverge" and "detection_ms" in r:

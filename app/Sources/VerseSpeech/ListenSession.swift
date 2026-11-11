@@ -229,6 +229,11 @@ public actor ListenSession {
         watchdog = nil
         eventContinuation?.finish()
         issueContinuation.finish()
+        // Review S5: this session's recognizers gave their models back above. In the background (stop() never waits on it):
+        // after a swap the new session holds its own, so only the old ones go; at the end of a call, all of them.
+        if config.releaseIdleModelsOnStop {
+            Task.detached(priority: .utility) { await NemotronModel.unloadIdle() }
+        }
     }
 
     /// Waits for finite sources (file, memory) to finish and the recognizers to flush.
@@ -261,13 +266,30 @@ public struct GateDecision: Sendable, Equatable {
     public var verdict: BleedGate.Verdict
 }
 
+/// Review S10: the gate logs keep the newest `maxLog` entries each (every volatile `me` result is a decision, so a long call
+/// used to grow them without bound). The drop count stays the total.
 final class Counters: @unchecked Sendable {
+    let maxLog: Int
     private let lock = OSAllocatedUnfairLock()
     private var dropped_: [DroppedEcho] = []
+    private var droppedTotal = 0
     private var decisions_: [GateDecision] = []
-    var decisions: [GateDecision] { lock.withLockUnchecked { decisions_ } }
-    func addDecision(_ d: GateDecision) { lock.withLockUnchecked { decisions_.append(d) } }
-    var dropped: Int { lock.withLockUnchecked { dropped_.count } }
-    var log: [DroppedEcho] { lock.withLockUnchecked { dropped_ } }
-    func addDropped(_ d: DroppedEcho) { lock.withLockUnchecked { dropped_.append(d) } }
+
+    init(maxLog: Int = 4000) { self.maxLog = max(1, maxLog) }
+
+    var decisions: [GateDecision] { lock.withLockUnchecked { Array(decisions_.suffix(maxLog)) } }
+    func addDecision(_ d: GateDecision) { lock.withLockUnchecked { decisions_.append(d); Self.trim(&decisions_, to: maxLog) } }
+    var dropped: Int { lock.withLockUnchecked { droppedTotal } }
+    var log: [DroppedEcho] { lock.withLockUnchecked { Array(dropped_.suffix(maxLog)) } }
+    func addDropped(_ d: DroppedEcho) {
+        lock.withLockUnchecked { droppedTotal += 1; dropped_.append(d); Self.trim(&dropped_, to: maxLog) }
+    }
+
+    /// What is held in memory (tests): never more than the cap plus one batch.
+    var storedCounts: (decisions: Int, dropped: Int) { lock.withLockUnchecked { (decisions_.count, dropped_.count) } }
+
+    /// Drops the oldest entries in batches (a quarter of the cap at a time), so appending stays cheap.
+    private static func trim<T>(_ a: inout [T], to cap: Int) {
+        if a.count > cap + max(1, cap / 4) { a.removeFirst(a.count - cap) }
+    }
 }

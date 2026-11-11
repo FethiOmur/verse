@@ -91,9 +91,9 @@ struct PrompterMappingTests {
         state.mode = .classic       // lost only means something while tracking
         #expect(PrompterHint(state: state) == nil)
 
-        state.notice = .fellBackToClassic(reason: "No microphone access.")
-        #expect(PrompterHint(state: state) == .fellBack(reason: "No microphone access."))
-        #expect(PrompterHint(state: state)?.text == "Classic mode: No microphone access.")
+        state.notice = .fellBackToClassic(reason: "No microphone access.", cause: .permissionDenied)
+        #expect(PrompterHint(state: state) == .fellBack(reason: "No microphone access.", cause: .permissionDenied))
+        #expect(PrompterHint(state: state)?.text(locale: Locale(identifier: "en")) == "Classic mode: Verse needs microphone access.")
 
         state.notice = nil
         state.isLost = false
@@ -528,9 +528,10 @@ struct PrompterModelTests {
         tap.ingest(micEvent("sure the clearest example"))
         #expect(await waitUntil { await session.state.wordPosition >= 4 })
 
-        // The next card replaces the unread tail. What he read stays.
+        // The next card of the same turn replaces the unread tail. What he read stays. (A new turn starts a fresh page:
+        // PrompterMeetingCardTests.)
         let second = "It took one evening and my family used it every morning."
-        await model.handleMeetingCard(card("r2", second))
+        await model.handleMeetingCard(card("r1", second))
         #expect(model.page.text == "Sure, the clearest example " + second)
         #expect(await session.state.wordPosition == 4)
 

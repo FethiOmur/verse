@@ -146,6 +146,9 @@ public final class ListenSessionInputs: TranscriptSource, LevelSource {
     private let session: ListenSession
     private let broadcaster = TranscriptBroadcaster()
     private let started = Mutex<Task<Void, any Error>?>(nil)
+    /// Bumped by every `stop()`. A start that began under an older generation was overtaken by a stop while it was still
+    /// loading the recognizer, and tears itself down when it returns (review V2: the mic stayed on until quit).
+    private let generation = Mutex(0)
     private let levelSource: ListenSessionLevelSource
 
     public init(session: ListenSession) {
@@ -165,8 +168,15 @@ public final class ListenSessionInputs: TranscriptSource, LevelSource {
         let task = started.withLock { existing -> Task<Void, any Error> in
             if let existing { return existing }
             let session = self.session, broadcaster = self.broadcaster
-            let created = Task<Void, any Error> {
+            let startedIn = generation.withLock { $0 }
+            let created = Task<Void, any Error> { [self] in
                 let stream = try await session.start()
+                // `stop()` ran while the session was starting: its `session.stop()` found nothing running yet, so stop the
+                // sources and the recognizer that have opened since.
+                guard self.generation.withLock({ $0 }) == startedIn else {
+                    await session.stop()
+                    throw CancellationError()
+                }
                 Task {
                     for await event in stream { broadcaster.yield(event) }
                     broadcaster.finish()
@@ -190,6 +200,7 @@ public final class ListenSessionInputs: TranscriptSource, LevelSource {
 
     public func stop() async {
         await levelSource.stop()
+        generation.withLock { $0 += 1 }
         let wasStarted = started.withLock { s -> Bool in defer { s = nil }; return s != nil }
         if wasStarted { await session.stop() }
         broadcaster.finish()

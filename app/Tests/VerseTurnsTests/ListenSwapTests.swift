@@ -197,6 +197,7 @@ enum SwapScenario {
         defer { session.delete() }
         var o = RunOptions(sessionDir: session.dir)
         o.listenEnvironment = rig.environment()
+        o.waitForBrainBeforeListening = true   // these scenarios are timed from a warm brain
         o.source = nil
         o.lang = lang
         o.route = startRoute
@@ -492,6 +493,7 @@ final class ListenSwapTests: XCTestCase {
         defer { session.delete() }
         var o = RunOptions(sessionDir: session.dir)
         o.listenEnvironment = SwapRig().environment()
+        o.waitForBrainBeforeListening = true
         o.route = .room
         o.fakeBrain = true
         o.brainDir = try brainDir()

@@ -111,3 +111,10 @@ def test_suites_are_aggregated_apart(result):
     assert score.aggregate([d, short], {"dmini": meta})["questions_to_user"] == 4
     assert score.aggregate([d, short], {"dmini": meta}, "short")["questions_to_user"] == 4
     assert score.aggregate([short], {"dmini": meta})["questions_to_user"] == 0
+
+
+def test_suggestion_lines_carry_the_tier_that_wrote_them(result):
+    d, _ = result
+    lines = [sl for r in d["rows"] for sl in r["suggestion_lines"]]
+    assert lines and all(sl.get("tier") in ("S", "F", "D") for sl in lines)
+    assert any(sl["call"].startswith("d") and sl["tier"] == "D" for sl in lines)

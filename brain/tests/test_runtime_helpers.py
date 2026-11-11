@@ -33,7 +33,9 @@ def session_copy(tmp_path: Path) -> Path:
 
 
 async def start(b: Brain, session_dir: Path | None = None) -> None:
+    """`start`, then the pre-warm it runs as a task (review L3): the brain is ready (or offline) when this returns."""
     await b.handle({"type": "start", "session_dir": str(session_dir or FIX), "lang": "en"})
+    await b.warmed()
 
 
 async def partial(b: Brain, tid: str, text: str, cue: bool = True, speaker: str = "remote") -> None:

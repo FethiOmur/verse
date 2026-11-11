@@ -6,7 +6,17 @@ import VerseTurns
 /// timeout clock.
 @MainActor
 public final class OverlayModel: ObservableObject {
-    @Published public private(set) var state = OverlayState()
+    /// The island's state. Changes announce themselves (`objectWillChange`) only when something other than the level
+    /// bars moved: the bars change about ten times a second for the whole call, and they are drawn from `levels` by the
+    /// bars alone, so they must not re-evaluate the whole island (card included) each time (review V8).
+    public private(set) var state = OverlayState() {
+        willSet {
+            if !newValue.equalIgnoringLevels(state) { objectWillChange.send() }
+        }
+        didSet { levels.update(remote: state.remoteBars, me: state.meBars) }
+    }
+    /// The level bars, published on their own for the bars views (`LiveLevelBars`).
+    public let levels = IslandLevels()
     /// The running session is shutting down (the Stop controls show "Stopping…" and take no clicks). The controller sets it.
     @Published public private(set) var stopping = false
     private var reducer: OverlayReducer
@@ -60,10 +70,11 @@ public final class OverlayModel: ObservableObject {
     }
 
     /// "Press ⌥⌘V again to stop" on or off. It overlays whatever the island shows and never replaces a real status
-    /// (an error or a permission message stays); taking it down leaves any other status alone.
+    /// (an error or a permission message stays; a "reconnected" notice gives way); taking it down leaves any other status alone.
     public func setStopConfirm(_ on: Bool) {
         if on {
-            if reducer.state.status == nil || reducer.state.status == .meMissing { reducer.setStatus(.stopConfirm) }
+            let s = reducer.state.status
+            if s == nil || s == .meMissing || s?.isTransientNotice == true { reducer.setStatus(.stopConfirm) }
         } else if reducer.state.status == .stopConfirm {
             reducer.setStatus(nil)
         }
@@ -177,6 +188,31 @@ public final class OverlayModel: ObservableObject {
 
 extension OverlayReducer {
     mutating func clearStatus() { setStatus(nil) }
+}
+
+/// The island's level bars (the last 300 ms of the meeting's and of my audio), apart from `OverlayState`'s other fields
+/// so that only the bars views observe their ten updates a second.
+@MainActor
+public final class IslandLevels: ObservableObject {
+    @Published public private(set) var remote: [Double] = [0, 0, 0]
+    @Published public private(set) var me: [Double] = [0, 0, 0]
+
+    public init() {}
+
+    func update(remote r: [Double], me m: [Double]) {
+        if remote != r { remote = r }
+        if me != m { me = m }
+    }
+}
+
+extension OverlayState {
+    /// Equal in everything but the level bars.
+    func equalIgnoringLevels(_ other: OverlayState) -> Bool {
+        var a = self, b = other
+        a.remoteBars = []; a.meBars = []
+        b.remoteBars = []; b.meBars = []
+        return a == b
+    }
 }
 
 /// The start card's chips (anytime calls, spec 2.1): the route chip changes the route, the language chips the language.

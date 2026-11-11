@@ -631,9 +631,14 @@ class AskRuntime:
             await asyncio.gather(t, return_exceptions=True)
 
     async def _answer(self, q_id: str, a_id: str, text: str, model_key: str) -> None:
-        req = self.build_request(model_key, text)
-        asked_model = req["model"]
         t0 = time.monotonic()
+        try:
+            req = self.build_request(model_key, text)
+        except Exception as e:  # noqa: BLE001 - e.g. sqlite3.OperationalError while the indexer rewrites the database
+            log.warning("ask request build failed: %s", type(e).__name__)
+            self._error(q_id, a_id, "error", type(e).__name__)          # the panel must always get its closing event
+            return
+        asked_model = req["model"]
         parts: list[str] = []
         usage: dict = {}
         model_used = asked_model

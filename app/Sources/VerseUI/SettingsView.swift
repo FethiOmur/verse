@@ -4,13 +4,47 @@ import UniformTypeIdentifiers
 import VerseAudio
 import VerseVoice
 
+/// Runs a blocking Keychain read (`security` subprocesses) off the main thread. A view must not spawn them itself:
+/// each costs about 13 ms, and Settings used to run about ten of them while it appeared.
+enum HomeKeyStatusReader {
+    static func read<T: Sendable>(_ work: @escaping @Sendable () -> T) async -> T {
+        await Task.detached(priority: .userInitiated, operation: work).value
+    }
+}
+
+/// Which cloud voices have a key saved, read off the main thread and then published (also used as `HomeVoiceKeys`).
+@MainActor
+final class HomeVoiceKeyAvailability: ObservableObject {
+    @Published private(set) var saved: Set<VoiceKind> = []
+    private let read: @Sendable () -> Set<VoiceKind>
+    private var generation = 0
+
+    init(read: @escaping @Sendable () -> Set<VoiceKind> = { Set([VoiceKind.elevenlabs, .openai].filter { VoiceKeys.hasKey($0) }) }) {
+        self.read = read
+    }
+
+    func refresh() {
+        generation += 1
+        let mine = generation
+        let read = self.read
+        Task {
+            let s = await HomeKeyStatusReader.read(read)
+            // An older read must not overwrite a newer one (a save or remove refreshes again).
+            if mine == generation { saved = s }
+        }
+    }
+
+    func isAvailable(_ kind: VoiceKind) -> Bool { SimSettings.isAvailable(kind, hasKey: { saved.contains($0) }) }
+}
+
 /// A key row group: status, a secure field, Save / Replace / Remove. The key is never shown back, only "saved" and its
 /// last 4 characters. Used for the Anthropic key and the cloud voice keys.
 struct HomeKeyRows: View {
     var name: String
     var placeholder: String
     var removeNote: String
-    var status: () -> (has: Bool, last4: String?)
+    /// Runs off the main thread (see `HomeKeyStatusReader`).
+    var status: @Sendable () -> (has: Bool, last4: String?)
     var save: (String) throws -> Void
     var remove: () throws -> Void
     var onChange: () -> Void = {}
@@ -18,6 +52,9 @@ struct HomeKeyRows: View {
     @State private var draft = ""
     @State private var hasKey = false
     @State private var last4: String?
+    /// False until the first status read finishes: the row shows nothing rather than a wrong "No key".
+    @State private var loaded = false
+    @State private var generation = 0
     @State private var message: String?
     @State private var messageIsError = false
     @State private var confirmRemove = false
@@ -26,7 +63,9 @@ struct HomeKeyRows: View {
 
     var body: some View {
         HomeRow(verbatim: name) {
-            if hasKey {
+            if !loaded {
+                EmptyView()
+            } else if hasKey {
                 Text(verbatim: last4.map { L10n.tr("Saved in Keychain · ends in \($0)") } ?? L10n.tr("Saved in Keychain")).font(VT.Font.body).foregroundStyle(ink.secondary)
                 HomeSecondaryButton("Replace…") { editing = true }
                 HomeSecondaryButton("Remove…", destructive: true) { confirmRemove = true }
@@ -40,7 +79,7 @@ struct HomeKeyRows: View {
         } message: {
             Text(verbatim: removeNote)
         }
-        if !hasKey || editing {
+        if loaded && (!hasKey || editing) {
             HomeRowDivider()
             HomeRow(hasKey ? "New key" : "Add key") {
                 SecureField("", text: $draft, prompt: Text(verbatim: hasKey ? L10n.tr("Replaces the saved key") : placeholder).foregroundStyle(ink.tertiary))
@@ -61,7 +100,7 @@ struct HomeKeyRows: View {
     private func saveDraft() {
         let k = draft
         draft = ""
-        do { try save(k); message = L10n.tr("Saved"); messageIsError = false; editing = false } catch {
+        do { try save(k); message = L10n.tr("Saved"); messageIsError = false; editing = false; hasKey = true } catch {
             message = (error as? VoiceKeyError).map(L10n.message(for:)) ?? "\(error)"
             messageIsError = true
         }
@@ -69,15 +108,23 @@ struct HomeKeyRows: View {
     }
 
     private func removeKey() {
-        do { try remove(); message = L10n.tr("Removed"); messageIsError = false } catch { message = "\(error)"; messageIsError = true }
+        do { try remove(); message = L10n.tr("Removed"); messageIsError = false; hasKey = false; last4 = nil } catch { message = "\(error)"; messageIsError = true }
         refresh()
     }
 
     private func refresh() {
-        let s = status()
-        hasKey = s.has
-        last4 = s.last4
-        onChange()
+        generation += 1
+        let mine = generation
+        let status = self.status
+        Task {
+            let s = await HomeKeyStatusReader.read(status)
+            // An older read must not overwrite a newer one (a save or remove refreshes again).
+            guard mine == generation else { return }
+            hasKey = s.has
+            last4 = s.last4
+            loaded = true
+            onChange()
+        }
     }
 }
 
@@ -244,7 +291,7 @@ struct HomePracticeVoiceSection: View {
     @State private var keysChanged = 0
     @State private var elevenVoices: [VoiceOption] = []
     @State private var elevenMessage: String?
-    @StateObject private var voiceKeys = HomeVoiceKeys()
+    @StateObject private var voiceKeys = HomeVoiceKeyAvailability()
     @Environment(\.homeInk) private var ink
 
     private var appleVoices: [VoiceOption] { AppleVoice.availableVoices(lang: "en") }

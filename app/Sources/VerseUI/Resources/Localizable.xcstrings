@@ -1250,6 +1250,22 @@
         }
       }
     },
+    "A few seconds may be missing from the transcript.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nella trascrizione potrebbero mancare alcuni secondi."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transkriptte birkaç saniye eksik olabilir."
+          }
+        }
+      }
+    },
     "A folder name can have up to 60 characters.": {
       "localizations": {
         "it": {
@@ -2130,6 +2146,22 @@
         }
       }
     },
+    "Audio reconnected": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio ricollegato"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses yeniden bağlandı"
+          }
+        }
+      }
+    },
     "Audio recording access needed": {
       "localizations": {
         "it": {
@@ -2478,6 +2510,150 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ tarihinde oluşturuldu"
+          }
+        }
+      }
+    },
+    "Cannot import .%@ files. Use .md, .txt or .pptx.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile importare file .%@. Usa .md, .txt o .pptx."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": ".%@ dosyaları içe aktarılamaz. .md, .txt veya .pptx kullanın."
+          }
+        }
+      }
+    },
+    "Classic mode: listening could not start.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modalità classica: l’ascolto non è partito."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasik mod: dinleme başlatılamadı."
+          }
+        }
+      }
+    },
+    "Classic mode: speech recognition is not available.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modalità classica: il riconoscimento vocale non è disponibile."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasik mod: konuşma tanıma kullanılamıyor."
+          }
+        }
+      }
+    },
+    "Classic mode: the microphone did not start.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modalità classica: il microfono non si è avviato."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasik mod: mikrofon başlamadı."
+          }
+        }
+      }
+    },
+    "Classic mode: the microphone level is not available.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modalità classica: il livello del microfono non è disponibile."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasik mod: mikrofon seviyesi alınamıyor."
+          }
+        }
+      }
+    },
+    "Classic mode: Verse needs microphone access.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modalità classica: Verse ha bisogno dell’accesso al microfono."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasik mod: Verse’ün mikrofon erişimine ihtiyacı var."
+          }
+        }
+      }
+    },
+    "Could not import the file.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile importare il file."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya içe aktarılamadı."
+          }
+        }
+      }
+    },
+    "Could not read the file.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile leggere il file."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya okunamadı."
+          }
+        }
+      }
+    },
+    "Could not read the presentation's notes.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile leggere le note della presentazione."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sunumun notları okunamadı."
           }
         }
       }
@@ -5062,6 +5238,22 @@
         }
       }
     },
+    "Listening · answers warming up": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In ascolto · risposte in preparazione"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dinliyor · yanıtlar hazırlanıyor"
+          }
+        }
+      }
+    },
     "Listening · ⌥Space when done": {
       "localizations": {
         "it": {
@@ -5350,6 +5542,22 @@
         }
       }
     },
+    "Meeting audio reconnected": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio della riunione ricollegato"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toplantı sesi yeniden bağlandı"
+          }
+        }
+      }
+    },
     "Meeting detected": {
       "localizations": {
         "it": {
@@ -5582,6 +5790,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mikrofon erişimi gerekli"
+          }
+        }
+      }
+    },
+    "Microphone reconnected": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Microfono ricollegato"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon yeniden bağlandı"
           }
         }
       }
@@ -6264,6 +6488,22 @@
         }
       }
     },
+    "No presenter notes found in this presentation.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna nota del relatore in questa presentazione."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu sunumda konuşmacı notu yok."
+          }
+        }
+      }
+    },
     "No profile": {
       "localizations": {
         "it": {
@@ -6772,6 +7012,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Açık: mikrofonun duyduğu soru için kart görünür. Kapalı: yalnızca ⌥⌘↩ kart ister. Oda modu, Mac’in yanında hoparlörlü bir görüşmedir."
+          }
+        }
+      }
+    },
+    "Only .pptx speaker notes can be imported.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si possono importare solo le note del relatore dei file .pptx."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yalnızca .pptx konuşmacı notları içe aktarılabilir."
           }
         }
       }
@@ -8008,6 +8264,22 @@
         }
       }
     },
+    "Reconnected": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ricollegato"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden bağlandı"
+          }
+        }
+      }
+    },
     "Recording": {
       "localizations": {
         "it": {
@@ -8356,6 +8628,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yeniden boyutlandır"
+          }
+        }
+      }
+    },
+    "Restarted": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riavviato"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden başladı"
           }
         }
       }
@@ -10068,6 +10356,22 @@
         }
       }
     },
+    "The file has no readable text.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file non contiene testo leggibile."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosyada okunabilir metin yok."
+          }
+        }
+      }
+    },
     "The file plays as the other side of the call. Your microphone stays you.": {
       "localizations": {
         "it": {
@@ -10644,6 +10948,22 @@
         }
       }
     },
+    "Transcription restarted": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trascrizione riavviata"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yazıya dökme yeniden başladı"
+          }
+        }
+      }
+    },
     "Trash": {
       "localizations": {
         "it": {
@@ -10800,6 +11120,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kaydedilmedi"
+          }
+        }
+      }
+    },
+    "Unsaved text replaced": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Testo non salvato sostituito"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydedilmemiş metin değiştirildi"
           }
         }
       }

@@ -131,19 +131,19 @@ public final class ConversationPrep: ConversationRunning, @unchecked Sendable {
         process.environment = env
 
         let collected = LineCollector()
-        err.fileHandleForReading.readabilityHandler = { h in
-            let d = h.availableData
-            if d.isEmpty { h.readabilityHandler = nil; return }
-            for l in collected.add(d) { onLine(l) }
-        }
+        let errDrain = PipeDrain(err) { d in for l in collected.add(d) { onLine(l) } }
         let stdout = OutputBox()
-        out.fileHandleForReading.readabilityHandler = { h in
-            let d = h.availableData
-            if d.isEmpty { h.readabilityHandler = nil; return }
-            stdout.append(d)
-        }
+        let outDrain = PipeDrain(out) { d in stdout.append(d) }
         let exited: Int32 = await withCheckedContinuation { c in
             process.terminationHandler = { p in c.resume(returning: p.terminationStatus) }
+            // Checked and started under the lock `cancel()` takes, so a cancel before the start is honoured: nothing is launched.
+            lock.lock()
+            defer { lock.unlock() }
+            if cancelled {
+                process.terminationHandler = nil
+                c.resume(returning: PipeDrain.notStarted)
+                return
+            }
             do {
                 try process.run()
             } catch {
@@ -151,9 +151,14 @@ public final class ConversationPrep: ConversationRunning, @unchecked Sendable {
                 c.resume(returning: -1)
             }
         }
-        try? await Task.sleep(for: .milliseconds(50))
-        out.fileHandleForReading.readabilityHandler = nil
-        err.fileHandleForReading.readabilityHandler = nil
+        if exited != PipeDrain.notStarted && exited != -1 {
+            // Read both pipes to EOF (bounded, in case a grandchild keeps one open) before the handlers go: the last line
+            // is often still in the pipe when the exit callback fires.
+            await outDrain.waitForEOF()
+            await errDrain.waitForEOF()
+        }
+        outDrain.stop()
+        errDrain.stop()
         if let rest = collected.rest() { onLine(rest) }
 
         if lock.withLock({ cancelled }) { return .cancelled }
@@ -173,4 +178,36 @@ public final class ConversationPrep: ConversationRunning, @unchecked Sendable {
         lock.withLock { cancelled = true }
         if process.isRunning { process.terminate() }
     }
+}
+
+/// A child process's output pipe read by a readability handler, with a way to wait for the handler to see EOF. Removing
+/// the handler a fixed time after the exit callback loses the last line when it is still in the pipe.
+final class PipeDrain: @unchecked Sendable {
+    /// The "exit status" reported when a cancel arrived before the process was started.
+    static let notStarted: Int32 = -2
+
+    private let handle: FileHandle
+    private let lock = NSLock()
+    private var eof = false
+
+    init(_ pipe: Pipe, onData: @escaping @Sendable (Data) -> Void) {
+        handle = pipe.fileHandleForReading
+        handle.readabilityHandler = { [weak self] h in
+            let d = h.availableData
+            if d.isEmpty { h.readabilityHandler = nil; self?.markEOF(); return }
+            onData(d)
+        }
+    }
+
+    private func markEOF() { lock.withLock { eof = true } }
+
+    /// Returns when the pipe has reached EOF and everything before it was handed to `onData`, or after `timeout`.
+    func waitForEOF(timeout: Duration = .seconds(2)) async {
+        let deadline = ContinuousClock.now + timeout
+        while !lock.withLock({ eof }) && ContinuousClock.now < deadline && !Task.isCancelled {
+            try? await Task.sleep(for: .milliseconds(5))
+        }
+    }
+
+    func stop() { handle.readabilityHandler = nil }
 }

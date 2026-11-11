@@ -44,14 +44,20 @@ public struct KeychainStore {
 
     /// Adds or replaces the item.
     public static func save(_ key: String, service: String, account: String = account) throws {
+        try save(key, service: service, account: account, runner: run)
+    }
+
+    /// `runner` is the `security` call (tests pass a fake one, so no test touches the real Keychain).
+    static func save(_ key: String, service: String, account: String, runner: SecurityRunner) throws {
         let k = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard isPlausible(k) else { throw KeychainError.invalidKey }
         guard isSafeToken(service), isSafeToken(account) else { throw KeychainError.failed(L10n.tr("unsupported service or account name")) }
         let last = String(k.suffix(4))
         let cmd = "add-generic-password -U -a \(account) -s \(service) -l \(service) -j \(commentPrefix)\(last) -w \(k)\n"
-        let r = run(["-i"], stdin: cmd)
-        // `security -i` prints a prompt and reports errors on stderr; it exits 0 either way, so check the result.
-        guard hasKey(service: service, account: account) else {
+        let r = runner(["-i"], cmd)
+        // `security -i` prints a prompt and reports errors on stderr; it exits 0 either way, so check the result. An item
+        // that already exists is not proof (a failed `-U` update leaves the old key): the stored last 4 must be the new key's.
+        guard last4(service: service, account: account, runner: runner) == last else {
             throw KeychainError.failed(L10n.tr("the Keychain did not accept the key (\(r.stderr.isEmpty ? L10n.tr("exit \(r.status)") : sanitized(r.stderr, removing: k)))"))
         }
     }
@@ -59,19 +65,23 @@ public struct KeychainStore {
     public static func remove(service: String, account: String = account) throws {
         guard isSafeToken(service), isSafeToken(account) else { throw KeychainError.failed(L10n.tr("unsupported service or account name")) }
         guard hasKey(service: service, account: account) else { return }
-        let r = run(["delete-generic-password", "-a", account, "-s", service])
+        let r = run(["delete-generic-password", "-a", account, "-s", service], nil)
         if r.status != 0 || hasKey(service: service, account: account) {
             throw KeychainError.failed(L10n.tr("the Keychain item could not be removed (exit \(r.status))"))
         }
     }
 
     public static func hasKey(service: String, account: String = account) -> Bool {
-        run(["find-generic-password", "-a", account, "-s", service]).status == 0
+        run(["find-generic-password", "-a", account, "-s", service], nil).status == 0
     }
 
     /// The last 4 characters, when this app saved the key (nil for an item made elsewhere, or no item).
     public static func last4(service: String, account: String = account) -> String? {
-        let r = run(["find-generic-password", "-a", account, "-s", service])
+        last4(service: service, account: account, runner: run)
+    }
+
+    static func last4(service: String, account: String, runner: SecurityRunner) -> String? {
+        let r = runner(["find-generic-password", "-a", account, "-s", service], nil)
         guard r.status == 0 else { return nil }
         // Attribute dump only (no -w): `"icmt"<blob>="verse-last4:abcd"`.
         for line in (r.stdout + "\n" + r.stderr).split(separator: "\n") where line.contains("\"icmt\"") {
@@ -97,9 +107,10 @@ public struct KeychainStore {
         s.replacingOccurrences(of: key, with: "[key]").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private struct Result { var status: Int32; var stdout: String; var stderr: String }
+    struct SecurityResult { var status: Int32; var stdout: String; var stderr: String }
+    typealias SecurityRunner = ([String], String?) -> SecurityResult
 
-    private static func run(_ args: [String], stdin: String? = nil) -> Result {
+    private static func run(_ args: [String], _ stdin: String?) -> SecurityResult {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: securityTool)
         p.arguments = args
@@ -107,7 +118,7 @@ public struct KeychainStore {
         p.standardOutput = out
         p.standardError = err
         p.standardInput = stdin == nil ? FileHandle.nullDevice : inp
-        do { try p.run() } catch { return Result(status: -1, stdout: "", stderr: "\(error)") }
+        do { try p.run() } catch { return SecurityResult(status: -1, stdout: "", stderr: "\(error)") }
         if let stdin {
             try? inp.fileHandleForWriting.write(contentsOf: Data(stdin.utf8))
             try? inp.fileHandleForWriting.close()
@@ -115,6 +126,6 @@ public struct KeychainStore {
         let o = out.fileHandleForReading.readDataToEndOfFile()
         let e = err.fileHandleForReading.readDataToEndOfFile()
         p.waitUntilExit()
-        return Result(status: p.terminationStatus, stdout: String(decoding: o, as: UTF8.self), stderr: String(decoding: e, as: UTF8.self))
+        return SecurityResult(status: p.terminationStatus, stdout: String(decoding: o, as: UTF8.self), stderr: String(decoding: e, as: UTF8.self))
     }
 }

@@ -106,9 +106,18 @@ def _value_supported(kind: str, value: str, quotes: list[str]) -> bool:
         have = set()
         for q in quotes:
             have |= numbers_in(q)
-        # month names are not parsed, so the year or the day must appear as a number in the quote
-        cands = [p for p in (parts[0] if parts and len(parts[0]) == 4 else None, parts[-1] if parts else None) if p]
-        return any(float(p) in have for p in cands)
+        if not parts:
+            return False
+        # A quote may spell the month as a word, so a numeric month is not required; the year and the day are.
+        if len(parts) == 3 and len(parts[0]) == 4:  # 2025-03-14
+            need = [parts[0], parts[2]]
+        elif len(parts) == 3 and len(parts[2]) == 4:  # 14/03/2025
+            need = [parts[0], parts[2]]
+        elif len(parts) == 2 and len(parts[0]) == 4:  # 2025-03
+            need = [parts[0]]
+        else:  # "14 March 2025", "2025", "14"
+            need = parts
+        return all(float(p) in have for p in need)
     nv = norm(value)
     return bool(nv) and any(nv in norm(q) for q in quotes)
 
@@ -228,21 +237,39 @@ for _i, _names in enumerate([
     for _n in _names:
         _MONTH_WORDS[_n] = _i
 _AMBIGUOUS_MONTHS = {"may", "march"}  # also ordinary English words
+_ABBREVIATIONS = {"jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec"}  # "mar"/"dec" are Italian words too
 _WORD = re.compile(r"[A-Za-z]+")
+_SENTENCE_END = re.compile(r"[.!?]['\")\]]*\s+$")
+# Sentence-initial "May"/"March" is a month before these (or a comma, or a year); "May I", "May we", "March on" are not.
+_MONTH_CONTINUATION = re.compile(r"\s+(?:was|is|has|had|will|brought|saw)\b|\s*,|\s+\d{4}\b", re.IGNORECASE)
 
 
 def _months_in(text: str) -> set[int]:
-    """Month numbers named in `text`. "may"/"march" count only when capitalised mid-sentence or next to a number."""
+    """Month numbers named in `text`.
+    "may"/"march": next to a number, capitalised mid-sentence, or sentence-initial followed by was/is/has/had/will/
+    brought/saw, a comma or a year. 3-letter abbreviations ("mar", "dec", ...): only when capitalised, followed by a
+    period, or next to a number, so the Italian words "mar"/"dec" in lowercase prose are not months."""
     out: set[int] = set()
-    first = True
     for m in _WORD.finditer(text):
-        num = _MONTH_WORDS.get(m.group().lower())
-        is_first, first = first, False
+        word = m.group()
+        low = word.lower()
+        num = _MONTH_WORDS.get(low)
         if num is None:
             continue
-        if m.group().lower() in _AMBIGUOUS_MONTHS:
-            near_number = bool(re.match(r"\.?\s*\d", text[m.end():])) or bool(re.search(r"\d(?:st|nd|rd|th)?\s+(?:of\s+)?$", text[:m.start()]))
-            if not (near_number or (m.group()[0].isupper() and not is_first)):
+        ambiguous = low in _AMBIGUOUS_MONTHS
+        abbreviation = low in _ABBREVIATIONS
+        if ambiguous or abbreviation:
+            before, after = text[:m.start()], text[m.end():]
+            near_number = bool(re.match(r"\.?\s*\d", after)) or bool(re.search(r"\d(?:st|nd|rd|th)?\s+(?:of\s+)?$", before))
+            capitalised = word[0].isupper()
+            if ambiguous:
+                if before.strip() == "" or _SENTENCE_END.search(before):
+                    ok = near_number or bool(_MONTH_CONTINUATION.match(after))
+                else:
+                    ok = near_number or capitalised
+            else:
+                ok = near_number or capitalised or after.startswith(".")
+            if not ok:
                 continue
         out.add(num)
     return out

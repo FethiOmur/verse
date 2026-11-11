@@ -83,6 +83,8 @@ public final class MeetingCoordinator: ObservableObject {
     private var startOffer: StartOffer?
     private var saveOffer: SaveOffer?
     private var dismissed: Set<String> = []
+    /// App name → last time an event-less call there was answered or ended after being answered (S11).
+    private var answeredApps: [String: Date] = [:]
     private var offered: Set<String> = []
     private var activeEventTitle: String?
     private var watchTask: Task<Void, Never>?
@@ -138,7 +140,7 @@ public final class MeetingCoordinator: ObservableObject {
     public func end() {
         watchTask?.cancel(); watchTask = nil
         upcomingTask?.cancel(); upcomingTask = nil
-        prepTask?.cancel(); prepTask = nil
+        cancelPrep()
         clearTask?.cancel(); clearTask = nil
         let d = detector
         Task { await d.stop() }
@@ -175,8 +177,14 @@ public final class MeetingCoordinator: ObservableObject {
             upcomingTask?.cancel(); upcomingTask = nil
             let d = detector
             Task { await d.stop() }
-            if let o = startOffer, host?.overlay.state.meetingPrompt == o.prompt { withdraw() }
+            if let o = startOffer, isShowing(o) { cancelPrep(); withdraw() }
         }
+    }
+
+    /// The offer's prompt is the one under the notch. Compared by kind: while the session is prepared from the invite the
+    /// island shows the offer's `preparing()` copy, which never equals `o.prompt` (V4).
+    private func isShowing(_ o: StartOffer) -> Bool {
+        host?.overlay.state.meetingPrompt?.kind == o.prompt.kind
     }
 
     // MARK: Meeting detected / upcoming
@@ -194,6 +202,14 @@ public final class MeetingCoordinator: ObservableObject {
             guard settings.detectMeetings else { return }
             let key = info.event?.id ?? "\(info.appName)@\(Int(info.since.timeIntervalSince1970))"
             guard !dismissed.contains(key) else { return }
+            if info.event == nil, let last = answeredApps[info.appName], now().timeIntervalSince(last) <= Self.resumeWindow {
+                // The same call after a pause in its microphone input (muted for more than the detector's 10 s): its
+                // start time is new, but the question was already answered (S11).
+                answeredApps[info.appName] = now()
+                dismissed.insert(key)
+                host.log("meeting in \(info.appName) resumed after a pause: no prompt (already answered)")
+                return
+            }
             guard !busy else {
                 host.log("meeting detected in \(info.appName) while a session runs: no prompt")
                 return
@@ -204,9 +220,19 @@ public final class MeetingCoordinator: ObservableObject {
                              prompt: .detected(appName: info.appName, eventTitle: info.event?.title, plan: plan)))
             host.log("meeting detected in \(info.appName) event=\(info.event?.title ?? "none") plan=\(plan)")
         case .ended(let info):
-            // The call ended before anyone clicked: take the question back.
-            if let o = startOffer, o.appName == info.appName, !o.prompt.busy, host.overlay.state.meetingPrompt == o.prompt { withdraw() }
+            if answeredApps[info.appName] != nil { answeredApps[info.appName] = now() }
+            // The call ended before anyone clicked, or while its session was being prepared: take the question back and
+            // stop the prep (nothing would use the session now).
+            if let o = startOffer, o.appName == info.appName, isShowing(o) { cancelPrep(); withdraw() }
         }
+    }
+
+    /// A call without a calendar event whose mic input comes back within this long after it ended is the same call.
+    static let resumeWindow: TimeInterval = 10 * 60
+
+    /// Remembers that the start question for an event-less call in `o`'s app was answered (Start or Not now).
+    private func markAnswered(_ o: StartOffer) {
+        if o.event == nil, let app = o.appName { answeredApps[app] = now() }
     }
 
     /// One look at the calendar: an event with a video link that starts within five minutes (or began less than ten
@@ -250,6 +276,8 @@ public final class MeetingCoordinator: ObservableObject {
         switch shown.kind {
         case .detected, .upcoming:
             guard let o = startOffer, o.prompt.kind == shown.kind else { return }
+            // While the session is prepared only "Not now" answers: it cancels the prep (V4).
+            if shown.busy && action == .accept { return }
             action == .accept ? accept(o) : dismissStart(o)
         case .saveSummary:
             guard let s = saveOffer else { return }
@@ -261,10 +289,17 @@ public final class MeetingCoordinator: ObservableObject {
 
     private func dismissStart(_ o: StartOffer) {
         dismissed.insert(o.key)
-        prepToken += 1
-        prepTask?.cancel(); prepTask = nil
+        markAnswered(o)
+        cancelPrep()
         startOffer = nil
         closePrompt()
+    }
+
+    /// Stops a prep from the invite: the task is cancelled, which stops the brain's prep process too
+    /// (`ProcessCommandRunner`), and a late result is ignored through the token.
+    private func cancelPrep() {
+        prepToken += 1
+        prepTask?.cancel(); prepTask = nil
     }
 
     private func closePrompt() {
@@ -279,6 +314,7 @@ public final class MeetingCoordinator: ObservableObject {
     private func accept(_ o: StartOffer) {
         guard let host else { return }
         dismissed.insert(o.key)
+        markAnswered(o)
         switch o.plan {
         case .prepared(let name):
             begin(session: name, offer: o)

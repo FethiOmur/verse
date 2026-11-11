@@ -63,6 +63,7 @@ async def start(b, session, follow, lang="en"):
     if follow is not None:
         msg["follow"] = follow
     await b.handle(msg)
+    await b.warmed()
     end = asyncio.get_running_loop().time() + 5
     while b.embed is not None and b.embed.state == "loading" and asyncio.get_running_loop().time() < end:
         await asyncio.sleep(0.01)

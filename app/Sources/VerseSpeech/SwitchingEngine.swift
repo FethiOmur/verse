@@ -205,8 +205,9 @@ final class SwitchingEngine: TranscriptionEngine, @unchecked Sendable {
             await flush?.value
             try await engine?.finish()
         } else {
+            // Review S4: a throwing Apple flush must not keep the local engine's model lease.
+            defer { abandonLoad() }
             try await apple.finish()
-            abandonLoad()
         }
     }
 

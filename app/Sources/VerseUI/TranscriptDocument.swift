@@ -117,7 +117,10 @@ struct TranscriptDocument: Equatable, Sendable {
     }
 
     private static func objects(in url: URL) -> [[String: Any]] {
-        guard let data = try? Data(contentsOf: url), let text = String(data: data, encoding: .utf8) else { return [] }
+        // Lenient decoding: a writer caught mid-character leaves an incomplete last line, which is dropped by the JSON
+        // parse below; strict decoding would return nothing for the whole file.
+        guard let data = try? Data(contentsOf: url) else { return [] }
+        let text = String(decoding: data, as: UTF8.self)
         return text.split(whereSeparator: \.isNewline).compactMap {
             (try? JSONSerialization.jsonObject(with: Data($0.utf8))) as? [String: Any]
         }

@@ -102,26 +102,38 @@ class IndexRuntime:
         return True
 
     def _load_embedder(self) -> None:
-        """On the pool thread (the engine is built, called and closed on one thread)."""
+        """On the pool thread (the engine is built, called and closed on one thread). Any failure to bring the embedder up leaves
+        embeddings off; the indexer goes on with its phase 1."""
         from ..runtime.embed import EmbedUnavailable
         from ..runtime.me import model_sha
 
+        raw = None
         try:
             if self.fake:
                 from ..prep.me import HashEmbedder
 
-                self._raw, self.sha = HashEmbedder(), "fake"
+                raw, sha = HashEmbedder(), "fake"
             else:
                 from ..runtime.embed import LiteRtEmbedder
 
                 raw = LiteRtEmbedder(self.embed_model or "", self.embed_backend)
-                self._raw, self.sha = raw, model_sha(self.embed_model or "")
-                if self.sha is None:
+                sha = model_sha(self.embed_model or "")
+                if sha is None:
                     raise EmbedUnavailable("model file has no sha")
-        except EmbedUnavailable as e:
-            log.warning("embeddings off: %s", e)
+        except Exception as e:  # noqa: BLE001 - EmbedUnavailable, or whatever else the engine or the hash throws
+            if isinstance(e, EmbedUnavailable):
+                log.warning("embeddings off: %s", e)
+            else:
+                log.warning("embeddings off: %s: %s", type(e).__name__, e)
             self._raw, self.sha = None, None
+            close = getattr(raw, "close", None)      # an engine that was built but is not used must not leak (we are on its thread)
+            if close is not None:
+                try:
+                    close()
+                except Exception as ce:  # noqa: BLE001 - closing must never fail the start
+                    log.warning("embedder close failed: %s", type(ce).__name__)
             return
+        self._raw, self.sha = raw, sha
         self.embedder = QueryEmbedder(self._raw, self.sha)
 
     async def _start(self, msg: dict) -> None:

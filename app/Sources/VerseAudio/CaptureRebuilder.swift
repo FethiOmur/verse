@@ -15,7 +15,8 @@ public enum CaptureEvent: Sendable, Equatable {
 ///
 /// `rebuild` returns true when it rebuilt, false when nothing needed doing (the engine still runs on the same device and
 /// format). That check is what keeps a notification caused by the rebuild itself from looping: the next pass finds nothing to do
-/// and reports nothing.
+/// and reports nothing. A source may also return false after a rebuild it does not want reported yet (the tap's quiet
+/// silent-tap probe, which is reported only if audio comes back).
 public final class CaptureRebuilder: @unchecked Sendable {
     public typealias Rebuild = @Sendable () throws -> Bool
 

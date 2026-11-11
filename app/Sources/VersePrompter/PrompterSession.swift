@@ -1,9 +1,26 @@
 import Foundation
+import VerseAudio
 import VerseSpeech
 
 public enum PrompterNotice: Sendable, Equatable {
     /// The requested mode needed the mic or the recognizer and it did not start; the prompter runs in classic mode.
-    case fellBackToClassic(reason: String)
+    /// `reason` is the raw (English) error text, for the log; the UI words `cause` in the interface language.
+    case fellBackToClassic(reason: String, cause: PrompterFallbackCause = .other)
+}
+
+/// Why the requested mode did not start, as a case the UI can put in the interface language (review V13).
+public enum PrompterFallbackCause: Sendable, Equatable {
+    /// No speech source was given (word tracking).
+    case noSpeechSource
+    /// No microphone level source was given (voice-paced).
+    case noLevelSource
+    /// The microphone (or System Audio Recording) permission is denied.
+    case permissionDenied
+    /// The microphone did not start.
+    case microphoneFailed
+    /// The recognizer is not available (for this language, or the model did not load).
+    case speechUnavailable
+    case other
 }
 
 /// What the UI draws. Page-local positions.
@@ -48,6 +65,8 @@ public actor PrompterSession {
     private var wordsPerMinute: Double
     private var paused = true
     private var started = false
+    /// Bumped by every `stop()`, so a `start()` still opening its inputs can tell it was overtaken.
+    private var stopGeneration = 0
     private var lastPublished: PrompterState?
 
     private let transcriptSource: (any TranscriptSource)?
@@ -129,7 +148,11 @@ public actor PrompterSession {
     public func start() async {
         guard !started else { resume(); return }
         started = true
+        let generation = stopGeneration
         await activate(mode: requestedMode, startWord: driver.position(at: clock.now()))
+        // Review V2: `stop()` ran while the inputs were opening (the prompter was closed mid-start). Close what opened
+        // since and stay stopped instead of ticking on a finished session.
+        guard generation == stopGeneration else { await closeInputsOpenedAfterStop(); return }
         paused = false
         driver.setPaused(false, at: clock.now())
         startTicking()
@@ -150,6 +173,7 @@ public actor PrompterSession {
     }
 
     public func stop() async {
+        stopGeneration += 1
         tickTask?.cancel()
         transcriptPump?.cancel()
         levelPump?.cancel()
@@ -160,6 +184,13 @@ public actor PrompterSession {
         started = false
         tick()
         continuation.finish()
+    }
+
+    private func closeInputsOpenedAfterStop() async {
+        transcriptPump?.cancel(); transcriptPump = nil
+        levelPump?.cancel(); levelPump = nil
+        await transcriptSource?.stop()
+        await levelSource?.stop()
     }
 
     private func startTicking() {
@@ -207,7 +238,7 @@ public actor PrompterSession {
                 }
             } catch {
                 effective = .classic
-                notice = .fellBackToClassic(reason: Self.describe(error))
+                notice = .fellBackToClassic(reason: Self.describe(error), cause: Self.cause(of: error))
             }
         case .wordTracking:
             do {
@@ -218,7 +249,7 @@ public actor PrompterSession {
                 }
             } catch {
                 effective = .classic
-                notice = .fellBackToClassic(reason: Self.describe(error))
+                notice = .fellBackToClassic(reason: Self.describe(error), cause: Self.cause(of: error))
             }
         }
         let old = driver
@@ -240,11 +271,24 @@ public actor PrompterSession {
         (error as? FallbackReason)?.description ?? String(describing: error)
     }
 
+    static func cause(of error: any Error) -> PrompterFallbackCause {
+        switch error {
+        case FallbackReason.noTranscriptSource: return .noSpeechSource
+        case FallbackReason.noLevelSource: return .noLevelSource
+        case ListenError.permissionDenied: return .permissionDenied
+        case ListenError.micFailed: return .microphoneFailed
+        case ListenError.speechUnavailable: return .speechUnavailable
+        default: return .other
+        }
+    }
+
     /// Live mode switch; the reading position carries over.
     public func setMode(_ mode: PrompterMode) async {
         let position = driver.position(at: clock.now())
         requestedMode = mode
+        let generation = stopGeneration
         await activate(mode: mode, startWord: position)
+        guard generation == stopGeneration else { await closeInputsOpenedAfterStop(); return }
         tick()
     }
 

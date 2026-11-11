@@ -506,12 +506,15 @@ final class MemoryService: ObservableObject {
         indexer.embed = embeds
         indexer.stall = indexStall
         let names = Set(manifest.entries.map(\.name))
-        let removed = knownNames.subtracting(names).sorted()
+        // The session being recorded is out of the manifest on purpose, but it is not gone: its rows stay in the index.
+        let removed = knownNames.subtracting(names).subtracting(recording.map { [$0] } ?? []).sorted()
+        let wasKnown = recording.map { knownNames.contains($0) } ?? false
         let outcome = await indexer.run(manifest: manifest, drop: removed, sessionsRoot: root, makeBrain: makeIndexBrain ?? makeBrain,
                                         report: { [weak self] in self?.phase = $0 })
         switch outcome {
         case .done(let s):
             knownNames = names
+            if let recording, wasKnown { knownNames.insert(recording) }
             indexedSessions = s.sessions
             phase = .idle
         case .busy:

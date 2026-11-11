@@ -125,6 +125,7 @@ def make(tmp_path: Path, *, rules=None, delay: float = 0.0, embedder: bool = Tru
 
 async def start(b: Brain, sdir: Path, **extra) -> None:
     await b.handle({"type": "start", "session_dir": str(sdir), "lang": "en", **extra})
+    await b.warmed()
 
 
 async def until(pred, timeout: float = 3.0) -> None:

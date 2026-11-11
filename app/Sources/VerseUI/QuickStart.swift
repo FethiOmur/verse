@@ -35,7 +35,7 @@ public enum QuickStart {
 
     /// True when a process that is a known meeting app has microphone input running. Reads Core Audio flags only.
     public static func meetingAppHoldsMic(_ processes: [AudioProcessInfo], apps: [MeetingApp] = MeetingApp.known) -> Bool {
-        processes.contains { p in p.isRunningInput && apps.contains { $0.matches(p.bundleID) } }
+        processes.contains { p in p.isRunningInput && apps.contains { $0.matches(p) } }
     }
 
     // MARK: session

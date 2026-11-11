@@ -55,6 +55,9 @@ public struct ListenConfig: Sendable {
     public var micAsRemote: Bool = false
     /// Bundle-ID tap first, PID-list tap as the fallback.
     public var tapRoute: TapRoutePreference = .auto
+    /// Review S5: `stop()` unloads the Nemotron models nobody holds any more, in the background (`NemotronModel.unloadIdle`).
+    /// Off keeps them pooled for the next session (a 16-21 s load saved, about 600 MB per model kept).
+    public var releaseIdleModelsOnStop: Bool = true
     /// Off: voice processing ducks the meeting audio (>= 8 dB even at the minimum level, measured).
     public var voiceProcessing: Bool = false
     /// Silence appended after a file or memory clip so the recognizer settles, as it would in a live call.

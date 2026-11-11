@@ -52,12 +52,15 @@ struct IslandBand: View {
     @Environment(\.islandHover) private var hover
 
     var body: some View {
-        Wings(width: width, notchWidth: metrics.notchWidth, height: metrics.capsuleHeight, inset: width > 420 ? 22 : 12) {
+        Wings(width: width, notchWidth: metrics.notchWidth, height: metrics.capsuleHeight, inset: Self.wingInset(width: width)) {
             leftWing
         } right: {
             rightWing
         }
     }
+
+    /// Inset of the wing content from the straight side: 12 on capsules, 22 on the wide surfaces.
+    static func wingInset(width: CGFloat) -> CGFloat { width > 420 ? 22 : 12 }
 
     private var busyDot: IslandDot.Kind {
         switch state.activity {
@@ -73,7 +76,7 @@ struct IslandBand: View {
                 IslandDot(activity: state.status == .offline ? .offline : state.activity)
             } else if state.remoteSpeaking {
                 IslandDot(.live)
-                LevelBars(levels: state.remoteBars)
+                LiveLevelBars(side: .remote, fallback: state.remoteBars)
             } else if state.activity == .listening, state.addresseeTag == nil {
                 IslandDot(.idle)
             } else {
@@ -104,9 +107,9 @@ struct IslandBand: View {
         case .card(let c):
             IslandDot(busyDot)
             if c.say == nil {
-                LevelBars(levels: state.remoteBars)
+                LiveLevelBars(side: .remote, fallback: state.remoteBars)
             } else if c.following {
-                LevelBars(levels: state.meBars)
+                LiveLevelBars(side: .me, fallback: state.meBars)
             }
         }
     }
@@ -208,6 +211,7 @@ public struct OverlayView: View {
     @Environment(\.colorSchemeContrast) private var systemContrast
     @Environment(\.islandA11yOverride) private var a11yOverride
     @Environment(\.islandHoverOverride) private var hoverOverride
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
 
     @State private var dragStart: (width: Double, height: Double)?
     /// The size the glass shows now; it follows `target` with the morph.
@@ -306,7 +310,14 @@ public struct OverlayView: View {
         .frame(width: width, alignment: .top)
         .contentShape(HangingNotchShape())
         .onHover { hovering = $0 }
-        .environment(\.islandHover, hoverOverride ?? hovering)
+        .environment(\.islandHover, Self.islandHover(override: hoverOverride, pointer: hovering, voiceOver: voiceOver))
+        .environment(\.islandLevels, model.levels)
+    }
+
+    /// The hover-only controls (Stop, practice Repeat/Skip/End, the prompter row) show while the pointer is over the
+    /// island, and always under VoiceOver, which never moves the pointer: hidden, they would be out of its reach (V9).
+    nonisolated static func islandHover(override: Bool?, pointer: Bool, voiceOver: Bool) -> Bool {
+        override ?? (pointer || voiceOver)
     }
 
     @ViewBuilder private var bodyView: some View {

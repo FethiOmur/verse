@@ -11,6 +11,7 @@ public final class FileLog: @unchecked Sendable {
     private let maxBytes: UInt64
     private let lock = NSLock()
     private var handle: FileHandle?
+    private var failedWrites = 0
     private let stamp: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -35,9 +36,32 @@ public final class FileLog: @unchecked Sendable {
         defer { lock.unlock() }
         if handle == nil { open() }
         guard let h = handle else { return }
-        h.seekToEndOfFile()
-        h.write(Data(text.utf8))
-        if h.offsetInFile > maxBytes { rotate() }
+        // Review U1: the throwing calls. `seekToEndOfFile()`/`write(_:)`/`offsetInFile` raise an Objective-C exception on an
+        // I/O error (a full disk), which no Swift code can catch: every brain stderr line comes through here, so one failed
+        // write would end the app. A failed write drops the line and closes the file; the next line opens it again.
+        do {
+            try h.seekToEnd()
+            try h.write(contentsOf: Data(text.utf8))
+            if try h.offset() > maxBytes { rotate() }
+        } catch {
+            try? h.close()
+            handle = nil
+            failedWrites += 1
+        }
+    }
+
+    /// Lines dropped because the file could not be written (for tests and diagnostics).
+    public var droppedLines: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return failedWrites
+    }
+
+    /// Tests only: the open handle, to break it.
+    var handleForTesting: FileHandle? {
+        lock.lock()
+        defer { lock.unlock() }
+        return handle
     }
 
     private func open() {

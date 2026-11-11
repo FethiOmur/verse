@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import VerseTurns
 
@@ -18,6 +19,7 @@ private struct IslandA11yOverrideKey: EnvironmentKey { static let defaultValue: 
 private struct IslandContrastKey: EnvironmentKey { static let defaultValue = false }
 private struct IslandHoverKey: EnvironmentKey { static let defaultValue = false }
 private struct IslandHoverOverrideKey: EnvironmentKey { static let defaultValue: Bool? = nil }
+private struct IslandLevelsKey: EnvironmentKey { static let defaultValue: IslandLevels? = nil }
 
 extension EnvironmentValues {
     var islandA11yOverride: IslandA11y? {
@@ -33,6 +35,11 @@ extension EnvironmentValues {
     var islandHover: Bool {
         get { self[IslandHoverKey.self] }
         set { self[IslandHoverKey.self] = newValue }
+    }
+    /// The live level bars (the overlay's `OverlayModel.levels`); nil draws the bars from the state handed in.
+    var islandLevels: IslandLevels? {
+        get { self[IslandLevelsKey.self] }
+        set { self[IslandLevelsKey.self] = newValue }
     }
     /// Increase Contrast: points to 100 % white, wings to 85 %, chips get a border.
     var islandContrast: Bool {
@@ -105,9 +112,10 @@ enum IslandWidth {
         switch kind {
         case .capsule:
             // Listening (354): someone is talking, a tag names who the question is for, or a short status ("No connection") needs
-            // its wing. Otherwise the quiet capsule (266).
+            // its wing. Otherwise the quiet capsule (266). A wing text longer than the listening wing widens it (V10).
             let listening = state.status != nil || state.timeCue != nil || (state.running && (state.addresseeTag != nil || state.remoteSpeaking))
-            return listening ? metrics.listeningWidth : metrics.capsuleWidth(wide: false)
+            guard listening else { return metrics.capsuleWidth(wide: false) }
+            return listeningWidth(wingText: capsuleWingText(state), metrics: metrics)
         case .statusPanel: return status
         case .prompt: return prompt
         case .startup: return startup
@@ -118,6 +126,41 @@ enum IslandWidth {
         case .prompter: return cardWidth + prompterExtra
         case .card: return cardWidth
         }
+    }
+
+    /// The widest a listening capsule gets for its wing text (as wide as a status panel).
+    static let maxListening: CGFloat = 480
+
+    /// The listening capsule for this right-wing text: 354 pt on a 186 pt notch, wider when the text (measured in the
+    /// wing font) would not fit there at full size, up to `maxListening` (beyond that the wing's 0.8 scale and "…" take over).
+    static func listeningWidth(wingText: String?, metrics: NotchMetrics) -> CGFloat {
+        let base = metrics.listeningWidth
+        guard let text = wingText, !text.isEmpty else { return base }
+        let textWidth = ceil(wingTextWidth(text)) + 2
+        func needed(inset: CGFloat) -> CGFloat {
+            metrics.notchWidth + 2 * (textWidth + VT.Radius.islandShoulder + inset)
+        }
+        var w = needed(inset: IslandBand.wingInset(width: base))
+        if IslandBand.wingInset(width: w) != IslandBand.wingInset(width: base) { w = needed(inset: IslandBand.wingInset(width: w)) }
+        return min(max(base, ceil(w)), max(base, maxListening))
+    }
+
+    /// The width a wing text takes in the wing font (11.5 pt medium, `VT.Font.wing`).
+    static func wingTextWidth(_ text: String) -> CGFloat {
+        (text as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 11.5, weight: .medium)]).width
+    }
+
+    /// The bare capsule's right-wing text, in the order `IslandBand` picks it (nil: nothing there).
+    static func capsuleWingText(_ state: OverlayState) -> String? {
+        if let s = state.status { return s.shortTitle }
+        switch state.timeCue {
+        case .soon?: return L10n.tr("1 min left")
+        case .now?: return L10n.tr("wrap up")
+        case nil: break
+        }
+        if let tag = state.addresseeTag { return tag }
+        if state.unprepared, state.running { return L10n.tr("Unprepared") }
+        return nil
     }
 }
 
@@ -167,6 +210,29 @@ struct LevelBars: View {
             }
         }
         .frame(height: 12)
+    }
+}
+
+/// The level bars of one side, read from the overlay's `IslandLevels` when there is one (only this view observes their
+/// ten updates a second), else from the state's own bars (a capsule drawn without a model).
+struct LiveLevelBars: View {
+    enum Side { case remote, me }
+    var side: Side
+    var fallback: [Double]
+    @Environment(\.islandLevels) private var levels
+
+    var body: some View {
+        if let levels {
+            Observed(levels: levels, side: side)
+        } else {
+            LevelBars(levels: fallback)
+        }
+    }
+
+    private struct Observed: View {
+        @ObservedObject var levels: IslandLevels
+        var side: Side
+        var body: some View { LevelBars(levels: side == .remote ? levels.remote : levels.me) }
     }
 }
 
@@ -483,8 +549,9 @@ struct StatusPanelView: View {
                     .foregroundStyle(VT.Island.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            // "Press ⌥⌘V again to stop" is a two-second question the key answers: no buttons.
-            if status != .stopConfirm {
+            // "Press ⌥⌘V again to stop" is a two-second question the key answers, and "Microphone reconnected" goes by
+            // itself: no buttons.
+            if status != .stopConfirm && !status.isTransientNotice {
                 HStack(spacing: 8) {
                     if case .permission(let kind) = status {
                         Button { onOpenSettings(kind) } label: { Text("Open System Settings", bundle: .module) }.buttonStyle(OverlayButtonStyle(prominent: true))
