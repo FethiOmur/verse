@@ -470,3 +470,39 @@ def test_live_ask_per_model(tmp_path):
     for e in em.of("ask_done") + em.of("ask_error"):
         print(json.dumps(e))
     assert len(em.of("ask_done")) == 4
+
+
+# ---------------------------------------------------------------- context window (review P2)
+def test_oversized_history_is_trimmed_oldest_first_and_the_grounding_is_kept(tmp_path):
+    """A full-mode grounding at the 180k threshold plus 12 long history pairs would pass the model's window: the oldest pairs
+    drop until the request fits (window - max_tokens - margin, settings.ask_input_budget); the grounding block stays whole."""
+    from verse_brain.runtime.settings import ASK_CONTEXT_WINDOW, ask_input_budget, ask_params
+
+    pairs = [(f"question {i} " + "q" * 2988, f"answer {i} " + "a" * 8990) for i in range(12)]   # 1,000 + 3,000 tokens (chars / 3)
+
+    async def go():
+        c = FakeAskClient(token_counter=lambda m, s, msgs: 180_000)
+        rt, _, _, d = make(tmp_path, c)
+        await rt.handle(start_msg(d))
+        rt.history = list(pairs)
+        return rt, {m: rt.build_request(m, "q") for m in ("sonnet", "haiku")}
+
+    rt, reqs = run(go())
+    assert rt.mode == "full"
+    assert ask_input_budget("sonnet") == ASK_CONTEXT_WINDOW[ask_params("sonnet")["model"]] - 4000 - 4000
+    for model, keep in (("sonnet", 2), ("haiku", 3)):         # room after the grounding: 11,999 / 14,499 tokens
+        msgs = reqs[model]["messages"]
+        first = msgs[0]["content"]
+        assert first[0]["text"] == rt.grounding and first[0]["cache_control"] == {"type": "ephemeral"}, "grounding never cut"
+        sent = [(first[1]["text"], msgs[1]["content"])] + [(msgs[i]["content"], msgs[i + 1]["content"])
+                                                            for i in range(2, len(msgs) - 1, 2)]
+        assert sent == pairs[-keep:], (model, len(sent))        # the newest pairs, in order
+        assert msgs[-1] == {"role": "user", "content": "q"}
+    assert len(rt.history) == 12, "the runtime's own history is not changed, only the request"
+
+
+def test_fit_history_drops_nothing_when_it_fits_and_everything_when_nothing_does():
+    hist = [("a" * 300, "b" * 300), ("c" * 300, "d" * 300)]       # 200 tokens each
+    assert ask_mod.fit_history(hist, 1_000, 2_000) == hist
+    assert ask_mod.fit_history(hist, 1_000, 1_250) == hist[1:]
+    assert ask_mod.fit_history(hist, 5_000, 1_000) == []           # the grounding alone is over: no pair, the request goes as is

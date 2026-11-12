@@ -10,7 +10,7 @@ from test_runtime_embed import make as embed_make
 from test_runtime_embed import partial as embed_partial
 from test_runtime_embed import start as embed_start
 from test_runtime_helpers import run, settle
-from test_runtime_turnfixes import QUESTION_TEXT, all_text, f_calls, late_responder, shown
+from test_runtime_turnfixes import QUESTION_TEXT, all_text, assert_check_hidden, f_calls, late_responder, shown
 
 ANSWER = ["SAY: Sure, here is the short version.", "- I led Lantern.", "- It cut entry to 2 minutes."]
 
@@ -87,6 +87,9 @@ def test_question_turn_gets_the_hit_but_no_second_answer():
     assert not em.of("metric", stage="late_hit_rescue")
     assert len(answers(t)) == 1 and len(t.by_route("D")) == 1
     assert shown(em, "F") == ANSWER
+    # F answered and D was fired before the final-text hit: nothing left to confirm or pull, so no verdict check runs
+    assert_check_hidden(t, em, checks=0)
+    assert em.of("metric", stage="verdict_check", turn_id="q1", why="moot")
 
 
 def test_no_final_pass_when_a_hit_already_landed_or_for_others_or_when_short():
@@ -175,4 +178,5 @@ def test_double_answer_is_impossible_when_the_probe_already_escalated():
     assert not em.of("metric", stage="late_hit_rescue")
     assert len(t.by_route("D")) == 1
     assert shown(em, "F") == ANSWER
+    assert_check_hidden(t, em, checks=0)
 

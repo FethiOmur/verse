@@ -248,13 +248,25 @@ public final class HomeSessionsModel: ObservableObject {
 
     /// Removes the folder only. Every session stays, under No folder.
     func deleteFolder(_ id: String) {
-        try? folders.delete(id)
+        guard attempt({ try folders.delete(id) }) else { return }
         if collapsed.remove(id) != nil { persistCollapsed() }
     }
 
     func move(_ session: String, to folder: String?) {
         guard self.session(named: session) != nil else { return }
-        try? folders.move(session, to: folder)
+        attempt { try folders.move(session, to: folder) }
+    }
+
+    /// Runs a folder write; a failure shows in the sessions page's notice instead of being dropped. False when it failed.
+    @discardableResult
+    private func attempt(_ write: () throws -> Void) -> Bool {
+        do {
+            try write()
+            return true
+        } catch {
+            folders.report(error as? FolderError ?? .writeFailed)
+            return false
+        }
     }
 
     func sessionCount(in folder: String) -> Int { sessions.filter { folders.folder(of: $0.name)?.id == folder }.count }
@@ -277,7 +289,7 @@ public final class HomeSessionsModel: ObservableObject {
     }
 
     func dismiss(_ suggestion: FolderSuggestion, for session: String) {
-        try? folders.dismissSuggestion(suggestion.name, for: session)
+        attempt { try folders.dismissSuggestion(suggestion.name, for: session) }
     }
 
     /// A practice run built from a session goes into that session's folder the first time it is listed without one.

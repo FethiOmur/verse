@@ -1,0 +1,296 @@
+{
+ "id": "it03",
+ "lang": "it",
+ "owner": "the owner",
+ "participants": [
+  "Ingrid"
+ ],
+ "voices": {
+  "Ingrid": "Alice"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview-it",
+ "speakers": 2,
+ "duration_s": 134.1,
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "Bene, iniziamo pure.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 1.0,
+   "t_end": 2.54,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Perché vuoi entrare in Halden Freight Systems?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b002",
+   "t_start": 3.74,
+   "t_end": 6.8,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 8.0,
+   "t_end": 14.0,
+   "gap_before": 1.2,
+   "silent_s": 6.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Ci racconti come è organizzata la sua giornata di lavoro.",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 15.2,
+   "t_end": 19.4,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 20.6,
+   "t_end": 26.6,
+   "gap_before": 1.2,
+   "silent_s": 6.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Che risultati ha portato Lantern?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b004",
+   "t_start": 27.8,
+   "t_end": 30.1,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 31.3,
+   "t_end": 37.3,
+   "gap_before": 1.2,
+   "silent_s": 6.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Come misureresti il successo del pilota del dispatcher?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 38.5,
+   "t_end": 41.94,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 43.14,
+   "t_end": 49.14,
+   "gap_before": 1.2,
+   "silent_s": 6.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Il nostro team usa Compass, che ripianifica i percorsi ogni novanta secondi.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 50.34,
+   "t_end": 55.3,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Hai mai lavorato con dati di traffico in tempo reale?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 56.5,
+   "t_end": 60.7,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 61.9,
+   "t_end": 67.9,
+   "gap_before": 1.2,
+   "silent_s": 6.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Quanto era accurata la pipeline di Lantern?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b011",
+   "t_start": 69.1,
+   "t_end": 72.16,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 73.36,
+   "t_end": 79.36,
+   "gap_before": 1.2,
+   "silent_s": 6.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Potresti spiegarci come sceglievi la dimensione del modello?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b019",
+   "t_start": 80.56,
+   "t_end": 84.0,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 85.2,
+   "t_end": 91.2,
+   "gap_before": 1.2,
+   "silent_s": 6.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Facci vedere un esempio di errore del modello.",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 92.4,
+   "t_end": 95.84,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 97.04,
+   "t_end": 103.04,
+   "gap_before": 1.2,
+   "silent_s": 6.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Cosa significa per te ETA drift?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b022",
+   "t_start": 104.24,
+   "t_end": 106.92,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 108.12,
+   "t_end": 114.12,
+   "gap_before": 1.2,
+   "silent_s": 6.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Ok, Lantern può gestire molte fatture al giorno.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 115.32,
+   "t_end": 118.76,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Che cosa ti ha insegnato il pilota dei corrieri sul traffico?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 119.96,
+   "t_end": 124.54,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 125.74,
+   "t_end": 131.74,
+   "gap_before": 1.2,
+   "silent_s": 6.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "E quindi",
+   "category": "fragment",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 132.94,
+   "t_end": 134.1,
+   "gap_before": 1.2
+  }
+ ],
+ "note": "Italian question forms (2026-11-12): Lei-form and 'us' asks without '?', 'hai mai', 'facci vedere', 'che' questions and a relative 'che' statement, a third-person 'può' statement, exact questions that carry the session's names (Lantern, Halden, ETA drift) and two off-bank questions shaped like bank entries (the Italian twins of d04/d06). t_start/t_end are nominal; the runner records the real ones."
+}

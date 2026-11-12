@@ -7,8 +7,10 @@ Data (written before any score was computed): ml/it.json, ml/tr.json (bank, blin
 paraphrases, near misses, off-bank questions and statements), ml/en_near.json; the English side is blind_set.json and the
 sample-interview bank. Configurations (each one bank index as the brain builds it, `embed.bank_phrases(rec, lang)`):
 
-  en         English entries + English paraphrases, English queries (the reference the 0.90 rule was tuned on)
+  en         English entries + English paraphrases, English queries (the reference the rule was tuned on)
+  en-fresh   the same bank, the fresh held-out queries of ml/en_heldout.json (never used to choose the rule)
   it, tr     entries written in it/tr + it/tr paraphrases, it/tr queries
+  it-fresh   the Italian bank, the fresh held-out queries of ml/it_heldout.json (never used to choose the rule)
   it-mixed   English entries + Italian paraphrases (an English question in the bank of an Italian meeting), it queries
   tr-mixed   the same for Turkish
   en-rev-it  Italian entries + English paraphrases (an Italian question in the bank, the meeting language is English), en queries
@@ -33,7 +35,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
 sys.path.insert(0, str(REPO / "brain"))
-from verse_brain.runtime.embed import PREFIX, AcceptRule, LiteRtEmbedder, MatchState, step, unit  # noqa: E402
+from verse_brain.runtime.embed import PREFIX, AcceptRule, LiteRtEmbedder, MatchState, entry_scores, step, unit  # noqa: E402
 from verse_brain.runtime.engine import tokens  # noqa: E402
 from verse_brain.runtime.settings import Config  # noqa: E402
 
@@ -42,11 +44,12 @@ SESSIONS = [Path("~/Library/Application Support/Verse/sessions/sample-interview"
 
 
 def en_bank() -> dict[str, dict]:
+    """The sample-interview bank: the session folder when present, else the copy in ml/en_bank.json."""
     for s in SESSIONS:
         f = s / "bank.jsonl"
         if f.exists():
             return {d["id"]: d for d in (json.loads(x) for x in f.read_text(encoding="utf-8").splitlines() if x.strip())}
-    sys.exit("sample-interview bank.jsonl not found in " + ", ".join(map(str, SESSIONS)))
+    return load("en_bank.json")["bank"]
 
 
 def load(name: str) -> dict:
@@ -62,14 +65,24 @@ def en_queries() -> dict:
             "offbank": blind["distractors_tune"] + blind["distractors_heldout"]}
 
 
+def en_fresh_queries() -> dict:
+    """ml/en_heldout.json: written before any of it was scored and never used to choose the rule."""
+    d = load("en_heldout.json")
+    return {"blind": d["paraphrases"], "asr": {}, "near": d["near"], "offbank": d["offbank"]}
+
+
 def configs() -> dict[str, tuple[dict[str, list[str]], dict]]:
     """name -> (entry id -> index phrases, queries)."""
     en = en_bank()
     out = {"en": ({k: [r["question"]] + r["paraphrases"]["en"] for k, r in en.items()}, en_queries())}
+    out["en-fresh"] = (out["en"][0], en_fresh_queries())
     for lg in ("it", "tr"):
         d = load(f"{lg}.json")
         q = {"blind": d["blind"], "asr": d["asr"], "near": d["near"], "offbank": d["offbank"]}
         out[lg] = ({k: [r["question"]] + r["paraphrases"] for k, r in d["bank"].items()}, q)
+        if (HERE / "ml" / f"{lg}_heldout.json").exists():
+            h = load(f"{lg}_heldout.json")
+            out[f"{lg}-fresh"] = (out[lg][0], {"blind": h["paraphrases"], "asr": {}, "near": h["near"], "offbank": h["offbank"]})
         out[f"{lg}-mixed"] = ({k: [en[k]["question"]] + d["bank"][k]["paraphrases"] for k in d["bank"]}, q)
         out[f"en-rev-{lg}"] = ({k: [d["bank"][k]["question"]] + en[k]["paraphrases"]["en"] for k in d["bank"]}, en_queries())
     return out
@@ -120,14 +133,22 @@ class Vectors:
             self._emb.close()
 
 
-def top2(vec: list[float], index: list[tuple[str, list[float]]]) -> tuple[str, float, float]:
-    best: dict[str, float] = {}
-    for eid, dv in index:
-        s = sum(a * b for a, b in zip(vec, dv))
-        if s > best.get(eid, -1.0):
-            best[eid] = s
-    order = sorted(best.items(), key=lambda kv: kv[1], reverse=True)
-    return order[0][0], order[0][1], order[1][1]
+def top2(vec: list[float], index: list[tuple[str, list[float]]]) -> tuple:
+    """-> (top id, top-1, top-2, support, [the ranked entry scores]) with embed.entry_scores, the engine's scoring."""
+    ids = sorted({eid for eid, _ in index})
+    pos = {e: i for i, e in enumerate(ids)}
+    sc = entry_scores([sum(a * b for a, b in zip(vec, dv)) for _, dv in index], [pos[eid] for eid, _ in index], ids)
+    return sc.entries[0][0], sc.entries[0][1], sc.entries[1][1], sc.support, [s for _, s in sc.entries]
+
+
+def isolation(ev: tuple, rank: int) -> float:
+    ranked = ev[4]
+    return 1.0 if len(ranked) == 1 else ranked[0] - ranked[min(rank, len(ranked) - 1)]
+
+
+def step_ev(st: MatchState, rule: AcceptRule, ev: tuple, final: bool = False) -> str | None:
+    """embed.step on one stored evaluation (the engine's decision, with the support and isolation gates)."""
+    return step(st, rule, ev[0], ev[1], ev[2], final=final, support=ev[3], isolation=isolation(ev, rule.isolation_rank))
 
 
 # ---------------------------------------------------------------- scoring
@@ -165,13 +186,11 @@ def simulate(rows: list[dict], rule: AcceptRule, every: int = 1) -> dict:
         idx = [i for i in range(len(pre)) if (len(pre) - 1 - i) % every == 0]
         shown = []
         for i in idx:
-            top, s1, s2 = pre[i]
-            hit = step(st, rule, top, s1, s2)
+            hit = step_ev(st, rule, pre[i])
             if hit:
                 shown.append((hit, len(pre) - 1 - i, False))
         if not shown:
-            top, s1, s2 = r["full"]
-            hit = step(st, rule, top, s1, s2, final=True)
+            hit = step_ev(st, rule, r["full"], final=True)
             if hit:
                 shown.append((hit, 0, True))
         if r["cls"] in ("blind", "asr"):
@@ -259,7 +278,7 @@ def main() -> int:
             rows = evaluate(name, phr, qs, vec, cfg.embed_min_words)
             dump[name] = rows
             describe(name, rows)
-            lang = name.split("-")[0] if not name.startswith("en-rev") else "en"
+            lang = name.split("-")[0] if not name.startswith("en-") else "en"
             print("\n" + HEAD)
             cur = cfg.embed_rule(lang if lang in cfg.embed_langs else "en")
             print(line(f"configured rule for {lang} {cur}", simulate(rows, cur, a.every)))
@@ -267,6 +286,10 @@ def main() -> int:
                 for th in [x / 1000 for x in range(870, 961, 5)]:
                     for m in (0.005, 0.02):
                         print(line(f"{th:.3f} / {m} / 3", simulate(rows, AcceptRule(th, m, 3), a.every)))
+                    gated = AcceptRule(th, 0.005, 3, support=cur.support, isolation=cur.isolation,
+                                       isolation_rank=cur.isolation_rank)
+                    print(line(f"{th:.3f} / 0.005 / 3 + support {cur.support} + isolation {cur.isolation}",
+                               simulate(rows, gated, a.every)))
             res = simulate(rows, cur, a.every)
             for w in res["wrong_ids"]:
                 print("   wrong:", w)

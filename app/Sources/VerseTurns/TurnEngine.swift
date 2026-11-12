@@ -25,8 +25,14 @@ public struct TurnConfig: Sendable {
     public var newTurnSilenceMs: Int
     /// A question that starts within this many seconds after the owner stopped talking is for the owner.
     public var meFollowSeconds: Double
-    /// Consecutive transcript events that must agree on the same bank entry before `bank_hit` is sent.
+    /// Consecutive transcript events that must agree on the same bank entry before `bank_hit` is sent, when the word check
+    /// is off (`matchCoverage` 0). With it on, one event whose words confirm the entry is enough.
     public var matchConsecutive: Int
+    /// A lexical bank hit also needs the turn's words to stand for the entry: `BankMatcher.coverage` at least this
+    /// (0 turns the check off and leaves the n-gram score alone, as before 2026-11-12).
+    public var matchCoverage: Double = 0.6
+    /// Correct near-miss spellings of the session's own names in recognizer text (`TermCorrector`). Off: the text as heard.
+    public var correctTerms = true
     /// Remote audio counts as speech above this loudness (RMS dBFS over 100 ms) or `floor + speechAboveFloorDb`,
     /// whichever is higher but never above `speechCeilingDbfs`. Only used once `noteRemoteLevel` has been called.
     public var speechFloorDbfs: Double
@@ -225,6 +231,7 @@ public actor TurnEngine {
     private let facts: FactIndex
     /// What the session knows by name, for short noun-phrase questions ("Notice period").
     private let terms: SessionTerms
+    private let corrector: TermCorrector
     private var topic: TopicTrigger
     private var echo = EchoGuard()
     private var echoDrops: [EchoDrop] = []
@@ -255,6 +262,7 @@ public actor TurnEngine {
         self.matcher = MatchCache(BankMatcher(bank: bank, lang: config.lang))
         self.facts = facts
         self.terms = SessionTerms(bank: bank, facts: facts)
+        self.corrector = TermCorrector(bank: bank, facts: facts)
         self.topic = TopicTrigger(config: config, bank: bank, bankMatches: matcher, facts: facts)
     }
 
@@ -312,8 +320,11 @@ public actor TurnEngine {
 
     public func ingestTimed(_ e: TranscriptEvent) -> [Timed] {
         var out = advance(to: e.emittedAt)
-        let text = e.text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return out }
+        let heard = e.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !heard.isEmpty else { return out }
+        // The session's own names, spelled as the session spells them ("l'anterna" -> "Lantern"): cues, bank hits, chips and
+        // the brain all see the corrected text.
+        let text = config.correctTerms ? corrector.correct(heard, lang: config.lang) : heard
         switch e.channel {
         case .remote:
             echo.noteRemote(text: text, start: e.audioStart, end: e.audioEnd, now: now, lang: config.lang)
@@ -506,10 +517,13 @@ public actor TurnEngine {
             turn.chipIDs.insert(c.id)
             out.append(Timed(at: now, event: .chip(turnID: turn.id, kind: c.kind, text: c.text, sourceRef: c.sourceRef, factID: c.id)))
         }
-        // Bank hit: the same entry, clear of the runner-up, on consecutive events.
-        if let cand = bestCandidate(turn.text) {
+        // Bank hit: the same entry, clear of the runner-up, and words that stand for it. With the word check on, words
+        // that confirm the entry stand in for the second agreeing event: the recognizer delivers in bursts about a second
+        // apart, and a candidate whose confirming word was the last of a burst waited for the next one (`matchConsecutive`
+        // still applies with the check off).
+        if let (cand, matchedText) = bestCandidate(turn.text) {
             if turn.hitCandidate == cand.id { turn.hitCount += 1 } else { turn.hitCandidate = cand.id; turn.hitCount = 1 }
-            if turn.hitCount >= config.matchConsecutive,
+            if turn.hitCount >= (config.matchCoverage > 0 ? 1 : config.matchConsecutive), wordsConfirm(cand, text: matchedText),
                turn.sentHitID != cand.id || abs(cand.score - turn.sentHitScore) >= 0.08 {
                 turn.sentHitID = cand.id
                 turn.sentHitScore = cand.score
@@ -533,21 +547,37 @@ public actor TurnEngine {
         turn.segments.map { TopicTrigger.Piece(at: $0.at, text: $0.text, turn: turn.id) }
     }
 
-    /// The best bank entry for the turn text (whole text or its last sentence, whichever matches better), or nil
-    /// when it is below the threshold or too close to the runner-up.
-    private func bestCandidate(_ text: String) -> BankMatcher.Candidate? {
+    /// The best bank entry for the turn text (whole text or its last sentence, whichever matches better) and the text it
+    /// was found in, or nil when it is below the threshold or too close to the runner-up.
+    private func bestCandidate(_ text: String) -> (cand: BankMatcher.Candidate, text: String)? {
         guard !matcher.isEmpty else { return nil }
         var texts = [text]
         let sentences = text.split(whereSeparator: { ".?!".contains($0) }).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         if sentences.count > 1, let last = sentences.last { texts.append(last) }
         var best: [BankMatcher.Candidate] = []
+        var bestText = text
         for t in texts {
             let top = matcher.top2(t)
-            if let f = top.first, f.score > (best.first?.score ?? -1) { best = top }
+            if let f = top.first, f.score > (best.first?.score ?? -1) { best = top; bestText = t }
         }
         guard let first = best.first, first.score >= config.matchThreshold else { return nil }
         if best.count > 1, first.score - best[1].score < config.matchMargin { return nil }
-        return first
+        return (first, bestText)
+    }
+
+    /// The words of `text` stand for the entry too, not only its spelling (`BankMatcher.coverage`).
+    private func wordsConfirm(_ cand: BankMatcher.Candidate, text: String, turnEnded: Bool = false) -> Bool {
+        config.matchCoverage <= 0 || matcher.coverage(text, id: cand.id, turnEnded: turnEnded) >= config.matchCoverage
+    }
+
+    /// The last look at a turn that closes without a lexical card: its final text, judged as finished
+    /// (`BankMatcher.coverage(turnEnded:)` forgives a name the recognizer lost: "Che risultati ha portato l'H"). Sent just
+    /// before the turn itself, at the same time.
+    private func endpointBankHit(_ turn: Turn, at t: TimeInterval) -> Timed? {
+        guard config.matchCoverage > 0, turn.sentHitID == nil, !turn.brainHit,
+              let (cand, matchedText) = bestCandidate(turn.text),
+              wordsConfirm(cand, text: matchedText, turnEnded: true) else { return nil }
+        return Timed(at: t, event: .bankHit(turnID: turn.id, bankID: cand.id, score: cand.score))
     }
 
     /// `byQuiet`: the turn ended because the audio went quiet (not because the owner or a new utterance started), so
@@ -556,7 +586,8 @@ public actor TurnEngine {
         guard let turn = remote else { return [] }
         remote = nil
         remoteCloseHeldSince = nil
-        if !turn.cue, turn.sentHitID == nil, !turn.brainHit { topic.noteClosed(Self.pieces(of: turn), now: now) }
+        let endHit = endpointBankHit(turn, at: t)
+        if !turn.cue, turn.sentHitID == nil, endHit == nil, !turn.brainHit { topic.noteClosed(Self.pieces(of: turn), now: now) }
         let tokens = Text.tokens(turn.text, lang: config.lang)
         // A turn that was opened by stripping an earlier turn's words keeps them in front, so the chain of turns of one
         // cumulative recognizer result can be stripped again.
@@ -570,7 +601,7 @@ public actor TurnEngine {
         // level window is the uncertainty of `lastActive`.
         var audioEnd = turn.audioEnd
         if byQuiet, levelsSeen, lastActive.isFinite, lastActive >= turn.startedAt - 3 { audioEnd = max(audioEnd, lastActive - 0.05) }
-        return [Timed(at: t, event: .turn(turnID: turn.id, speaker: remoteSpeaker, text: turn.text, addressee: who, tAudioEnd: audioEnd,
+        return [endHit].compactMap { $0 } + [Timed(at: t, event: .turn(turnID: turn.id, speaker: remoteSpeaker, text: turn.text, addressee: who, tAudioEnd: audioEnd,
                                           kind: remoteKind(turn, lang: turnLanguage)), lang: turnLanguage,
                       cue: Cues.cueMatch(turn.text, lang: turnLanguage))]
     }

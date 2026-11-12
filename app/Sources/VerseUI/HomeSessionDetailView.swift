@@ -429,6 +429,8 @@ private struct SessionPeoplePicker: View {
     @ObservedObject private var sessions: HomeSessionsModel
     @Environment(\.homeInk) private var ink
     @State private var query = ""
+    /// What the last link or unlink said when it failed; cleared by the next one that works, or by the close button.
+    @State private var actionError: EntityError?
 
     init(session: String, env: SessionMemoryEnvironment) {
         self.session = session
@@ -469,6 +471,17 @@ private struct SessionPeoplePicker: View {
                 }
             }
             .frame(maxHeight: 240)
+            if let actionError {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    HomeNote(verbatim: actionError.message, isError: true)
+                    Spacer(minLength: 0)
+                    Button { self.actionError = nil } label: {
+                        Image(systemName: "xmark").font(.system(size: 10, weight: .semibold)).foregroundStyle(ink.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("Dismiss", bundle: .module))
+                }
+            }
         }
         .padding(12).frame(width: 320)
     }
@@ -476,7 +489,7 @@ private struct SessionPeoplePicker: View {
     private func row(_ e: MemoryEntity) -> some View {
         let inside = members.contains(e.id)
         return Button {
-            if inside { people.unlink(session, from: e.id) } else { people.link(session, to: e.id) }
+            actionError = inside ? people.unlink(session, from: e.id) : people.link(session, to: e.id)
         } label: {
             HStack(spacing: 8) {
                 Text(verbatim: e.name).font(.system(size: 13, weight: .medium)).foregroundStyle(ink.primary).lineLimit(1)

@@ -67,7 +67,7 @@ from pathlib import Path
 from typing import Callable
 
 from ..prep.model import Usage, spend_usd
-from .embed import PREFIX, Embedder, EmbedPath, EmbedUnavailable, Job, MatchState, Result, accepted, step
+from .embed import PREFIX, Embedder, EmbedPath, EmbedUnavailable, Job, MatchState, Result, gates_ok, step
 from .events import CARD_CHARS, CARD_FULL_CHARS, EventLog, clip
 from .follow import (Covered, Diverged, Ended, FollowMachine, NeedEmbed, Refresh, clean_line, score_matrix)
 from .lines import LineAssembler
@@ -76,7 +76,7 @@ from .me import LibraryPath, MeLayer, conflicts as me_conflicts, load_me, pack_s
 from .call import bank_hint
 from .repeat import embed_all, filter_card, his_chunks
 from .size import FOLLOW_POINTS, card_size, points_cap
-from .prompt import (STATEMENT_SAY_WORDS, WARMUP_TAIL, Turn, build_request, card_now_tail, deep_tail, fast_tail,
+from .prompt import (STATEMENT_SAY_WORDS, WARMUP_TAIL, Turn, bank_check, build_request, card_now_tail, deep_tail, fast_tail,
                      files_block, final_tail, follow_tail, rolling_tail, statement_tail)
 from .protocol import LANGS, REMOTE_SPEAKERS, Emitter, Session, history_turns, load_session, msg_lang, turn_kind
 from .ratelimit import ModelLimiter
@@ -106,6 +106,11 @@ INTERNAL = "internal"                # state error: a message handler raised; th
 # (bench/embed/results/latency_runs.txt), and the first job of a session waits for the bank index (1.6-2.3 s,
 # `index_s` in the same runs). 3 s covers that; an answer later than that comes after the owner has started to talk.
 LATE_HIT_WINDOW_S = 3.0
+
+# A verdict call that stops for one of these without a BANK line made no decision on the bank card (engine `_maybe_verdict`): no
+# verdict, the card stays. max_tokens is a cut, not a choice: the cap reached before the BANK line (a V call whose model put
+# the SAY line first; an older card call with the BANK line last) says nothing about the entry.
+NO_VERDICT_STOPS = ("refusal", "max_tokens")
 
 _WORD = re.compile(r"[\w']+", re.UNICODE)
 
@@ -152,6 +157,36 @@ def edit_distance(a: list[str], b: list[str]) -> int:
     return prev[-1]
 
 
+# Words a speaker may add after the question is complete that cannot change what it asks: politeness and hesitation only.
+# Kept to words that are never the content of a question's last slot: "right", "okay", "now", "then", "again", "vero", "giusto"
+# are left out ("did you turn left or right", "was it okay", "what does it cost now" are other questions than their prefix).
+_TRAILING_FILLERS: tuple[tuple[str, ...], ...] = tuple(tuple(p.split()) for p in (
+    "please", "thanks", "thank you", "um", "uh", "uhm", "er", "erm", "hmm", "mm",           # en
+    "per favore", "grazie", "ehm", "eh",                                                     # it
+    "lütfen", "teşekkürler", "acaba", "şey", "yani", "ee",                                   # tr
+))
+
+
+def verdict_text_ok(judged: str, final: str) -> bool:
+    """True when a fast call that judged `judged` judged the question the turn ended with (`final`), so its BANK line can be
+    the verdict on the bank card: after normalisation (lower case, words only: punctuation and spacing do not count) the two
+    are equal, or `final` is `judged` followed only by trailing filler phrases (`_TRAILING_FILLERS`). Anything else, a
+    cut-off prefix ("What did the route optimisation pilot involve on") above all, can ask something else than the
+    question, so the call's BANK line is no verdict on it."""
+    a, b = tokens(judged), tokens(final)
+    if not a or b[:len(a)] != a:
+        return False
+    rest = b[len(a):]
+    while rest:
+        for p in _TRAILING_FILLERS:
+            if tuple(rest[:len(p)]) == p:
+                rest = rest[len(p):]
+                break
+        else:
+            return False
+    return True
+
+
 def usage_obj(u: dict) -> Usage:
     return Usage(input=u.get("input_tokens", 0) or 0, output=u.get("output_tokens", 0) or 0,
                  cache_read=u.get("cache_read_input_tokens", 0) or 0,
@@ -183,6 +218,8 @@ class Call:
         self.say_line: str | None = None
         self.first_point: str | None = None
         self.bank_id: str | None = None
+        self.bank_ref: str | None = None      # D: the bank entry whose PREPARED DEEP ANSWER is in its tail
+        self.check_id: str | None = None      # S/F/V: the bank entry whose BANK CHECK is in its tail (None: no check)
         self.opener_ok: bool | None = None
         # statement probe (an F call for a turn Swift called a statement): its first line is `KIND: ...`
         self.probe = probe
@@ -210,7 +247,7 @@ class Call:
         self.new_connection: bool | None = None
         self.retries_left = 1 if tier in ("D", "A") else 0  # S/F/R/C: max_retries 0; D, A: one retry
         # F: one immediate second attempt on a 5xx / overloaded that came before any text (review M4); S stays speculative
-        self.fast_retries_left = 1 if tier == "F" else 0
+        self.fast_retries_left = 1 if tier in ("F", "V") else 0
         self.follow_reason: str | None = None   # tier C: "diverged" | "refresh"
         self.follow_sent = False                # tier C: the `follow` event went out (just before its first delta)
         self.follow_t0: float = 0.0             # tier C: when the divergence / refresh was decided (time.time())
@@ -461,11 +498,14 @@ class TurnState:
     addressee: str = "unknown"
     fast: Call | None = None
     verdict_sent: bool = False
+    check_call: Call | None = None     # V: the bank verdict check, when the card's call (st.fast) is no verdict on the hit
+    d_done: bool = False               # `_decide_d` has fired, confirmed or skipped this turn's D (a held D may still wait)
     turns_before: list[Turn] = field(default_factory=list)
     retried_offline: bool = False
     kind: str | None = None        # `turn.kind` as sent by Swift (None = missing or unknown: question behaviour)
     finished_at: float = 0.0       # time.monotonic() when the turn arrived
     rescued: bool = False          # a late bank hit turned a statement/fragment into an answered question
+    rejected_banks: set[str] = field(default_factory=set)   # entries the bank verdict pulled for this turn: never taken again
     # F3 paraphrase matcher: the accept rule's state (candidate entry, its run lengths, the id sent; embed.step)
     embed_match: MatchState = field(default_factory=MatchState)
     embed_final_queued: bool = False    # the final-text pass was queued for this turn (at most once)
@@ -676,6 +716,16 @@ class Brain:
     def _card_lines(self) -> int | None:
         call = self.session.call if self.session is not None else None
         return call.card_lines if call is not None else None
+
+    def _bank_check(self, st: "TurnState", final: bool = True) -> str:
+        """The BANK CHECK block (prompt.bank_check) for a fast call of a turn with a bank hit, lexical or paraphrase alike."""
+        return bank_check(self._bank_rec(st), self._lang(st), final, prepared=bool(self._bank_hint(st)))
+
+    def _check_id(self, st: "TurnState") -> str | None:
+        """The entry whose BANK CHECK `_bank_check` puts in a tail right now (None: no block). Set on the call at launch, so the
+        verdict rule (`_verdict_src`) knows which hit, if any, the call was asked about."""
+        rec = self._bank_rec(st)
+        return str(rec["id"]) if rec and rec.get("id") else None
 
     def _bank_hint(self, st: "TurnState") -> str:
         """The matched bank entry for the tail of a fast call, only with the session's `prefer_bank` directive."""
@@ -1064,8 +1114,10 @@ class Brain:
         if self.config.budget_usd is not None and self.spend >= self.config.budget_usd:
             self._halt("error", f"budget cap ${self.config.budget_usd:.2f} reached")
             return None
-        route = {"R": "S", "A": "D"}.get(tier, tier)   # summaries ride the S/F and D tuples (and their caches)
-        max_tokens = {"R": self.config.summary_max_tokens, "A": self.config.final_max_tokens}.get(tier)
+        # summaries ride the S/F and D tuples (and their caches); V (the bank verdict check) is an F request cut short
+        route = {"R": "S", "A": "D", "V": "F"}.get(tier, tier)
+        max_tokens = {"R": self.config.summary_max_tokens, "A": self.config.final_max_tokens,
+                      "V": self.config.verdict_check_max_tokens}.get(tier)
         req = build_request(route, route_params(route, max_tokens=max_tokens), self.session.pack_for_model, turns, tail, self.about,
                             self._directives(route))
         model = req["model"]
@@ -1075,7 +1127,10 @@ class Brain:
             if tier in ("D", "A"):
                 self._status("rate_limited", "client-side token bucket empty", turn_id=turn_id)
             return None
-        call = Call(self, tier, turn_id, text, req, buffered=buffered, route=route, probe=probe, quiet=quiet, size=size)
+        # V is sent with F's request but its own route label ("V"; the transport only tells D apart), so the fake transport, the
+        # tests and the metrics can tell the hidden verdict check from an answer call
+        call = Call(self, tier, turn_id, text, req, buffered=buffered, route="V" if tier == "V" else route, probe=probe,
+                    quiet=quiet, size=size)
         self.calls.append(call)
         self.last_call_mono[model] = time.monotonic()
         call.task = self._spawn(call.run())
@@ -1189,6 +1244,10 @@ class Brain:
         if call.stop_reason == "refusal" and call.tier in ("S", "F", "D") and not call.buffered and not call.discarded:
             self._status("refusal", f"{call.tier} declined this turn", turn_id=call.turn_id, id=call.id)
         self._log_card_done(call)
+        if call.tier in ("S", "F", "V"):
+            st = self.ts.get(call.turn_id)
+            if st is not None and (st.fast is call or st.check_call is call):
+                self._maybe_verdict(st)      # a call that ended without a BANK line: the card was not confirmed
         if call.tier == "R":
             self._rolling_done(call)
         if call.tier == "C":
@@ -1258,9 +1317,10 @@ class Brain:
         size = self._size(st, st.partial)
         call = self._launch("S", st.turn_id, st.partial,
                             fast_tail(st.partial, self._lang(st), final=False, files=self._files(st), bank=self._bank_hint(st),
-                                      size=size, card_lines=self._card_lines()),
+                                      size=size, card_lines=self._card_lines(), check=self._bank_check(st, final=False)),
                             list(self.turns), buffered=True, size=size)
         if call is not None:
+            call.check_id = self._check_id(st)
             st.s_calls.append(call)
             st.last_fire_text = st.partial
             st.last_fire_t = now
@@ -1303,9 +1363,13 @@ class Brain:
             self.emitter.metric(st.turn_id, "d_skipped", reason="short_card")
             return None
         shown = opener if opener is not None else self._shown_opener_guess(st)
-        tail = deep_tail(text, self._lang(st), final, shown, self._bank_rec(st), self._files(st), size=size)
+        rec = self._bank_rec(st)
+        tail = deep_tail(text, self._lang(st), final, shown, rec, self._files(st), size=size)
         turns = st.turns_before if st.finished else list(self.turns)
-        return self._launch("D", st.turn_id, text, tail, turns, buffered=buffered, size=size)
+        call = self._launch("D", st.turn_id, text, tail, turns, buffered=buffered, size=size)
+        if call is not None and rec is not None:
+            call.bank_ref = str(rec.get("id"))
+        return call
 
     # ------------------------------------------------------------------ F3: paraphrase matcher (embedding)
     def _embed_partial(self, st: TurnState) -> None:
@@ -1345,9 +1409,13 @@ class Brain:
         s1 = top[0][1] if top else -1.0
         s2 = top[1][1] if len(top) > 1 else -1.0
         rule = cfg.embed_rule(res.lang or self.lang)
-        ok = bool(top) and accepted(s1, s2, rule.threshold, rule.margin)
+        sup = res.scores.support if res.scores is not None else None
+        iso = res.scores.isolation(rule.isolation_rank) if res.scores is not None else None
+        ok = bool(top) and gates_ok(rule, s1, s2, sup, iso)
+        # support / isolation are recorded so a stored replay can be re-decided under any rule (eval/rescore_bank.py)
         self.emitter.metric(job.turn_id, "embed", ms=round(res.ms, 2), wait_ms=round(res.wait_ms, 2),
                             top=top[0][0] if top else None, score=round(s1, 4), second=round(s2, 4),
+                            support=None if sup is None else round(sup, 4), isolation=None if iso is None else round(iso, 4),
                             words=len(tokens(job.text)), accepted=ok, final=job.final, lang=res.lang or self.lang)
         st = self.ts.get(job.turn_id)
         if st is None:
@@ -1365,11 +1433,14 @@ class Brain:
         # embed.step: the base lane (`consecutive` partials in a row), the fast lane (one partial far above the threshold), and
         # a closed turn's final text, which needs one evaluation (the consecutive gate guards against locking on a short
         # prefix, and a final text is no prefix).
-        hit = step(st.embed_match, rule, top[0][0] if top else None, s1, s2, final=job.final)
+        hit = step(st.embed_match, rule, top[0][0] if top else None, s1, s2, final=job.final, support=sup, isolation=iso)
         if hit is not None:
             self._embed_hit(st, hit, s1)
 
     def _embed_hit(self, st: TurnState, bank_id: str, score: float) -> None:
+        if bank_id in st.rejected_banks:
+            self.emitter.metric(st.turn_id, "bank_hit_ignored", bank_id=bank_id, reason="rejected", via="embed")
+            return
         prev = st.bank_hit
         st.bank_hit = BankHit(bank_id, score, via="embed")
         st.embed_match.sent = bank_id
@@ -1381,15 +1452,21 @@ class Brain:
         self._own_bank(st)
         self._maybe_verdict(st)
         self._late_hit(st)
+        self._ensure_verdict_src(st)
 
     # ------------------------------------------------------------------ bank hits and verdicts
     def on_bank_hit(self, msg: dict) -> None:
         st = self._ts(msg["turn_id"])
         prev = st.bank_hit
         try:
-            st.bank_hit = BankHit(str(msg["bank_id"]), float(msg.get("score", 0.0)))
+            hit = BankHit(str(msg["bank_id"]), float(msg.get("score", 0.0)))
         except (KeyError, TypeError, ValueError):
             return
+        if hit.bank_id in st.rejected_banks:
+            # Swift re-sends its hit when the score moves; the verdict already pulled this entry for the turn
+            self.emitter.metric(st.turn_id, "bank_hit_ignored", bank_id=hit.bank_id, reason="rejected", via="ngram")
+            return
+        st.bank_hit = hit
         if prev is not None and prev.bank_id != st.bank_hit.bank_id:
             st.verdict_sent = False          # the overlay rejects per id: the new id gets its own verdict
         if self.embed is not None:
@@ -1398,6 +1475,7 @@ class Brain:
         self._own_bank(st)
         self._maybe_verdict(st)
         self._late_hit(st)
+        self._ensure_verdict_src(st)
 
     def _late_reason(self, st: TurnState) -> str | None:
         """None when a bank hit may still answer this finished statement/fragment turn, else why not."""
@@ -1443,20 +1521,95 @@ class Brain:
 
     def on_bank_line(self, call: Call) -> None:
         st = self.ts.get(call.turn_id)
-        if st is not None and st.fast is call:
+        if st is not None and (st.fast is call or st.check_call is call):
             self._maybe_verdict(st)
 
-    def _maybe_verdict(self, st: TurnState) -> None:
-        c = st.fast
-        if st.verdict_sent or c is None or c.bank_id is None or st.bank_hit is None or c.buffered or c.discarded:
+    def _verdict_src(self, st: TurnState) -> Call | None:
+        """The call whose BANK line is the verdict on the turn's bank hit, or None. A call qualifies only when it judged that
+        hit on that question: (a) its tail had the BANK CHECK of the same entry (`check_id`) and (b) its input is the text the
+        turn ended with, or that text plus trailing fillers (`verdict_text_ok`). The card's own call (st.fast) is preferred;
+        else the verdict check (st.check_call, `_ensure_verdict_src`). An S call fired before the hit (no check: its BANK line
+        is no objection, not an acceptance) or on a cut-off partial (it judged another question) never qualifies. None before
+        the turn has ended."""
+        hit = st.bank_hit
+        if hit is None or not st.finished:
+            return None
+        for c in (st.fast, st.check_call):
+            if c is not None and c.check_id == hit.bank_id and verdict_text_ok(c.input_text, st.final_text):
+                return c
+        return None
+
+    def _ensure_verdict_src(self, st: TurnState) -> None:
+        """A finished turn answered as a question whose bank hit has no qualifying call (`_verdict_src`) gets one: V, the F
+        request of the final text with the BANK CHECK of the hit, hidden (buffered, never released) and cut after its first
+        line (`verdict_check_max_tokens`). It runs beside the card, so the card's first line is not delayed; D waits for its
+        BANK line as it would for the card's. Nothing when the card's call already qualifies (no second fast call), when there
+        is no card call (a refused S, a dropped F) or it failed or was refused (no verdict then: the bank card stays), or for a
+        statement probe that did not become a question. A hit that changes to another entry gets a new check."""
+        hit, fast = st.bank_hit, st.fast
+        if (not st.finished or hit is None or st.verdict_sent or fast is None or fast.discarded or fast.error is not None
+                or fast.stop_reason == "refusal" or (fast.probe and fast.kind != "question") or self._verdict_src(st) is not None):
             return
+        d = st.d_call
+        if st.d_done and not (d is not None and d.buffered and not d.discarded and d.bank_ref == hit.bank_id):
+            # Nothing left to confirm or pull: the card's call answers on screen (the overlay shows the entry's opener only until
+            # the fast call has a SAY line of its own) and D was decided without this entry (a hit that lands after the turn
+            # was answered: the final-text pass on a question, a probe that escalated, a second Swift hit).
+            self.emitter.metric(st.turn_id, "verdict_check", id=None, card=fast.id, card_tier=fast.tier, why="moot",
+                                bank_id=hit.bank_id, launched=False)
+            return
+        old = st.check_call
+        if old is not None and not old.done.is_set():
+            old.discard()                    # a check of another entry: its BANK line is no verdict on this hit
+        why = ("no_check" if fast.check_id is None else "other_entry" if fast.check_id != hit.bank_id else "text")
+        size = self._size(st, st.final_text)
+        call = self._launch("V", st.turn_id, st.final_text,
+                            fast_tail(st.final_text, self._lang(st), final=True, files=self._files(st), bank=self._bank_hint(st),
+                                      size=size, card_lines=self._card_lines(), check=self._bank_check(st)),
+                            st.turns_before, buffered=True, size=size)
+        st.check_call = call
+        if call is not None:
+            call.check_id = self._check_id(st)
+        self.emitter.metric(st.turn_id, "verdict_check", id=call.id if call else None, card=fast.id, card_tier=fast.tier,
+                            why=why, bank_id=hit.bank_id, launched=call is not None)
+
+    def _maybe_verdict(self, st: TurnState) -> None:
+        """The verdict on the bank card of the turn, from the BANK line of the call `_verdict_src` names (the card's S or F
+        when it qualifies, else the verdict check V); the BANK line of any other call neither confirms nor pulls the card.
+        Its id agrees with the hit: the card stays. `none` or another id: `bank_verdict agree:false`, and the hit is dropped,
+        whichever matcher made it (Swift's lexical one or the paraphrase matcher): the overlay takes the card down, D is not
+        handed the entry's deep answer or its opener, an early D built on it is not shown, and the entry is not taken again for
+        this turn. A call that finished normally without a BANK line did not confirm the card: the same, with
+        `reason:"missing"`. A failed, refused, discarded or truncated (max_tokens) call gives no verdict (the bank card is
+        then the only answer)."""
+        c = self._verdict_src(st)
+        if st.verdict_sent or c is None or c.discarded or (c is st.fast and c.buffered):
+            return
+        reason = None
+        if c.bank_id is None:
+            if (not c.done.is_set() or c.error is not None or c.stop_reason in NO_VERDICT_STOPS
+                    or (c.probe and c.kind != "question")):
+                return
+            reason = "missing"
         st.verdict_sent = True
-        agree = c.bank_id == st.bank_hit.bank_id
-        self.emitter.emit({"type": "bank_verdict", "turn_id": st.turn_id, "bank_id": st.bank_hit.bank_id,
-                           "agree": agree})
-        if not agree and st.bank_hit.via == "embed":
-            # Haiku retracts a paraphrase hit: the overlay drops its opener, and D is not handed that entry either
-            st.bank_hit = None
+        hit = st.bank_hit
+        agree = reason is None and c.bank_id == hit.bank_id
+        ev = {"type": "bank_verdict", "turn_id": st.turn_id, "bank_id": hit.bank_id, "agree": agree}
+        if reason is not None:
+            ev["reason"] = reason
+        self.emitter.emit(ev)
+        self.emitter.metric(st.turn_id, "bank_verdict", id=c.id, tier=c.tier, bank_id=hit.bank_id, said=c.bank_id, agree=agree,
+                            via=hit.via, reason=reason)
+        self._ev("bank_verdict", turn=st.turn_id, bank=hit.bank_id, said=c.bank_id, agree=agree, via=hit.via, reason=reason)
+        if agree:
+            return
+        st.rejected_banks.add(hit.bank_id)
+        st.bank_hit = None
+        d = st.d_call
+        if d is not None and d.buffered and d.bank_ref == hit.bank_id:
+            d.discard()                      # an early D written from the rejected entry's deep answer: never shown
+            st.d_call = None
+            self.emitter.metric(st.turn_id, "d_early_dropped", id=d.id, reason="bank_rejected")
 
     # ------------------------------------------------------------------ history replay after a restart of this process
     def on_history(self, msg: dict) -> None:
@@ -1698,13 +1851,17 @@ class Brain:
             self.emitter.metric(st.turn_id, "select", id=chosen.id, tier="S", distance=best[0])
             st.fast = chosen
             chosen.release()
+            self._ensure_verdict_src(st)     # the S card shows now; its BANK line is the verdict only if it qualifies
             self._maybe_verdict(st)
         else:
             tail = (card_now_tail(st.final_text, self._lang(st), not st.card_now_partial, self._files(st), size=size,
                                   card_lines=self._card_lines()) if st.card_now
                     else fast_tail(st.final_text, self._lang(st), final=True, files=self._files(st), bank=self._bank_hint(st),
-                                   size=size, card_lines=self._card_lines()))
+                                   size=size, card_lines=self._card_lines(), check=self._bank_check(st)))
             st.fast = self._launch("F", st.turn_id, st.final_text, tail, st.turns_before, buffered=False, size=size)
+            if st.fast is not None and not st.card_now:
+                st.fast.check_id = self._check_id(st)
+            self._ensure_verdict_src(st)
         self._deciding += 1
         self._spawn(self._decide_d_tracked(st))
 
@@ -1769,6 +1926,13 @@ class Brain:
             self._maybe_roll()
 
     async def _decide_d(self, st: TurnState) -> None:
+        """Fire, confirm or skip the turn's D. With a bank hit whose verdict is still to come (`_verdict_src` names the call that
+        will give it), D does not wait for the verdict: it is fired at once on the assumption that the verdict agrees (with the
+        entry's PREPARED DEEP ANSWER), but held (buffered, nothing reaches the screen) until the verdict arrives or
+        `bank_verdict_wait_s` runs out (`_settle_held_d`). An agreeing verdict, a timeout or no verdict (a failed check)
+        release it; a rejection discards it (`_maybe_verdict`) and D is fired again without the entry, so the extra Sonnet call
+        is paid only on rejected hits. A strong lexical hit (`_strong_bank`) still waits, because its agreeing verdict skips D
+        altogether. `config.d_speculative_bank` False: every hit waits, as before."""
         cfg = self.config
         d = st.d_call
         if d is not None and (d.discarded or d.error is not None or d.size != self._size(st, st.final_text)
@@ -1776,27 +1940,79 @@ class Brain:
             d.discard()
             self.emitter.metric(st.turn_id, "d_early_dropped", id=d.id)
             d = st.d_call = None
-        if self._strong_bank(st) and st.fast is not None:
-            fast = st.fast
-            try:
-                await asyncio.wait_for(fast.bank_known.wait(), timeout=cfg.bank_verdict_wait_s)
-            except asyncio.TimeoutError:
-                pass
-            if fast.bank_id is not None and st.bank_hit and fast.bank_id == st.bank_hit.bank_id:
+        src = self._verdict_src(st)
+        pending = st.bank_hit is not None and src is not None and not st.verdict_sent
+        if st.bank_hit is not None and src is not None:
+            strong = self._strong_bank(st)
+            if pending and (strong or not cfg.d_speculative_bank):
+                # The verdict call writes its BANK line first (prompt.bank_check), so this is about its first line.
+                await self._wait_verdict(st, src)
+                pending = False
+            if strong and src.bank_id is not None and st.bank_hit and src.bank_id == st.bank_hit.bank_id:
                 if d is not None:
                     d.discard()
                     st.d_call = None
                 self.emitter.metric(st.turn_id, "d_skipped", bank_id=st.bank_hit.bank_id)
+                st.d_done = True
                 return
+            d = st.d_call
+            if d is not None and d.bank_ref is not None and (st.bank_hit is None or st.bank_hit.bank_id != d.bank_ref):
+                d.discard()
+                st.d_call = None
+                self.emitter.metric(st.turn_id, "d_early_dropped", id=d.id, reason="bank_rejected")
+                d = None
         if d is not None:
-            self.emitter.metric(st.turn_id, "d_confirmed", id=d.id)
+            hold = pending and not st.verdict_sent and d.bank_ref is not None
+            if not hold:
+                self.emitter.metric(st.turn_id, "d_confirmed", id=d.id)
+                d.release()
+        else:
+            opener = st.fast.say_line if st.fast is not None else None
+            if opener is None and st.fast is not None and st.fast.tier == "S":
+                opener = self._shown_opener_guess(st)
+            await self._lib_wait_final(st)      # <= me_retrieval_final_wait_s; F never waits
+            hold = pending and not st.verdict_sent and st.bank_hit is not None    # the verdict may have come meanwhile
+            d = st.d_call = self._fire_d(st, st.final_text, final=not st.card_now_partial, buffered=hold, opener=opener)
+            if d is not None and hold and d.bank_ref is None:
+                d.release()                      # no entry in its tail: nothing to hold back
+                hold = False
+            if d is not None and hold:
+                self.emitter.metric(st.turn_id, "d_speculative", id=d.id, bank_id=d.bank_ref, by=src.tier if src else None)
+        st.d_done = True
+        if d is not None and hold and src is not None:
+            await self._wait_verdict(st, src)
+            self._settle_held_d(st, d)
+
+    async def _wait_verdict(self, st: TurnState, src: Call) -> None:
+        """Until the verdict call's BANK line (or its end), at most `bank_verdict_wait_s`."""
+        t0 = time.monotonic()
+        try:
+            await asyncio.wait_for(src.bank_known.wait(), timeout=self.config.bank_verdict_wait_s)
+        except asyncio.TimeoutError:
+            pass
+        self.emitter.metric(st.turn_id, "d_verdict_wait", ms=round((time.monotonic() - t0) * 1000, 1), known=st.verdict_sent,
+                            by=src.tier)
+
+    def _settle_held_d(self, st: TurnState, d: Call) -> None:
+        """A D held for the verdict (`_decide_d`): shown when its entry is still the turn's hit (the verdict agreed, or none came
+        in time); otherwise (rejected: `_maybe_verdict` already discarded it; or the hit moved to another entry meanwhile) it is
+        never shown and D is fired again on what the turn has now."""
+        hit = st.bank_hit
+        if not d.discarded and st.d_call is d and hit is not None and hit.bank_id == d.bank_ref:
+            self.emitter.metric(st.turn_id, "d_confirmed", id=d.id, held=True, verdict=st.verdict_sent)
             d.release()
             return
+        if not d.discarded:
+            d.discard()
+            self.emitter.metric(st.turn_id, "d_early_dropped", id=d.id, reason="bank_changed")
+        if st.d_call is not d and st.d_call is not None:
+            return                               # another D already answers this turn
         opener = st.fast.say_line if st.fast is not None else None
         if opener is None and st.fast is not None and st.fast.tier == "S":
             opener = self._shown_opener_guess(st)
-        await self._lib_wait_final(st)      # <= me_retrieval_final_wait_s; F never waits
         st.d_call = self._fire_d(st, st.final_text, final=not st.card_now_partial, buffered=False, opener=opener)
+        self.emitter.metric(st.turn_id, "d_refired", id=st.d_call.id if st.d_call else None, was=d.id,
+                            bank_id=st.d_call.bank_ref if st.d_call else None)
 
     # ------------------------------------------------------------------ follow my answer (tier C)
     @_follow_safe
@@ -2251,6 +2467,8 @@ class Brain:
         st.s_calls = []
         st.d_call = None
         st.fast = None
+        st.check_call = None
+        st.d_done = False
         st.verdict_sent = False
         self.emitter.metric(tid, "offline_retry")
         self._endpoint(st)
@@ -2272,7 +2490,7 @@ class Brain:
             return True
         if self.active_remote is not None and time.monotonic() - self._last_partial_t < self.config.summary_partial_stale_s:
             return True
-        return any(c.tier in ("S", "F", "D", "C") and not c.done.is_set() for c in self.calls)
+        return any(c.tier in ("S", "F", "V", "D", "C") and not c.done.is_set() for c in self.calls)
 
     def _defer(self, reason: str) -> None:
         if reason != self._defer_reason:    # one metric per reason, not one per event

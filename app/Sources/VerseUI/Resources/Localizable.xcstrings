@@ -4379,6 +4379,22 @@
         }
       }
     },
+    "Finishing up…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quasi finito…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neredeyse bitti…"
+          }
+        }
+      }
+    },
     "Folder name": {
       "localizations": {
         "it": {
@@ -6409,6 +6425,22 @@
         }
       }
     },
+    "No line could be checked against your sources, so nothing was written.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna riga ha trovato riscontro nelle tue fonti, quindi non è stato scritto nulla."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiçbir satır kaynaklarınla doğrulanamadı, bu yüzden hiçbir şey yazılmadı."
+          }
+        }
+      }
+    },
     "No matches": {
       "localizations": {
         "it": {
@@ -6645,6 +6677,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Henüz oturum yok. Bir sonraki toplantın için birini hazırla."
+          }
+        }
+      }
+    },
+    "No source could be read. Add a file under Sources, then try again.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna fonte è leggibile. Aggiungi un file in Fonti, poi riprova."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okunabilen bir kaynak yok. Kaynaklar bölümüne bir dosya ekle, sonra yeniden dene."
           }
         }
       }
@@ -7013,6 +7061,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Açık: mikrofonun duyduğu soru için kart görünür. Kapalı: yalnızca ⌥⌘↩ kart ister. Oda modu, Mac’in yanında hoparlörlü bir görüşmedir."
+          }
+        }
+      }
+    },
+    "One of your sources could not be read.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una delle tue fonti non è stata letta."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaynaklarından biri okunamadı."
           }
         }
       }
@@ -7701,6 +7765,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hazırlık"
+          }
+        }
+      }
+    },
+    "Preparation failed": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparazione non riuscita"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hazırlık başarısız oldu"
           }
         }
       }
@@ -10341,6 +10421,22 @@
         }
       }
     },
+    "The budget is too small for this profile. Raise it or use fewer sources.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il budget è troppo basso per questo profilo. Alzalo o usa meno fonti."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bütçe bu profil için çok düşük. Artır ya da daha az kaynak kullan."
+          }
+        }
+      }
+    },
     "The default sources are chosen at the first build; then you can switch them or add your own.": {
       "localizations": {
         "it": {
@@ -10353,6 +10449,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Varsayılan kaynaklar ilk oluşturmada seçilir; sonra değiştirebilir veya kendi kaynaklarını ekleyebilirsin."
+          }
+        }
+      }
+    },
+    "The embedding model is not installed.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello di embedding non è installato."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Embedding modeli yüklü değil."
           }
         }
       }
@@ -10405,6 +10517,22 @@
         }
       }
     },
+    "The model declined the request. Try again.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello ha rifiutato la richiesta. Riprova."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model isteği reddetti. Yeniden dene."
+          }
+        }
+      }
+    },
     "The model declined to answer this question.": {
       "localizations": {
         "it": {
@@ -10417,6 +10545,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Model bu soruyu yanıtlamayı reddetti."
+          }
+        }
+      }
+    },
+    "The model returned nothing usable. Try again.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello non ha restituito nulla di utilizzabile. Riprova."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Model kullanılabilir bir sonuç döndürmedi. Yeniden dene."
           }
         }
       }
@@ -10481,6 +10625,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deneme mülakatı bir hatayla bitti."
+          }
+        }
+      }
+    },
+    "The profile came out over its size limit. Try again.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il profilo è risultato più lungo del limite consentito. Riprova."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profil boyut sınırını aştı. Yeniden dene."
           }
         }
       }
@@ -11505,6 +11665,22 @@
         }
       }
     },
+    "Verse could not read your Anthropic key from the Keychain.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse non è riuscito a leggere la tua chiave Anthropic dal portachiavi."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse, Anthropic anahtarını anahtar zincirinden okuyamadı."
+          }
+        }
+      }
+    },
     "Verse could not restore “%@”.": {
       "localizations": {
         "it": {
@@ -12007,6 +12183,22 @@
         }
       }
     },
+    "Working…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elaborazione in corso…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalışıyor…"
+          }
+        }
+      }
+    },
     "Write": {
       "localizations": {
         "it": {
@@ -12265,6 +12457,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deneyimin, projelerin ve sayıların, hazırlanmış olsun olmasın her görüşmeye girer. Bunları Profil sayfasında düzenle. Bir sonraki Başlat’tan itibaren geçerlidir."
+          }
+        }
+      }
+    },
+    "Your list of sources could not be read.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’elenco delle tue fonti non è stato letto."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaynaklar listen okunamadı."
           }
         }
       }
@@ -13611,6 +13819,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "toparla"
+          }
+        }
+      }
+    },
+    "Writing your profile…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrittura del tuo profilo…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profilin yazılıyor…"
           }
         }
       }

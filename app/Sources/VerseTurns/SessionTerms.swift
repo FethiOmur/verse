@@ -25,6 +25,36 @@ public struct SessionTerms: Sendable {
 
     public var isEmpty: Bool { glossary.isEmpty && factNames.isEmpty && bankPhrases.isEmpty && facts.isEmpty }
 
+    /// The session's names as the recognizer should hear them (`ListenConfig.contextualStrings`): the glossary terms, the name
+    /// facts and the runs of capitalized words inside the bank's questions and paraphrases ("Lantern", "Halden Freight
+    /// Systems", "LLM"), each once, at most `limit`.
+    public static func vocabulary(bank: Bank, facts: FactIndex, limit: Int = 100) -> [String] {
+        var out: [String] = []
+        var seen = Set<String>()
+        func add(_ s: String) {
+            let t = s.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            guard t.count >= 2, out.count < limit, seen.insert(Text.fold(t)).inserted else { return }
+            out.append(t)
+        }
+        facts.glossaryTerms.forEach(add)
+        facts.nameValues.forEach(add)
+        for e in bank.entries {
+            for phrase in [e.question] + e.paraphrases.keys.sorted().flatMap({ e.paraphrases[$0] ?? [] }) {
+                var run: [String] = []
+                for tok in TermCorrector.tokens(phrase) {
+                    if !tok.sentenceStart, tok.text.first?.isUppercase == true, !tok.text.contains("'") {
+                        run.append(tok.text)
+                    } else {
+                        if !run.isEmpty { add(run.joined(separator: " ")) }
+                        run = []
+                    }
+                }
+                if !run.isEmpty { add(run.joined(separator: " ")) }
+            }
+        }
+        return out
+    }
+
     /// True when `text` names something the session knows:
     /// - a glossary term (one word is enough: the pack chose it on purpose),
     /// - a number or a date of the fact sheet ("42K budget"),

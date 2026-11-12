@@ -30,7 +30,8 @@ struct LifecycleBrain {
         switch onStart {
         case .ready: start = ready
         case .readyAfter(let s):
-            start = #"( sleep \#(s); echo "$n {\"type\":\"_ready\"}" >> "$D/stdin.log"; \#(ready) ) & BG=$!"#
+            // `&&`, not `;`: when the brain is killed during the wait, the killed `sleep` must not let the marker be written.
+            start = #"( sleep \#(s) && echo "$n {\"type\":\"_ready\"}" >> "$D/stdin.log" && \#(ready) ) & BG=$!"#
         case .fatal(let s):
             start = #"sleep \#(s); echo '{"type":"status","state":"error","message":"No API key: test","reason":"no_api_key"}'; exit 2"#
         }

@@ -340,6 +340,7 @@ class MemoryAskRuntime(AskRuntime):
         body = redact_emails(render_excerpts(excerpts)) or "(no matching passages in the meetings in scope)"
         tail = "EXCERPTS (the parts of the meetings above that match this question, newest meeting first)\n" + body \
             + "\n\nQUESTION\n" + question
+        hist = self._fit(model_key, hist, req["system"][0]["text"], tail)      # review P2: oldest pairs out, catalog kept
         grounding_block = {"type": "text", "text": self.grounding, "cache_control": dict(EPHEMERAL)}
         messages: list[dict] = []
         if hist:

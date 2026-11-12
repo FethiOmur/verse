@@ -157,7 +157,7 @@ def test_statement_probe_uses_the_fast_route_prefix():
     (c,) = t.by_route("F")
     assert "finished" in c.tail and STATEMENT in c.tail
     assert "Language: English" in c.tail
-    assert c.request["max_tokens"] == 120
+    assert c.request["max_tokens"] == 200
 
 
 def test_statement_that_needs_no_reply_shows_nothing():
@@ -294,8 +294,9 @@ def test_question_still_selects_speculation_and_skips_d_on_bank_agreement():
 # sha256 of the prompt constants: any edit to them breaks the cache prefix, so this pin moves only on purpose
 # (V1 replaced the personal-voice style line with a pointer to the pack's STYLE GUIDE section). The prompts carry the owner's
 # name, so the digests are those of the pinned test profile (tests/conftest.py: Alex Rivera); regenerate them from the code.
+# 2026-11-12: SYSTEM_FAST says when a bank entry fits (the same thing asked, not the same topic) for the bank verdict.
 PINNED = {
-    "SYSTEM_FAST": "deecf89474c60bb7b0c523354bac133fe6b3590a78f6055b02616d8d86c4c452",
+    "SYSTEM_FAST": "1dce721de67efe4c3fbface594f843b78ea14318dc678c37243f3d248592165c",
     "SYSTEM_DEEP": "962f2bea2c7b1ca41c5d9ad11ccd63cd1ba2e85fd976908c48e00de33e9ae281",
     "PACK_HEADER": "f37a145e475c721f232e440f1ad78c8a7705c196eee5b200db0b973bdc18b525",
     "TRANSCRIPT_HEADER": "d33c9a039282727fa1162a84e507311b69d26fe7e13151611cd4d3836c3421a8",

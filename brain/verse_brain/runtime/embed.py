@@ -8,8 +8,9 @@ the brain because the brain already receives every remote `partial` and holds th
 - Every remote partial that passes the cheap gates (index ready, question cue, >= `embed_min_words` words, no Swift
   n-gram hit for the turn) is queued. One job runs at a time on a single worker thread; while it runs, newer partials
   replace older queued ones (stale partials are dropped, the newest always runs). The event loop never waits for it.
-- A hit needs top-1 >= `embed_threshold`, a margin >= `embed_margin` over the runner-up entry, and the same entry on
-  `embed_consecutive` consecutive evaluated partials of the turn (F3: short prefixes lock on the wrong entry).
+- A hit needs top-1 >= `embed_threshold`, a margin >= `embed_margin` over the runner-up entry, the top entry's second-best
+  phrase >= `embed_support`, top-1 minus the 4th-best entry >= `embed_isolation` (near misses, 2026-11-12), and the same
+  entry on `embed_consecutive` consecutive evaluated partials of the turn (F3: short prefixes lock on the wrong entry).
 - If `litert_lm` or the model is missing, or the engine fails, the path logs once and stays off; nothing else changes.
 
 Query and document prefix: the symmetric "sentence similarity" task prompt (`bench/embed`, mode `sym`; the accept rule in
@@ -77,8 +78,7 @@ class LiteRtEmbedder:
 
 
 def accepted(top1: float, second: float, threshold: float, margin: float) -> bool:
-    """One evaluation passes the score gates (the consecutive-partials gate is counted by the caller). Shared by the engine
-    and eval/rescore_bank.py, which re-decides stored replays with it."""
+    """The cosine and margin gates of one evaluation (the consecutive-partials gate is counted by the caller)."""
     return top1 >= threshold and top1 - second >= margin
 
 
@@ -89,13 +89,77 @@ class AcceptRule:
     Base lane: top-1 >= `threshold`, margin >= `margin`, the same entry on `consecutive` consecutive evaluated partials; the
     final text of a closed turn needs one evaluation. Fast lane (off when `fast_threshold` is None): the same entry on
     `fast_consecutive` consecutive evaluations that each pass `fast_threshold` / `fast_margin` hits at once, one partial
-    earlier than the base lane allows."""
+    earlier than the base lane allows.
+
+    Two more gates on every evaluation (both lanes and the final text; None turns one off), computed from the same cosines:
+    - `support`: the top entry's SECOND-best phrase must score at least this. A real paraphrase is close to several of the
+      entry's phrasings; a near miss or another entry's paraphrase usually rides on one of them (`Scores.support`).
+    - `isolation`: top-1 minus the score of the entry ranked `isolation_rank` + 1 must be at least this. A near miss on a
+      bank topic sits close to several related entries at once; a paraphrase stands out from the pack (`Scores.isolation`)."""
     threshold: float
     margin: float
     consecutive: int
     fast_threshold: float | None = None
     fast_margin: float = 0.0
     fast_consecutive: int = 2
+    support: float | None = None
+    isolation: float | None = None
+    isolation_rank: int = 3
+
+
+@dataclass(frozen=True)
+class Scores:
+    """One query scored against the bank index. `entries`: the best entries by their best phrase (id, cosine), at most
+    `RANKED` of them; `support`: the top entry's second-best phrase (its best one when it has a single phrase, so the support
+    gate cannot reject an entry that has nothing to support it with)."""
+    entries: list[tuple[str, float]]
+    support: float | None
+
+    RANKED = 6
+
+    @property
+    def top(self) -> list[tuple[str, float]]:
+        return self.entries[:2]
+
+    def isolation(self, rank: int = 3) -> float | None:
+        """top-1 minus the entry at index `rank` (the 4th best for rank 3; the last one in a smaller bank, 1.0 with one entry)."""
+        if not self.entries:
+            return None
+        if len(self.entries) == 1:
+            return 1.0
+        return self.entries[0][1] - self.entries[min(rank, len(self.entries) - 1)][1]
+
+
+def entry_scores(phrase_scores: list[float], doc_entry: list[int], ids: list[str]) -> Scores:
+    """Per-entry best and second-best phrase cosine -> Scores. Shared by BankIndex and the offline tools (ml_calib, rescore)."""
+    best = [-2.0] * len(ids)
+    second = [-2.0] * len(ids)
+    count = [0] * len(ids)
+    for s, e in zip(phrase_scores, doc_entry):
+        count[e] += 1
+        if s > best[e]:
+            best[e], second[e] = s, best[e]
+        elif s > second[e]:
+            second[e] = s
+    order = sorted((i for i in range(len(ids)) if count[i]), key=lambda i: best[i], reverse=True)
+    if not order:
+        return Scores([], None)
+    t = order[0]
+    sup = second[t] if count[t] > 1 else best[t]
+    return Scores([(ids[i], best[i]) for i in order[:Scores.RANKED]], sup)
+
+
+def gates_ok(rule: AcceptRule, s1: float, s2: float, support: float | None = None, isolation: float | None = None) -> bool:
+    """Every per-evaluation gate of `rule`: cosine, margin, and (when the rule has them) support and isolation. A gate the rule
+    has but whose value is missing (None) fails: an evaluation that cannot be checked is not accepted. Shared by the engine and
+    the offline tools (eval/rescore_bank.py, bench/embed/ml_calib.py), which re-decide stored evaluations with it."""
+    if not accepted(s1, s2, rule.threshold, rule.margin):
+        return False
+    if rule.support is not None and (support is None or support < rule.support):
+        return False
+    if rule.isolation is not None and (isolation is None or isolation < rule.isolation):
+        return False
+    return True
 
 
 @dataclass
@@ -110,10 +174,12 @@ class MatchState:
         self.cand, self.count, self.fast = None, 0, 0
 
 
-def step(state: MatchState, rule: AcceptRule, top: str | None, s1: float, s2: float, final: bool = False) -> str | None:
+def step(state: MatchState, rule: AcceptRule, top: str | None, s1: float, s2: float, final: bool = False,
+         support: float | None = None, isolation: float | None = None) -> str | None:
     """Advance the rule by one evaluation. -> the bank id to show now, or None. Shared by the engine and the offline tools
-    (eval/rescore_bank.py, bench/embed/ml_calib.py), so a replayed decision is the engine's decision."""
-    if top is None or not accepted(s1, s2, rule.threshold, rule.margin):
+    (eval/rescore_bank.py, bench/embed/ml_calib.py), so a replayed decision is the engine's decision. `support` / `isolation`
+    are the evaluation's Scores.support / Scores.isolation(rule.isolation_rank) (needed when the rule has those gates)."""
+    if top is None or not gates_ok(rule, s1, s2, support, isolation):
         state.reset()
         return None
     if top == state.cand:
@@ -163,15 +229,11 @@ class BankIndex:
     def __len__(self) -> int:
         return len(self.vecs)
 
+    def score(self, qv: list[float]) -> Scores:
+        return entry_scores([sum(map(mul, qv, dv)) for dv in self.vecs], self.doc_entry, self.ids)
+
     def top2(self, qv: list[float]) -> list[tuple[str, float]]:
-        best = [-1.0] * len(self.ids)
-        for di, dv in enumerate(self.vecs):
-            s = sum(map(mul, qv, dv))
-            e = self.doc_entry[di]
-            if s > best[e]:
-                best[e] = s
-        order = sorted(range(len(best)), key=lambda i: best[i], reverse=True)[:2]
-        return [(self.ids[i], best[i]) for i in order]
+        return self.score(qv).top
 
 
 @dataclass
@@ -188,6 +250,7 @@ class Result:
     ms: float               # embed + match on the worker thread
     wait_ms: float          # queued -> started
     lang: str = ""          # the language of the index that scored it
+    scores: Scores | None = None    # support / isolation of the same evaluation (None from callers that only have top-2)
 
 
 class EmbedPath:
@@ -284,8 +347,8 @@ class EmbedPath:
         # replaces self._index while this runs, and the result is then dropped by the generation check (review P4).
         t0 = time.perf_counter()
         qv = unit(embedder.embed(PREFIX + job.text.strip()))
-        top = index.top2(qv)
-        return Result(top, (time.perf_counter() - t0) * 1000, (t0 - job.queued) * 1000, index.lang)
+        sc = index.score(qv)
+        return Result(sc.top, (time.perf_counter() - t0) * 1000, (t0 - job.queued) * 1000, index.lang, sc)
 
     async def _drain(self) -> None:
         loop = asyncio.get_running_loop()

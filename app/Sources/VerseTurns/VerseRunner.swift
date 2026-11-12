@@ -352,6 +352,8 @@ public final class VerseRunner: @unchecked Sendable {
         var brainStartedWith: (route: AudioRoute, lang: String)?
         /// The turn engine of the running session, for the brain's paraphrase hits (`noteBrainBankHit`).
         var engine: TurnEngine?
+        /// The session's names for the recognizers (`SessionTerms.vocabulary`, `ListenConfig.contextualStrings`).
+        var vocabulary: [String] = []
         // listen swap
         /// The route and language the call listens in now (they start as the options and change with `switchListening`).
         var route = AudioRoute.meeting
@@ -462,7 +464,8 @@ public final class VerseRunner: @unchecked Sendable {
             return 2
         }
         let engine = TurnEngine(config: turnCfg, bank: bank, facts: facts)
-        state.withLock { $0.engine = engine }
+        let vocabulary = SessionTerms.vocabulary(bank: bank, facts: facts)
+        state.withLock { $0.engine = engine; $0.vocabulary = vocabulary }
         openTranscript()
 
         // The brain starts warming, and listening starts at once next to it: speech is never lost to a slow pre-warm (a stalled
@@ -779,6 +782,7 @@ public final class VerseRunner: @unchecked Sendable {
         cfg.voiceProcessing = false
         cfg.micWithFile = o.micWithFile
         cfg.bleedGate = o.bleedGate
+        cfg.contextualStrings = state.withLock { $0.vocabulary }
         return cfg
     }
 

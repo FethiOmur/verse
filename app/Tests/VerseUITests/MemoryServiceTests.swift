@@ -388,6 +388,26 @@ final class MemoryServiceTests: XCTestCase {
         XCTAssertEqual(f.kind, "no_sessions")
     }
 
+    func testAFailedBriefStaysOnTheServiceForAPageOpenedLater() async {
+        let brains = MemBox<[ScriptedBriefBrain]>([])
+        let s = briefService(brains: brains, mode: .error(kind: "error", cost: nil))
+        XCTAssertNil(s.briefFailures["e-3k9xq2ma"])
+        _ = await s.makeBrief(request())
+        XCTAssertEqual(s.briefFailures["e-3k9xq2ma"]?.kind, "error", "kept after the run, with nobody watching")
+        XCTAssertNil(s.briefFailures["e-other"])
+    }
+
+    func testACancelledBriefLeavesNoFailureBehind() async {
+        let brains = MemBox<[ScriptedBriefBrain]>([])
+        let s = briefService(brains: brains, mode: .endsOnStop)
+        let req = request()
+        let task = Task { await s.makeBrief(req) }
+        await expectEventually { s.briefsInFlight == ["e-3k9xq2ma"] && brains.value.count == 1 }
+        s.cancelBrief(entity: "e-3k9xq2ma")
+        _ = await task.value
+        XCTAssertNil(s.briefFailures["e-3k9xq2ma"])
+    }
+
     func testTwoRequestsForOneEntityStartOneProcess() async throws {
         let brains = MemBox<[ScriptedBriefBrain]>([])
         let s = briefService(brains: brains, mode: .done(cost: 0.048))

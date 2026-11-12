@@ -95,7 +95,7 @@ def test_settings_tuples_identical_for_prewarm_and_calls():
     assert tuple_of(route_params("D")) == {"model": SONNET, "thinking": {"type": "between_tools"},
                                            "output_config": {"effort": "medium"}, "betas": [FALLBACK_BETA],
                                            "fallbacks": "default"}
-    assert route_params("S")["max_tokens"] == 120 and route_params("D")["max_tokens"] == 600
+    assert route_params("S")["max_tokens"] == 200 and route_params("D")["max_tokens"] == 600
     assert "fallbacks" not in route_params("F")
     # no connection opened at t = 0: both lanes of both models were opened at start (pre-warm lane 0, ping lane 1)
     assert {(c["request"]["model"], c["lane"]) for c in creates[:2]} == {(HAIKU, 0), (SONNET, 0)}

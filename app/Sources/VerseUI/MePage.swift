@@ -13,7 +13,9 @@ struct MePage: View {
     @ObservedObject var settings: AppSettings
     @Environment(\.homeInk) private var ink
 
+    /// Each add-a-note field has its own text: the notes row and the sources row are on screen together.
     @State private var noteDraft = ""
+    @State private var sourceNoteDraft = ""
     @State private var sourceNoteOpen = false
     @State private var editing: String?
     @State private var draft = ""
@@ -209,11 +211,7 @@ struct MePage: View {
                 HomeSecondaryButton("Cancel") { editing = nil; editError = nil }
                 HomeSecondaryButton("Save") { commitEdit(line) }
             } else if model.canEdit {
-                iconButton("pencil", label: "Edit line \(line.id)") {
-                    draft = line.editable
-                    editing = line.id
-                    editError = nil
-                }
+                iconButton("pencil", label: "Edit line \(line.id)") { beginEdit(line) }
                 iconButton("trash", label: "Delete line \(line.id)") { pendingDelete = line }
             }
         }
@@ -235,11 +233,24 @@ struct MePage: View {
         .help(Text(label, bundle: .module))
     }
 
-    private func commitEdit(_ line: MeLine) {
+    /// Saves the draft of `line`. False when the save failed: the draft stays and the error shows under its field.
+    @discardableResult
+    private func commitEdit(_ line: MeLine) -> Bool {
         switch model.edit(id: line.id, to: draft) {
-        case .success: editing = nil; editError = nil
-        case .failure(let e): editError = e.description
+        case .success: editing = nil; editError = nil; return true
+        case .failure(let e): editError = e.description; return false
         }
+    }
+
+    /// Starts editing `line`. A draft already open on another line is saved first (as Save would); when that fails the
+    /// draft stays where it is, with the error under its field, and the other line does not open.
+    private func beginEdit(_ line: MeLine) {
+        if let open = editing, open != line.id, let current = model.line(id: open), draft != current.editable {
+            guard commitEdit(current) else { return }
+        }
+        draft = line.editable
+        editing = line.id
+        editError = nil
     }
 
     private func apply(_ result: Result<Void, MeModel.EditError>) {
@@ -247,9 +258,14 @@ struct MePage: View {
     }
 
     private func addNote() {
-        switch model.addNote(noteDraft) {
-        case .success: noteDraft = ""; editError = nil
-        case .failure(let e): editError = e.description
+        if submitNote(noteDraft) { noteDraft = "" }
+    }
+
+    /// Adds `text` as a note; false (with the error shown) when it was refused.
+    private func submitNote(_ text: String) -> Bool {
+        switch model.addNote(text) {
+        case .success: editError = nil; return true
+        case .failure(let e): editError = e.description; return false
         }
     }
 
@@ -276,9 +292,9 @@ struct MePage: View {
                 if sourceNoteOpen {
                     HomeRowDivider()
                     HomeRow("Note") {
-                        HomeValueField("Something Verse should know about you", text: $noteDraft, onSubmit: addSourceNote)
+                        HomeValueField("Something Verse should know about you", text: $sourceNoteDraft, onSubmit: addSourceNote)
                         HomeSecondaryButton("Add", action: addSourceNote)
-                            .disabled(noteDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .disabled(sourceNoteDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !model.canEdit)
                     }
                 }
             }
@@ -296,8 +312,10 @@ struct MePage: View {
     }
 
     private func addSourceNote() {
-        addNote()
-        if editError == nil { sourceNoteOpen = false }
+        if submitNote(sourceNoteDraft) {
+            sourceNoteDraft = ""
+            sourceNoteOpen = false
+        }
     }
 
     private func addFile() {

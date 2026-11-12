@@ -231,7 +231,9 @@ struct HomeSessionsList: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: s.title).font(VT.Font.bodyEmph).foregroundStyle(ink.primary).lineLimit(1)
                     HStack(spacing: 6) {
-                        Text(verbatim: "\(HomeFormat.day(s.date)) · \(s.kindText)").font(VT.Font.callout).foregroundStyle(ink.secondary).lineLimit(1)
+                        // The row is about 236 pt wide: a longer Italian or Turkish date and kind scales down (to 75%) rather than truncating.
+                        Text(verbatim: "\(HomeFormat.day(s.date)) · \(s.kindText)").font(VT.Font.callout).foregroundStyle(ink.secondary)
+                            .lineLimit(1).minimumScaleFactor(0.75).layoutPriority(1)
                         if showsFolder, let folder {
                             Text(verbatim: "· \(folder.name)").font(VT.Font.caption).foregroundStyle(ink.tertiary).lineLimit(1)
                         }

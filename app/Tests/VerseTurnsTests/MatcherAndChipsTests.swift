@@ -20,9 +20,16 @@ final class MatcherAndChipsTests: XCTestCase {
     ])
 
     func testMatcherHitAndMargin() async {
-        let engine = TurnEngine(config: TurnConfig(), bank: Self.bank, facts: .empty)
+        // With the word check (the default) one event whose words confirm the entry is enough (2026-11-12).
+        let worded = TurnEngine(config: TurnConfig(), bank: Self.bank, facts: .empty)
+        let w1 = await worded.ingestTimed(ev("what was the impact of your invoice project", at: 1.0))
+        XCTAssertEqual(w1.bankHits.map(\.bank), ["b002"])
 
-        // A paraphrase: a hit on the right entry once two consecutive events agree (not on the first).
+        var nGramOnly = TurnConfig()
+        nGramOnly.matchCoverage = 0
+        let engine = TurnEngine(config: nGramOnly, bank: Self.bank, facts: .empty)
+
+        // Without it: a hit on the right entry once two consecutive events agree (not on the first).
         let e1 = await engine.ingestTimed(ev("what was the impact of your invoice project", at: 1.0))
         XCTAssertTrue(e1.bankHits.isEmpty, "one event is not enough")
         let e2 = await engine.ingestTimed(ev("what was the impact of your invoice project", at: 1.1))

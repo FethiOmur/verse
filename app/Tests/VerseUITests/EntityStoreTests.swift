@@ -209,6 +209,35 @@ final class EntityStoreTests: XCTestCase {
         XCTAssertFalse(um.canUndo)
     }
 
+    // MARK: failed writes
+
+    /// `people.json` cannot be replaced (a folder sits where the file was): every write fails and says so.
+    func testHideLinkUnlinkAndDismissReturnAFailedWrite() throws {
+        let store = env.store()
+        store.restore(mergeFixture())
+        let before = store.file
+        try FileManager.default.removeItem(at: store.url)
+        try FileManager.default.createDirectory(at: store.url, withIntermediateDirectories: true)
+        XCTAssertEqual(store.setHidden("e-a", true), .writeFailed)
+        XCTAssertEqual(store.link("s1", to: "e-a"), .writeFailed)
+        XCTAssertEqual(store.unlink("s1", from: "e-a"), .writeFailed)
+        XCTAssertEqual(store.dismiss("s2", for: "e-a"), .writeFailed)
+        XCTAssertEqual(store.file, before, "a failed write changes nothing in memory either")
+        XCTAssertThrowsError(try store.apply("Hide", undoManager: nil) { if let e = $0.setHidden("e-a", true) { throw e } }) {
+            XCTAssertEqual($0 as? EntityError, .writeFailed, "inside apply the page gets the error to show")
+        }
+    }
+
+    func testAWriteThatWorksReturnsNoError() {
+        let store = env.store()
+        store.restore(mergeFixture())
+        XCTAssertNil(store.setHidden("e-a", true))
+        XCTAssertNil(store.link("s1", to: "e-a"))
+        XCTAssertNil(store.unlink("s1", from: "e-a"))
+        XCTAssertNil(store.dismiss("s2", for: "e-a"))
+        XCTAssertNil(store.setHidden("e-a", true), "nothing to do is not an error")
+    }
+
     // MARK: links
 
     func testLinkUnlinkDismissAndPruning() throws {

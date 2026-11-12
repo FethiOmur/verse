@@ -114,21 +114,25 @@ struct HomeSecondaryButton: View {
     var title: HomeText
     var symbol: String?
     var destructive = false
+    /// True: the label may shrink (down to 70%) when its container is narrower than the text, instead of keeping its natural width.
+    var flexible = false
     var action: () -> Void
     @Environment(\.homeInk) private var ink
     @Environment(\.isEnabled) private var enabled
 
-    init(_ title: LocalizedStringKey, symbol: String? = nil, destructive: Bool = false, action: @escaping () -> Void) {
+    init(_ title: LocalizedStringKey, symbol: String? = nil, destructive: Bool = false, flexible: Bool = false, action: @escaping () -> Void) {
         self.title = HomeText(title)
         self.symbol = symbol
         self.destructive = destructive
+        self.flexible = flexible
         self.action = action
     }
 
-    init(verbatim title: String, symbol: String? = nil, destructive: Bool = false, action: @escaping () -> Void) {
+    init(verbatim title: String, symbol: String? = nil, destructive: Bool = false, flexible: Bool = false, action: @escaping () -> Void) {
         self.title = HomeText(verbatim: title)
         self.symbol = symbol
         self.destructive = destructive
+        self.flexible = flexible
         self.action = action
     }
 
@@ -136,7 +140,7 @@ struct HomeSecondaryButton: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 if let symbol { Image(systemName: symbol) }
-                title.text.lineLimit(1).fixedSize()
+                if flexible { title.text.lineLimit(1).minimumScaleFactor(0.7) } else { title.text.lineLimit(1).fixedSize() }
             }
             .font(.system(size: 13, weight: .medium)).foregroundStyle(destructive ? VT.coral : ink.primary)
             .padding(.horizontal, 12).frame(height: 28)

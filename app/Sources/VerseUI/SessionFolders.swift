@@ -151,6 +151,9 @@ final class SessionFolderStore: ObservableObject {
 
     func dismissNotice() { notice = nil }
 
+    /// Shows a failed write in the sessions page's notice (the same line as an unreadable `folders.json`); the next change clears it.
+    func report(_ error: FolderError) { notice = error.message }
+
     // MARK: validation
 
     /// The trimmed name, or the reason it is refused. `excluding` is the folder being renamed.

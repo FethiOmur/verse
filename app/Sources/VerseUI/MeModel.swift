@@ -303,7 +303,7 @@ public final class MePrep: MeRunning, @unchecked Sendable {
         process.environment = env
 
         let collected = LineCollector()
-        let errDrain = PipeDrain(err) { d in for l in collected.add(d) { onLine(l) } }
+        let errDrain = PipeDrain(err) { d in for l in collected.add(d) { onLine(MePrepText.shownProgress(l)) } }
         let stdout = OutputBox()
         let outDrain = PipeDrain(out) { d in stdout.append(d) }
         let exited: Int32 = await withCheckedContinuation { c in
@@ -331,13 +331,17 @@ public final class MePrep: MeRunning, @unchecked Sendable {
         }
         outDrain.stop()
         errDrain.stop()
-        if let rest = collected.rest() { onLine(rest) }
+        if let rest = collected.rest() { onLine(MePrepText.shownProgress(rest)) }
 
         if lock.withLock({ cancelled }) { return .cancelled }
         if exited == -1 { return .failed(L10n.tr("could not start prep")) }
         guard exited == 0 else {
-            let last = collected.lines.last { $0.hasPrefix("error:") } ?? collected.lines.last ?? L10n.tr("prep failed (exit \(exited))")
-            return .failed(last)
+            // Prep's own text is English and technical: the page gets a catalog string, the raw line goes to the log only.
+            guard let raw = collected.lines.last(where: { $0.hasPrefix("error:") }) ?? collected.lines.last else {
+                return .failed(L10n.tr("prep failed (exit \(exited))"))
+            }
+            FileLog.shared.write("me prep failed (exit \(exited)): \(raw)")
+            return .failed(MePrepText.failure(raw))
         }
         return .done(stdout: stdout.text, log: collected.lines)
     }
@@ -345,6 +349,49 @@ public final class MePrep: MeRunning, @unchecked Sendable {
     public func cancel() {
         lock.withLock { cancelled = true }
         if process.isRunning { process.terminate() }
+    }
+}
+
+/// What the Me page says about prep's stderr. Prep prints English: `  ... 4000 chars` while the model writes, a summary when it ends
+/// (`me.md: ...`, `sections: ...`) and `error: <reason>` when it fails. The page shows catalog strings for the lines it knows and a
+/// generic one for the rest; the raw text goes to `verse.log` only (never on screen).
+public enum MePrepText {
+    /// The catalog text for a known progress line, nil for any other.
+    public static func progress(_ raw: String) -> String? {
+        let line = raw.trimmingCharacters(in: .whitespaces)
+        if line.hasPrefix("... ") && line.hasSuffix(" chars") { return L10n.tr("Writing your profile…") }
+        let finishing = ["me.md:", "sections:", "library:", "trimmed:", "dropped lines:", "no source changed"]
+        if finishing.contains(where: { line.hasPrefix($0) }) { return L10n.tr("Finishing up…") }
+        return nil
+    }
+
+    /// What the progress line shows: the mapped text, else "Working…" (the raw line is logged).
+    static func shownProgress(_ raw: String) -> String {
+        if let known = progress(raw) { return known }
+        FileLog.shared.write("me prep: \(raw)")
+        return L10n.tr("Working…")
+    }
+
+    /// The catalog text for a failure line of prep (`error: ...`); "Preparation failed" when the reason is not one it knows.
+    public static func failure(_ raw: String) -> String {
+        var reason = raw.trimmingCharacters(in: .whitespaces)
+        if reason.hasPrefix("error:") { reason = String(reason.dropFirst("error:".count)).trimmingCharacters(in: .whitespaces) }
+        if reason.hasPrefix("Keychain") { return L10n.tr("Verse could not read your Anthropic key from the Keychain.") }
+        if reason.hasPrefix("no readable source") { return L10n.tr("No source could be read. Add a file under Sources, then try again.") }
+        // `cannot read <profile>/me.sources.json: ...` is the list itself; `cannot read the source <path>: ...` is one source.
+        if reason.hasPrefix("cannot read "), !reason.hasPrefix("cannot read the source"), reason.contains("me.sources.json") {
+            return L10n.tr("Your list of sources could not be read.")
+        }
+        if reason.hasPrefix("cannot read the source") || reason.hasPrefix("cannot read ") {
+            return L10n.tr("One of your sources could not be read.")
+        }
+        if reason.hasPrefix("budget $") { return L10n.tr("The budget is too small for this profile. Raise it or use fewer sources.") }
+        if reason.hasPrefix("the model refused the prep request") { return L10n.tr("The model declined the request. Try again.") }
+        if reason.hasPrefix("the profile model returned nothing usable") { return L10n.tr("The model returned nothing usable. Try again.") }
+        if reason.hasPrefix("the profile is ") { return L10n.tr("The profile came out over its size limit. Try again.") }
+        if reason.hasPrefix("no line of the model's profile") { return L10n.tr("No line could be checked against your sources, so nothing was written.") }
+        if reason.hasPrefix("embedding model file not found") { return L10n.tr("The embedding model is not installed.") }
+        return L10n.tr("Preparation failed")
     }
 }
 
@@ -377,6 +424,8 @@ public final class MeModel: ObservableObject {
     public var fake: () -> Bool
     public var now: () -> Date
     private var runner: (any MeRunning)?
+    /// Counts runs; a progress line carries the number of the run it came from and is dropped once that run has ended.
+    private var runGeneration = 0
 
     /// A build older than this, with a source changed since, shows "Sources changed · Refresh" (spec 2.2).
     public static let staleAfter: TimeInterval = 7 * 24 * 3600
@@ -631,9 +680,16 @@ public final class MeModel: ObservableObject {
         progress = nil
         let r = makeRunner()
         runner = r
+        runGeneration += 1
+        let generation = runGeneration
         let outcome = await r.run(action, profileDir: directory, brainDir: brain, fake: fake(), onLine: { [weak self] line in
-            Task { @MainActor in self?.progress = line }
+            Task { @MainActor in
+                // A line that arrives after its run ended (the hop to the main actor is queued) must not show on the next screen.
+                guard let self, self.runGeneration == generation, self.isRunning else { return }
+                self.progress = line
+            }
         })
+        runGeneration += 1
         runner = nil
         reload()
         switch outcome {

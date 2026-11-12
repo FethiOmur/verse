@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import os
 import time
 from pathlib import Path
@@ -13,7 +14,9 @@ import pytest
 from test_runtime_embed import (ESESSION, SPIKE, SPIKE_PARTIALS, FakeEmbedder, _ask, embed_hits, idle, make, partial, run,
                                 start)
 
-from verse_brain.runtime.embed import DEFAULT_MODEL, AcceptRule, LiteRtEmbedder, MatchState, step
+from verse_brain.runtime.embed import (DEFAULT_MODEL, PREFIX, AcceptRule, LiteRtEmbedder, MatchState, bank_phrases,
+                                       entry_scores, gates_ok, step)
+from verse_brain.runtime.protocol import load_session
 from verse_brain.runtime.settings import Config
 
 NO_FAST = {"embed_fast_threshold": None}
@@ -45,8 +48,8 @@ def test_step_final_text_needs_one_evaluation_and_an_id_is_sent_once():
 
 def test_config_rule_per_language():
     c = Config(embed_lang_rules={"it": {"threshold": 0.95, "fast_threshold": None}})
-    assert c.embed_rule("en") == AcceptRule(0.90, 0.005, 3, 0.93, 0.03, 1)
-    assert c.embed_rule("it") == AcceptRule(0.95, 0.005, 3, None, 0.03, 1)
+    assert c.embed_rule("en") == AcceptRule(0.90, 0.005, 3, 0.93, 0.03, 1, support=0.855, isolation=0.045, isolation_rank=3)
+    assert c.embed_rule("it") == AcceptRule(0.95, 0.005, 3, None, 0.03, 1, support=0.855, isolation=0.045, isolation_rank=3)
     assert c.embed_rule("tr") == c.embed_rule("en")
     assert Config().embed_langs == ("en",), "it/tr are not calibrated (settings.py): they stay lexical"
 
@@ -237,3 +240,177 @@ def test_real_model_italian_paraphrases_reach_the_wrong_entry_high():
         emb.close()
     assert got["b003"][0] == "b011" and got["b003"][1] >= 0.92, got
     assert got["b018"][0] == "b007" and got["b018"][1] >= 0.92, got
+
+
+# ---------------------------------------------------------------- support and isolation gates (near misses, 2026-11-12)
+
+def test_entry_scores_best_second_and_isolation():
+    ids = ["b1", "b2", "b3", "b4", "b5"]
+    #            b1 phrases        b2          b3     b4     b5 (one phrase)
+    phrase = [0.95, 0.80, 0.86, 0.90, 0.70, 0.88, 0.87, 0.60]
+    entry = [0, 0, 0, 1, 1, 2, 3, 4]
+    sc = entry_scores(phrase, entry, ids)
+    assert sc.entries[:4] == [("b1", 0.95), ("b2", 0.90), ("b3", 0.88), ("b4", 0.87)]
+    assert sc.support == 0.86, "the top entry's second-best phrase"
+    assert sc.isolation(3) == pytest.approx(0.95 - 0.87)
+    assert sc.isolation(10) == pytest.approx(0.95 - 0.60), "a bank smaller than the rank: the last entry"
+    one = entry_scores([0.93], [0], ["b1"])
+    assert one.support == 0.93 and one.isolation(3) == 1.0, "a single phrase / a single entry cannot be rejected by the gates"
+
+
+def test_gates_need_support_and_isolation_and_reject_a_missing_value():
+    r = AcceptRule(0.90, 0.005, 3, support=0.855, isolation=0.045)
+    assert gates_ok(r, 0.914, 0.86, support=0.86, isolation=0.05)
+    assert not gates_ok(r, 0.914, 0.86, support=0.852, isolation=0.05), "one phrase of the entry only"
+    assert not gates_ok(r, 0.914, 0.86, support=0.86, isolation=0.04), "close to several entries at once"
+    assert not gates_ok(r, 0.914, 0.86), "a gate the rule has but cannot check rejects"
+    assert gates_ok(AcceptRule(0.90, 0.005, 3), 0.914, 0.86), "gates off: cosine and margin only"
+    # a support failure resets the consecutive count like a low cosine
+    st = MatchState()
+    seq = [(0.86, 0.05), (0.86, 0.05), (0.852, 0.05), (0.86, 0.05), (0.86, 0.05), (0.86, 0.05)]
+    got = [step(st, r, "b1", 0.914, 0.86, support=s, isolation=i) for s, i in seq]
+    assert got == [None, None, None, None, None, "b1"]
+
+
+class PhraseFake:
+    """Like test_runtime_embed.FakeEmbedder, but each bank PHRASE has its own direction, so a query can be close to one
+    phrasing of an entry and not to the others (what the support gate looks at). Background cosine 0.85. A rule gives, per
+    entry, the cosines of its phrases in bank order (missing phrases take the last value); unlisted entries sit at 0.85."""
+
+    B, A = 0.85, 0.5
+
+    def __init__(self, rules: list[tuple[str, dict[str, list[float]]]]) -> None:
+        sess = load_session(ESESSION)
+        self.ids = sorted(sess.bank)
+        self.phr = {bid: bank_phrases(sess.bank[bid], "en") for bid in self.ids}
+        self.slot = {p.strip(): (bid, i) for bid in self.ids for i, p in enumerate(self.phr[bid])}
+        self.pid = [(bid, i) for bid in self.ids for i in range(len(self.phr[bid]))]
+        self.rules = rules
+        self.queries: list[str] = []
+        self.closed = False
+        self.k = math.sqrt(1 - self.B)
+
+    def _dim(self) -> int:
+        return 1 + len(self.ids) + len(self.pid) + 1
+
+    def _doc(self, bid: str, i: int) -> list[float]:
+        v = [0.0] * self._dim()
+        v[0] = math.sqrt(self.B)
+        v[1 + self.ids.index(bid)] = self.k * math.sqrt(1 - self.A)
+        v[1 + len(self.ids) + self.pid.index((bid, i))] = self.k * math.sqrt(self.A)
+        return v
+
+    def _query(self, scores: dict[str, list[float]]) -> list[float]:
+        v = [0.0] * self._dim()
+        v[0] = math.sqrt(self.B)
+        for bid, ls in scores.items():
+            full = [ls[i] if i < len(ls) else ls[-1] for i in range(len(self.phr[bid]))]
+            lo = min(full)
+            v[1 + self.ids.index(bid)] = (lo - self.B) / (self.k * math.sqrt(1 - self.A))
+            for i, s in enumerate(full):
+                v[1 + len(self.ids) + self.pid.index((bid, i))] = (s - lo) / (self.k * math.sqrt(self.A))
+        rest = 1 - sum(x * x for x in v)
+        assert rest >= 0, f"impossible scores {scores}"
+        v[-1] = math.sqrt(rest)
+        return v
+
+    def embed(self, text: str) -> list[float]:
+        body = text[len(PREFIX):] if text.startswith(PREFIX) else text
+        if body.strip() in self.slot:
+            return self._doc(*self.slot[body.strip()])
+        self.queries.append(body)
+        for sub, scores in self.rules:
+            if sub in body.lower():
+                return self._query(scores)
+        return self._query({})
+
+    def close(self) -> None:
+        self.closed = True
+
+
+# The recorded scores of "When is a bigger LLM worth paying for?" (a paraphrase of b019, how to choose between small and
+# large models) against b012 (cost, was it worth it) in bench/embed (real model): one b012 phrase at 0.914, the entry's
+# second-best phrase at 0.852. Placed on the fixture bank's b015. The 0.90 rule without the support gate shows it.
+ONE_PHRASE = [("bigger llm worth", {"b015": [0.852, 0.914, 0.852, 0.852]})]
+ONE_PHRASE_PARTIALS = ("When is a bigger LLM worth", "When is a bigger LLM worth paying", "When is a bigger LLM worth paying for")
+# A near miss close to several entries at once: top 0.912 (two phrases agree, support 0.905), then 0.89 / 0.885 / 0.875, so
+# top-1 minus the 4th-best entry is 0.037 (< 0.045); the margin over the runner-up (0.022) passes.
+CROWDED = [("hardest bug you hit", {"b009": [0.912, 0.905], "b005": [0.89], "b001": [0.885], "b015": [0.875]})]
+CROWDED_PARTIALS = ("What was the hardest bug you hit", "What was the hardest bug you hit in the",
+                    "What was the hardest bug you hit in the route optimiser")
+# A paraphrase: three phrases of b001 agree (support 0.90) and it stands out (isolation 0.065).
+AGREE = [("end up where", {"b001": [0.915, 0.90, 0.90, 0.88]})]
+
+
+def _run_phrase_fake(rules, partials, **cfg):
+    async def go():
+        fe = PhraseFake(rules)
+        b, t, em = make(fe, **cfg)
+        await start(b)
+        await _ask(b, "q1", partials, partials[-1] + "?")
+        return em, fe
+    return run(go())
+
+
+def test_support_gate_keeps_a_one_phrase_match_out():
+    em, fe = _run_phrase_fake(ONE_PHRASE, ONE_PHRASE_PARTIALS)
+    assert len(fe.queries) == 4, fe.queries                       # three partials and the final text were evaluated
+    assert not embed_hits(em), embed_hits(em)
+    m = em.of("metric", stage="embed", turn_id="q1")
+    assert m[-1]["support"] == pytest.approx(0.852, abs=1e-3) and m[-1]["accepted"] is False
+    assert m[-1]["isolation"] == pytest.approx(0.914 - 0.85, abs=1e-3)
+    # with the gate off (the rule before 2026-11-12) the same scores show a card
+    em_off, _ = _run_phrase_fake(ONE_PHRASE, ONE_PHRASE_PARTIALS, embed_support=None)
+    assert [h["bank_id"] for h in embed_hits(em_off)] == ["b015"]
+
+
+def test_isolation_gate_keeps_a_crowded_match_out():
+    em, _ = _run_phrase_fake(CROWDED, CROWDED_PARTIALS)
+    assert not embed_hits(em), embed_hits(em)
+    assert em.of("metric", stage="embed", turn_id="q1")[-1]["isolation"] == pytest.approx(0.037, abs=1e-3)
+    em_off, _ = _run_phrase_fake(CROWDED, CROWDED_PARTIALS, embed_isolation=None)
+    assert [h["bank_id"] for h in embed_hits(em_off)] == ["b009"]
+
+
+def test_a_paraphrase_that_several_phrases_support_still_hits():
+    em, _ = _run_phrase_fake(AGREE, THREE)
+    assert [(h["turn_id"], h["bank_id"]) for h in embed_hits(em)] == [("q1", "b001")]
+
+
+EN_BANK = Path(__file__).resolve().parents[2] / "bench" / "embed" / "ml" / "en_bank.json"
+
+
+@pytest.mark.skipif(not (_HAVE_MODEL and _HAVE_LITERT), reason="EmbeddingGemma model or litert_lm missing")
+def test_real_model_gates_drop_other_entry_paraphrases_and_keep_a_paraphrase():
+    """The sample-interview bank (22 entries, bench/embed/ml/en_bank.json), every word prefix from 5 words and the final text
+    through embed.step, as the engine runs them. Two paraphrases the 0.90 rule shows on the WRONG entry are kept out by the
+    support gate; a paraphrase of b019 still hits."""
+    from verse_brain.runtime.embed import BankIndex, unit
+    from verse_brain.runtime.engine import tokens
+    bank = json.loads(EN_BANK.read_text(encoding="utf-8"))["bank"]
+    now = Config().embed_rule("en")
+    before = AcceptRule(0.90, 0.005, 3, 0.93, 0.03, 1)
+    emb = LiteRtEmbedder()
+    try:
+        idx = BankIndex(emb, bank, "en")
+
+        def card(sentence: str, rule: AcceptRule) -> str | None:
+            st, w = MatchState(), sentence.split()
+            texts = [" ".join(w[:n]) for n in range(1, len(w) + 1) if len(tokens(" ".join(w[:n]))) >= 5]
+            for i, t in enumerate(texts + [sentence]):
+                sc = idx.score(unit(emb.embed(PREFIX + t)))
+                hit = step(st, rule, sc.entries[0][0], sc.entries[0][1], sc.entries[1][1], final=i == len(texts),
+                           support=sc.support, isolation=sc.isolation(rule.isolation_rank))
+                if hit:
+                    return hit
+            return None
+
+        got = {s: (card(s, before), card(s, now)) for s in (
+            "When is a bigger LLM worth paying for?",                   # b019's question, shown as b012 (cost) before
+            "What exactly did you build with the Lantern pipeline?",    # b003's question, shown as b008 (our product) before
+            "What drove the choice of model size?")}                    # b019
+    finally:
+        emb.close()
+    assert got["When is a bigger LLM worth paying for?"] == ("b012", None), got
+    assert got["What exactly did you build with the Lantern pipeline?"] == ("b008", None), got
+    assert got["What drove the choice of model size?"] == ("b019", "b019"), got

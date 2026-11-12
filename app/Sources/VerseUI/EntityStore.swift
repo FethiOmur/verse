@@ -344,43 +344,54 @@ final class EntityStore: ObservableObject {
         try commit(f)
     }
 
-    func setHidden(_ id: String, _ hidden: Bool) {
+    /// Each of `setHidden`, `link`, `unlink` and `dismiss` returns the reason its write failed (nil when it worked or had nothing to do).
+    @discardableResult
+    func setHidden(_ id: String, _ hidden: Bool) -> EntityError? {
         let id = resolvedID(id)
-        guard let i = file.entities.firstIndex(where: { $0.id == id }), file.entities[i].hidden != hidden else { return }
+        guard let i = file.entities.firstIndex(where: { $0.id == id }), file.entities[i].hidden != hidden else { return nil }
         var f = file
         f.entities[i].hidden = hidden
-        try? commit(f)
+        return committed(f)
+    }
+
+    /// Writes `f` and returns the error instead of dropping it.
+    private func committed(_ f: PeopleFile) -> EntityError? {
+        do { try commit(f) } catch { return error }
+        return nil
     }
 
     /// Adds `session` to the entity's sessions by hand (and takes it off the entity's unlinks).
-    func link(_ session: String, to id: String) {
+    @discardableResult
+    func link(_ session: String, to id: String) -> EntityError? {
         let id = resolvedID(id)
-        guard resolve(id: id) != nil else { return }
+        guard resolve(id: id) != nil else { return nil }
         var f = file
         if !(f.links[session] ?? []).contains(id) { f.links[session, default: []].append(id) }
         f.unlinks[session] = (f.unlinks[session] ?? []).filter { $0 != id }
         if f.unlinks[session]?.isEmpty == true { f.unlinks[session] = nil }
-        try? commit(f)
+        return committed(f)
     }
 
     /// Takes `session` out of the entity's sessions, whatever put it there (a folder, an email, a domain, a link).
-    func unlink(_ session: String, from id: String) {
+    @discardableResult
+    func unlink(_ session: String, from id: String) -> EntityError? {
         let id = resolvedID(id)
-        guard resolve(id: id) != nil else { return }
+        guard resolve(id: id) != nil else { return nil }
         var f = file
         if !(f.unlinks[session] ?? []).contains(id) { f.unlinks[session, default: []].append(id) }
         f.links[session] = (f.links[session] ?? []).filter { $0 != id }
         if f.links[session]?.isEmpty == true { f.links[session] = nil }
-        try? commit(f)
+        return committed(f)
     }
 
     /// "Not this": the suggestion of `session` for the entity is not shown again.
-    func dismiss(_ session: String, for id: String) {
+    @discardableResult
+    func dismiss(_ session: String, for id: String) -> EntityError? {
         let id = resolvedID(id)
-        guard !(file.dismissed[id] ?? []).contains(session) else { return }
+        guard !(file.dismissed[id] ?? []).contains(session) else { return nil }
         var f = file
         f.dismissed[id, default: []].append(session)
-        try? commit(f)
+        return committed(f)
     }
 
     // MARK: attendees

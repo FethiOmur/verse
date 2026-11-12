@@ -1,0 +1,371 @@
+{
+ "note": "The English sample-interview bank (question, English paraphrases, opener, points, deep), copied 2026-11-12 from sessions/sample-interview/bank.jsonl so the calibration (ml_calib.py, rule_search.py) and the real-model tests run without the session folder.",
+ "bank": {
+  "b001": {
+   "question": "Can you tell me about yourself and your background?",
+   "paraphrases": {
+    "en": [
+     "Walk us through your background.",
+     "Give us a quick introduction to who you are.",
+     "What's your story so far?"
+    ]
+   },
+   "opener": "Sure, I'll give you the short version of what I've worked on.",
+   "points": [
+    "I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices.",
+    "Lantern cut manual data entry from 11 minutes to 2 minutes per invoice.",
+    "I also built a small route optimiser for a courier pilot that reduced empty runs by 14 percent."
+   ],
+   "deep": "My recent work splits into two projects. The first is Lantern, an LLM pipeline that extracts structured fields from supplier invoices, which I led. It cut manual data entry from 11 minutes to 2 minutes per invoice and ran on 38,000 invoices a month. The second is a small route optimiser I built for a courier pilot, which reduced empty runs by 14 percent. The pilot ran for 10 weeks across 23 vans in Torino. Together they cover LLM extraction work and route planning."
+  },
+  "b002": {
+   "question": "Why do you want to join Halden Freight Systems?",
+   "paraphrases": {
+    "en": [
+     "What attracted you to this role?",
+     "Why are you interested in this position?",
+     "What made you apply to us?"
+    ]
+   },
+   "opener": "What stands out to me is the direction the product is taking.",
+   "points": [
+    "The company is moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027.",
+    "I have built LLM pipelines: I led Lantern, which extracts structured fields from supplier invoices.",
+    "I have also built a route optimiser for a courier pilot."
+   ],
+   "deep": "The company builds route-planning software for mid-size European haulage firms, and its product Compass re-plans delivery routes every 90 seconds using live traffic and driver status. They are moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027. That is where my background overlaps: I led Lantern, an LLM pipeline for supplier invoices, and I built a route optimiser for a courier pilot."
+  },
+  "b003": {
+   "question": "Can you tell me about the Lantern project?",
+   "paraphrases": {
+    "en": [
+     "What was Lantern and what did it do?",
+     "Walk me through your invoice extraction pipeline.",
+     "Tell us about the LLM project you led."
+    ]
+   },
+   "opener": "Happy to; it's the project I can speak about in the most detail.",
+   "points": [
+    "Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.",
+    "It cut manual data entry from 11 minutes to 2 minutes per invoice.",
+    "Extraction is schema-validated with one retry, then escalated; the model never guesses a total."
+   ],
+   "deep": "Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led the project. Extraction is schema-validated with one retry, then escalated; I never let the model guess a total. I chose a small model for the first pass and a larger one only on low-confidence documents. Fields below 0.8 confidence go to a human operator. It cut manual data entry from 11 minutes to 2 minutes per invoice and ran on 38,000 invoices a month."
+  },
+  "b004": {
+   "question": "What results did Lantern deliver?",
+   "paraphrases": {
+    "en": [
+     "What was the impact of your invoice project?",
+     "How did you measure success on Lantern?",
+     "What numbers can you share from your best project?"
+    ]
+   },
+   "opener": "I can give you concrete numbers on that.",
+   "points": [
+    "Manual data entry dropped from 11 minutes to 2 minutes per invoice.",
+    "Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved.",
+    "It ran on 38,000 invoices a month."
+   ],
+   "deep": "Per invoice, manual data entry dropped from 11 minutes to 2 minutes. The pipeline ran on 38,000 invoices a month. Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved. On the held-out set, accuracy was 96.4 percent for totals and 91 percent for line items, and about 7 percent of invoices had low-confidence fields that went to a human operator."
+  },
+  "b005": {
+   "question": "What is your biggest weakness?",
+   "paraphrases": {
+    "en": [
+     "What's something you're working to improve?",
+     "Tell us about a professional weakness and how you deal with it.",
+     "Where do you tend to struggle at work?"
+    ]
+   },
+   "opener": "One I've actively worked on is how I approach early prototypes.",
+   "points": [
+    "I used to over-engineer early prototypes.",
+    "Now I ship a thin version in the first week."
+   ],
+   "deep": "I used to over-engineer early prototypes. The way I handle it now is to ship a thin version in the first week instead of building everything up front."
+  },
+  "b006": {
+   "question": "What technical decisions are you most proud of, and what were the trade-offs?",
+   "paraphrases": {
+    "en": [
+     "Which design choices can you defend?",
+     "Tell me about a technical trade-off you made.",
+     "What would you point to as a good engineering decision?"
+    ]
+   },
+   "opener": "I can walk through a few decisions and why I made them.",
+   "points": [
+    "Extraction is schema-validated with one retry, then escalated; I never let the model guess a total.",
+    "I chose a small model for the first pass and a larger one only on low-confidence documents.",
+    "Evaluation uses a frozen set of 400 invoices, rerun on every prompt change before release."
+   ],
+   "deep": "Decisions I can defend: extraction is schema-validated with one retry, then escalated, and I never let the model guess a total. I chose a small model for the first pass and a larger one only on low-confidence documents. Evaluation runs on a frozen set of 400 invoices, rerun on every prompt change before release. Low-confidence fields below 0.8 go to a human operator."
+  },
+  "b007": {
+   "question": "Tell me about the route optimiser you built for the courier pilot.",
+   "paraphrases": {
+    "en": [
+     "What did you do on the courier project?",
+     "How did your route optimisation work turn out?",
+     "Do you have hands-on experience with route planning?"
+    ]
+   },
+   "opener": "It was a small project, but it had a measurable result.",
+   "points": [
+    "I built a small route optimiser for a courier pilot.",
+    "It reduced empty runs by 14 percent.",
+    "The pilot ran for 10 weeks across 23 vans in Torino."
+   ],
+   "deep": "I built a small route optimiser for a courier pilot. The pilot ran for 10 weeks across 23 vans in Torino, and the optimiser reduced empty runs by 14 percent. The other part of my background is Lantern, an LLM pipeline for supplier invoices, which I led."
+  },
+  "b008": {
+   "question": "What do you know about our company and product?",
+   "paraphrases": {
+    "en": [
+     "What have you learned about Halden Freight Systems?",
+     "Are you familiar with Compass?",
+     "What do you understand about what we build?"
+    ]
+   },
+   "opener": "I've read up on the company, so let me share what I understood.",
+   "points": [
+    "The company builds route-planning software for mid-size European haulage firms.",
+    "Compass re-plans delivery routes every 90 seconds using live traffic and driver status.",
+    "You are moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027."
+   ],
+   "deep": "The company builds route-planning software for mid-size European haulage firms and has about 140 employees. The AI team has 6 people and reports to Ingrid. The product Compass re-plans delivery routes every 90 seconds using live traffic and driver status. The company is moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027."
+  },
+  "b009": {
+   "question": "How do you evaluate an LLM system before release?",
+   "paraphrases": {
+    "en": [
+     "How do you test prompt changes?",
+     "What does your evaluation process look like?",
+     "How do you avoid regressions when you change a prompt?"
+    ]
+   },
+   "opener": "I treat evaluation as a gate on every change.",
+   "points": [
+    "I use a frozen set of 400 invoices.",
+    "I rerun that set on every prompt change before release.",
+    "On the held-out set, accuracy was 96.4 percent for totals and 91 percent for line items."
+   ],
+   "deep": "Evaluation uses a frozen set of 400 invoices, rerun on every prompt change before release. On the held-out set, accuracy was 96.4 percent for totals and 91 percent for line items. Alongside that, extraction is schema-validated with one retry, then escalated, and low-confidence fields below 0.8 go to a human operator."
+  },
+  "b010": {
+   "question": "How do you handle cases where the model is unsure or wrong?",
+   "paraphrases": {
+    "en": [
+     "What happens when the LLM output isn't reliable?",
+     "How did you deal with low-confidence extractions?",
+     "What safeguards did you build around the model?"
+    ]
+   },
+   "opener": "I built explicit safeguards around the model rather than trusting it blindly.",
+   "points": [
+    "Extraction is schema-validated with one retry, then escalated.",
+    "I never let the model guess a total.",
+    "Low-confidence fields, below 0.8, go to a human operator; that was about 7 percent of invoices."
+   ],
+   "deep": "Extraction is schema-validated with one retry, then escalated, and I never let the model guess a total. Low-confidence fields, those below 0.8, go to a human operator. On the invoice pipeline that was about 7 percent of invoices. Separately, I chose a small model for the first pass and a larger one only on low-confidence documents."
+  },
+  "b011": {
+   "question": "How accurate was the Lantern pipeline?",
+   "paraphrases": {
+    "en": [
+     "What accuracy did you reach on extraction?",
+     "How did the model perform on totals and line items?",
+     "How good were the results on your held-out data?"
+    ]
+   },
+   "opener": "I measured it on a held-out set, so I can be specific.",
+   "points": [
+    "Accuracy on the held-out set was 96.4 percent for totals.",
+    "Accuracy on line items was 91 percent.",
+    "Fields below 0.8 confidence go to a human operator; that was about 7 percent of invoices."
+   ],
+   "deep": "Accuracy on the held-out set was 96.4 percent for totals and 91 percent for line items. The evaluation set is a frozen set of 400 invoices, rerun on every prompt change before release. Low-confidence fields, below 0.8, go to a human operator, which was about 7 percent of invoices, and I never let the model guess a total."
+  },
+  "b012": {
+   "question": "How much did it cost to run, and was it worth it?",
+   "paraphrases": {
+    "en": [
+     "What was the monthly model cost for your LLM pipeline?",
+     "How did the cost compare to the savings?",
+     "Can you justify the spend on the model?"
+    ]
+   },
+   "opener": "I tracked cost against the labour it replaced, so I can give you the comparison.",
+   "points": [
+    "Monthly model cost was around EUR 1,900.",
+    "That compared with EUR 9,500 of manual labour saved.",
+    "This was at a volume of 38,000 invoices a month."
+   ],
+   "deep": "Monthly model cost for the invoice pipeline was around EUR 1,900 against EUR 9,500 of manual labour saved. It ran on 38,000 invoices a month, and manual data entry dropped from 11 minutes to 2 minutes per invoice. Cost was also kept down by using a small model for the first pass and a larger one only on low-confidence documents."
+  },
+  "b013": {
+   "question": "How would you approach building an LLM-assisted dispatcher?",
+   "paraphrases": {
+    "en": [
+     "How would you bring LLMs into dispatch?",
+     "What would you carry over from your past work to our dispatcher?",
+     "How would you make an LLM safe to use on live routes?"
+    ]
+   },
+   "opener": "I'd start from the practices that have worked for me before.",
+   "points": [
+    "I'd gate changes on a frozen evaluation set, rerun on every prompt change before release.",
+    "I'd validate outputs against a schema, retry once, then escalate.",
+    "I'd send low-confidence cases to a human operator."
+   ],
+   "deep": "The company is moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027. From my invoice work I'd carry over schema-validated outputs with one retry, then escalate, and the rule that the model never guesses a total. I'd also carry over a frozen evaluation set rerun on every prompt change before release, and sending low-confidence cases to a human operator. I'd also ask how the dispatcher will be evaluated before it touches live routes."
+  },
+  "b014": {
+   "question": "Do you have any questions for us?",
+   "paraphrases": {
+    "en": [
+     "What would you like to ask the team?",
+     "Anything you want to know about the role or the team?",
+     "Is there anything we haven't covered that you'd like to ask?"
+    ]
+   },
+   "opener": "Yes, a few, mostly about how the team tests and runs things.",
+   "points": [
+    "I'd ask how the dispatcher will be evaluated before it touches live routes.",
+    "I'd ask what the on-call rotation for the AI team looks like.",
+    "I'd ask which part of Compass is hardest to test today."
+   ],
+   "deep": "My questions: how will the dispatcher be evaluated before it touches live routes, what does the on-call rotation for the AI team look like, and which part of Compass is hardest to test today. The first matters because the LLM-assisted dispatcher pilot is planned for Q1 2027."
+  },
+  "b015": {
+   "question": "When could you start if we made an offer?",
+   "paraphrases": {
+    "en": [
+     "What is your notice period?",
+     "What's your earliest start date?",
+     "How soon could you join us?"
+    ]
+   },
+   "opener": "I can give you the exact timing.",
+   "points": [
+    "My notice period at my current company is 30 days.",
+    "That makes my earliest start mid-December 2026."
+   ],
+   "deep": "My notice period at my current company is 30 days, so my earliest start is mid-December 2026."
+  },
+  "b016": {
+   "question": "What are your salary expectations?",
+   "paraphrases": {
+    "en": [
+     "What compensation range are you looking for?",
+     "What salary do you have in mind?",
+     "How flexible are you on compensation?"
+    ]
+   },
+   "opener": "I'm happy to be open about that.",
+   "points": [
+    "I'm looking for EUR 78,000 to 85,000 gross per year.",
+    "I'm flexible for equity."
+   ],
+   "deep": "My salary expectation is EUR 78,000 to 85,000 gross per year, and I'm flexible for equity."
+  },
+  "b017": {
+   "question": "What is your experience running LLMs in production?",
+   "paraphrases": {
+    "en": [
+     "Have you deployed LLM systems at scale?",
+     "What LLM work have you shipped?",
+     "How have you used large language models in real products?"
+    ]
+   },
+   "opener": "Yes, I've shipped an LLM pipeline that ran on real volume every month.",
+   "points": [
+    "I led an LLM pipeline that ran on 38,000 invoices a month.",
+    "Every prompt change was checked against a frozen set of 400 invoices before release.",
+    "I used a small model for the first pass and a larger one only on low-confidence documents."
+   ],
+   "deep": "I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices. It ran on 38,000 invoices a month. Quality was controlled with a frozen set of 400 invoices rerun on every prompt change before release, schema-validated extraction with one retry then escalation, and human review of low-confidence fields below 0.8. Monthly model cost was around EUR 1,900."
+  },
+  "b018": {
+   "question": "How does your experience relate to what we do in route planning?",
+   "paraphrases": {
+    "en": [
+     "Have you worked on routing or logistics problems before?",
+     "What route-related work have you done?",
+     "How would your background fit our product?"
+    ]
+   },
+   "opener": "There's a direct overlap, and I can point to a specific project.",
+   "points": [
+    "I built a small route optimiser for a courier pilot that reduced empty runs by 14 percent.",
+    "The pilot ran for 10 weeks across 23 vans in Torino.",
+    "I also led an LLM pipeline, which is relevant to the planned LLM-assisted dispatcher."
+   ],
+   "deep": "I built a small route optimiser for a courier pilot that reduced empty runs by 14 percent; the pilot ran for 10 weeks across 23 vans in Torino. Your product Compass re-plans delivery routes every 90 seconds using live traffic and driver status, and you are moving to an LLM-assisted dispatcher. My other main project, Lantern, is an LLM pipeline for supplier invoices."
+  },
+  "b019": {
+   "question": "How did you choose between small and large models?",
+   "paraphrases": {
+    "en": [
+     "Did you use more than one model in your pipeline?",
+     "How do you balance model quality and cost?",
+     "When do you use a larger model?"
+    ]
+   },
+   "opener": "I used a tiered approach rather than one model for everything.",
+   "points": [
+    "I chose a small model for the first pass and a larger one only on low-confidence documents.",
+    "Fields below 0.8 confidence go to a human operator; that was about 7 percent of invoices.",
+    "Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved."
+   ],
+   "deep": "I chose a small model for the first pass and a larger one only on low-confidence documents. Fields below 0.8 confidence go to a human operator, which was about 7 percent of invoices. Monthly model cost was around EUR 1,900 against EUR 9,500 of manual labour saved."
+  },
+  "b020": {
+   "question": "How do you approach starting a new prototype or project?",
+   "paraphrases": {
+    "en": [
+     "How quickly do you get something working?",
+     "What's your process for early-stage work?",
+     "How do you avoid over-building at the start?"
+    ]
+   },
+   "opener": "I start small and ship early.",
+   "points": [
+    "I ship a thin version in the first week.",
+    "I used to over-engineer early prototypes, and I changed that habit."
+   ],
+   "deep": "I used to over-engineer early prototypes. Now I ship a thin version in the first week, rather than building everything up front."
+  },
+  "b021": {
+   "question": "Have you automated any parts of your deployment process?",
+   "paraphrases": {
+    "en": [
+     "Do you work with CI workflows?",
+     "What deployment automation have you set up?",
+     "Any experience with automating post-deploy steps?"
+    ]
+   },
+   "opener": "Yes, I recently automated one step in a deploy workflow.",
+   "points": [
+    "I made the deploy ping IndexNow automatically after each deploy."
+   ],
+   "deep": ""
+  },
+  "b022": {
+   "question": "What does ETA drift mean to you?",
+   "paraphrases": {
+    "en": [
+     "How would you define ETA drift?",
+     "Are you familiar with the term ETA drift?",
+     "Can you explain ETA drift in the context of routing?"
+    ]
+   },
+   "opener": "Let me give you the definition I work with.",
+   "points": [
+    "ETA drift is the gap between the promised and the actual arrival time."
+   ],
+   "deep": "ETA drift is the gap between the promised and the actual arrival time."
+  }
+ }
+}

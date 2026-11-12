@@ -66,6 +66,12 @@ public struct ListenConfig: Sendable {
     /// Engine override. Default (nil): `EngineFactory.sessionDefaultKind(for: lang)`, i.e. `.auto` for English
     /// (Nemotron once loaded, Apple until then and as the fallback), the Apple engine for it/tr.
     public var engineKind: EngineKind? = nil
+    /// The session's names (glossary terms, name facts, names in the bank: `SessionTerms.vocabulary`), given to the Apple
+    /// engines as the analyzer's contextual strings. Measured 2026-11-12 on macOS 26.6: `DictationTranscriber` (the Turkish
+    /// engine) uses them ("Holden" -> "Halden", "route optimizer" -> "route optimiser" in English), `SpeechTranscriber` (English
+    /// and Italian) ignores them, and Nemotron has no such input; for those the turn engine corrects near misses of the
+    /// session's names afterwards (`TermCorrector`).
+    public var contextualStrings: [String] = []
     /// Folder with the Nemotron model files (never downloaded; see `NemotronModel`).
     public var nemotronModelDir: URL = NemotronModel.defaultDirectory
     /// Where engine status lines go (`engine_ready`, `engine_switch`, `engine_fallback`). Default: stderr as JSON

@@ -380,6 +380,79 @@ final class MeModelTests: XCTestCase {
         XCTAssertNil(m.progress)
     }
 
+    // MARK: prep's text and late lines
+
+    func testPrepsEnglishIsMappedToCatalogStrings() {
+        XCTAssertEqual(MePrepText.progress("  ... 4000 chars"), "Writing your profile…")
+        XCTAssertEqual(MePrepText.progress("me.md: 3140 tokens / cap 3500 | spend $0.0700"), "Finishing up…")
+        XCTAssertNil(MePrepText.progress("a line prep never printed before"))
+        XCTAssertEqual(MePrepText.failure("error: no readable source: add one to me.sources.json or the Me page"),
+                       "No source could be read. Add a file under Sources, then try again.")
+        XCTAssertEqual(MePrepText.failure("error: Keychain item service=verse account=dana missing (exit 44)"),
+                       "Verse could not read your Anthropic key from the Keychain.")
+        XCTAssertEqual(MePrepText.failure("error: cannot read the source /Users/dana/cv.pdf: PermissionError"), "One of your sources could not be read.")
+        XCTAssertEqual(MePrepText.failure("error: cannot read /Users/dana/profile/me.sources.json: JSONDecodeError"), "Your list of sources could not be read.")
+        XCTAssertEqual(MePrepText.failure("error: budget $0.05 leaves only 120 output tokens; raise --budget-usd or shrink the sources"),
+                       "The budget is too small for this profile. Raise it or use fewer sources.")
+        XCTAssertEqual(MePrepText.failure("error: budget $0.50 leaves only 90 output tokens after the first attempt; raise --budget-usd or shrink the sources"),
+                       "The budget is too small for this profile. Raise it or use fewer sources.")
+        XCTAssertEqual(MePrepText.failure("error: the model refused the prep request (stop_reason=refusal)"), "The model declined the request. Try again.")
+        XCTAssertEqual(MePrepText.failure("error: ValueError: something at /Users/dana/x.py line 12"), "Preparation failed", "unknown: generic")
+        L10nState.shared.apply(.tr)
+        defer { L10nState.shared.apply(.en) }
+        XCTAssertEqual(MePrepText.failure("error: ValueError: something"), "Hazırlık başarısız oldu")
+        XCTAssertEqual(MePrepText.failure("error: budget $0.05 leaves only 120 output tokens"), "Bütçe bu profil için çok düşük. Artır ya da daha az kaynak kullan.")
+        XCTAssertEqual(MePrepText.failure("error: cannot read /p/me.sources.json: OSError"), "Kaynaklar listen okunamadı.")
+        L10nState.shared.apply(.it)
+        XCTAssertEqual(MePrepText.failure("error: the model refused the prep request (stop_reason=refusal)"), "Il modello ha rifiutato la richiesta. Riprova.")
+        L10nState.shared.apply(.tr)
+        XCTAssertEqual(MePrepText.progress("  ... 8000 chars"), "Profilin yazılıyor…")
+    }
+
+    /// The real runner over a stand-in interpreter that prints prep's English on stderr and exits 1.
+    func testTheRunnerShowsCatalogTextAndNeverPrepsRawLines() async throws {
+        let dir = try profile()
+        let script = dir.appendingPathComponent("fake-python.sh")
+        try """
+        #!/bin/sh
+        echo '  ... 4000 chars' >&2
+        echo 'Traceback (most recent call last): secret detail' >&2
+        echo 'error: the profile model returned nothing usable after 3 attempts: boom' >&2
+        exit 1
+        """.write(to: script, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
+        let seen = LineBox()
+        let outcome = await MePrep(python: script).run(.build, profileDir: dir, brainDir: dir, fake: false, onLine: { l in seen.add(l) })
+        XCTAssertEqual(outcome, .failed("The model returned nothing usable. Try again."))
+        XCTAssertEqual(seen.all, ["Writing your profile…", "Working…", "Working…"])
+        XCTAssertFalse(seen.all.contains { $0.contains("Traceback") || $0.contains("boom") }, "raw text stays in the log")
+    }
+
+    func testALateProgressLineFromAFinishedRunIsIgnored() async throws {
+        let runner = LateLineRunner()
+        let m = model(try profile(), runner: runner)
+        await m.refresh()
+        XCTAssertFalse(m.isRunning)
+        runner.lines[0]("a line that arrived after the run ended")
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertNil(m.progress, "an idle page shows no progress")
+
+        // A second run is live: the first run's closure must not write into it either.
+        let gate = AsyncGate()
+        runner.gate = gate
+        let second = Task { await m.refresh() }
+        while !m.isRunning { await Task.yield() }
+        while runner.lines.count < 2 { await Task.yield() }
+        runner.lines[0]("stale line of run 1")
+        for _ in 0..<20 { await Task.yield() }
+        XCTAssertNil(m.progress)
+        runner.lines[1]("line of run 2")
+        while m.progress == nil { await Task.yield() }
+        XCTAssertEqual(m.progress, "line of run 2")
+        await gate.open()
+        await second.value
+    }
+
     // MARK: the command line
 
     func testTheArgumentsCarryNoKeyAndNoProfileText() {
@@ -464,6 +537,26 @@ final class FakeMeRunner: MeRunning, @unchecked Sendable {
         return .done(stdout: profileDir.path, log: refreshLog)
     }
 
+    func cancel() {}
+}
+
+/// Lines collected from the runner's drain thread.
+final class LineBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var lines: [String] = []
+    func add(_ s: String) { lock.withLock { lines.append(s) } }
+    var all: [String] { lock.withLock { lines } }
+}
+
+/// A runner that keeps the `onLine` closure of every run, so a test can call one after its run ended.
+final class LateLineRunner: MeRunning, @unchecked Sendable {
+    var lines: [@Sendable (String) -> Void] = []
+    var gate: AsyncGate?
+    func run(_ action: MeAction, profileDir: URL, brainDir: URL, fake: Bool, onLine: @escaping @Sendable (String) -> Void) async -> MeOutcome {
+        if action != .show { lines.append(onLine) }
+        if action != .show, let gate { await gate.wait() }
+        return .done(stdout: action == .show ? "stale sources: none" : profileDir.path, log: [])
+    }
     func cancel() {}
 }
 

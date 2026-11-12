@@ -339,6 +339,9 @@ final class MemoryService: ObservableObject {
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var indexedSessions = 0
     @Published private(set) var briefsInFlight: Set<String> = []
+    /// Entity id -> why its last brief run failed (a cancel is not a failure). Kept here, not in a page, so a page opened after the
+    /// run ended still shows it; cleared when the next run for the entity starts.
+    @Published private(set) var briefFailures: [String: ChatFailure] = [:]
 
     let paths: MemoryPaths
     /// Session name -> entity names; `EntityStore` supplies it (P4).
@@ -539,9 +542,11 @@ final class MemoryService: ObservableObject {
         }
         briefTasks[id] = task
         briefsInFlight.insert(id)
+        briefFailures[id] = nil
         let result = await task.value
         briefTasks.removeValue(forKey: id)
         briefsInFlight.remove(id)
+        if case .failure(let f) = result, f.kind != "cancelled" { briefFailures[id] = f }
         return result
     }
 

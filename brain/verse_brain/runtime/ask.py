@@ -8,7 +8,9 @@ brain: that process is latency-critical. One process serves one session's panel.
   never recomputes stamps. The block is a pure function of its inputs, so every request of the chat shares its bytes.
 - Prompt layout: frozen `system` -> messages[0] user = [grounding (cache_control)] + [question 1] -> answer 1 -> question 2 ... plus the
   top-level automatic `cache_control` (two breakpoints). History = the last `ASK_HISTORY_PAIRS` Q/A pairs after the last `reset` of
-  `chat.jsonl`; older pairs drop from the front, which only invalidates the history after the grounding block.
+  `chat.jsonl`; older pairs drop from the front, which only invalidates the history after the grounding block. A request that
+  would not fit the model's context window (settings.ASK_CONTEXT_WINDOW minus max_tokens minus a margin) drops more of its
+  oldest pairs; the grounding block and the question are never cut.
 - Long meetings: the grounding block is counted once at `ask_start` (free `count_tokens`). Up to `ASK_CONTEXT_MAX_TOKENS`: full
   mode. Above: chunked mode. The cached block then holds a TRANSCRIPT INDEX and each question carries TRANSCRIPT EXCERPTS, chunks of
   about 6k tokens cut on turn boundaries and ranked by BM25 over accent-folded words of the question plus the previous question. No
@@ -40,7 +42,7 @@ from ..prep.model import PRICES, PREP_MODEL, Usage, spend_usd
 from ..prep.voice import strip_voice
 from .me import load_me, priorities_first
 from .protocol import ASK_MODELS, Emitter
-from .settings import ASK_CONTEXT_MAX_TOKENS, ASK_EXCERPT_TOKENS, ASK_HISTORY_PAIRS, ask_params
+from .settings import ASK_CONTEXT_MAX_TOKENS, ASK_EXCERPT_TOKENS, ASK_HISTORY_PAIRS, ask_input_budget, ask_params
 from .transport import TransportError, map_sdk_error
 
 log = logging.getLogger("verse.runtime.ask")
@@ -91,6 +93,24 @@ def fold_words(s: str) -> list[str]:
 
 def est_tokens(text: str) -> int:
     return max(1, math.ceil(len(text) / TOKEN_CHARS))
+
+
+def fit_tokens(text: str) -> int:
+    """A conservative token estimate for the context-window check (characters / 3, as the `count_tokens` fallback)."""
+    return math.ceil(len(text) / 3)
+
+
+def fit_history(hist: list[tuple[str, str]], fixed_tokens: int, budget: int) -> list[tuple[str, str]]:
+    """The newest history pairs that fit: oldest pairs are dropped until `fixed_tokens` (system, grounding block, this question
+    and its excerpts: never cut) plus the remaining pairs is within `budget` (review P2). With nothing left to drop the request
+    goes out as is."""
+    cost = [fit_tokens(q) + fit_tokens(a) for q, a in hist]
+    total = fixed_tokens + sum(cost)
+    i = 0
+    while i < len(hist) and total > budget:
+        total -= cost[i]
+        i += 1
+    return hist[i:]
 
 
 _STAMP = re.compile(r"\[(\d{1,2}:\d{2}(?::\d{2})?)\]")
@@ -587,6 +607,7 @@ class AskRuntime:
             query = question + " " + (previous_question or (hist[-1][0] if hist else ""))
             sel = select_chunks(self.chunks, query, self.excerpt_tokens)
             tail = render_excerpts(sel) + "\n\nQUESTION\n" + question
+        hist = self._fit(model_key, hist, req["system"][0]["text"], tail)
         grounding_block = {"type": "text", "text": self.grounding, "cache_control": dict(EPHEMERAL)}
         messages: list[dict] = []
         if hist:
@@ -601,6 +622,16 @@ class AskRuntime:
         req["messages"] = messages
         req["cache_control"] = dict(EPHEMERAL)
         return req
+
+    def _fit(self, model_key: str, hist: list[tuple[str, str]], system: str, tail: str) -> list[tuple[str, str]]:
+        """Drop the oldest history pairs a request of `model_key` cannot fit (settings.ask_input_budget). The grounding block is
+        counted as `count_tokens` measured it at the start (system included) in full / memory mode; the chunked block (index
+        only) is estimated."""
+        grounding = self.tokens if self.mode != "chunked" else fit_tokens(system) + fit_tokens(self.grounding)
+        kept = fit_history(hist, grounding + fit_tokens(tail), ask_input_budget(model_key))
+        if len(kept) < len(hist):
+            log.info("ask: %d oldest history pair(s) dropped to fit the %s context window", len(hist) - len(kept), model_key)
+        return kept
 
     async def _build(self, model_key: str, text: str) -> dict:
         """The request of one question. Cheap here; the memory runtime overrides it to search off the event loop."""

@@ -91,8 +91,9 @@ SPIKE_PARTIALS = ("What would you change about Compass", "What would you change 
 
 
 def fast_responder(fast: str):
+    """S, F and the bank verdict check V (an F request under its own route label) all answer `fast`."""
     def responder(info):
-        if info.route in ("S", "F") and not info.tail.startswith("SUMMARIZE") and "STATEMENT CHECK" not in info.tail:
+        if info.route in ("S", "F", "V") and not info.tail.startswith("SUMMARIZE") and "STATEMENT CHECK" not in info.tail:
             return lines_script(fast)
         return default_responder(info)
     return responder
@@ -170,8 +171,11 @@ def test_paraphrase_hits_after_three_consecutive_partials():
     assert not em.of("metric", stage="embed_final_queued"), "the turn closed with its hit: no final-text pass"
     assert len(embed_hits(em)) == 1, "the same hit is not repeated"
     assert all(n.startswith("verse-embed") for n in fe.threads), fe.threads
-    # Haiku's BANK line is checked against the embed hit
+    # Haiku's BANK line is checked against the embed hit: the S calls were fired before the hit (no BANK CHECK), so the hidden
+    # verdict check V gives it, and shows nothing
     assert em.of("bank_verdict", turn_id="q1", bank_id="b001", agree=True)
+    assert em.of("metric", stage="bank_verdict", turn_id="q1", tier="V")
+    assert not [e for e in em.of("delta") if e["tier"] == "V"]
     # D-skip never applies to an embed hit, even at a score >= 0.85 with Haiku agreeing
     assert len(t.by_route("D")) == 1
     assert not em.of("metric", stage="d_skipped")
@@ -497,7 +501,9 @@ def test_real_model_paraphrase_and_distractor():
             await turn(b, tid, sentence)          # the endpoint: the final-text pass runs as in a live call
             await idle(b, timeout=10)
 
-        await say("q1", "Where do you feel you fall short at work these days?")
+        # (before 2026-11-12 q1 was "Where do you feel you fall short at work these days?": top-1 0.908 on b005, but the entry's
+        # second-best phrase scores 0.838, so the support gate (settings.embed_support) now keeps it out: a known cost)
+        await say("q1", "What is an area of your work you want to improve?")
         await say("q2", "How long until you could begin if you accepted our offer?")
         await say("q3", "Do you have experience with Kubernetes and container orchestration?")
         await say("q4", "How do you feel about remote work versus coming into the office?")

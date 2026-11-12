@@ -87,10 +87,11 @@ public enum EngineFactory {
     }
 
     public static func make(lang: String, kind: EngineKind? = nil,
-                            nemotronModelDir: URL = NemotronModel.defaultDirectory) throws -> TranscriptionEngine {
+                            nemotronModelDir: URL = NemotronModel.defaultDirectory,
+                            contextualStrings: [String] = []) throws -> TranscriptionEngine {
         switch kind ?? sessionDefaultKind(for: lang) {
-        case .speechTranscriber: return AppleSpeechEngine(lang: lang, kind: .speech)
-        case .dictationTranscriber: return AppleSpeechEngine(lang: lang, kind: .dictation)
+        case .speechTranscriber: return AppleSpeechEngine(lang: lang, kind: .speech, contextualStrings: contextualStrings)
+        case .dictationTranscriber: return AppleSpeechEngine(lang: lang, kind: .dictation, contextualStrings: contextualStrings)
         case .whisperKit: throw ListenError.speechUnavailable(lang: lang, reason: "WhisperKit engine not built yet (model not on disk)")
         case .nemotron:
             guard lang == "en" else {
@@ -101,14 +102,16 @@ public enum EngineFactory {
             }
             return NemotronEngine(modelDir: nemotronModelDir)
         case .auto:
-            let apple = AppleSpeechEngine(lang: lang, kind: defaultKind(for: lang) == .dictationTranscriber ? .dictation : .speech)
+            let apple = AppleSpeechEngine(lang: lang, kind: defaultKind(for: lang) == .dictationTranscriber ? .dictation : .speech,
+                                          contextualStrings: contextualStrings)
             guard lang == "en" else { return apple }
             return SwitchingEngine.auto(lang: lang, apple: apple, modelDir: nemotronModelDir)
         }
     }
 
     public static func make(config: ListenConfig) throws -> TranscriptionEngine {
-        try make(lang: config.lang, kind: config.engineKind, nemotronModelDir: config.nemotronModelDir)
+        try make(lang: config.lang, kind: config.engineKind, nemotronModelDir: config.nemotronModelDir,
+                 contextualStrings: config.contextualStrings)
     }
 }
 
@@ -118,6 +121,8 @@ final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
 
     let lang: String
     let kind: Kind
+    /// Given to the analyzer as `AnalysisContext.contextualStrings[.general]` (see `ListenConfig.contextualStrings`).
+    let contextualStrings: [String]
     private var analyzer: SpeechAnalyzer?
     private var resultsTask: Task<Void, Error>?
     private var startResults: ((@escaping @Sendable (EngineResult) -> Void, @escaping @Sendable (Error) -> Void) -> Task<Void, Error>)?
@@ -135,9 +140,19 @@ final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
         h?("\(engineName) results failed: \(error)")
     }
 
-    init(lang: String, kind: Kind) {
+    init(lang: String, kind: Kind, contextualStrings: [String] = []) {
         self.lang = lang
         self.kind = kind
+        self.contextualStrings = contextualStrings
+    }
+
+    /// The analysis context this engine sets before it starts: nil without contextual strings (the analyzer's default).
+    static func context(for strings: [String]) -> AnalysisContext? {
+        let s = strings.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard !s.isEmpty else { return nil }
+        let ctx = AnalysisContext()
+        ctx.contextualStrings[.general] = s
+        return ctx
     }
 
     var engineName: String {
@@ -192,6 +207,8 @@ final class AppleSpeechEngine: TranscriptionEngine, @unchecked Sendable {
             throw ListenError.speechUnavailable(lang: lang, reason: "bestAvailableAudioFormat returned nil")
         }
         let analyzer = SpeechAnalyzer(modules: [module])
+        // Vocabulary: a failure here must not cost the call its transcript, so it is dropped (the text is the same as without).
+        if let ctx = Self.context(for: contextualStrings) { try? await analyzer.setContext(ctx) }
         try await analyzer.prepareToAnalyze(in: format)
         self.analyzer = analyzer
         return format

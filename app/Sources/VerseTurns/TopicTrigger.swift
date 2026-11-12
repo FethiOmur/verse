@@ -5,6 +5,7 @@ import Foundation
 final class MatchCache {
     let matcher: BankMatcher
     private var memo: [String: [BankMatcher.Candidate]] = [:]
+    private var coverageMemo: [String: Double] = [:]
     private static let limit = 256
 
     init(_ matcher: BankMatcher) { self.matcher = matcher }
@@ -17,6 +18,16 @@ final class MatchCache {
         let r = matcher.top2(text)
         memo[text] = r
         return r
+    }
+
+    /// `BankMatcher.coverage`, memoized like `top2`.
+    func coverage(_ text: String, id: String, turnEnded: Bool = false) -> Double {
+        let key = id + (turnEnded ? "\u{1E}" : "\u{1F}") + text
+        if let c = coverageMemo[key] { return c }
+        if coverageMemo.count >= Self.limit { coverageMemo.removeAll(keepingCapacity: true) }
+        let c = matcher.coverage(text, id: id, turnEnded: turnEnded)
+        coverageMemo[key] = c
+        return c
     }
 
     /// The best entry when it clears `threshold` and leads the runner-up by `margin` (`BankMatcher.match` on the memo).

@@ -240,6 +240,34 @@ final class SessionFolderTests: XCTestCase {
         XCTAssertEqual(model(defaults).mode, .recent)
     }
 
+    /// `folders.json` cannot be replaced (a folder sits where the file was): the three silent writes now say so in the page's notice.
+    func testFolderWritesThatFailShowInTheSessionsNotice() throws {
+        let (defaults, cleanup) = FolderFixtures.defaults()
+        defer { cleanup() }
+        try FolderFixtures.session("harbor-kickoff", in: root)
+        let m = model(defaults)
+        let f = try m.folders.create(name: "Harbor Ledger")
+        try m.folders.move("harbor-kickoff", to: f.id)
+        XCTAssertNil(m.folders.notice)
+        let file = m.folders.url
+        try FileManager.default.removeItem(at: file)
+        try FileManager.default.createDirectory(at: file, withIntermediateDirectories: true)
+        let failed = FolderError.writeFailed.message
+
+        m.move("harbor-kickoff", to: nil)
+        XCTAssertEqual(m.folders.notice, failed, "move")
+        m.folders.dismissNotice()
+        XCTAssertNil(m.folders.notice)
+
+        m.deleteFolder(f.id)
+        XCTAssertEqual(m.folders.notice, failed, "delete")
+        XCTAssertEqual(m.folders.folders.count, 1, "the folder is still there")
+        m.folders.dismissNotice()
+
+        m.dismiss(.new("Northwind"), for: "harbor-kickoff")
+        XCTAssertEqual(m.folders.notice, failed, "dismiss a suggestion")
+    }
+
     func testAPracticeRunBuiltFromAFiledSessionGoesIntoThatFolderOnce() throws {
         let (defaults, cleanup) = FolderFixtures.defaults()
         defer { cleanup() }

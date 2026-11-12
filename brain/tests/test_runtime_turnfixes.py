@@ -252,7 +252,17 @@ async def two_partials_then_turn(b, kind, delay_note=True, addressee="me"):
 
 
 def f_calls(t):
+    """The F answer calls. The hidden bank verdict check (V, engine `_ensure_verdict_src`) is sent with F's request but its
+    own route label, so it is not counted here: `assert_check_hidden` proves it never shows anything."""
     return [c for c in t.by_route("F")]
+
+
+def assert_check_hidden(t, em, checks: int | None = None) -> None:
+    """The verdict check never surfaces as an answer: no delta from it, at most one D whose lines reach the screen."""
+    if checks is not None:
+        assert len(t.by_route("V")) == checks, f"verdict checks: {len(t.by_route('V'))}, expected {checks}"
+    assert not [e for e in em.of("delta") if e["tier"] == "V"], "a verdict check reached the screen"
+    assert len({e["id"] for e in em.of("delta") if e["tier"] == "D"}) <= 1, "two D answers reached the screen"
 
 
 @pytest.mark.parametrize("kind", ["fragment", "statement"])
@@ -292,6 +302,9 @@ def test_late_hit_after_the_probe_escalated_does_not_answer_twice():
     assert len(f_calls(t)) == 1, "the probe is the answer"
     assert not em.of("metric", stage="late_hit_rescue")
     assert len(t.by_route("D")) == 1
+    # the probe answers on screen and D was decided at the escalation: the late hit has nothing to confirm or pull
+    assert_check_hidden(t, em, checks=0)
+    assert em.of("metric", stage="verdict_check", why="moot")
 
 
 def test_late_hit_after_an_acknowledgement_was_shown_does_not_add_a_second_answer():
@@ -372,3 +385,7 @@ def test_late_swift_bank_hit_answers_once(kind):
     assert len(answers) == 1
     assert shown(em, "F")[0] == "SAY: Sure, here is the short version."
     assert "Thanks, noted." not in all_text(em)
+    # the second hit (b002) lands before D is decided, and the rescue F was checked against b001: one hidden check decides
+    # whether D may use b002's deep answer. It shows nothing; one D reaches the screen.
+    assert_check_hidden(t, em, checks=1)
+    assert len(shown(em, "D")) >= 1

@@ -33,11 +33,15 @@ Write exactly these lines in plain text and nothing else:
 SAY: <one short sentence {owner} can say at once, first person, spoken style, at most 20 words>
 - <a concrete supporting point, at most 18 words>
 - <a second point, at most 18 words>
-BANK: <the id of the answer-bank entry that answers this question, or none>
+BANK: <the id of the answer-bank entry whose question asks for the same thing as the current question, or none>
 
 Rules:
 - Use numbers, dates and names only when they appear in the meeting pack. Never invent them.
 - Write exactly two "- " lines, never more, then the BANK line. The BANK line is required.
+- An answer-bank entry fits only when its question asks for the same thing as the current question: the same \
+information, so that its answer answers it. The same topic, project or words are not enough: a question about another \
+detail of it (who, how many, which tool, when, another cost or result) is not that entry; answer it from the rest of the \
+meeting pack and write BANK: none.
 - When an answer-bank entry fits the question, reuse its opener and its two most relevant points, shortened if \
 needed.
 - Answer in the language named with the question.
@@ -237,12 +241,56 @@ def _files(files: str) -> str:
     return files + "\n" if files else ""
 
 
+def _phrasings(rec: dict, lang: str) -> list[str]:
+    """The entry's question plus its paraphrases in `lang` (all languages when `lang` has none): what the paraphrase matcher
+    indexes (runtime/embed.py `bank_phrases`), so the model compares with the same phrasings that put the card up."""
+    out = [str(rec.get("question", ""))]
+    para = rec.get("paraphrases") or {}
+    out += list(para.get(lang) or [p for k in sorted(para) for p in (para[k] or [])])
+    seen: list[str] = []
+    for p in (" ".join(str(x).split()) for x in out):
+        if p and p not in seen:
+            seen.append(p)
+    return seen
+
+
+def bank_check(rec: dict | None, lang: str, final: bool = True, prepared: bool = False) -> str:
+    """The BANK CHECK block for the tail of a fast call whose turn has a bank hit (Swift's lexical match or the paraphrase
+    matcher): that entry's card is already on screen, and the BANK line of this call is the verdict that keeps or pulls it
+    (engine `_maybe_verdict`). The matchers see wording only, so a question on the entry's topic that asks something else
+    (a near miss: "How much did it cost to hire the team?" against "How much did it cost to run?") puts the card up too.
+    The block gives the model the entry's phrasings to compare with, the test (does the entry's answer answer it), and asks
+    for the BANK line first, so the verdict reaches the screen at the first line and the answer lines follow the decision.
+    `final` False: the question is still being spoken (an S call on a partial). `prepared`: a PREPARED ANSWER block follows
+    (prefer_bank), and the block says it is no part of the decision. Empty without an entry."""
+    if not rec or not rec.get("id"):
+        return ""
+    bid = rec["id"]
+    lines = [OWNER.fill(f"BANK CHECK. The card of answer-bank entry [{bid}] is on {{owner}}'s screen now, because the words of the "
+                        f"current question are close to it. Entry {bid} answers this question, asked in any of these ways:")]
+    lines += [f"- {p}" for p in _phrasings(rec, lang)]
+    lines.append(
+        f"Does the current question ask for the same thing, so that the answer of entry {bid} answers it? Other words for the "
+        "same request are the same thing. Sharing its topic, its project or most of its words is not enough: a question about "
+        "another detail (who, how many, which tool, when, another cost, result, person or time) asks something else."
+        + ("" if final else " The question may be cut off: judge it by what its words ask so far.")
+        + (" Decide from the question and these phrasings only: the PREPARED ANSWER block below is not part of this decision."
+           if prepared else "")
+        + f" Write the BANK line first, before the SAY line: BANK: {bid} when it asks the same thing, BANK: none when it does "
+        f"not. After BANK: none, the SAY line and the points answer the current question itself from the meeting pack, not "
+        f"from entry {bid}.")
+    return "\n".join(lines)
+
+
 def fast_tail(question: str, lang: str, final: bool, files: str = "", bank: str = "", size: str | None = None,
-              card_lines: int | None = None) -> str:
+              card_lines: int | None = None, check: str = "") -> str:
     """`bank`: the PREPARED ANSWER block of a matched bank entry (a session's `prefer_bank` directive); empty leaves the tail as it was.
-    `size`: the question's size class (runtime/size.py), stated as a rule before the question; None leaves the tail as it was."""
+    `size`: the question's size class (runtime/size.py), stated as a rule before the question; None leaves the tail as it was.
+    `check`: the BANK CHECK block (`bank_check`) of a turn with a bank hit; empty leaves the tail as it was."""
     state = "finished" if final else "still being spoken, may be cut off"
-    return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}{_files(bank)}{size_line(size, card_lines)}"
+    # the BANK CHECK comes before the PREPARED ANSWER block and apart from it: the fit is judged on the question and the
+    # entry's phrasings, before the prepared card (prefer_bank) is in view
+    return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}{_files(check)}{_files(bank)}{size_line(size, card_lines)}"
             f"CURRENT QUESTION ({state}): {' '.join(question.split())}")
 
 

@@ -92,7 +92,6 @@ struct EntityPageView: View {
     @Environment(\.peopleBriefRender) private var briefRender
     @State private var files = EntityFiles()
     @State private var brief: BriefFile?
-    @State private var briefFailure: ChatFailure?
     @State private var briefAnimated = false
     @State private var renaming = false
     @State private var draft = ""
@@ -213,14 +212,17 @@ struct EntityPageView: View {
             .layoutPriority(1)
             Spacer(minLength: 8)
             HStack(spacing: 8) {
-                HomeSecondaryButton(verbatim: L10n.tr("Ask about \(PeopleModel.shortName(e))"), symbol: "bubble.left.and.text.bubble.right") {
+                HomeSecondaryButton(verbatim: L10n.tr("Ask about \(PeopleModel.shortName(e))"), symbol: "bubble.left.and.text.bubble.right", flexible: true) {
                     if let newest = page.meetings.first { router.selectedSession = newest.name }
                     router.showAsk(.entity(e.id))
                 }
                 .accessibilityIdentifier("verse.home.people.ask")
                 menu(page)
             }
-            .fixedSize()
+            // The buttons keep their natural width, up to a cap: a long Italian or Turkish label (or a company's whole name) scales
+            // down inside the button instead of pushing the title out of the header.
+            .frame(maxWidth: 300, alignment: .trailing)
+            .layoutPriority(2)
         }
     }
 
@@ -285,16 +287,18 @@ struct EntityPageView: View {
         let to: MemoryEntity.Kind = e.kind == .person ? .company : .person
         actionError = nil
         do { try store.apply(L10n.tr("Change Kind"), undoManager: undoManager) { try $0.setKind(e.id, to) } } catch {
-            renameError = error
-            renaming = true
-            draft = e.name
+            // Say it under the header: the rename field (and a name being typed in it) is not this change's to touch.
+            actionError = error
         }
     }
 
     private func setHidden(_ e: MemoryEntity, _ hidden: Bool) {
-        _ = try? store.apply(hidden ? L10n.tr("Hide") : L10n.tr("Show"), undoManager: undoManager) { $0.setHidden(e.id, hidden) }
-        // `setHidden` does not throw: a write that failed leaves the entity as it was.
-        actionError = store.resolve(id: e.id).map { $0.hidden == hidden } == false ? .writeFailed : nil
+        actionError = nil
+        do {
+            try store.apply(hidden ? L10n.tr("Hide") : L10n.tr("Show"), undoManager: undoManager) { if let failed = $0.setHidden(e.id, hidden) { throw failed } }
+        } catch {
+            actionError = error
+        }
     }
 
     private func performMerge(_ loser: MemoryEntity, into survivor: MemoryEntity) {
@@ -345,7 +349,8 @@ struct EntityPageView: View {
 
     private func briefPlate(_ page: PeopleModel.Page) -> some View {
         let making = memory.briefsInFlight.contains(page.entity.id)
-        let state = PeopleModel.briefState(past: page.meetings, brief: brief, making: making, failure: briefFailure)
+        // The failure lives on the memory service, so a run that ended while this page was away still shows when it is reopened.
+        let state = PeopleModel.briefState(past: page.meetings, brief: brief, making: making, failure: memory.briefFailures[page.entity.id])
         return Group {
             if state != .hidden {
                 EntityPlate(title: "Brief", caption: briefCaption(state)) {
@@ -442,17 +447,13 @@ struct EntityPageView: View {
         let lang = BriefLanguage.pick(upcoming: upcomingLang, past: past.map { BriefLanguage.language(of: $0.dir) })
         let request = BriefRequest(entity: .init(id: e.id, kind: e.kind.rawValue, name: e.name, company: page.company?.name),
                                    sessions: past.map(\.name), upcoming: upcoming, lang: lang, sessionOut: nil)
-        briefFailure = nil
         let paths = memory.paths
         Task { @MainActor in
             let result = await memory.makeBrief(request)
-            switch result {
-            case .success:
+            if case .success = result {
                 brief = BriefStore.load(entity: e.id, paths: paths)
                 briefAnimated = true
                 AccessibilityNotification.Announcement(L10n.tr("Brief ready")).post()
-            case .failure(let f):
-                if f.kind != "cancelled" { briefFailure = f }
             }
         }
     }
@@ -628,8 +629,8 @@ struct EntityPageView: View {
                         HStack(spacing: 10) {
                             Text(verbatim: "\(s.title) · \(PeopleModel.date(s.date))").font(VT.Font.body).foregroundStyle(ink.primary).lineLimit(1)
                             Spacer(minLength: 8)
-                            PeopleSmallButton(title: "Add") { store.link(s.name, to: page.entity.id) }
-                            PeopleSmallButton(title: "Not this") { store.dismiss(s.name, for: page.entity.id) }
+                            PeopleSmallButton(title: "Add") { actionError = store.link(s.name, to: page.entity.id) }
+                            PeopleSmallButton(title: "Not this") { actionError = store.dismiss(s.name, for: page.entity.id) }
                         }
                     }
                 }
@@ -645,7 +646,7 @@ struct EntityPageView: View {
                     .font(VT.Font.callout).foregroundStyle(ink.secondary)
                 Spacer(minLength: 8)
                 HomeSecondaryButton("Merge") { pendingMerge = (page.entity, other) }
-                PeopleSmallButton(title: "Not this") { store.dismiss(other.id, for: page.entity.id) }
+                PeopleSmallButton(title: "Not this") { actionError = store.dismiss(other.id, for: page.entity.id) }
             }
             .padding(.horizontal, 4)
             .accessibilityElement(children: .contain)

@@ -57,3 +57,15 @@ def test_a_recorded_final_pass_is_used_instead_of_the_approximation():
     events = [(1.0, two[0]), (1.5, two[1]), (2.0, {"type": "turn", "turn_id": "r1", "dir": "to_brain", "text": "x"}), (2.07, two[2])]
     hits = [(w, o["bank_id"]) for w, o in rb.redecide(events, 0.90, 0.005, 3, final=True) if o.get("type") == "bank_hit"]
     assert hits == [(2.07, "b005")], "the recorded wall time, not turn + 60 ms"
+
+
+def test_support_and_isolation_are_read_from_the_recorded_metric():
+    """Runs recorded since 2026-11-12 carry `support` / `isolation` on every embed line; the gates re-decide from them, and an
+    evaluation without them is rejected (bank_scores re-embeds old runs before deciding)."""
+    gates = (0.855, 0.045, 3)
+    one_phrase = [dict(ev("b012", 0.914, 0.86), support=0.852, isolation=0.053) for _ in range(3)]
+    agreed = [dict(ev("b019", 0.91, 0.86), support=0.89, isolation=0.06) for _ in range(3)]
+    assert [h[1] for h in rb.decide(one_phrase, 0.90, 0.005, 3, final=True)] == ["b012"], "gates off"
+    assert rb.decide(one_phrase, 0.90, 0.005, 3, final=True, gates=gates) == []
+    assert [(j, h) for j, h, _, _ in rb.decide(agreed, 0.90, 0.005, 3, final=True, gates=gates)] == [(2, "b019")]
+    assert rb.decide(RISING, 0.90, 0.005, 3, final=True, gates=gates) == [], "no recorded support / isolation"

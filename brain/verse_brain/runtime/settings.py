@@ -24,9 +24,11 @@ SONNET = PREP_MODEL  # "claude-sonnet-5-5"
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 _ROUTES: dict[str, dict] = {
-    # S and F share one tuple (and therefore one cache entry): Haiku, thinking off, effort low.
-    "S": {"model": HAIKU, "max_tokens": 120, "thinking": {"type": "disabled"}, "output_config": {"effort": "low"}},
-    "F": {"model": HAIKU, "max_tokens": 120, "thinking": {"type": "disabled"}, "output_config": {"effort": "low"}},
+    # S and F share one tuple (and therefore one cache entry): Haiku, thinking off, effort low. max_tokens 200 (was 120): a full
+    # card ran to 172 output tokens, p50 87 / p90 121 (tests/live_bank_verdict.py, 88 runs, 2026-11-12) and 120 cut the last
+    # point in 3-13 of 66 runs; the extra tokens come after the first line at ~4 ms each (first line to done p90 0.55 s).
+    "S": {"model": HAIKU, "max_tokens": 200, "thinking": {"type": "disabled"}, "output_config": {"effort": "low"}},
+    "F": {"model": HAIKU, "max_tokens": 200, "thinking": {"type": "disabled"}, "output_config": {"effort": "low"}},
     # C (follow my answer): the S/F tuple byte for byte, so it rides their prompt cache (and their pre-warm). Only max_tokens
     # is its own: a follow card is a SAY line and two or three points, like F's.
     "C": {"model": HAIKU, "max_tokens": 160, "thinking": {"type": "disabled"}, "output_config": {"effort": "low"}},
@@ -47,6 +49,13 @@ ASK_ROUTES: dict[str, dict] = {
     "opus": {"model": OPUS, "max_tokens": 4000, "output_config": {"effort": "medium"},
              "betas": [FALLBACK_BETA], "fallbacks": "default"},
 }
+# The context window of each Ask model (input + output tokens), next to the ids above (review P2, 2026-11-12). 200k is the
+# window the brief for this fix gave ("200k unless the code opts into a larger one"; no context beta is sent). The claude-api
+# skill's model table (cached 2026-11-03) lists 1M for Haiku 5.5, Sonnet 5.5 and Opus 5.5 with no opt-in; not checked live
+# (the Models API `max_input_tokens` would settle it). 200k is the safe side: with a larger real window only more history
+# than needed is dropped. Raise it per model once confirmed (and mind Haiku 5.5's higher price above 100k input tokens).
+ASK_CONTEXT_WINDOW: dict[str, int] = {HAIKU: 200_000, SONNET: 200_000, OPUS: 200_000}
+ASK_CONTEXT_SAFETY_TOKENS = 4_000   # headroom for the token estimate of history and excerpts (characters / 3) and the framing
 ASK_CONTEXT_MAX_TOKENS = 180_000    # at or below: the whole transcript is cached (full mode); above: chunked mode
 ASK_EXCERPT_TOKENS = 60_000         # chunked mode: the excerpts of one question
 ASK_HISTORY_PAIRS = 12              # the last Q/A pairs after the last reset that are sent again
@@ -55,6 +64,14 @@ ASK_HISTORY_PAIRS = 12              # the last Q/A pairs after the last reset th
 def ask_params(model: str) -> dict:
     """A fresh copy of the tuple of an Ask model ("haiku" | "sonnet" | "opus")."""
     return copy.deepcopy(ASK_ROUTES[model])
+
+
+def ask_input_budget(model: str) -> int:
+    """Input tokens one Ask request of `model` ("haiku" | "sonnet" | "opus") may use: the model's window minus its max_tokens
+    minus the safety margin. A request over it drops its oldest history pairs (ask.fit_history); the grounding block and the
+    question are never cut."""
+    p = ASK_ROUTES[model]
+    return ASK_CONTEXT_WINDOW[p["model"]] - p["max_tokens"] - ASK_CONTEXT_SAFETY_TOKENS
 
 
 # Which tier's tuple each model uses for pre-warm / keep-alive / summarize.
@@ -91,6 +108,12 @@ class Config:
     d_min_words: int = 4
     bank_skip_score: float = 0.85
     bank_verdict_wait_s: float = 3.0  # how long D waits for Haiku's BANK line before firing anyway
+    # V, the bank verdict check (engine `_ensure_verdict_src`): the F request of the final text, cut after its first line (the
+    # BANK CHECK puts the BANK line first; "BANK: b013" is ~5 tokens). One that stops here without a BANK line gives no verdict.
+    verdict_check_max_tokens: int = 24
+    # D with a pending bank verdict is fired at once (with the entry) and held until the verdict; a rejection refires it
+    # without the entry (engine `_decide_d`). False: D waits for the verdict before it is fired.
+    d_speculative_bank: bool = True
     d_retry_max_wait_s: float = 8.0   # a 429 retry-after longer than this makes the answer stale
     # transport
     hedge_after_s: float = 1.5      # S/F (Haiku)
@@ -154,6 +177,30 @@ class Config:
     embed_margin: float = 0.005        # over the runner-up entry; 0.0-0.01 give the same replay result, 0.01 loses 2 bench hits
     embed_min_words: int = 5           # words in the partial
     embed_consecutive: int = 3         # the same entry on this many consecutive evaluated partials (2 lets prefix spikes through)
+    # Support and isolation gates (2026-11-12, embed.AcceptRule; on every evaluation, both lanes and the final text). A single
+    # cosine threshold cannot separate near misses (a question on a bank topic that asks something else) from paraphrases:
+    # on bench/embed/ml/en_near.json the 0.90 rule showed 7 wrong of 38 shown (3 other-entry paraphrases, 4 near misses), and
+    # 0.925 removed them but kept 12/60 hits. Measured with bench/embed/rule_search.py (real model, every word prefix + the
+    # final text, embed.step). The gates were chosen on the original set (blind_set.json 60 paraphrases + en_near.json 20 near
+    # misses + 40 off-bank) before the fresh set (ml/en_heldout.json: 44 paraphrases, 31 near misses, 15 off-bank, written
+    # first) was scored:
+    #   rule                          original: hits  other entry  near  off  wrong/shown | fresh: hits  other entry  near  off  wrong/shown
+    #   0.90 (before)                           31/60      3        4/20   0     7/38     |        33/44      2       13/31   0    15/48
+    #   0.925 threshold only                    12/60      0        0/20   0     0/12     |        28/44      2        4/31   0     6/34
+    #   0.90 + support + isolation (this)       30/60      0        2/20   0     2/32     |        33/44      0        9/31   0     9/42
+    #   0.89 + support + isolation              34/60      0        2/20   0     2/36     |        33/44      0       10/31   0    10/43
+    # Other-entry paraphrase cards go to 0 on both sets (support does that; isolation takes 2 near misses off the original set
+    # and is neutral on the fresh one). 0.89 was best on the original set but shows 2 wrong cards on the stored replay
+    # eval/out/f3-embed (14/24 hits, 2/36 shown wrong, criterion 2 missed); at 0.90 both stored replays are unchanged
+    # (f3-embed 13/24, 0/34; f3-fresh 13/24, 2/36, both wrong cards from Swift's n-gram matcher), re-decided by
+    # eval/rescore_bank.py. The fresh near misses that still show are minimal pairs ("How much did it cost to hire the Lantern
+    # team?" vs "How much did it cost to run?", "regret" vs "proud of") at a median top-1 of 0.913: no cheap signal tried
+    # separates them (rule_search.py: shared / uncovered content words, ask-type agreement, the entry's answer points, a
+    # question-answering query prefix, a content-words-only view; each costs hits or does nothing on the fresh set). Both gates
+    # use the cosines the index already computes: no extra embedding, no measurable scoring time (p50 0.90 ms either way).
+    embed_support: float | None = 0.855    # the top entry's second-best phrase (a bank entry has its question + 3 paraphrases)
+    embed_isolation: float | None = 0.045  # top-1 minus the 4th-best entry (isolation_rank 3; measured on a 22-entry bank)
+    embed_isolation_rank: int = 3
     # Fast lane (2026-11-12, card delay): ONE evaluated partial at top-1 >= 0.93 with a margin >= 0.03 shows the card at once.
     # - Stored replay f3-embed (embed.step re-deciding the recorded partials, eval/rescore_bank.py): 13/24 paraphrase hits,
     #   0 wrong of 34 shown (unchanged), paraphrase card p50 / p90 0.57 / 0.74 s -> 0.45 / 0.60 s after the acoustic end. Edge
@@ -186,6 +233,10 @@ class Config:
     #   en-rev-it 24/60 hits, 6/30 wrong; en-rev-tr 24/60, 7/31 wrong (en itself on the same set: 31/60, 7/38, all 7 being
     #   wrong-entry paraphrases and near misses; 0 off-bank). Centroid scoring, margin-weighted scores and indexing both
     #   languages' paraphrases were tried: best recall at 0 wrong stays <= 12/57 (it) and <= 24/66 (tr), full text only.
+    # Re-checked with the support / isolation gates (2026-11-12, bench/embed/rule_search.py; rule chosen on one half of the
+    # entries, scored on the other): it: both halves pick isolation 0.06 alone, 0 wrong on the other half (13/60 + 7/20 hits
+    # in all), but on a fresh Italian set (ml/it_heldout.json, written before scoring) it shows 8 near-miss cards of 28 shown
+    # (20/44 hits). tr: 0.915 on both halves, 3 wrong of 28 shown on the held-out halves (25/80 hits). Both stay off.
     embed_langs: tuple[str, ...] = ("en",)
     # Per-language overrides (keys of AcceptRule: threshold, margin, consecutive, fast_*); a language in `embed_langs`
     # without an entry uses the English fields. Empty: no other language is calibrated (see above).
@@ -216,7 +267,8 @@ class Config:
         """The paraphrase matcher's accept rule for a bank index built in `lang` (the session language)."""
         base = {"threshold": self.embed_threshold, "margin": self.embed_margin, "consecutive": self.embed_consecutive,
                 "fast_threshold": self.embed_fast_threshold, "fast_margin": self.embed_fast_margin,
-                "fast_consecutive": self.embed_fast_consecutive}
+                "fast_consecutive": self.embed_fast_consecutive, "support": self.embed_support,
+                "isolation": self.embed_isolation, "isolation_rank": self.embed_isolation_rank}
         base.update(self.embed_lang_rules.get(lang, {}))
         return AcceptRule(**base)
 

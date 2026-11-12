@@ -104,6 +104,12 @@ public struct FactIndex: Sendable {
     /// Folded token sequences of the glossary terms and of the name facts, for `SessionTerms`.
     var glossaryTokenLists: [[String]] { terms.map(\.tokens).filter { !$0.isEmpty } }
     var nameTokenLists: [[String]] { facts.filter { $0.kind == "name" }.map(\.tokens).filter { !$0.isEmpty } }
+    /// The glossary terms and name facts as written, for the recognizer's vocabulary and `TermCorrector`.
+    var glossaryTerms: [String] { terms.map(\.term) }
+    var nameValues: [String] { facts.filter { $0.kind == "name" }.map(\.value) }
+    /// Every sentence the fact sheet and glossary say (fact texts, glossary lines): their lower-case words are ordinary words
+    /// of the session that `TermCorrector` never rewrites.
+    var sentences: [String] { facts.map(\.text) + terms.map(\.line) }
     /// True when `text` carries a number or a date the fact sheet knows ("42K budget").
     func hasNumberOrDate(in text: String) -> Bool {
         chips(in: text).contains { $0.kind == "number" || $0.kind == "date" }

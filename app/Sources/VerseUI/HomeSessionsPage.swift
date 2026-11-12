@@ -548,9 +548,26 @@ private struct WindowCloseObserver: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { Probe(onClose: onClose) }
     func updateNSView(_ view: NSView, context: Context) { (view as? Probe)?.onClose = onClose }
 
+    /// Holds the observer and removes it when the holder goes: the view's own deinit cannot touch main-actor state.
+    private final class Registration: @unchecked Sendable {
+        private var token: NSObjectProtocol?
+
+        func set(_ new: NSObjectProtocol?) {
+            remove()
+            token = new
+        }
+
+        func remove() {
+            token.map(NotificationCenter.default.removeObserver)
+            token = nil
+        }
+
+        deinit { remove() }
+    }
+
     private final class Probe: NSView {
         var onClose: () -> Void
-        private var token: NSObjectProtocol?
+        private let registration = Registration()
 
         init(onClose: @escaping () -> Void) {
             self.onClose = onClose
@@ -559,13 +576,18 @@ private struct WindowCloseObserver: NSViewRepresentable {
 
         required init?(coder: NSCoder) { fatalError() }
 
+        /// The observer goes as soon as the view leaves its window (the page disappears) and again when the view is released.
+        override func viewWillMove(toWindow newWindow: NSWindow?) {
+            registration.remove()
+            super.viewWillMove(toWindow: newWindow)
+        }
+
         override func viewDidMoveToWindow() {
-            token.map(NotificationCenter.default.removeObserver)
-            token = nil
+            registration.remove()
             guard let window else { return }
-            token = NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { [weak self] _ in
+            registration.set(NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.onClose() }
-            }
+            })
         }
     }
 }

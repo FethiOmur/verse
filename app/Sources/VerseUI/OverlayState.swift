@@ -822,8 +822,9 @@ public struct OverlayReducer: Sendable {
     private mutating func applyChip(_ o: [String: JSONValue], now: TimeInterval) {
         guard let tid = o[string: "turn_id"], let text = o[string: "text"], !text.isEmpty else { return }
         let kind = o[string: "kind"] ?? ""
-        // A turn with a bank hit has its answer: a topic chip that was already on its way is dropped.
-        if kind == "topic", turns[tid]?.bankHit != nil { return }
+        // A turn with a bank hit has its answer: a topic chip that was already on its way is dropped. A hit the brain rejected
+        // (`bank_verdict agree:false`) is no answer, so its turn keeps its topic chips.
+        if kind == "topic", let bid = turns[tid]?.bankHit, turns[tid]?.rejectedBankIDs.contains(bid) != true { return }
         let chip = OverlayChip(text: text, source: OverlayChip.sourceLabel(kind: kind, ref: o[string: "source_ref"] ?? ""), kind: kind)
         if kind == "topic", state.card == nil || state.card?.turnID != tid {
             // A topic can come up with no question card open: it goes to the slim row under the capsule.

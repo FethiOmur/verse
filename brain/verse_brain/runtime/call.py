@@ -71,9 +71,17 @@ class CallDirectives:
             if deep:
                 lines.append("- Prepared answers: when a PREPARED DEEP ANSWER is shown, take your points from it, in its words, cut to size.")
             else:
-                lines.append("- Prepared answers: when an answer-bank entry fits the question (a PREPARED ANSWER block shows the one "
-                             "that matched), the card is that entry: keep its wording, cut words to fit the card size, add no points of "
-                             "your own, and write its id on the BANK line. Prefer the prepared wording to your own.")
+                # The decision whether the entry fits belongs to the BANK CHECK alone; this rule only says what the card is once
+                # it is made. Stated as "when an entry fits ... the card is that entry", it made Haiku judge the fit by the
+                # prepared answer's content and pull real paraphrases (10 of 66 runs against 0 of 66 without prefer_bank,
+                # tests/live_bank_verdict.py, 2026-11-12); with this wording 3 of 66 on the same cases (17 of 132 on all 44
+                # held-out paraphrases, against 7 of 132 without prefer_bank). Dropping the PREPARED ANSWER block instead
+                # gave 14 of 132 and cut the cards that reuse the entry's opener from 97 % to 82 %, so the block stays.
+                lines.append("- Prepared answers: this rule applies only after the BANK line is written, and never changes it: the "
+                             "BANK CHECK alone decides that line, from the question and the entry's phrasings. After BANK: <id> of a "
+                             "PREPARED ANSWER block, the card is that block: keep its wording, cut words to fit the card size, add no "
+                             "points of your own; prefer the prepared wording to your own. After BANK: none, ignore the block and "
+                             "answer the question itself.")
         if self.numbers:
             lines.append("- Numbers: a number, date or name may appear only when the sources named in the rules above give it, in the "
                          "same form: never round, convert, add up or estimate. When no source has the figure, leave the number out.")
@@ -115,7 +123,12 @@ def bank_hint(rec: dict | None) -> str:
     """The PREPARED ANSWER block for the tail of a fast call: the matched bank entry as the card it would be."""
     if not rec:
         return ""
-    lines = [f"PREPARED ANSWER [{rec.get('id', '')}] (matched this question; use it as the card):"]
+    # "matched this question; use it as the card" made Haiku confirm and copy the card for near misses (46 % of 153 runs,
+    # tests/live_bank_verdict.py, 2026-11-12): the block only names the candidate; the BANK CHECK next to it decides.
+    # After the BANK CHECK in the tail and apart from it (prompt.fast_tail): the card to write once BANK names the entry, not
+    # evidence for or against the fit.
+    lines = [f"PREPARED ANSWER [{rec.get('id', '')}] (the card to write only after BANK: {rec.get('id', '')}; it plays no "
+             "part in the BANK CHECK):"]
     if rec.get("opener"):
         lines.append(f"SAY: {' '.join(str(rec['opener']).split())}")
     lines += [f"- {' '.join(str(p).split())}" for p in rec.get("points", [])]

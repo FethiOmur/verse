@@ -800,7 +800,42 @@
    "run": "it-fresh",
    "what": "it02 attempt 1",
    "usd": 0.028029
+  },
+  {
+   "run": "live-it-after",
+   "what": "it01 attempt 1",
+   "usd": 0.032395
+  },
+  {
+   "run": "live-it-after",
+   "what": "it02 attempt 1",
+   "usd": 0.026862
+  },
+  {
+   "run": "live-it-after",
+   "what": "it03 attempt 1",
+   "usd": 0.049539
+  },
+  {
+   "run": "live-en-after",
+   "what": "d01 attempt 1",
+   "usd": 0.020812
+  },
+  {
+   "run": "live-en-after",
+   "what": "d04 attempt 1",
+   "usd": 0.029476
+  },
+  {
+   "run": "live-en-after",
+   "what": "d06 attempt 1",
+   "usd": 0.025337
+  },
+  {
+   "run": "live-en-after",
+   "what": "d07 attempt 1",
+   "usd": 0.028176
   }
  ],
- "total_usd": 1.197684
+ "total_usd": 1.410281
 }
