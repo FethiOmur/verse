@@ -1,0 +1,1 @@
+{"channel":"remote","engine":"SpeechTranscriber+fastResults","reason":"Nemotron model files missing in /Users/fethiomur/Library/Application Support/Verse/models/nemotron-en-0.6b-560ms: encoder/encoder_int8.mlmodelc, decoder.mlmodelc, joint.mlmodelc, tokenizer.json, metadata.json","state":"engine_fallback","type":"status"}

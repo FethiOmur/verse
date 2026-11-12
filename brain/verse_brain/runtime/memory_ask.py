@@ -27,6 +27,7 @@ import math
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from pathlib import Path
 
 from .. import extensions
@@ -41,6 +42,7 @@ from .settings import MEMORY_CATALOG_MAX, MEMORY_HISTORY_PAIRS, ask_params
 log = logging.getLogger("verse.runtime.memory_ask")
 
 EPHEMERAL = {"type": "ephemeral"}
+EMBED_TIMEOUT_S = 8.0     # one query embedding; past it the question is answered from the full-text branch alone
 
 # Frozen (golden tests). `{owner}` / `{OWNER}` / `{scope}` are the only variables; `{scope}` is SCOPE_ALL or SCOPE_ENTITY.
 SCOPE_ALL = "all of {owner}'s past meetings"
@@ -78,7 +80,12 @@ class _ThreadBound:
         self._raw, self._pool = raw, pool
 
     def embed(self, text: str) -> list[float]:
-        return self._pool.submit(self._raw.embed, text).result()
+        fut = self._pool.submit(self._raw.embed, text)
+        try:
+            return fut.result(timeout=EMBED_TIMEOUT_S)
+        except FutureTimeout:
+            fut.cancel()      # a call already running cannot be stopped; search() turns the vector branch off for this question
+            raise TimeoutError("query embedding timed out") from None
 
 
 class EmbedHost:
@@ -215,6 +222,7 @@ class MemoryAskRuntime(AskRuntime):
         self.host = EmbedHost(fake=fake, no_embed=no_embed, model=embed_model, backend=embed_backend)
         self.pairs: list[tuple[str, str, tuple[str, ...]]] = []     # (question, answer, cited session names)
         self.excerpt_tokens_last = 0
+        self._search_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="memory-search")
 
     # ------------------------------------------------------------------ files
     @property
@@ -241,6 +249,7 @@ class MemoryAskRuntime(AskRuntime):
 
     async def shutdown(self) -> None:
         await super().shutdown()
+        self._search_pool.shutdown(wait=False)
         await self.host.close()
         if self.index is not None:
             self.index.close()
@@ -302,8 +311,8 @@ class MemoryAskRuntime(AskRuntime):
         system = [{"type": "text", "text": self._system()}]
         messages = [{"role": "user", "content": [{"type": "text", "text": grounding}]}]
         try:
-            return await self.client.count_tokens(PREP_MODEL, system, messages)
-        except Exception as e:  # noqa: BLE001
+            return await asyncio.wait_for(self.client.count_tokens(PREP_MODEL, system, messages), self.count_timeout)
+        except Exception as e:  # noqa: BLE001 - includes the timeout
             log.warning("count_tokens failed (%s); estimating", type(e).__name__)
             return math.ceil(len(grounding) / 3)
 
@@ -313,6 +322,11 @@ class MemoryAskRuntime(AskRuntime):
         live = {s.name for s in self.index.sessions(None)} if self.index is not None else set()
         ok = [(q, a) for q, a, cited in self.pairs if all(c in live for c in cited)]
         return ok[-self.history_pairs:] if self.history_pairs > 0 else []
+
+    async def _build(self, model_key: str, text: str) -> dict:
+        """The retrieval (FTS, the query embedding, the Python dot products over every vector) runs on a worker thread, so a cancel
+        or stop that arrives meanwhile is read at once (review P3). One worker: searches never overlap each other."""
+        return await asyncio.get_running_loop().run_in_executor(self._search_pool, self.build_request, model_key, text)
 
     def build_request(self, model_key: str, question: str, history: list[tuple[str, str]] | None = None,
                       previous_question: str = "") -> dict:

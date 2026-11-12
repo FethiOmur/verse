@@ -82,6 +82,53 @@ def accepted(top1: float, second: float, threshold: float, margin: float) -> boo
     return top1 >= threshold and top1 - second >= margin
 
 
+@dataclass(frozen=True)
+class AcceptRule:
+    """The accept rule of one language (settings.Config.embed_rule builds it).
+
+    Base lane: top-1 >= `threshold`, margin >= `margin`, the same entry on `consecutive` consecutive evaluated partials; the
+    final text of a closed turn needs one evaluation. Fast lane (off when `fast_threshold` is None): the same entry on
+    `fast_consecutive` consecutive evaluations that each pass `fast_threshold` / `fast_margin` hits at once, one partial
+    earlier than the base lane allows."""
+    threshold: float
+    margin: float
+    consecutive: int
+    fast_threshold: float | None = None
+    fast_margin: float = 0.0
+    fast_consecutive: int = 2
+
+
+@dataclass
+class MatchState:
+    """Per-turn state of the accept rule: the current candidate, its run lengths, the last id sent."""
+    cand: str | None = None
+    count: int = 0          # consecutive evaluations of `cand` that pass the base gates
+    fast: int = 0           # ... of which the trailing run also passes the fast gates
+    sent: str | None = None
+
+    def reset(self) -> None:
+        self.cand, self.count, self.fast = None, 0, 0
+
+
+def step(state: MatchState, rule: AcceptRule, top: str | None, s1: float, s2: float, final: bool = False) -> str | None:
+    """Advance the rule by one evaluation. -> the bank id to show now, or None. Shared by the engine and the offline tools
+    (eval/rescore_bank.py, bench/embed/ml_calib.py), so a replayed decision is the engine's decision."""
+    if top is None or not accepted(s1, s2, rule.threshold, rule.margin):
+        state.reset()
+        return None
+    if top == state.cand:
+        state.count += 1
+    else:
+        state.cand, state.count, state.fast = top, 1, 0
+    fast_ok = rule.fast_threshold is not None and accepted(s1, s2, rule.fast_threshold, rule.fast_margin)
+    state.fast = state.fast + 1 if fast_ok else 0
+    hit = final or state.count >= rule.consecutive or (fast_ok and state.fast >= rule.fast_consecutive)
+    if hit and top != state.sent:
+        state.sent = top
+        return top
+    return None
+
+
 def unit(v: list[float]) -> list[float]:
     n = math.sqrt(sum(x * x for x in v))
     return [x / n for x in v] if n > 0 else list(v)
@@ -104,6 +151,7 @@ class BankIndex:
     """Unit vectors of every bank phrase; scores a query as the best phrase per entry (cosine)."""
 
     def __init__(self, embedder: Embedder, bank: dict[str, dict], lang: str) -> None:
+        self.lang = lang                       # the accept rule is chosen by the language the index was built in
         self.ids: list[str] = sorted(bank)
         self.doc_entry: list[int] = []
         self.vecs: list[list[float]] = []
@@ -139,6 +187,7 @@ class Result:
     top: list[tuple[str, float]]
     ms: float               # embed + match on the worker thread
     wait_ms: float          # queued -> started
+    lang: str = ""          # the language of the index that scored it
 
 
 class EmbedPath:
@@ -157,7 +206,8 @@ class EmbedPath:
         self._pending: Job | None = None
         self._busy = False
         self._warned = False
-        self._gen = 0               # bumps on every (re)start: results of an older index are dropped
+        self._gen = 0               # bumps on every (re)start and on close: results of an older index are dropped
+        self._closed = False
 
     @property
     def ready(self) -> bool:
@@ -165,7 +215,7 @@ class EmbedPath:
 
     # ---- start: load the engine and embed the bank, off the event loop
     def start(self, bank: dict[str, dict], lang: str) -> None:
-        if self.state == "unavailable":
+        if self.state == "unavailable" or self._closed:
             return
         self._gen += 1
         self.state = "loading"
@@ -176,7 +226,11 @@ class EmbedPath:
     def _load_sync(self, bank: dict[str, dict], lang: str) -> tuple[BankIndex, float, float]:
         t0 = time.perf_counter()
         if self._embedder is None:
-            self._embedder = self._factory()
+            emb = self._factory()
+            if self._closed:            # closed while the engine loaded: nobody else will close it (review P4)
+                emb.close()
+                raise EmbedUnavailable("closed while loading")
+            self._embedder = emb
         t1 = time.perf_counter()
         idx = BankIndex(self._embedder, bank, lang)
         return idx, (t1 - t0) * 1000, (time.perf_counter() - t1) * 1000
@@ -186,9 +240,10 @@ class EmbedPath:
         try:
             idx, load_ms, index_ms = await loop.run_in_executor(self._pool, self._load_sync, bank, lang)
         except Exception as e:  # noqa: BLE001 - EmbedUnavailable or anything the engine throws: the path stays off
-            self._unavailable(e)
+            if not self._closed:
+                self._unavailable(e)
             return
-        if gen != self._gen:
+        if gen != self._gen or self._closed:
             return
         self._index = idx
         self.state = "ready"
@@ -224,23 +279,25 @@ class EmbedPath:
         self._busy = True
         self._spawn(self._drain())
 
-    def _match_sync(self, job: Job) -> Result:
+    def _match_sync(self, job: Job, index: BankIndex, embedder: Embedder) -> Result:
+        # The index and the engine are captured on the event loop when the job is dispatched: a restart (language change)
+        # replaces self._index while this runs, and the result is then dropped by the generation check (review P4).
         t0 = time.perf_counter()
-        assert self._embedder is not None and self._index is not None
-        qv = unit(self._embedder.embed(PREFIX + job.text.strip()))
-        top = self._index.top2(qv)
-        return Result(top, (time.perf_counter() - t0) * 1000, (t0 - job.queued) * 1000)
+        qv = unit(embedder.embed(PREFIX + job.text.strip()))
+        top = index.top2(qv)
+        return Result(top, (time.perf_counter() - t0) * 1000, (t0 - job.queued) * 1000, index.lang)
 
     async def _drain(self) -> None:
         loop = asyncio.get_running_loop()
         try:
-            while self._pending is not None and self.ready:
+            while self._pending is not None and self.ready and self._index is not None and self._embedder is not None:
                 job, self._pending = self._pending, None
-                gen = self._gen
+                gen, index, embedder = self._gen, self._index, self._embedder
                 try:
-                    res = await loop.run_in_executor(self._pool, self._match_sync, job)
+                    res = await loop.run_in_executor(self._pool, self._match_sync, job, index, embedder)
                 except Exception as e:  # noqa: BLE001
-                    self._unavailable(e)
+                    if gen == self._gen:     # a failure of an index that has been replaced or closed is not the path failing
+                        self._unavailable(e)
                     return
                 if gen == self._gen:
                     self._on_result(job, res)
@@ -261,6 +318,8 @@ class EmbedPath:
     # ---- shutdown
     def close(self) -> None:
         self.state = "off" if self.state != "unavailable" else self.state
+        self._closed = True
+        self._gen += 1              # a load or a match still on the worker thread is dropped when it returns
         self._pending = None
         emb, self._embedder = self._embedder, None
         if emb is not None:

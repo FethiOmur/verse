@@ -29,6 +29,7 @@ import json
 import re
 import shutil
 import sys
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -62,6 +63,8 @@ UNVERIFIED_NOT_OFFICIAL = "unverified: entity, headquarters and founding facts n
 UNVERIFIED_QUOTE = "unverified: the quote is not on the fetched page"
 UNVERIFIED_NO_QUOTE = f"unverified: the page was fetched but the fact has no evidence quote of at least {MIN_QUOTE_CHARS} characters"
 UNVERIFIED_NUMBERS = "unverified: the fact's numbers are not in the evidence quote"
+UNVERIFIED_NAMES = "unverified: a name in the fact is not in the evidence quote or on the page near it"
+NAME_WINDOW = 400  # characters of page text on each side of the quote that count as "near it" for a name
 
 
 class ConversationError(PrepError):
@@ -217,11 +220,93 @@ def _host(url: str) -> str:
     return (urlsplit(url).hostname or "").lower().removeprefix("www.")
 
 
-def verify_facts(raw: list[dict], research: ResearchOutput) -> list[Fact]:
+_WORD = re.compile(r"[^\W\d_][\w'’-]*")  # a letter-led token; digits-only tokens are numbers, not names
+_SENT_END = re.compile(r"[.!?:;\n]\s*$|^\s*$")
+# capitalised only because they open a sentence or a phrase ("The Acme team"): never part of a name
+_LEAD_WORDS = frozenset(w.casefold() for w in (
+    "the a an in on at for of to by with from after before since as our its their his her this that these those it we they he she "
+    "there here also and or but while when where who which according founded headquartered based located then now today "
+    "however meanwhile later earlier recently currently still so if because during over under between per via is was has had"
+).split())
+# capitalised but not a person, company or product
+_NOT_NAMES = frozenset(w.casefold() for w in (
+    "january february march april may june july august september october november december monday tuesday wednesday thursday "
+    "friday saturday sunday ceo cto cfo coo vp usd eur gbp inc ltd llc gmbh sa srl spa ag plc corp co"
+).split())
+
+
+def _fold(s: str) -> str:
+    """Case-, accent- and quote-insensitive form used for name matching only."""
+    d = unicodedata.normalize("NFKD", norm(s))
+    return "".join(c for c in d if not unicodedata.combining(c))
+
+
+def proper_names(text: str) -> list[str]:
+    """Capitalised tokens that look like names of people, companies or products. A token that only opens a sentence is
+    skipped unless another capitalised token follows it ("Acme Robotics raised ..."), because "Founded" or "Stripe" at the
+    start cannot be told apart from an ordinary capital. Months, weekdays and legal suffixes are not names."""
+    out: list[str] = []
+    seen: set[str] = set()
+    prev_end = 0
+    run: list[tuple[str, bool]] = []  # (token, sentence-initial) for the current run of capitalised tokens
+
+    def flush() -> None:
+        toks = run[:]
+        while toks and toks[0][0].casefold() in _LEAD_WORDS:
+            toks.pop(0)
+        if len(toks) == 1 and toks[0][1]:
+            toks = []  # a lone sentence-initial capital
+        for tok, _ in toks:
+            f = _fold(tok.removesuffix("'s").removesuffix("’s"))
+            if len(f) >= 2 and f not in _NOT_NAMES and f not in seen:
+                seen.add(f)
+                out.append(f)
+        run.clear()
+
+    for m in _WORD.finditer(text):
+        tok = m.group()
+        initial = prev_end == 0 or bool(_SENT_END.search(text[:m.start()]))
+        if run and text[prev_end:m.start()].strip(" ") != "":
+            flush()  # punctuation between tokens ends a run
+        if tok[0].isupper():
+            run.append((tok, initial and not run))
+        else:
+            flush()
+        prev_end = m.end()
+    flush()
+    return out
+
+
+def _name_on(name: str, hay_words: set[str]) -> bool:
+    if name in hay_words:
+        return True
+    return len(name) >= 5 and any(w.startswith(name) or (len(w) >= 5 and name.startswith(w)) for w in hay_words)
+
+
+def _words(s: str) -> set[str]:
+    return {w.removesuffix("'s").removesuffix("’s") for w in re.findall(r"[^\W_][\w'’-]*", _fold(s))}
+
+
+def names_supported(text: str, evidence: str, page: Page) -> bool:
+    """Every proper name in `text` must be in the quote, or within NAME_WINDOW characters of the quote on the page. A name
+    that is the page's own subject (in its title or host name) passes without that: a company's own page often never repeats
+    its name in the body, and the host and title are what make the page that company's."""
+    names = proper_names(text)
+    if not names:
+        return True
+    page_n = norm(page.text)
+    q = norm(evidence)
+    at = page_n.find(q)
+    near = _words(evidence) | (_words(page_n[max(0, at - NAME_WINDOW): at + len(q) + NAME_WINDOW]) if at >= 0 else set())
+    subject = _words(page.title) | set(re.split(r"\W+", _host(page.url).rsplit(".", 1)[0]))
+    return all(_name_on(n, near) or _name_on(n, subject) for n in names)
+
+
+def verify_facts(raw: list[dict], research: ResearchOutput, lang: str | None = None) -> list[Fact]:
     """A fact is sourced only when it carries a URL that the search or fetch tool returned (or cited). No URL, `none`, or
     a URL the tools never returned (a guessed address) makes it "unverified"; the text is kept so the owner can still read it.
     Two more checks: an `entity` fact (legal entity, headquarters, founding) cannot rest on a social, review or directory
-    page, and when the page was fetched the fact's evidence quote must really be in the page text."""
+    page, and when the page was fetched the fact's evidence quote must really be in the page text. `lang` is the language the facts and pages are written in; it decides how `3.141` and `3,141` are read."""
     retrieved: dict[str, Page] = {}
     for u, p in research.pages.items():  # `https://x.io` (fetched) and `https://x.io/` (search result) are one page
         cur = retrieved.get(norm_url(u))
@@ -258,8 +343,11 @@ def verify_facts(raw: list[dict], research: ResearchOutput) -> list[Fact]:
             if norm(evidence) not in norm(page.text):
                 out.append(Fact(topic, text, page.url, "unverified", UNVERIFIED_QUOTE, page.title, evidence=evidence))
                 continue
-            if not numbers_supported(text, [evidence]):
+            if not numbers_supported(text, [evidence], lang):
                 out.append(Fact(topic, text, page.url, "unverified", UNVERIFIED_NUMBERS, page.title, evidence=evidence))
+                continue
+            if not names_supported(text, evidence, page):
+                out.append(Fact(topic, text, page.url, "unverified", UNVERIFIED_NAMES, page.title, evidence=evidence))
                 continue
             check = "quote found on the fetched page"
         out.append(Fact(topic, text, page.url, "sourced", "", page.title, page.page_age, list(page.cited), evidence, check))
@@ -485,7 +573,7 @@ async def run_async(
     rs = await model.research(RESEARCH_SYSTEM.format(max_uses=max_searches, max_fetches=max_fetches),
                               research_user(ex, company_url, (posting or "")[:3000] or None), max_searches, max_fetches, 16000)
     raw_facts, infers, gaps = parse_facts(rs.text)
-    facts = verify_facts(raw_facts, rs)
+    facts = verify_facts(raw_facts, rs, (langs or ["en"])[0])
     sourced = sum(f.status == "sourced" for f in facts)
     log(f"research: {rs.searches} searches | {rs.fetch_count} fetches | {len(rs.pages)} pages | {sourced} sourced facts | "
         f"{len(facts) - sourced} unverified | {len(infers)} inferred")

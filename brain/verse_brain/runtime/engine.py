@@ -67,7 +67,7 @@ from pathlib import Path
 from typing import Callable
 
 from ..prep.model import Usage, spend_usd
-from .embed import PREFIX, Embedder, EmbedPath, EmbedUnavailable, Job, Result, accepted
+from .embed import PREFIX, Embedder, EmbedPath, EmbedUnavailable, Job, MatchState, Result, accepted, step
 from .events import CARD_CHARS, CARD_FULL_CHARS, EventLog, clip
 from .follow import (Covered, Diverged, Ended, FollowMachine, NeedEmbed, Refresh, clean_line, score_matrix)
 from .lines import LineAssembler
@@ -466,10 +466,8 @@ class TurnState:
     kind: str | None = None        # `turn.kind` as sent by Swift (None = missing or unknown: question behaviour)
     finished_at: float = 0.0       # time.monotonic() when the turn arrived
     rescued: bool = False          # a late bank hit turned a statement/fragment into an answered question
-    # F3 paraphrase matcher: the candidate entry of the last evaluated partials, how many in a row, the id sent
-    embed_cand: str | None = None
-    embed_count: int = 0
-    embed_sent: str | None = None
+    # F3 paraphrase matcher: the accept rule's state (candidate entry, its run lengths, the id sent; embed.step)
+    embed_match: MatchState = field(default_factory=MatchState)
     embed_final_queued: bool = False    # the final-text pass was queued for this turn (at most once)
     # anytime calls
     lang: str | None = None             # `lang` of the turn's messages (None = the session's)
@@ -1318,7 +1316,7 @@ class Brain:
         if st.bank_hit is not None and st.bank_hit.via != "embed":   # Swift's n-gram already hit this turn
             return
         if not st.cue or len(tokens(st.partial)) < self.config.embed_min_words:
-            st.embed_cand, st.embed_count = None, 0
+            st.embed_match.reset()
             e.drop(st.turn_id)
             return
         e.submit(st.turn_id, st.partial)
@@ -1346,10 +1344,11 @@ class Brain:
         top = res.top
         s1 = top[0][1] if top else -1.0
         s2 = top[1][1] if len(top) > 1 else -1.0
-        ok = bool(top) and accepted(s1, s2, cfg.embed_threshold, cfg.embed_margin)
+        rule = cfg.embed_rule(res.lang or self.lang)
+        ok = bool(top) and accepted(s1, s2, rule.threshold, rule.margin)
         self.emitter.metric(job.turn_id, "embed", ms=round(res.ms, 2), wait_ms=round(res.wait_ms, 2),
                             top=top[0][0] if top else None, score=round(s1, 4), second=round(s2, 4),
-                            words=len(tokens(job.text)), accepted=ok, final=job.final)
+                            words=len(tokens(job.text)), accepted=ok, final=job.final, lang=res.lang or self.lang)
         st = self.ts.get(job.turn_id)
         if st is None:
             return
@@ -1363,23 +1362,17 @@ class Brain:
             return
         if st.finished and (st.addressee == "other" or (st.kind == "fragment" and not late)):
             return
-        if not ok:
-            st.embed_cand, st.embed_count = None, 0
-            return
-        cand = top[0][0]
-        if cand == st.embed_cand:
-            st.embed_count += 1
-        else:
-            st.embed_cand, st.embed_count = cand, 1
-        # A closed turn's final text needs one evaluation: the consecutive-partials gate guards against locking on a short
-        # prefix, and a final text is no prefix.
-        if (job.final or st.embed_count >= cfg.embed_consecutive) and cand != st.embed_sent:
-            self._embed_hit(st, cand, s1)
+        # embed.step: the base lane (`consecutive` partials in a row), the fast lane (one partial far above the threshold), and
+        # a closed turn's final text, which needs one evaluation (the consecutive gate guards against locking on a short
+        # prefix, and a final text is no prefix).
+        hit = step(st.embed_match, rule, top[0][0] if top else None, s1, s2, final=job.final)
+        if hit is not None:
+            self._embed_hit(st, hit, s1)
 
     def _embed_hit(self, st: TurnState, bank_id: str, score: float) -> None:
         prev = st.bank_hit
         st.bank_hit = BankHit(bank_id, score, via="embed")
-        st.embed_sent = bank_id
+        st.embed_match.sent = bank_id
         if prev is not None and prev.bank_id != bank_id:
             st.verdict_sent = False          # Haiku's BANK line is checked against the new id
         self.emitter.emit({"type": "bank_hit", "turn_id": st.turn_id, "bank_id": bank_id, "score": round(score, 4),

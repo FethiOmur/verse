@@ -47,6 +47,7 @@ log = logging.getLogger("verse.runtime.ask")
 
 EPHEMERAL = {"type": "ephemeral"}
 DEFAULT_MODEL = "sonnet"
+COUNT_TIMEOUT_S = 20.0   # `count_tokens` at session start: the stdin loop awaits it, so it must not wait out the client's 120 s x retries
 CHUNK_TOKENS = 6_000          # one excerpt chunk
 INDEX_WINDOW_S = 600          # the transcript index: one entry per 10 minutes
 INDEX_TURNS = 3               # ...with the first sentence of its first turns
@@ -462,8 +463,9 @@ def error_kind(e: BaseException) -> str:
 class AskRuntime:
     def __init__(self, client: AskClient, emitter: Emitter, *, context_max: int = ASK_CONTEXT_MAX_TOKENS,
                  excerpt_tokens: int = ASK_EXCERPT_TOKENS, history_pairs: int = ASK_HISTORY_PAIRS,
-                 chunk_tokens: int = CHUNK_TOKENS) -> None:
+                 chunk_tokens: int = CHUNK_TOKENS, count_timeout: float = COUNT_TIMEOUT_S) -> None:
         self.client = client
+        self.count_timeout = count_timeout
         self.emitter = emitter
         self.context_max = context_max
         self.excerpt_tokens = excerpt_tokens
@@ -568,8 +570,8 @@ class AskRuntime:
         system = [{"type": "text", "text": system_text(self.owner)}]
         messages = [{"role": "user", "content": [{"type": "text", "text": grounding}]}]
         try:
-            return await self.client.count_tokens(PREP_MODEL, system, messages)
-        except Exception as e:  # noqa: BLE001
+            return await asyncio.wait_for(self.client.count_tokens(PREP_MODEL, system, messages), self.count_timeout)
+        except Exception as e:  # noqa: BLE001 - includes the timeout
             log.warning("count_tokens failed (%s); estimating", type(e).__name__)
             return math.ceil(len(grounding) / 3)
 
@@ -599,6 +601,10 @@ class AskRuntime:
         req["messages"] = messages
         req["cache_control"] = dict(EPHEMERAL)
         return req
+
+    async def _build(self, model_key: str, text: str) -> dict:
+        """The request of one question. Cheap here; the memory runtime overrides it to search off the event loop."""
+        return self.build_request(model_key, text)
 
     # ------------------------------------------------------------------ ask
     def _on_ask(self, msg: dict) -> None:
@@ -633,7 +639,13 @@ class AskRuntime:
     async def _answer(self, q_id: str, a_id: str, text: str, model_key: str) -> None:
         t0 = time.monotonic()
         try:
-            req = self.build_request(model_key, text)
+            req = await self._build(model_key, text)
+        except asyncio.CancelledError:   # a cancel can land while the request is built off the loop (memory search)
+            if not self._cancelled:
+                raise
+            model = ask_params(model_key)["model"]
+            self._finish(q_id, a_id, text, model, model, "", {}, None, t0, "cancelled")
+            return
         except Exception as e:  # noqa: BLE001 - e.g. sqlite3.OperationalError while the indexer rewrites the database
             log.warning("ask request build failed: %s", type(e).__name__)
             self._error(q_id, a_id, "error", type(e).__name__)          # the panel must always get its closing event

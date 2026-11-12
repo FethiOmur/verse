@@ -174,7 +174,7 @@ def run_dialogue(a, d: dict, verse_run: Path, brain: str, session_src: Path, out
     others = list(d["participants"])
     for n in list(others):
         others += d.get("name_variants", {}).get(n, [])
-    cmd = [str(verse_run), "--session", str(sess), "--lang", "en", "--file", str(rend.path), "--format", "json", "--echo",
+    cmd = [str(verse_run), "--session", str(sess), "--lang", d.get("lang", "en"), "--file", str(rend.path), "--format", "json", "--echo",
            "--owner", d["owner"], "--others", ",".join(others), "--budget-usd", f"{budget:.2f}"]
     if d.get("owner_aliases"):
         cmd += ["--alias", ",".join(d["owner_aliases"])]
@@ -231,6 +231,7 @@ def main() -> int:
     ap.add_argument("--verse-run", default=str(DEFAULT_RUN))
     ap.add_argument("--brain-dir")
     ap.add_argument("--session", default=str(DEFAULT_SESSION), help="a P1-1 session folder; copied per dialogue")
+    ap.add_argument("--dialogues-dir", default=str(labels.DIALOGUES_DIR), help="label folder (eval/dialogues_it for the Italian set)")
     ap.add_argument("--fake-brain", action="store_true")
     ap.add_argument("--budget-usd", type=float, default=0.25, help="hard cap per dialogue, passed to the brain")
     ap.add_argument("--lead-in", default="auto", help="seconds of silence before the first utterance, or auto (engine load time + 3 s)")
@@ -238,7 +239,7 @@ def main() -> int:
     ap.add_argument("--list", action="store_true")
     a = ap.parse_args()
 
-    all_labels = {d["id"]: d for d in labels.load_all()}
+    all_labels = {d["id"]: d for d in labels.load_all(Path(a.dialogues_dir))}
     ids = list(all_labels) if a.dialogues == "all" else [x.strip() for x in a.dialogues.split(",")]
     if a.list:
         for i in ids:

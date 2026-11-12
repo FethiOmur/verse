@@ -1,0 +1,25 @@
+{
+ "note": "Near-miss questions for the sample-interview bank: each is on the topic of the entry in `near` but asks something that entry does not answer (no bank card should show). Written 2026-11-12 before any score was computed. The same 20 questions exist in it.json and tr.json.",
+ "near": [
+  {"text": "How many people worked on the Lantern team with you?", "near": "b003"},
+  {"text": "Which OCR engine did Lantern use to read the scanned invoices?", "near": "b003"},
+  {"text": "Who were the main suppliers whose invoices you processed?", "near": "b003"},
+  {"text": "How long did it take you to build the first version of Lantern?", "near": "b020"},
+  {"text": "What was the hardest bug you hit in the route optimiser?", "near": "b007"},
+  {"text": "Which programming language did you write the route optimiser in?", "near": "b007"},
+  {"text": "What did the courier drivers think of the new routes?", "near": "b007"},
+  {"text": "How many trucks does Halden run in Italy today?", "near": "b008"},
+  {"text": "Who do you think are Halden's biggest competitors?", "near": "b008"},
+  {"text": "How do you version your prompts, do you keep them in git?", "near": "b009"},
+  {"text": "Which vector database would you use for the dispatcher?", "near": "b013"},
+  {"text": "How do you handle personal data and GDPR in an LLM pipeline?", "near": "b010"},
+  {"text": "How long did the invoice pipeline take per document?", "near": "b011"},
+  {"text": "Would you be open to relocating to Gothenburg?", "near": "b015"},
+  {"text": "Do you have any other offers on the table right now?", "near": "b016"},
+  {"text": "Which benefits matter most to you besides the salary?", "near": "b016"},
+  {"text": "How did you fine-tune the small model, and on which data?", "near": "b019"},
+  {"text": "What would you do in your first month here?", "near": "b013"},
+  {"text": "Why did you leave your last job?", "near": "b002"},
+  {"text": "Have you ever managed a team of engineers yourself?", "near": "b017"}
+ ]
+}

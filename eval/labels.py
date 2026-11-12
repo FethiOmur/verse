@@ -11,14 +11,16 @@ import json
 from pathlib import Path
 
 DIALOGUES_DIR = Path(__file__).resolve().parent / "dialogues"
+# Non-English replay sets live in their own folders (eval/dialogues_it/), never in the main English suite.
+OTHER_LANGS = ("it", "tr")
 CATEGORIES = {"exact", "paraphrase", "offbank", "other", "statement", "fragment", "reply", "answer"}
 ADDRESSEES = {"me", "other", None}
 REQUIRED = ("speaker", "text", "category", "is_question", "addressee", "bank_id", "t_start", "t_end")
 TOP_REQUIRED = ("id", "lang", "owner", "participants", "voices", "session", "utterances")
 
 
-def validate(d: dict) -> list[str]:
-    """Returns a list of problems (empty = valid)."""
+def validate(d: dict, langs: tuple[str, ...] = ("en",)) -> list[str]:
+    """Returns a list of problems (empty = valid). `langs`: the label languages allowed in this folder."""
     errs: list[str] = []
     if not isinstance(d, dict):
         return ["label is not an object"]
@@ -29,8 +31,9 @@ def validate(d: dict) -> list[str]:
         return errs
     if d.get("suite", "main") not in ("main", "short"):
         errs.append(f"suite must be main or short, got {d.get('suite')!r}")
-    if d["lang"] != "en":
-        errs.append(f"lang must be 'en' (English only for now), got {d['lang']!r}")
+    if d["lang"] not in langs:
+        what = "English only in eval/dialogues" if langs == ("en",) else f"one of {langs}"
+        errs.append(f"lang must be {what}, got {d['lang']!r}")
     if not isinstance(d["participants"], list) or not d["participants"] or not all(isinstance(x, str) for x in d["participants"]):
         errs.append("participants must be a non-empty list of names")
     speakers = set(d["participants"]) | {d["owner"]}
@@ -82,13 +85,15 @@ def validate(d: dict) -> list[str]:
     return errs
 
 
-def load(path: Path) -> dict:
+def load(path: Path, langs: tuple[str, ...] = ("en",)) -> dict:
     d = json.loads(Path(path).read_text(encoding="utf-8"))
-    errs = validate(d)
+    errs = validate(d, langs)
     if errs:
         raise ValueError(f"{path.name}: " + "; ".join(errs))
     return d
 
 
 def load_all(directory: Path = DIALOGUES_DIR) -> list[dict]:
-    return [load(p) for p in sorted(directory.glob("*.json"))]
+    """The main folder holds English labels only; any other folder (eval/dialogues_it/) may hold it/tr labels too."""
+    langs = ("en",) if Path(directory).resolve() == DIALOGUES_DIR else ("en",) + OTHER_LANGS
+    return [load(p, langs) for p in sorted(Path(directory).glob("*.json"))]

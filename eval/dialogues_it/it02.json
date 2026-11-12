@@ -1,0 +1,159 @@
+{
+ "id": "it02",
+ "lang": "it",
+ "owner": "the owner",
+ "participants": [
+  "Ingrid"
+ ],
+ "voices": {
+  "Ingrid": "Alice"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview-it",
+ "speakers": 2,
+ "duration_s": 60.2,
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "Puoi parlarmi del progetto Lantern?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b003",
+   "t_start": 1.01,
+   "t_end": 3.17,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 4.429,
+   "t_end": 11.229,
+   "gap_before": 1.21,
+   "silent_s": 6.8
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Che percentuale di campi azzeccava?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b011",
+   "t_start": 12.449,
+   "t_end": 14.749,
+   "gap_before": 1.21
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 16.049,
+   "t_end": 22.549,
+   "gap_before": 1.25,
+   "silent_s": 6.5
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Abbiamo in programma un offsite aziendale a Lisbona la prossima primavera.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 23.679,
+   "t_end": 26.679,
+   "gap_before": 1.12
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Quali linguaggi di programmazione usi tutti i giorni?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 27.637,
+   "t_end": 30.437,
+   "gap_before": 0.92
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 31.465,
+   "t_end": 37.265,
+   "gap_before": 1.01,
+   "silent_s": 5.8
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Qual è il tuo punto debole più grande?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b005",
+   "t_start": 38.565,
+   "t_end": 40.085,
+   "gap_before": 1.29
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 41.24,
+   "t_end": 46.74,
+   "gap_before": 1.11,
+   "silent_s": 5.5
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Quanto costava tenerlo in piedi, e si è ripagato?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b012",
+   "t_start": 47.93,
+   "t_end": 50.37,
+   "gap_before": 1.18
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 51.66,
+   "t_end": 58.36,
+   "gap_before": 1.24,
+   "silent_s": 6.7
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "E poi il",
+   "category": "fragment",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 59.65,
+   "t_end": 60.2,
+   "gap_before": 1.28
+  }
+ ],
+ "note": "Italian version of d02 (2026-11-12): same structure and bank ids; exact questions are the Italian bank questions (eval/tools/make_it_session.py), paraphrases come from bench/embed/ml/it.json `blind`. t_start/t_end are the English nominal times; the runner records the real ones."
+}

@@ -35,6 +35,8 @@ struct TrashedSession: Equatable, Sendable {
     var folderID: String?
     var dismissed: [String]
     var eventIDs: [String]
+    /// Its links, unlinks and turned-down suggestions in `people.json`, which a write prunes while it is in the Trash.
+    var people = SessionPeopleEntries()
 }
 
 struct TrashBatch: Equatable, Sendable {
@@ -72,6 +74,9 @@ struct SessionTrashHooks {
     var sessionsChanged: () -> Void = {}
     var selected: () -> String? = { nil }
     var select: (String?) -> Void = { _ in }
+    /// The session's entries in `people.json`, read before it goes to the Trash, and put back when an undo brings it back.
+    var peopleEntries: (String) -> SessionPeopleEntries = { _ in SessionPeopleEntries() }
+    var restorePeopleEntries: (String, SessionPeopleEntries) -> Void = { _, _ in }
 }
 
 extension SessionTrashHooks {
@@ -80,7 +85,7 @@ extension SessionTrashHooks {
     /// syncs Verse's memory (a trashed session leaves the index, an undone one comes back).
     @MainActor
     static func window(controller: VerseController, sim: SimController?, settings: AppSettings, router: HomeRouter,
-                       memory: MemoryService? = nil) -> SessionTrashHooks {
+                       memory: MemoryService? = nil, people: EntityStore? = nil) -> SessionTrashHooks {
         SessionTrashHooks(
             block: { [weak controller, weak sim] name in
                 if controller?.recordingSessionName == name { return .recording }
@@ -96,7 +101,9 @@ extension SessionTrashHooks {
                 memory?.requestSync(.sessionsChanged)
             },
             selected: { router.selectedSession },
-            select: { router.selectedSession = $0 })
+            select: { router.selectedSession = $0 },
+            peopleEntries: { [weak people] name in people?.entries(ofSession: name) ?? SessionPeopleEntries() },
+            restorePeopleEntries: { [weak people] name, entries in people?.restoreEntries(entries, ofSession: name) })
     }
 }
 
@@ -197,11 +204,12 @@ extension HomeSessionsModel {
         for name in names where seen.insert(name).inserted {
             guard let s = session(named: name) else { continue }
             if let why = blockReason(for: name) { outcome.blocked[name] = why; continue }
-            let snapshot = (folder: folders.folder(of: name)?.id, dismissed: folders.file.dismissed[name] ?? [])
+            let snapshot = (folder: folders.folder(of: name)?.id, dismissed: folders.file.dismissed[name] ?? [],
+                            people: hooks.peopleEntries(name))
             do {
                 let landed = try trashOps.trash(s.dir)
                 items.append(TrashedSession(name: name, original: s.dir, trashed: landed, folderID: snapshot.folder,
-                                            dismissed: snapshot.dismissed, eventIDs: []))
+                                            dismissed: snapshot.dismissed, eventIDs: [], people: snapshot.people))
             } catch {
                 FileLog.shared.write("sessions: could not move \(name) to the Trash: \(error.localizedDescription)")
                 outcome.failed.append(name)
@@ -277,6 +285,7 @@ extension HomeSessionsModel {
         for item in batch.items where back.contains(item.name) {
             try? folders.restoreEntry(item.name, folderID: item.folderID, dismissed: item.dismissed)
             for id in item.eventIDs { eventMap.restore(eventID: id, session: item.name) }
+            hooks.restorePeopleEntries(item.name, item.people)
         }
         reload()
         hooks.sessionsChanged()

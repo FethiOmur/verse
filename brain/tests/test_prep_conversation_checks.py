@@ -34,6 +34,58 @@ def test_q1_a_real_quote_with_matching_numbers_stays_sourced():
     assert f.status == "sourced" and f.check == "quote found on the fetched page"
 
 
+# ---------------------------------------------------------------------------------------------- proper names in a sourced fact
+
+from verse_brain.prep.conversation import proper_names  # noqa: E402
+
+FAR = "x" * 900  # filler longer than the "near the quote" window
+BIO_URL = "https://acme.example/team"
+BIO = Page(BIO_URL, "About Acme", fetched=True,
+           text=f"Acme builds routing software. {FAR} Our CEO Maria Bianchi said: the company now has 40 employees in Milan. {FAR}")
+
+
+def _verify_bio(text: str, evidence: str, page: Page = BIO):
+    raw = [{"topic": "person", "text": text, "url": page.url, "evidence": evidence}]
+    return verify_facts(raw, ResearchOutput("", {page.url: page}))[0]
+
+
+def test_names_a_name_that_is_not_in_the_quote_or_near_it_is_unverified():
+    f = _verify_bio("Globex has 40 employees in Milan.", "the company now has 40 employees in Milan")
+    assert f.status == "sourced"  # a lone sentence-initial capital is not read as a name
+    f = _verify_bio("Analysts say Globex has 40 employees in Milan.", "the company now has 40 employees in Milan")
+    assert f.status == "unverified" and "name" in f.reason
+
+
+def test_names_a_wrong_person_is_unverified_and_the_right_one_near_the_quote_is_sourced():
+    quote = "the company now has 40 employees in Milan"
+    wrong = _verify_bio("CEO Marco Verdi says there are 40 employees.", quote)
+    assert wrong.status == "unverified" and "name" in wrong.reason
+    right = _verify_bio("CEO Maria Bianchi says there are 40 employees.", quote)  # not in the quote, but within the window
+    assert right.status == "sourced"
+
+
+def test_names_the_pages_own_subject_passes_even_far_from_the_quote_or_missing_from_the_body():
+    f = _verify_bio("Analysts say Acme has 40 employees in Milan.", "the company now has 40 employees in Milan")
+    assert f.status == "sourced"  # "Acme" is in the title and on the page, 900+ characters from the quote
+    page = Page("https://www.globex.example/about", "About us", fetched=True, text="Our company now has 40 employees in Milan, Italy.")
+    f = _verify_bio("Analysts say Globex has 40 employees in Milan.", "company now has 40 employees in Milan", page)
+    assert f.status == "sourced"  # the host names the subject; the body never repeats it
+    f = _verify_bio("Analysts say Initech has 40 employees in Milan.", "company now has 40 employees in Milan", page)
+    assert f.status == "unverified" and "name" in f.reason  # a different company on that page is not the subject
+
+
+def test_names_matching_ignores_accents_and_case_and_allows_a_plural_or_translated_place():
+    page = Page("https://x.example/p", "Profile", fetched=True, text="Anna Müller joined Stripe as head of ops. Offices in MILANO.")
+    f = _verify_bio("Anna Muller joined Stripe in Milan as head of ops.", "joined Stripe as head of ops. Offices in MILANO", page)
+    assert f.status == "sourced", f.reason
+
+
+def test_proper_names_skips_sentence_openers_months_and_legal_suffixes():
+    assert proper_names("Founded in March 2012 by Anna Müller; based in Zurich.") == ["anna", "muller", "zurich"]
+    assert proper_names("Stripe raised money. Then Acme Robotics did too, said the CEO of Globex Inc.") == ["acme", "robotics", "globex"]
+    assert proper_names("the company has 40 employees") == []
+
+
 # ---------------------------------------------------------------------------------------------- Q5: spend on failure
 
 import asyncio

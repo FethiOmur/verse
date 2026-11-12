@@ -88,3 +88,27 @@ def test_grounding_row_old_shape_is_labelled_and_counts_the_cleared_lines_too():
           "violations": [{}] * 7, "cleared_lines": [{}] * 8, "cleared_by_second_opinion": 8, "unjudged": [], "evidence_not_in_pack": 162}
     row = report.grounding_row(gr)
     assert "old rule" in row and "7 confirmed by Sonnet" in row and "15 flagged by either" in row and row.rstrip().endswith("| missed |")
+
+
+# ---- E10: hand-written notes are checked against the regenerated tables
+
+NOTES = "<!-- notes-for-run: live1 -->\n## What this means\n\n- Opener 0.67 s p50; 7 of 363 lines; $0.43 per 30 min; paraphrases 0/24."
+
+
+def test_notes_written_for_another_run_are_left_out():
+    out = report.notes_section(NOTES, "f3-embed", "| bank | 0/24 |")
+    assert "0.67" not in out and "describe run `live1`, not `f3-embed`" in out
+
+
+def test_numbers_missing_from_the_tables_are_listed():
+    body = "| Bank hit | 0.67 / 1.22 s |\n| grounding | 7/363 |\n| bank | 13/24 |"
+    out = report.notes_section(NOTES, "live1", body)
+    assert out.startswith("## What this means")
+    warn = out.split("\n")[-1]
+    assert "$0.43" in warn and "0/24" in warn            # not in the tables: stale
+    assert "0.67 s" not in warn and "7 of 363" not in warn   # found (as 0.67 and 7/363)
+
+
+def test_untagged_notes_carry_a_warning_and_empty_notes_add_nothing():
+    assert "no `notes-for-run` tag" in report.notes_section("- 1/2 done", "x", "1/2")
+    assert report.notes_section("  \n", "x", "") == ""

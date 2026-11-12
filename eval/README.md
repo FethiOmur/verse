@@ -18,7 +18,13 @@ $PY score.py --run live1 --judge                         # scores.json + groundi
 $PY report.py --run live1                                # writes ../docs/eval-report-v1.md and runs the secret scan
 ```
 
-- `dialogues/*.json`: labels (regenerate with `tools/make_dialogues.py`; audio is never stored).
+- `dialogues/*.json`: labels (regenerate with `tools/make_dialogues.py`; audio is never stored). English only.
+- `dialogues_it/*.json`: a small Italian set (it01, it02: d01/d02 in Italian). Its session is built from the English one:
+  `python tools/make_it_session.py --src <sample-interview> --out <folder>`; then
+  `run_replay.py --run <name> --dialogues-dir dialogues_it --session <folder> --lead-in 6` and pass `--dialogues-dir dialogues_it`
+  to `score.py` / `rescore_bank.py` too.
+- `rescore_bank.py --run <run>`: criterion 2 re-decided under the brain's current paraphrase accept rule (`embed.step`), offline.
+- Paraphrase matcher calibration per language (real model, no API): `cd ../bench/embed && ../../brain/.venv/bin/python ml_calib.py --grid`.
 - `run_replay.py`: builds the audio in a temp dir with `say`, runs `verse-run`, records every stdout line with its wall time in `out/<run>/<id>.jsonl`, watches the session folder for audio files, deletes the audio.
 - `score.py`, `grounding.py`, `judge.py`, `grounding_run.py`: scoring. `report.py`: the table against spec section 9.
 - Dev runs: set `VERSE_EVAL_OUT` to keep them out of the repo (the spend ledger always stays in `out/spend.json`).

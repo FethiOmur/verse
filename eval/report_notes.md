@@ -1,3 +1,4 @@
+<!-- notes-for-run: live1 -->
 ## What this means
 
 Met today: question detection, addressing of questions to the other interviewer, wrong bank hits, Sonnet deep points, no audio files, no key leaks. Missed: the speculation opener target, and "no unsupported content" in suggestions. The fresh-Haiku path is met on only three samples.

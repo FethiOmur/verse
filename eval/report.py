@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -131,6 +132,48 @@ def audio_watch_by_dialogue(run_dir: Path) -> dict:
     return fs
 
 
+NOTES_PLACEHOLDER = "\x00NOTES\x00"
+_NOTES_RUN = re.compile(r"<!--\s*notes-for-run:\s*(\S+)\s*-->")
+# Measured-looking numbers in the hand-written notes: "$0.43", "0.67 s", "3 %", "21/24", "7 of 363".
+_NOTE_NUMS = re.compile(r"\$\d+(?:\.\d+)?|\d+(?:\.\d+)?\s?(?:s|%)(?![\w])|\d+/\d+|\d+ of \d+")
+
+
+def _bare(tok: str) -> list[str]:
+    """The forms a note number can take in the generated tables."""
+    t = tok.strip().lstrip("$")
+    if " of " in t:
+        a, b = t.split(" of ")
+        return [f"{a}/{b}", t]
+    if "/" in t:
+        return [t]
+    return [re.sub(r"\s?(?:s|%)$", "", t)]
+
+
+def notes_section(notes: str, run: str, body: str) -> str:
+    """The hand-written notes as they go into the report (review E10). Notes tagged for another run (`<!-- notes-for-run: X -->`)
+    are left out with a visible line, so a regenerated report never carries prose about a different run. Untagged or matching
+    notes go in, followed by a warning that lists every measured-looking number in them that the generated tables do not
+    contain (those numbers were written by hand and may be stale)."""
+    text = notes.strip()
+    if not text:
+        return ""
+    m = _NOTES_RUN.search(text)
+    if m and m.group(1) != run:
+        return (f"> The hand-written notes (`eval/report_notes.md`) describe run `{m.group(1)}`, not `{run}`: left out of this report. "
+                "Write notes for this run (tag them `<!-- notes-for-run: " + run + " -->`) to include them.")
+    text = _NOTES_RUN.sub("", text).strip()
+    stale = []
+    for tok in _NOTE_NUMS.findall(text):
+        if not any(re.search(r"(?<![\d.])" + re.escape(f) + r"(?![\d])", body) for f in _bare(tok)) and tok not in stale:
+            stale.append(tok)
+    if m is None:
+        text = (f"> The hand-written notes below carry no `notes-for-run` tag: they may describe another run than `{run}`.\n\n" + text)
+    if stale:
+        text += ("\n\n> Numbers in these notes that do not appear in the generated tables of this report (written by hand; check "
+                 f"them against run `{run}`): {', '.join(stale)}.")
+    return text
+
+
 def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) -> str:
     ag = scores["aggregate"]
     short = scores.get("aggregate_short")
@@ -205,7 +248,7 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
       "pre-warm and summaries included); shown in Settings: needs P1-5 | measured; Settings display not measured |")
     w("")
     if notes.strip():
-        w(notes.strip())
+        w(NOTES_PLACEHOLDER)        # filled in at the end, checked against every generated table (notes_section)
         w("")
     w("## Section 6 latency, from the acoustic end of the question")
     w("")
@@ -285,7 +328,8 @@ def build(run: str, scores: dict, scan: dict, fs: dict, notes: str, git: str) ->
     w("- A live Google Meet call per language.")
     w("- Cost shown in Settings (P1-5).")
     w("")
-    return "\n".join(lines)
+    body = "\n".join(x for x in lines if x != NOTES_PLACEHOLDER)
+    return "\n".join(notes_section(notes, run, body) if x == NOTES_PLACEHOLDER else x for x in lines)
 
 
 def main() -> int:

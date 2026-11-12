@@ -1,0 +1,170 @@
+{
+ "id": "it01",
+ "lang": "it",
+ "owner": "the owner",
+ "participants": [
+  "Ingrid"
+ ],
+ "voices": {
+  "Ingrid": "Alice"
+ },
+ "name_variants": {
+  "Tomas": [
+   "Thomas"
+  ]
+ },
+ "session": "sample-interview-it",
+ "speakers": 2,
+ "duration_s": 66.9,
+ "utterances": [
+  {
+   "speaker": "Ingrid",
+   "text": "Ciao, grazie per il tempo che ci dedichi oggi.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 1.02,
+   "t_end": 3.72,
+   "gap_before": 0.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Puoi parlarmi di te e del tuo percorso?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b001",
+   "t_start": 5.109,
+   "t_end": 7.619,
+   "gap_before": 1.35
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 8.959,
+   "t_end": 16.759,
+   "gap_before": 1.29,
+   "silent_s": 7.8
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Cosa ti ha portato a guardare proprio Halden?",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b002",
+   "t_start": 17.859,
+   "t_end": 19.919,
+   "gap_before": 1.1
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 21.059,
+   "t_end": 26.259,
+   "gap_before": 1.09,
+   "silent_s": 5.2
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Ok, molto utile.",
+   "category": "statement",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 27.489,
+   "t_end": 29.029,
+   "gap_before": 1.22
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Qual è stata la parte più difficile nel costruire Lantern?",
+   "category": "offbank",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": null,
+   "t_start": 30.163,
+   "t_end": 32.393,
+   "gap_before": 1.1
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 33.631,
+   "t_end": 41.331,
+   "gap_before": 1.19,
+   "silent_s": 7.7
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Quando potresti iniziare se ti facessimo un'offerta?",
+   "category": "exact",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b015",
+   "t_start": 42.541,
+   "t_end": 44.391,
+   "gap_before": 1.2
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 45.356,
+   "t_end": 53.356,
+   "gap_before": 0.93,
+   "silent_s": 8.0
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Giusto, ok.",
+   "category": "fragment",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 54.626,
+   "t_end": 55.736,
+   "gap_before": 1.27
+  },
+  {
+   "speaker": "Ingrid",
+   "text": "Lantern ha davvero fatto la differenza? Facci vedere i numeri.",
+   "category": "paraphrase",
+   "is_question": true,
+   "addressee": "me",
+   "bank_id": "b004",
+   "t_start": 57.03,
+   "t_end": 60.18,
+   "gap_before": 1.25
+  },
+  {
+   "speaker": "the owner",
+   "text": "(answers; silence on the remote channel)",
+   "category": "answer",
+   "is_question": false,
+   "addressee": null,
+   "bank_id": null,
+   "t_start": 61.59,
+   "t_end": 66.89,
+   "gap_before": 1.36,
+   "silent_s": 5.3
+  }
+ ],
+ "note": "Italian version of d01 (2026-11-12): same structure and bank ids; exact questions are the Italian bank questions (eval/tools/make_it_session.py), paraphrases come from bench/embed/ml/it.json `blind`. t_start/t_end are the English nominal times; the runner records the real ones."
+}

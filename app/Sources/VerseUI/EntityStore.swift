@@ -105,6 +105,17 @@ struct PeopleFile: Codable, Equatable, Sendable {
     }
 }
 
+/// What `people.json` keeps under one session's name. Every write drops these once the session folder is gone, so Move to Trash
+/// carries them with the session and its undo puts them back (review U7).
+struct SessionPeopleEntries: Equatable, Sendable {
+    var links: [String] = []
+    var unlinks: [String] = []
+    /// Entities whose suggestion of this session the owner turned down.
+    var dismissedBy: [String] = []
+
+    var isEmpty: Bool { links.isEmpty && unlinks.isEmpty && dismissedBy.isEmpty }
+}
+
 enum PeopleCodec {
     private static func formatter(fractional: Bool) -> ISO8601DateFormatter {
         let f = ISO8601DateFormatter()
@@ -429,6 +440,30 @@ final class EntityStore: ObservableObject {
 
     func reconcile(folders: FoldersFile, sessions: [HomeSession]) {
         let f = EntityResolver.reconcile(file, folders: folders, sessions: sessions, makeID: makeID, now: now())
+        if f != file { try? commit(f) }
+    }
+
+    // MARK: a session's own entries (Move to Trash and its undo)
+
+    /// The session's entries: the owner's links and unlinks for it and the entities that had its suggestion turned down.
+    func entries(ofSession name: String) -> SessionPeopleEntries {
+        SessionPeopleEntries(links: file.links[name] ?? [], unlinks: file.unlinks[name] ?? [],
+                             dismissedBy: file.dismissed.filter { $0.value.contains(name) }.keys.sorted())
+    }
+
+    /// Puts a session's entries back once its folder is back (an undone Move to Trash; review U7). A write while the folder was in
+    /// the Trash pruned them. Ids follow merges made meanwhile; an entity that is gone is left out; entries already there stay.
+    func restoreEntries(_ entries: SessionPeopleEntries, ofSession name: String) {
+        guard !entries.isEmpty, sessionExists(name) else { return }
+        var f = file
+        func alive(_ ids: [String]) -> [String] {
+            var out: [String] = []
+            for id in ids.map(resolvedID) where f.entities.contains(where: { $0.id == id }) && !out.contains(id) { out.append(id) }
+            return out
+        }
+        for id in alive(entries.links) where !(f.links[name] ?? []).contains(id) { f.links[name, default: []].append(id) }
+        for id in alive(entries.unlinks) where !(f.unlinks[name] ?? []).contains(id) { f.unlinks[name, default: []].append(id) }
+        for id in alive(entries.dismissedBy) where !(f.dismissed[id] ?? []).contains(name) { f.dismissed[id, default: []].append(name) }
         if f != file { try? commit(f) }
     }
 

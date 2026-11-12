@@ -48,7 +48,8 @@ final class ChannelPipeline: @unchecked Sendable {
     }
 
     enum FeedItem: Sendable {
-        case audio(AudioChunk)
+        /// A chunk and the session time it reached the pipeline.
+        case audio(AudioChunk, arrivedAt: TimeInterval)
         /// Clock tick from the silence pump.
         case tick(TimeInterval)
     }
@@ -59,7 +60,9 @@ final class ChannelPipeline: @unchecked Sendable {
     /// with zeros, and when no chunk arrives for `pumpAfter` (a tap stops calling back when its app goes quiet
     /// or away) the pipeline feeds zeros itself at real-time pace. Without that, the last words before a pause
     /// stay unrecognized until audio resumes (measured: the volatile "budget" waited out a 3 s gap). Audio that
-    /// arrives for a stretch already filled with zeros is trimmed so the timeline never shifts.
+    /// arrives for a stretch already filled with zeros is trimmed so the timeline never shifts. The pump waits out the
+    /// source's own delivery latency (`FeedTimeline`), so a slow input such as a Bluetooth headset does not get its real
+    /// audio trimmed in place of silence (review S8).
     /// `onIssue` gets the source's runtime capture events (rebuilt after a device change, or failed for good; review H5).
     func start(clock: SessionClock, onIssue: @escaping @Sendable (ListenError) -> Void = { _ in },
                onResult: @escaping @Sendable (EngineResult, TimeInterval) -> Void) async throws {
@@ -78,7 +81,7 @@ final class ChannelPipeline: @unchecked Sendable {
         feeder = Task.detached(priority: .userInitiated) { [weak self] in
             var converter: AVAudioConverter?
             var rate: Double = 0
-            var fedUntil: TimeInterval?        // session time up to which samples went to the recognizer
+            var timeline = FeedTimeline(pumpAfter: pumpAfter)
             func feed(_ samples: [Float], endTime: TimeInterval) {
                 guard !samples.isEmpty else { return }
                 self?.currentShadow()?.feed(samples, rate: rate, endTime: endTime)
@@ -94,14 +97,10 @@ final class ChannelPipeline: @unchecked Sendable {
                 guard let self else { break }
                 switch item {
                 case .tick(let now):
-                    guard let f = fedUntil, rate > 0, now - f > pumpAfter else { continue }
-                    let until = now - pumpAfter / 2
-                    let n = Int((until - f) * rate)
-                    if n > 0 {
-                        feed([Float](repeating: 0, count: n), endTime: f + Double(n) / rate)
-                        fedUntil = f + Double(n) / rate
+                    if let (n, end) = timeline.pump(now: now, rate: rate) {
+                        feed([Float](repeating: 0, count: n), endTime: end)
                     }
-                case .audio(let chunk):
+                case .audio(let chunk, let arrivedAt):
                     envelope.add(chunk)
                     self.lock.withLockUnchecked {
                         self.chunkCount += 1
@@ -116,17 +115,14 @@ final class ChannelPipeline: @unchecked Sendable {
                         rate = chunk.sampleRate
                     }
                     var samples = chunk.samples
-                    if let f = fedUntil {
-                        let offset = chunk.startTime - f
-                        if offset > 0.002 {
-                            samples = [Float](repeating: 0, count: Int(offset * rate)) + samples
-                        } else if offset < -0.002 {
-                            let drop = min(samples.count, Int(-offset * rate))
-                            samples.removeFirst(drop)
-                        }
+                    let fit = timeline.place(start: chunk.startTime, end: chunk.endTime, count: samples.count,
+                                             rate: rate, arrivedAt: arrivedAt)
+                    if fit.pad > 0 {
+                        samples = [Float](repeating: 0, count: fit.pad) + samples
+                    } else if fit.drop > 0 {
+                        samples.removeFirst(fit.drop)
                     }
                     feed(samples, endTime: chunk.endTime)
-                    fedUntil = max(fedUntil ?? chunk.endTime, chunk.endTime)
                 }
             }
             inputCont.finish()
@@ -144,7 +140,7 @@ final class ChannelPipeline: @unchecked Sendable {
         let channel = self.channel
         source.setEventHandler { ev in onIssue(Self.issue(for: ev, channel: channel)) }
         try source.start(clock: clock,
-                         onChunk: { itemCont.yield(.audio($0)) },
+                         onChunk: { itemCont.yield(.audio($0, arrivedAt: clock.now())) },
                          onEnd: { [weak self] in
                              self?.lock.withLockUnchecked { self?.ended = true }
                              self?.finishFeed()
@@ -221,5 +217,61 @@ final class ChannelPipeline: @unchecked Sendable {
         }
         if status == .error { throw ListenError.sourceFailed("convert: \(err?.localizedDescription ?? "?")") }
         return out.frameLength > 0 ? out : nil
+    }
+}
+
+/// The recognizer's input timeline for one channel: which stretch of session time has been fed, how much silence the pump
+/// adds when chunks stop, and how a chunk is fitted onto what was already fed.
+///
+/// Chunks are stamped with their capture time, and some inputs deliver them well after that (a Bluetooth headset: 100-300 ms
+/// and bursty). A pump that only looked at the capture times would fill zeros for audio still on its way, and the real chunk
+/// would then be trimmed to keep the timeline (review S8). So the timeline tracks how late chunks arrive (`lateness`: the
+/// largest recent arrival minus capture end, decaying slowly) and pumps only past that.
+struct FeedTimeline: Sendable {
+    let pumpAfter: TimeInterval
+    /// Session time up to which samples went to the recognizer.
+    private(set) var fedUntil: TimeInterval?
+    /// How long after its capture end a chunk reaches the pipeline (recent maximum).
+    private(set) var lateness: TimeInterval = 0
+    /// Real samples dropped because their stretch had been filled with silence already.
+    private(set) var droppedSamples = 0
+
+    /// Lateness above this is a stall (a frozen callback), not the input's latency: the pump must still answer within a second.
+    static let maxLateness: TimeInterval = 0.5
+    /// Seconds of lateness forgotten per second of audio, so a passing spike does not slow the pump for the rest of the call.
+    static let latenessDecay: Double = 0.05
+
+    init(pumpAfter: TimeInterval) { self.pumpAfter = pumpAfter }
+
+    /// Silence to feed at clock time `now`, as (sample count, end time), or nil when the stream is not quiet long enough.
+    mutating func pump(now: TimeInterval, rate: Double) -> (Int, TimeInterval)? {
+        guard let f = fedUntil, rate > 0 else { return nil }
+        let heard = now - lateness             // capture time up to which audio could have arrived by now
+        guard heard - f > pumpAfter else { return nil }
+        let n = Int((heard - pumpAfter / 2 - f) * rate)
+        guard n > 0 else { return nil }
+        let end = f + Double(n) / rate
+        fedUntil = end
+        return (n, end)
+    }
+
+    /// Fits a chunk of `count` samples captured over `start...end` onto the timeline: zeros to put in front for a gap, or
+    /// samples to drop from its front where that stretch was fed already.
+    mutating func place(start: TimeInterval, end: TimeInterval, count: Int, rate: Double,
+                        arrivedAt: TimeInterval) -> (pad: Int, drop: Int) {
+        let late = min(max(arrivedAt - end, 0), Self.maxLateness)
+        lateness = max(late, lateness - Self.latenessDecay * max(end - start, 0))
+        var pad = 0, drop = 0
+        if let f = fedUntil {
+            let offset = start - f
+            if offset > 0.002 {
+                pad = Int(offset * rate)
+            } else if offset < -0.002 {
+                drop = min(count, Int(-offset * rate))
+                droppedSamples += drop
+            }
+        }
+        fedUntil = max(fedUntil ?? end, end)
+        return (pad, drop)
     }
 }

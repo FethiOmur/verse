@@ -186,7 +186,8 @@ public struct HomeContext {
         memoryService.recordingSession = { [weak controller] in controller?.recordingSessionName }
         memoryService.attach(controller: controller)
         // Move to Trash asks the window what is running, which session Start uses and which row is shown.
-        sessionsModel.hooks = .window(controller: controller, sim: sim, settings: settings, router: router, memory: memoryService)
+        sessionsModel.hooks = .window(controller: controller, sim: sim, settings: settings, router: router, memory: memoryService,
+                                      people: peopleStore)
         self.upNext = upNext ?? HomeUpNextModel(
             settings: settings, meeting: controller.meeting.settings, sessions: { controller.sessions },
             onPrepared: { [weak controller] name in

@@ -34,7 +34,30 @@ _NUM = re.compile(r"\d[\d.,]*\d|\d")
 _SUFFIX = re.compile(r"\s?([kKmM])\b")
 
 
-def _to_float(tok: str) -> float:
+_EN_THOUSANDS = re.compile(r"[1-9]\d{0,2}(,\d{3})+(\.\d+)?")  # 1,500 / 12,345,678.9
+_EN_DECIMAL = re.compile(r"\d+\.\d+")
+_DOTS_THOUSANDS = re.compile(r"[1-9]\d{0,2}(\.\d{3})+(,\d+)?")  # 1.500 / 12.345.678,9
+_DOTS_DECIMAL = re.compile(r"\d+,\d+")
+# Languages whose number format is known; any other code (or None) falls back to the guess in `_to_float`.
+_POINT_DECIMAL = frozenset({"en"})
+_COMMA_DECIMAL = frozenset({"it", "tr"})
+
+
+def _to_float(tok: str, lang: str | None = None) -> float:
+    """`lang` says how the number was written: in English `3.141` is a decimal and `3,141` thousands; in Italian and Turkish
+    `3.141` is thousands and `3,141` a decimal. Without a known language a three-digit group is read as thousands
+    unless it follows a leading zero ("0.125"); a token the language's own format does not describe is guessed the same way."""
+    code = (lang or "").strip().lower()[:2]
+    if code in _POINT_DECIMAL:
+        if _EN_THOUSANDS.fullmatch(tok):
+            return float(tok.replace(",", ""))
+        if _EN_DECIMAL.fullmatch(tok):
+            return float(tok)
+    elif code in _COMMA_DECIMAL:
+        if _DOTS_THOUSANDS.fullmatch(tok):
+            return float(tok.replace(".", "").replace(",", "."))
+        if _DOTS_DECIMAL.fullmatch(tok):
+            return float(tok.replace(",", "."))
     if re.fullmatch(r"0[.,]\d{3}", tok):  # 0.125 is a decimal, never "0125" thousands
         return float(tok.replace(",", "."))
     if re.fullmatch(r"\d{1,3}([.,]\d{3})+", tok):  # thousands separators (1,500 / 1.500 / 12,345,678)
@@ -44,11 +67,11 @@ def _to_float(tok: str) -> float:
     return float(re.sub(r"[.,]", "", tok))
 
 
-def numbers_in(text: str) -> set[float]:
+def numbers_in(text: str, lang: str | None = None) -> set[float]:
     out: set[float] = set()
     for m in _NUM.finditer(text):
         try:
-            v = _to_float(m.group())
+            v = _to_float(m.group(), lang)
         except ValueError:
             continue
         out.add(v)
@@ -58,7 +81,7 @@ def numbers_in(text: str) -> set[float]:
     return out
 
 
-def significant_numbers(text: str) -> set[float]:
+def significant_numbers(text: str, lang: str | None = None) -> set[float]:
     """Numbers that need support: two or more digits, or a decimal. Lone digits ("3 steps") are ignored."""
     out: set[float] = set()
     for m in _NUM.finditer(text):
@@ -67,7 +90,7 @@ def significant_numbers(text: str) -> set[float]:
         if len(digits) < 2 and not re.search(r"[.,]\d", tok):
             continue
         try:
-            v = _to_float(tok)
+            v = _to_float(tok, lang)
         except ValueError:
             continue
         sm = _SUFFIX.match(text, m.end())
@@ -75,13 +98,14 @@ def significant_numbers(text: str) -> set[float]:
     return out
 
 
-def numbers_supported(text: str, quotes: list[str]) -> bool:
-    need = significant_numbers(text)
+def numbers_supported(text: str, quotes: list[str], lang: str | None = None) -> bool:
+    """`lang` is the language the claim and its quotes are written in (see `_to_float`); None keeps the format-blind guess."""
+    need = significant_numbers(text, lang)
     if not need:
         return True
     have: set[float] = set()
     for q in quotes:
-        have |= numbers_in(q)
+        have |= numbers_in(q, lang)
     return all(any(abs(n - h) < 1e-9 for h in have) for n in need)
 
 

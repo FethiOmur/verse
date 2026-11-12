@@ -730,7 +730,77 @@
    "run": "t03_live2",
    "what": "run_follow t03 live (prompt v2)",
    "usd": 0.02633
+  },
+  {
+   "run": "f3-fresh",
+   "what": "d01 attempt 1",
+   "usd": 0.032319
+  },
+  {
+   "run": "f3-fresh",
+   "what": "d02 attempt 1",
+   "usd": 0.024894
+  },
+  {
+   "run": "f3-fresh",
+   "what": "d03 attempt 1",
+   "usd": 0.019319
+  },
+  {
+   "run": "f3-fresh",
+   "what": "d04 attempt 1",
+   "usd": 0.025498
+  },
+  {
+   "run": "f3-fresh",
+   "what": "d05 attempt 1",
+   "usd": 0.034598
+  },
+  {
+   "run": "f3-fresh",
+   "what": "d06 attempt 1",
+   "usd": 0.030456
+  },
+  {
+   "run": "f3-fresh",
+   "what": "d07 attempt 1",
+   "usd": 0.030475
+  },
+  {
+   "run": "f3-fresh",
+   "what": "d08 attempt 1",
+   "usd": 0.029842
+  },
+  {
+   "run": "f3-fresh",
+   "what": "d09 attempt 1",
+   "usd": 0.024994
+  },
+  {
+   "run": "f3-fresh",
+   "what": "d10 attempt 1",
+   "usd": 0.030468
+  },
+  {
+   "run": "f3-fresh",
+   "what": "d11 attempt 1",
+   "usd": 0.024179
+  },
+  {
+   "run": "f3-fresh",
+   "what": "d12 attempt 1",
+   "usd": 0.03156
+  },
+  {
+   "run": "it-fresh",
+   "what": "it01 attempt 1",
+   "usd": 0.019442
+  },
+  {
+   "run": "it-fresh",
+   "what": "it02 attempt 1",
+   "usd": 0.028029
   }
  ],
- "total_usd": 0.811611
+ "total_usd": 1.197684
 }

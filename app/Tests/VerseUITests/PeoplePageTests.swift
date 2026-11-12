@@ -261,4 +261,12 @@ final class PeoplePageTests: XCTestCase {
         XCTAssertEqual(HomePage.people.symbol, "person.2")
         XCTAssertEqual(HomePage.allCases.firstIndex(of: .people), (HomePage.allCases.firstIndex(of: .sessions) ?? 0) + 1)
     }
+
+    /// A brief made while the entity page was away is read once the run ends: the page's load key changes when it does.
+    func testTheEntityPageReloadsWhenABriefRunEnds() {
+        let running = EntityPageView.loadKey(entity: "e-a", meetings: ["s1", "s2"], making: true)
+        let done = EntityPageView.loadKey(entity: "e-a", meetings: ["s1", "s2"], making: false)
+        XCTAssertNotEqual(running, done, "the end of a brief run must re-run the page's load (it reads brief.json)")
+        XCTAssertNotEqual(done, EntityPageView.loadKey(entity: "e-a", meetings: ["s1"], making: false))
+    }
 }

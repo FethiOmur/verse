@@ -382,12 +382,13 @@ def main() -> int:
     ap.add_argument("--second-on-all", action="store_true",
                     help="grounding: the second judge (Sonnet, about 20x Haiku's price per line) reads every line, not only the ones Haiku flagged")
     ap.add_argument("--ngram-only", action="store_true", help="ignore the brain's embedding bank hits (writes scores_ngram.json)")
+    ap.add_argument("--dialogues-dir", default=str(labels.DIALOGUES_DIR), help="label folder (eval/dialogues_it for the Italian set)")
     a = ap.parse_args()
     global COUNT_EMBED_HITS
     COUNT_EMBED_HITS = not a.ngram_only
     from paths import OUT
     run_dir = OUT / a.run
-    res = score_run(run_dir)
+    res = score_run(run_dir, dialogues_dir=Path(a.dialogues_dir))
     from grounding_run import run_grounding  # local import: keeps score.py network-free
     res["grounding"] = run_grounding(res, Path(a.session), judge=a.judge, budget_usd=a.judge_budget_usd, run=a.run, passes=a.judge_passes, second_on_all=a.second_on_all)
     (run_dir / ("scores_ngram.json" if a.ngram_only else "scores.json")).write_text(json.dumps(res, indent=1, ensure_ascii=False) + "\n")

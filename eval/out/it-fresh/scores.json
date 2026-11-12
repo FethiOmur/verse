@@ -1,0 +1,1105 @@
+{
+ "run": "it-fresh",
+ "dialogues": [
+  {
+   "id": "it01",
+   "suite": "main",
+   "speakers": 2,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "statement",
+     "text": "Ciao, grazie per il tempo che ci dedichi oggi.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r1",
+      "r2"
+     ],
+     "heard": "Ciao, grazie per il tempo che ci dedichi | oggi.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement",
+      "fragment"
+     ],
+     "heard_addressee": [
+      "unknown",
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0001",
+       "line": "SAY: Ciao, grazie a voi per l'invito, è un piacere.",
+       "turn_id": "r1",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 1.332
+    },
+    {
+     "index": 1,
+     "category": "exact",
+     "text": "Puoi parlarmi di te e del tuo percorso?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b001",
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "Puoi parlarmi di te e del tuo percorso",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0004",
+       "line": "SAY: Certo, ti do la versione breve di quello su cui ho lavorato.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0004",
+       "line": "- Ho guidato Lantern, una pipeline LLM che estrae campi strutturati dalle fatture dei fornitori.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0004",
+       "line": "- Ha ridotto l'inserimento manuale da 11 minuti a 2 minuti per fattura.",
+       "turn_id": "r3",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r3",
+     "asr_endpoint_s": 0.641,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.985,
+     "bank_hits": [
+      {
+       "bank_id": "b001",
+       "score": 0.772,
+       "via": "ngram",
+       "visible_s": -0.405
+      },
+      {
+       "bank_id": "b001",
+       "score": 0.875,
+       "via": "ngram",
+       "visible_s": 0.555
+      },
+      {
+       "bank_id": "b001",
+       "score": 1,
+       "via": "ngram",
+       "visible_s": 0.557
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b001",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 3,
+     "category": "paraphrase",
+     "text": "Cosa ti ha portato a guardare proprio Halden?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b002",
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "Cosa ti ha portato a guardare proprio al",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0007",
+       "line": "SAY: Certo, ti racconto brevemente il mio percorso e i progetti su cui ho lavorato.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0007",
+       "line": "- Ho guidato Lantern, una pipeline LLM che estrae campi strutturati dalle fatture dei fornitori.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0007",
+       "line": "- Ho anche costruito un ottimizzatore di percorsi per un pilota corriere.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "d0006",
+       "line": "- Ho guidato Lantern, una pipeline LLM che estrae campi strutturati dalle fatture dei fornitori. Ha portato l'inserimento manuale da 11 minuti a 2 minuti per fattura. (b001, f010)",
+       "turn_id": "r4",
+       "tier": "D"
+      },
+      {
+       "call": "d0006",
+       "line": "- Ho anche costruito un piccolo ottimizzatore di percorsi per un pilota con corrieri: ha ridotto i viaggi a vuoto del 14 percento. (b001, f019)",
+       "turn_id": "r4",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r4",
+     "asr_endpoint_s": 0.639,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.044,
+     "d_first_text_s": 1.689
+    },
+    {
+     "index": 5,
+     "category": "statement",
+     "text": "Ok, molto utile.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "Ok, molto utile",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0008",
+       "line": "SAY: Grazie, sono contento che sia utile.",
+       "turn_id": "r5",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.71,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.516
+    },
+    {
+     "index": 6,
+     "category": "offbank",
+     "text": "Qual è stata la parte più difficile nel costruire Lantern?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r6"
+     ],
+     "heard": "Qual è stata la parte più difficile nel costruire l'anterm",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0009",
+       "line": "SAY: La parte più difficile è stata fidarsi del modello senza farlo indovinare.",
+       "turn_id": "r6",
+       "tier": "F"
+      },
+      {
+       "call": "f0009",
+       "line": "- Ho fatto in modo che ogni totale fosse validato con uno schema, con un tentativo in più, poi escalato.",
+       "turn_id": "r6",
+       "tier": "F"
+      },
+      {
+       "call": "d0010",
+       "line": "- La parte più difficile è stata evitare che il modello indovinasse un totale: validazione dello schema con un solo retry, poi escalation. (b003)",
+       "turn_id": "r6",
+       "tier": "D"
+      },
+      {
+       "call": "d0010",
+       "line": "- Un'altra sfida è stata il compromesso tra qualità e costo: modello piccolo al primo passaggio, uno più grande solo sui documenti incerti. (b006)",
+       "turn_id": "r6",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 0.901,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.507,
+     "d_first_text_s": 2.981
+    },
+    {
+     "index": 8,
+     "category": "exact",
+     "text": "Quando potresti iniziare se ti facessimo un'offerta?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b015",
+     "warmup": false,
+     "turn_ids": [
+      "r7"
+     ],
+     "heard": "Quando potresti iniziare se ti facessimo un'o",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0012",
+       "line": "SAY: Posso iniziare con 30 giorni di preavviso, quindi la data più vicina sarebbe metà dicembre 2026.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "s0012",
+       "line": "- Il mio periodo di preavviso attuale è di 30 giorni.",
+       "turn_id": "r7",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r7",
+     "asr_endpoint_s": 0.407,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.407,
+     "bank_hits": [
+      {
+       "bank_id": "b015",
+       "score": 0.666,
+       "via": "ngram",
+       "visible_s": -0.645
+      },
+      {
+       "bank_id": "b015",
+       "score": 0.748,
+       "via": "ngram",
+       "visible_s": -0.64
+      },
+      {
+       "bank_id": "b015",
+       "score": 0.856,
+       "via": "ngram",
+       "visible_s": 0.307
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b015",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 10,
+     "category": "fragment",
+     "text": "Giusto, ok.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r8"
+     ],
+     "heard": "Giusto, ok",
+     "detected_answerable": false,
+     "detected_kind": [
+      "fragment"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r8",
+     "asr_endpoint_s": 1.304
+    },
+    {
+     "index": 11,
+     "category": "paraphrase",
+     "text": "Lantern ha davvero fatto la differenza? Facci vedere i numeri.",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b004",
+     "warmup": false,
+     "turn_ids": [
+      "r9"
+     ],
+     "heard": "L'anterna davvero fatto la differenza facci vedere i numeri",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0014",
+       "line": "SAY: Certo, ti do i numeri principali di Lantern.",
+       "turn_id": "r9",
+       "tier": "F"
+      },
+      {
+       "call": "f0014",
+       "line": "- Il tempo di inserimento dati manuale è sceso da 11 a 2 minuti per fattura.",
+       "turn_id": "r9",
+       "tier": "F"
+      },
+      {
+       "call": "d0015",
+       "line": "- Il lavoro manuale è sceso da 11 minuti a 2 minuti per fattura, su 38.000 fatture al mese. (f010, f011)",
+       "turn_id": "r9",
+       "tier": "D"
+      },
+      {
+       "call": "d0015",
+       "line": "- Il costo del modello era circa 1.900 euro al mese, contro 9.500 euro di lavoro manuale risparmiato. (f017)",
+       "turn_id": "r9",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r9",
+     "asr_endpoint_s": 0.715,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.35,
+     "d_first_text_s": 2.815
+    }
+   ],
+   "turns": 9,
+   "spurious_turns": [],
+   "answerable_turns": 3,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  },
+  {
+   "id": "it02",
+   "suite": "main",
+   "speakers": 2,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "exact",
+     "text": "Puoi parlarmi del progetto Lantern?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b003",
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "you Puoi parlarmi del progetto Lanter",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0001",
+       "line": "SAY: Certo, Lantern è il progetto di cui posso parlare nel dettaglio.",
+       "turn_id": "r1",
+       "tier": "F"
+      },
+      {
+       "call": "f0001",
+       "line": "- Lantern è una pipeline LLM che estrae campi strutturati dalle fatture dei fornitori, e l'ho guidata io.",
+       "turn_id": "r1",
+       "tier": "F"
+      },
+      {
+       "call": "f0001",
+       "line": "- Ha ridotto l'inserimento manuale da 11 a 2 minuti per fattura.",
+       "turn_id": "r1",
+       "tier": "F"
+      },
+      {
+       "call": "d0002",
+       "line": "- Lantern è una pipeline LLM che estrae campi strutturati dalle fatture dei fornitori, e l'ho guidata io. Girava su 38.000 fatture al mese. (f006, f011)",
+       "turn_id": "r1",
+       "tier": "D"
+      },
+      {
+       "call": "d0002",
+       "line": "- Ha ridotto l'inserimento manuale da 11 minuti a 2 minuti per fattura. I campi sotto 0,8 di confidenza vanno a un operatore umano. (f010, f014)",
+       "turn_id": "r1",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.895,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.498,
+     "d_first_text_s": 2.032,
+     "bank_hits": [
+      {
+       "bank_id": "b003",
+       "score": 0.752,
+       "via": "ngram",
+       "visible_s": 0.808
+      },
+      {
+       "bank_id": "b003",
+       "score": 0.837,
+       "via": "ngram",
+       "visible_s": 0.817
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b003",
+       "agree": false
+      }
+     ],
+     "chips": [
+      {
+       "text": "Puoi parlarmi del progetto Lantern?",
+       "kind": "topic",
+       "visible_s": -0.159
+      }
+     ]
+    },
+    {
+     "index": 2,
+     "category": "paraphrase",
+     "text": "Che percentuale di campi azzeccava?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b011",
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "Che percentuale di campi aggeccava",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0003",
+       "line": "SAY: Certo, sul progetto Lantern posso darti i numeri precisi.",
+       "turn_id": "r2",
+       "tier": "F"
+      },
+      {
+       "call": "f0003",
+       "line": "- Lantern estrae i campi dalle fatture dei fornitori ed è stato cut da 11 a 2 minuti per fattura.",
+       "turn_id": "r2",
+       "tier": "F"
+      },
+      {
+       "call": "d0004",
+       "line": "- Circa il 7 percento delle fatture aveva campi con confidenza bassa, cioè sotto 0,8, e questi vanno a un operatore umano. (f014, f015)",
+       "turn_id": "r2",
+       "tier": "D"
+      },
+      {
+       "call": "d0004",
+       "line": "- Sul set di test, i totali erano corretti al 96,4 percento e le righe fattura al 91 percento. (f012, f013)",
+       "turn_id": "r2",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 0.698,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.341,
+     "d_first_text_s": 2.235
+    },
+    {
+     "index": 4,
+     "category": "statement",
+     "text": "Abbiamo in programma un offsite aziendale a Lisbona la prossima primavera.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "Abbiamo in programma uno site aziendale a Lisbona la prossima primavera",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0005",
+       "line": "SAY: Thanks for letting me know, that sounds like a good plan.",
+       "turn_id": "r3",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r3",
+     "asr_endpoint_s": 0.926,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.719,
+     "chips": [
+      {
+       "text": "Hai qualche domanda per noi?",
+       "kind": "topic",
+       "visible_s": -2.813
+      }
+     ]
+    },
+    {
+     "index": 5,
+     "category": "offbank",
+     "text": "Quali linguaggi di programmazione usi tutti i giorni?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "Quali linguaggi di programmazione usi tutti i giorni",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0008",
+       "line": "SAY: Ho lavorato soprattutto con Python per Lantern, la pipeline LLM per le fatture.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0008",
+       "line": "- Python è il linguaggio che ho usato di più per la pipeline e per la valutazione.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "d0009",
+       "line": "- Puoi portare esempi concreti: Lantern gira su 38.000 fatture al mese, con un set di valutazione fisso di 400 fatture (f011, f018).",
+       "turn_id": "r4",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r4",
+     "asr_endpoint_s": 0.413,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.111,
+     "d_first_text_s": 2.234
+    },
+    {
+     "index": 7,
+     "category": "exact",
+     "text": "Qual è il tuo punto debole più grande?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b005",
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "Qual è il tuo punto debole più grande?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0011",
+       "line": "SAY: Un punto su cui sto lavorando è come affronto i prototipi iniziali.",
+       "turn_id": "r5",
+       "tier": "F"
+      },
+      {
+       "call": "f0011",
+       "line": "- Prima tendevo a over-engineer i prototipi iniziali.",
+       "turn_id": "r5",
+       "tier": "F"
+      },
+      {
+       "call": "f0011",
+       "line": "- Ora rilascio una versione leggera nella prima settimana.",
+       "turn_id": "r5",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.911,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.365,
+     "bank_hits": [
+      {
+       "bank_id": "b005",
+       "score": 0.657,
+       "via": "ngram",
+       "visible_s": -0.132
+      },
+      {
+       "bank_id": "b005",
+       "score": 0.809,
+       "via": "ngram",
+       "visible_s": -0.128
+      },
+      {
+       "bank_id": "b005",
+       "score": 1,
+       "via": "ngram",
+       "visible_s": 0.82
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b005",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 9,
+     "category": "paraphrase",
+     "text": "Quanto costava tenerlo in piedi, e si è ripagato?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b012",
+     "warmup": false,
+     "turn_ids": [
+      "r6"
+     ],
+     "heard": "Quanto costava tenerlo in piedi e si è ripagato",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0014",
+       "line": "SAY: Certo, ti rispondo con i numeri del costo rispetto al lavoro manuale che sostituiva.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "s0014",
+       "line": "- Il costo mensile del modello era circa EUR 1.900, contro EUR 9.500 di lavoro manuale risparmiato.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "d0015",
+       "line": "- Il costo mensile del modello era circa 1.900 euro, contro 9.500 euro di lavoro manuale risparmiato ogni mese. (f016, f017)",
+       "turn_id": "r6",
+       "tier": "D"
+      },
+      {
+       "call": "d0015",
+       "line": "- Questo con un volume di 38.000 fatture al mese; i dati passavano da 11 minuti a 2 minuti per fattura. (f011, f010)",
+       "turn_id": "r6",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 0.742,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.744,
+     "d_first_text_s": 1.822
+    },
+    {
+     "index": 11,
+     "category": "fragment",
+     "text": "E poi il",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r7"
+     ],
+     "heard": "E poi",
+     "detected_answerable": false,
+     "detected_kind": [
+      "fragment"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r7",
+     "asr_endpoint_s": 1.306
+    }
+   ],
+   "turns": 7,
+   "spurious_turns": [],
+   "answerable_turns": 3,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  }
+ ],
+ "aggregate": {
+  "questions_to_user": 10,
+  "excluded_warmup_utterances": 0,
+  "detection": {
+   "positives": 10,
+   "covered": 6,
+   "recall": 0.6,
+   "predicted_turns": 6,
+   "true_positive_turns": 6,
+   "precision": 1.0,
+   "missed": [
+    {
+     "dialogue": "it01",
+     "text": "Qual è stata la parte più difficile nel costruire Lantern?",
+     "heard": "Qual è stata la parte più difficile nel costruire l'anterm",
+     "kinds": [
+      "statement"
+     ],
+     "addressee": [
+      "unknown"
+     ]
+    },
+    {
+     "dialogue": "it01",
+     "text": "Lantern ha davvero fatto la differenza? Facci vedere i numeri.",
+     "heard": "L'anterna davvero fatto la differenza facci vedere i numeri",
+     "kinds": [
+      "statement"
+     ],
+     "addressee": [
+      "unknown"
+     ]
+    },
+    {
+     "dialogue": "it02",
+     "text": "Puoi parlarmi del progetto Lantern?",
+     "heard": "you Puoi parlarmi del progetto Lanter",
+     "kinds": [
+      "statement"
+     ],
+     "addressee": [
+      "unknown"
+     ]
+    },
+    {
+     "dialogue": "it02",
+     "text": "Che percentuale di campi azzeccava?",
+     "heard": "Che percentuale di campi aggeccava",
+     "kinds": [
+      "statement"
+     ],
+     "addressee": [
+      "unknown"
+     ]
+    }
+   ],
+   "false_positives": []
+  },
+  "addressee": {
+   "questions_to_other": 0,
+   "no_say": 0,
+   "no_say_rate": null,
+   "three_speaker_n": 0,
+   "three_speaker_no_say": 0,
+   "classified_other": 0,
+   "not_detected_at_all": 0,
+   "failures": []
+  },
+  "bank": {
+   "banked_questions": 8,
+   "hits": 4,
+   "confirmed_by_haiku": 3,
+   "hit_rate": 0.5,
+   "by_category": {
+    "exact": {
+     "n": 4,
+     "hit": 4,
+     "hit_via_embed": 0,
+     "confirmed": 3
+    },
+    "paraphrase": {
+     "n": 4,
+     "hit": 0,
+     "hit_via_embed": 0,
+     "confirmed": 0
+    }
+   },
+   "utterances_probed": 15,
+   "wrong_hits": 0,
+   "wrong_hit_rate": 0.0,
+   "wrong_hits_transient": 0,
+   "wrong_hit_rate_transient": 0.0,
+   "wrong_after_haiku": 0,
+   "wrong_after_haiku_rate": 0.0,
+   "wrong_hits_not_retracted": 0,
+   "wrong_hit_rate_not_retracted": 0.0,
+   "wrong_final_via_embed": 0,
+   "wrong_detail": []
+  },
+  "latency": {
+   "acoustic_end_to_turn_sent": {
+    "n": 10,
+    "p50": 0.706,
+    "p90": 0.901,
+    "max": 0.911
+   },
+   "first_visible_text_any_SF": {
+    "n": 10,
+    "p50": 1.226,
+    "p90": 1.498,
+    "max": 1.507
+   },
+   "speculation_hit_opener_visible": {
+    "n": 5,
+    "p50": 0.985,
+    "p90": 1.111,
+    "max": 1.111
+   },
+   "fresh_haiku_first_word": {
+    "n": 5,
+    "p50": 1.365,
+    "p90": 1.507,
+    "max": 1.507
+   },
+   "sonnet_deep_first_words": {
+    "n": 7,
+    "p50": 2.234,
+    "p90": 2.981,
+    "max": 2.981
+   },
+   "bank_hit_visible": {
+    "n": 4,
+    "p50": -0.269,
+    "p90": 0.808,
+    "max": 0.808
+   },
+   "fact_chip_visible": {
+    "n": 1,
+    "p50": -0.159,
+    "p90": -0.159,
+    "max": -0.159
+   },
+   "questions_with_no_sf_text": 0,
+   "questions_with_d_text": 7,
+   "n_speculation_path": 5,
+   "n_fresh_path": 5
+  },
+  "other": {
+   "statements": 3,
+   "statements_with_say": 3,
+   "statements_called_question": 0,
+   "fragments": 2,
+   "fragments_with_output": 0
+  },
+  "cost": {
+   "per_dialogue_usd": {
+    "it01": 0.019442,
+    "it02": 0.028029
+   },
+   "total_usd": 0.04747,
+   "replay_minutes": 2.12,
+   "usd_per_30_min": 0.6704
+  }
+ },
+ "aggregate_short": null,
+ "metas": {
+  "it01": {
+   "duration_s": 73.6,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    6.9,
+    5.82,
+    5.53
+   ],
+   "loadavg_after": [
+    3.6,
+    5.01,
+    5.24
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.019442,
+   "elapsed_s": 95.57
+  },
+  "it02": {
+   "duration_s": 65.85,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    3.6,
+    5.01,
+    5.24
+   ],
+   "loadavg_after": [
+    12.89,
+    7.1,
+    5.98
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.028029,
+   "elapsed_s": 75.61
+  }
+ },
+ "grounding": {
+  "lines_checked": 40,
+  "auto_supported": 29,
+  "unresolved_by_string_check": 11,
+  "judged": 0,
+  "judge_supported": 0,
+  "violations": [],
+  "unjudged": [
+   {
+    "dialogue": "it01",
+    "line": "- Il lavoro manuale è sceso da 11 minuti a 2 minuti per fattura, su 38.000 fatture al mese. (f010, f011)",
+    "unresolved": {
+     "numbers": [
+      "38.000"
+     ]
+    }
+   },
+   {
+    "dialogue": "it01",
+    "line": "- Il costo del modello era circa 1.900 euro al mese, contro 9.500 euro di lavoro manuale risparmiato. (f017)",
+    "unresolved": {
+     "numbers": [
+      "1.900",
+      "9.500"
+     ]
+    }
+   },
+   {
+    "dialogue": "it02",
+    "line": "- Lantern è una pipeline LLM che estrae campi strutturati dalle fatture dei fornitori, e l'ho guidata io. Girava su 38.000 fatture al mese. (f006, f011)",
+    "unresolved": {
+     "numbers": [
+      "38.000"
+     ]
+    }
+   },
+   {
+    "dialogue": "it02",
+    "line": "- Ha ridotto l'inserimento manuale da 11 minuti a 2 minuti per fattura. I campi sotto 0,8 di confidenza vanno a un operatore umano. (f010, f014)",
+    "unresolved": {
+     "numbers": [
+      "08"
+     ]
+    }
+   },
+   {
+    "dialogue": "it02",
+    "line": "- Circa il 7 percento delle fatture aveva campi con confidenza bassa, cioè sotto 0,8, e questi vanno a un operatore umano. (f014, f015)",
+    "unresolved": {
+     "numbers": [
+      "08"
+     ]
+    }
+   },
+   {
+    "dialogue": "it02",
+    "line": "- Sul set di test, i totali erano corretti al 96,4 percento e le righe fattura al 91 percento. (f012, f013)",
+    "unresolved": {
+     "numbers": [
+      "964"
+     ]
+    }
+   },
+   {
+    "dialogue": "it02",
+    "line": "SAY: Ho lavorato soprattutto con Python per Lantern, la pipeline LLM per le fatture.",
+    "unresolved": {
+     "names": [
+      "Python"
+     ]
+    }
+   },
+   {
+    "dialogue": "it02",
+    "line": "- Puoi portare esempi concreti: Lantern gira su 38.000 fatture al mese, con un set di valutazione fisso di 400 fatture (f011, f018).",
+    "unresolved": {
+     "numbers": [
+      "38.000"
+     ]
+    }
+   },
+   {
+    "dialogue": "it02",
+    "line": "- Il costo mensile del modello era circa EUR 1.900, contro EUR 9.500 di lavoro manuale risparmiato.",
+    "unresolved": {
+     "numbers": [
+      "1.900",
+      "9.500"
+     ]
+    }
+   },
+   {
+    "dialogue": "it02",
+    "line": "- Il costo mensile del modello era circa 1.900 euro, contro 9.500 euro di lavoro manuale risparmiato ogni mese. (f016, f017)",
+    "unresolved": {
+     "numbers": [
+      "1.900",
+      "9.500"
+     ]
+    }
+   },
+   {
+    "dialogue": "it02",
+    "line": "- Questo con un volume di 38.000 fatture al mese; i dati passavano da 11 minuti a 2 minuti per fattura. (f011, f010)",
+    "unresolved": {
+     "numbers": [
+      "38.000"
+     ]
+    }
+   }
+  ],
+  "judge_cost_usd": 0.0,
+  "unresolved_but_judged_supported": 0
+ }
+}

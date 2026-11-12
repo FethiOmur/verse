@@ -1,0 +1,5881 @@
+{
+ "run": "f3-fresh",
+ "dialogues": [
+  {
+   "id": "d01",
+   "suite": "main",
+   "speakers": 2,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "statement",
+     "text": "Hi the owner, thanks for making the time today.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r1",
+      "r2"
+     ],
+     "heard": "Hi, the owner. Thanks for making the time today | Thanks for making the time today.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement",
+      "statement"
+     ],
+     "heard_addressee": [
+      "me",
+      "unknown"
+     ],
+     "say_lines": 2,
+     "suggestion_lines": [
+      {
+       "call": "f0001",
+       "line": "SAY: Thanks for having me, I'm glad to be here.",
+       "turn_id": "r1",
+       "tier": "F"
+      },
+      {
+       "call": "f0002",
+       "line": "SAY: Thanks for having me, I'm glad to be here.",
+       "turn_id": "r2",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 1.041,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.858
+    },
+    {
+     "index": 1,
+     "category": "exact",
+     "text": "Can you tell me about yourself and your background?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b001",
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "Can you tell me about yourself and your",
+     "detected_answerable": false,
+     "detected_kind": [
+      "fragment"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0005",
+       "line": "SAY: Sure, I'm happy to walk you through my background. Most of my recent work has been on LLM pipelines for real operations, plus some route optimisation.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0005",
+       "line": "- I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0005",
+       "line": "- Lantern cut manual data entry from 11 minutes to 2 minutes per invoice, and I also",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "d0004",
+       "line": "- Lantern is an LLM pipeline that pulls structured fields from supplier invoices, and I led the project. (f006, g003)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0004",
+       "line": "- It cut manual data entry from 11 minutes to 2 minutes per invoice, on 38,000 invoices a month. (f010, f011)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0004",
+       "line": "- The model never guesses a total. Output is checked against a schema, retried once, then escalated. (b003)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0004",
+       "line": "- Fields below 0.8 confidence go to a human operator. That was about 7 percent of invoices. (f014, f015)",
+       "turn_id": "r3",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r3",
+     "asr_endpoint_s": 1.315,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.316,
+     "d_first_text_s": 1.316,
+     "bank_hits": [
+      {
+       "bank_id": "b003",
+       "score": 0.684,
+       "via": "ngram",
+       "visible_s": -1.032
+      },
+      {
+       "bank_id": "b001",
+       "score": 0.83,
+       "via": "ngram",
+       "visible_s": -0.091
+      }
+     ]
+    },
+    {
+     "index": 3,
+     "category": "paraphrase",
+     "text": "What drew you to Halden in the first place?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b002",
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "What drew you to Halden in the first place",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0008",
+       "line": "SAY: Honestly, the move from rules-based dispatch toward an LLM-assisted dispatcher is what caught my eye.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "s0008",
+       "line": "- The planned Q1 2027 pilot is exactly the kind of work I have done with Lantern.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "d0009",
+       "line": "- Halden is moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027. (b002, g004)",
+       "turn_id": "r5",
+       "tier": "D"
+      },
+      {
+       "call": "d0009",
+       "line": "- I led Lantern, an LLM pipeline for supplier invoices, and I built a route optimiser for a courier pilot. (b002, f006)",
+       "turn_id": "r5",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.405,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.671,
+     "d_first_text_s": 1.266,
+     "chips": [
+      {
+       "text": "Halden Freight Systems builds route-planning software for mid-size European haulage firms.",
+       "kind": "name",
+       "visible_s": 0.105
+      }
+     ]
+    },
+    {
+     "index": 5,
+     "category": "statement",
+     "text": "Okay, that's helpful.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r6"
+     ],
+     "heard": "Okay, that's helpful.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0010",
+       "line": "SAY: Glad that helps. Happy to answer anything else.",
+       "turn_id": "r6",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 0.694,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.54
+    },
+    {
+     "index": 6,
+     "category": "offbank",
+     "text": "What was the hardest part of building Lantern?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r7"
+     ],
+     "heard": "What was the hardest part of building lantern",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0014",
+       "line": "SAY: The hardest part was getting the model to be reliable enough to trust with real invoices every month.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "s0014",
+       "line": "- We gated every change on a frozen set of 400 invoices, rerun before each release.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "s0014",
+       "line": "- Anything the model was unsure about, below 0.8 confidence, went to a human operator instead of being guessed.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "d0013",
+       "line": "- The hardest part was never letting the model guess. I added schema checks with one retry, then escalation, so it never guesses a total. (b003)",
+       "turn_id": "r7",
+       "tier": "D"
+      },
+      {
+       "call": "d0013",
+       "line": "- A close second was knowing when the model was unsure. Fields below 0.8 confidence go to a human operator, about 7 percent of invoices. (f014, f015)",
+       "turn_id": "r7",
+       "tier": "D"
+      },
+      {
+       "call": "d0013",
+       "line": "- I also kept quality steady by testing every prompt change on a frozen set of 400 invoices before release. (f018)",
+       "turn_id": "r7",
+       "tier": "D"
+      },
+      {
+       "call": "d0013",
+       "line": "- The result: manual data entry fell from 11 minutes to 2 minutes per invoice. (f010)",
+       "turn_id": "r7",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r7",
+     "asr_endpoint_s": 0.408,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.637,
+     "d_first_text_s": 1.374,
+     "chips": [
+      {
+       "text": "Lantern is the LLM invoice-extraction project that Fethi led.",
+       "kind": "name",
+       "visible_s": 0.103
+      },
+      {
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Fethi.",
+       "kind": "term",
+       "visible_s": 0.103
+      }
+     ]
+    },
+    {
+     "index": 8,
+     "category": "exact",
+     "text": "When could you start if we made an offer?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b015",
+     "warmup": false,
+     "turn_ids": [
+      "r8"
+     ],
+     "heard": "When could you start if we made an offer?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0016",
+       "line": "SAY: I can give you the exact timing, based on my notice period.",
+       "turn_id": "r8",
+       "tier": "S"
+      },
+      {
+       "call": "s0016",
+       "line": "- My notice period at my current company is 30 days.",
+       "turn_id": "r8",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r8",
+     "asr_endpoint_s": 0.616,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.419,
+     "bank_hits": [
+      {
+       "bank_id": "b015",
+       "score": 0.702,
+       "via": "ngram",
+       "visible_s": -0.416
+      },
+      {
+       "bank_id": "b015",
+       "score": 0.855,
+       "via": "ngram",
+       "visible_s": -0.412
+      },
+      {
+       "bank_id": "b015",
+       "score": 1,
+       "via": "ngram",
+       "visible_s": 0.535
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b015",
+       "agree": true
+      }
+     ],
+     "chips": [
+      {
+       "text": "How did you choose between small and large models?",
+       "kind": "topic",
+       "visible_s": -1.389
+      }
+     ]
+    },
+    {
+     "index": 10,
+     "category": "fragment",
+     "text": "Right, okay.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r9"
+     ],
+     "heard": "Right. Okay.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "fragment"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r9",
+     "asr_endpoint_s": 1.308
+    },
+    {
+     "index": 11,
+     "category": "paraphrase",
+     "text": "Did Lantern actually move the needle? Show us figures.",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b004",
+     "warmup": false,
+     "turn_ids": [
+      "r10",
+      "r11"
+     ],
+     "heard": "Did Lantern actually move the needle? Show us figures | Show us figures.",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question",
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown",
+      "unknown"
+     ],
+     "say_lines": 2,
+     "suggestion_lines": [
+      {
+       "call": "d0018",
+       "line": "- It ran on 38,000 invoices a month, so the time saved added up fast. (f011)",
+       "turn_id": "r10",
+       "tier": "D"
+      },
+      {
+       "call": "d0018",
+       "line": "- Model cost was about EUR 1,900 a month, and it saved EUR 9,500 of manual labour. (f017)",
+       "turn_id": "r10",
+       "tier": "D"
+      },
+      {
+       "call": "s0019",
+       "line": "SAY: Yes, it did, and I can show you the numbers.",
+       "turn_id": "r10",
+       "tier": "S"
+      },
+      {
+       "call": "s0019",
+       "line": "- Manual entry dropped from 11 minutes to 2 minutes per invoice, on 38,000 invoices a month.",
+       "turn_id": "r10",
+       "tier": "S"
+      },
+      {
+       "call": "f0020",
+       "line": "SAY: Sure, here are the numbers from Lantern's results.",
+       "turn_id": "r11",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r10",
+     "asr_endpoint_s": 0.451,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.662,
+     "d_first_text_s": 0.753,
+     "bank_hits": [
+      {
+       "bank_id": "b004",
+       "score": 0.9074,
+       "via": "embed",
+       "visible_s": 0.509
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b004",
+       "agree": true
+      }
+     ],
+     "chips": [
+      {
+       "text": "Lantern is the LLM invoice-extraction project that Fethi led.",
+       "kind": "name",
+       "visible_s": -1.814
+      },
+      {
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Fethi.",
+       "kind": "term",
+       "visible_s": -1.814
+      }
+     ]
+    }
+   ],
+   "turns": 11,
+   "spurious_turns": [
+    {
+     "turn_id": "r4",
+     "text": "background?",
+     "kind": "fragment",
+     "addressee": "unknown"
+    }
+   ],
+   "answerable_turns": 4,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  },
+  {
+   "id": "d02",
+   "suite": "main",
+   "speakers": 2,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "exact",
+     "text": "Can you tell me about the Lantern project?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b003",
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "Can you tell me about the Lantern Project",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0003",
+       "line": "SAY: Sure, Lantern is the project I can talk about in the most detail. I led it, and it's an LLM pipeline that extracts fields from supplier invoices.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0003",
+       "line": "- It cut manual data entry from 11 minutes to 2 minutes per invoice, and ran on 38,000 invoices a month.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0003",
+       "line": "- Extraction is schema-validated with one retry, then escalated",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "d0002",
+       "line": "- Lantern is an LLM pipeline that pulls structured fields from supplier invoices, and I led the project. (f006, g003)",
+       "turn_id": "r1",
+       "tier": "D"
+      },
+      {
+       "call": "d0002",
+       "line": "- It cut manual data entry from 11 minutes to 2 minutes per invoice, on 38,000 invoices a month. (f010, f011)",
+       "turn_id": "r1",
+       "tier": "D"
+      },
+      {
+       "call": "d0002",
+       "line": "- I used a small model for the first pass, and a larger one only on low-confidence documents. (b003, prep:L24)",
+       "turn_id": "r1",
+       "tier": "D"
+      },
+      {
+       "call": "d0002",
+       "line": "- Output is checked against a schema with one retry, then escalated. Fields below 0.8 confidence go to a human operator. (f014, prep:L25)",
+       "turn_id": "r1",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.699,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.11,
+     "d_first_text_s": 1.451,
+     "bank_hits": [
+      {
+       "bank_id": "b003",
+       "score": 0.684,
+       "via": "ngram",
+       "visible_s": -0.347
+      },
+      {
+       "bank_id": "b003",
+       "score": 0.775,
+       "via": "ngram",
+       "visible_s": -0.341
+      },
+      {
+       "bank_id": "b003",
+       "score": 0.883,
+       "via": "ngram",
+       "visible_s": 0.611
+      },
+      {
+       "bank_id": "b003",
+       "score": 1,
+       "via": "ngram",
+       "visible_s": 0.617
+      }
+     ],
+     "chips": [
+      {
+       "text": "Lantern is the LLM invoice-extraction project that Fethi led.",
+       "kind": "name",
+       "visible_s": 0.611
+      },
+      {
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Fethi.",
+       "kind": "term",
+       "visible_s": 0.611
+      }
+     ]
+    },
+    {
+     "index": 2,
+     "category": "paraphrase",
+     "text": "What percentage of fields did it get right?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b011",
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "What percentage of fields did it get right?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "d0005",
+       "line": "- About 7 percent of invoices had low-confidence fields, below 0.8, and those went to a human operator. (f015, f014)",
+       "turn_id": "r2",
+       "tier": "D"
+      },
+      {
+       "call": "d0005",
+       "line": "- On the held-out set, accuracy was 96.4 percent for totals and 91 percent for line items. (f012, f013)",
+       "turn_id": "r2",
+       "tier": "D"
+      },
+      {
+       "call": "s0006",
+       "line": "SAY: Good question; the main number is about 7 percent of invoices.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0006",
+       "line": "- Fields below 0.8 confidence went to a human operator, about 7 percent of invoices.",
+       "turn_id": "r2",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 0.637,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.036,
+     "d_first_text_s": 1.356
+    },
+    {
+     "index": 4,
+     "category": "statement",
+     "text": "We have a company offsite planned in Lisbon next spring.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "We have a company of site planned in Lisbon next spring",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0007",
+       "line": "SAY: Thanks for letting me know, that sounds good.",
+       "turn_id": "r3",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r3",
+     "asr_endpoint_s": 0.711,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.478
+    },
+    {
+     "index": 5,
+     "category": "offbank",
+     "text": "Which programming languages do you use day to day?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "Which programming languages do you use day to day",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0010",
+       "line": "SAY: I mostly work in Python, and I use whatever fits the problem best.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0010",
+       "line": "- I used Python for Lantern's extraction pipeline and its evaluation harness.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0010",
+       "line": "- I'm comfortable picking up other languages when a project needs it.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "d0011",
+       "line": "- For Lantern, I can say how I check quality: a frozen set of 400 invoices, rerun on every prompt change. (f018)",
+       "turn_id": "r4",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r4",
+     "asr_endpoint_s": 0.409,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.793,
+     "d_first_text_s": 1.748,
+     "chips": [
+      {
+       "text": "What technical decisions are you most proud of, and what…",
+       "kind": "topic",
+       "visible_s": -1.706
+      }
+     ]
+    },
+    {
+     "index": 7,
+     "category": "exact",
+     "text": "What is your biggest weakness?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b005",
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "What is your biggest weak",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0012",
+       "line": "SAY: I'm happy to share one I've actively worked on, which is how I approach early prototypes.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "s0012",
+       "line": "- I used to over-engineer early prototypes, building too much before testing the idea.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "s0012",
+       "line": "- Now I ship a thin version in the first week, so real feedback comes early.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "d0013",
+       "line": "- I used to over-engineer early prototypes, building too much before anyone could use it. (b005, prep:L27)",
+       "turn_id": "r5",
+       "tier": "D"
+      },
+      {
+       "call": "d0013",
+       "line": "- Now I ship a thin version in the first week, so I get feedback early. (b005, prep:L27)",
+       "turn_id": "r5",
+       "tier": "D"
+      },
+      {
+       "call": "d0013",
+       "line": "- It keeps me focused on what matters, and I can change direction before I waste time. (b005, prep:L27)",
+       "turn_id": "r5",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.422,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.895,
+     "d_first_text_s": 1.264,
+     "bank_hits": [
+      {
+       "bank_id": "b005",
+       "score": 0.81,
+       "via": "ngram",
+       "visible_s": 0.174
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b005",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 9,
+     "category": "paraphrase",
+     "text": "What was the running cost, and did it pay off?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b012",
+     "warmup": false,
+     "turn_ids": [
+      "r6"
+     ],
+     "heard": "What was the running cost and did it pay off?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "d0017",
+       "line": "- Model cost was around EUR 1,900 a month. Manual labour saved was EUR 9,500 a month, so it paid off clearly. (f017, b012)",
+       "turn_id": "r6",
+       "tier": "D"
+      },
+      {
+       "call": "d0017",
+       "line": "- It ran on 38,000 invoices a month. Manual entry dropped from 11 minutes to 2 minutes per invoice. (f011, f010)",
+       "turn_id": "r6",
+       "tier": "D"
+      },
+      {
+       "call": "s0016",
+       "line": "SAY: Good question; I tracked the running cost against the labour it replaced.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "s0016",
+       "line": "- Monthly model cost was around EUR 1,900.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "s0016",
+       "line": "- That compared with EUR 9,500 of manual labour saved per month.",
+       "turn_id": "r6",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 0.536,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.205,
+     "d_first_text_s": 1.576,
+     "bank_hits": [
+      {
+       "bank_id": "b012",
+       "score": 0.9497,
+       "via": "embed",
+       "visible_s": -0.468
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b012",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 11,
+     "category": "fragment",
+     "text": "And then the",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r7"
+     ],
+     "heard": "And then the",
+     "detected_answerable": false,
+     "detected_kind": [
+      "fragment"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r7",
+     "asr_endpoint_s": 1.307
+    }
+   ],
+   "turns": 7,
+   "spurious_turns": [],
+   "answerable_turns": 5,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  },
+  {
+   "id": "d03",
+   "suite": "main",
+   "speakers": 2,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "statement",
+     "text": "Thanks for joining us today, the owner.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [],
+     "heard": "",
+     "detected_answerable": false,
+     "detected_kind": [],
+     "heard_addressee": [],
+     "say_lines": 0,
+     "suggestion_lines": []
+    },
+    {
+     "index": 1,
+     "category": "paraphrase",
+     "text": "To kick things off, could you sketch out your career path for us?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b001",
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "Thanks for joining us today. We are to check things off. Could you sketch out your career pet for us?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0003",
+       "line": "SAY: Thanks, happy to be here. I can give you a quick picture of my career so far.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0003",
+       "line": "- I led Lantern, an LLM pipeline that extracts fields from supplier invoices.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0003",
+       "line": "- It cut manual data entry from 11 minutes to 2 minutes per invoice.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "d0004",
+       "line": "- I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices. It cut manual data entry from 11 minutes to 2 minutes per invoice. (b001, f010)",
+       "turn_id": "r1",
+       "tier": "D"
+      },
+      {
+       "call": "d0004",
+       "line": "- I also built a small route optimiser for a courier pilot. It reduced empty runs by 14 percent. (b001, f019)",
+       "turn_id": "r1",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.507,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.049,
+     "d_first_text_s": 1.546
+    },
+    {
+     "index": 3,
+     "category": "exact",
+     "text": "What do you know about our company and product?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b008",
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "What do we know about our company and product?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0007",
+       "line": "SAY: I've read up on the company, so let me share what I understood.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0007",
+       "line": "- The company builds route-planning software for mid-size European haulage firms.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0007",
+       "line": "- Compass re-plans delivery routes every 90 seconds using live traffic and driver status.",
+       "turn_id": "r2",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 1.016,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.016,
+     "bank_hits": [
+      {
+       "bank_id": "b008",
+       "score": 0.734,
+       "via": "ngram",
+       "visible_s": -0.029
+      },
+      {
+       "bank_id": "b008",
+       "score": 0.855,
+       "via": "ngram",
+       "visible_s": 0.93
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b008",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 5,
+     "category": "offbank",
+     "text": "How big is the team you currently work in?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "How big is the team you currently work in?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0010",
+       "line": "SAY: I've been on a small team, and I'd like to describe how we worked together.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0010",
+       "line": "- The current team is small, and I helped set how we test and ship changes.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0010",
+       "line": "- I can share specifics on how we worked once you tell me what you'd like to hear about.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "d0009",
+       "line": "- I can tell you about the Lantern project, where I led the work. It cut manual data entry from 11 minutes to 2 minutes per invoice. (f010)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0009",
+       "line": "- The team also built a courier route optimiser that cut empty runs by 14 percent in a 10-week pilot. (f019, f020)",
+       "turn_id": "r3",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r3",
+     "asr_endpoint_s": 0.69,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.924,
+     "d_first_text_s": 1.313
+    },
+    {
+     "index": 7,
+     "category": "paraphrase",
+     "text": "Before shipping an LLM feature, how do you verify it is good enough?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b009",
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "Before shipping an LLM feature, how do you verify it is good enough?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0014",
+       "line": "SAY: I treat evaluation as a gate, so nothing ships until it passes a fixed test set.",
+       "turn_id": "r4",
+       "tier": "F"
+      },
+      {
+       "call": "f0014",
+       "line": "- I use a frozen set of 400 invoices and rerun it on every prompt change before release.",
+       "turn_id": "r4",
+       "tier": "F"
+      },
+      {
+       "call": "f0014",
+       "line": "- On that set, accuracy was 96.4 percent for totals and 91 percent for line items.",
+       "turn_id": "r4",
+       "tier": "F"
+      },
+      {
+       "call": "d0015",
+       "line": "- I keep a frozen set of 400 invoices and rerun it on every prompt change before release. (f018, b009)",
+       "turn_id": "r4",
+       "tier": "D"
+      },
+      {
+       "call": "d0015",
+       "line": "- On that held-out set, totals were 96.4 percent correct and line items 91 percent. Fields below 0.8 confidence go to a human. (f012, f013, f014)",
+       "turn_id": "r4",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r4",
+     "asr_endpoint_s": 0.704,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.249,
+     "d_first_text_s": 1.509,
+     "bank_hits": [
+      {
+       "bank_id": "b009",
+       "score": 0.9302,
+       "via": "embed",
+       "visible_s": 0.638
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b009",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 9,
+     "category": "exact",
+     "text": "Do you have any questions for us?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b014",
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "Do you have any questions for us?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0016",
+       "line": "SAY: Yes, a few, mostly about how the team tests and runs things.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "s0016",
+       "line": "- I'd ask how the dispatcher will be evaluated before it touches live routes.",
+       "turn_id": "r5",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.645,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.645,
+     "bank_hits": [
+      {
+       "bank_id": "b014",
+       "score": 0.852,
+       "via": "ngram",
+       "visible_s": -0.396
+      },
+      {
+       "bank_id": "b014",
+       "score": 0.935,
+       "via": "ngram",
+       "visible_s": 0.562
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b014",
+       "agree": true
+      }
+     ]
+    }
+   ],
+   "turns": 5,
+   "spurious_turns": [],
+   "answerable_turns": 5,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  },
+  {
+   "id": "d04",
+   "suite": "main",
+   "speakers": 2,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "exact",
+     "text": "How do you handle cases where the model is unsure or wrong?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b010",
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "How do you handle cases where the model is unsure or wrong",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0004",
+       "line": "SAY: Good question. I don't trust the model blindly, so I built clear safeguards around it. Low-confidence results are handled differently.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0004",
+       "line": "- Extraction is schema-validated with one retry, then escalated, and the model never guesses a total.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0004",
+       "line": "- Fields below 0.8 confidence go to a human operator, which was about 7 percent of invoices.",
+       "turn_id": "r1",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.677,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.11,
+     "bank_hits": [
+      {
+       "bank_id": "b010",
+       "score": 0.672,
+       "via": "ngram",
+       "visible_s": -0.367
+      },
+      {
+       "bank_id": "b010",
+       "score": 0.753,
+       "via": "ngram",
+       "visible_s": -0.36
+      },
+      {
+       "bank_id": "b010",
+       "score": 0.892,
+       "via": "ngram",
+       "visible_s": 0.589
+      },
+      {
+       "bank_id": "b010",
+       "score": 1,
+       "via": "ngram",
+       "visible_s": 0.593
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b010",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 2,
+     "category": "paraphrase",
+     "text": "If we asked you to put an LLM into our dispatching, where would you start?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b013",
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "If we asked you to put an LLM into our dispatching, where would you start?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0005",
+       "line": "SAY: The first thing I'd do is put a frozen evaluation set in place before anything touches live routes.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0005",
+       "line": "- I'd gate every change on that set, rerun before release, the same way I did with Lantern.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0005",
+       "line": "- Low-confidence decisions would go to a human dispatcher, with schema checks and one retry before escalation.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "d0006",
+       "line": "- I'd put the LLM first on low-risk cases. Every output is checked against a schema, retried once, then escalated. It never guesses a critical value. (b010, b013)",
+       "turn_id": "r2",
+       "tier": "D"
+      },
+      {
+       "call": "d0006",
+       "line": "- Low-confidence cases, below 0.8, go to a human operator. In my invoice work that was about 7 percent of cases. (f014, f015)",
+       "turn_id": "r2",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 0.904,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.904,
+     "d_first_text_s": 1.989,
+     "bank_hits": [
+      {
+       "bank_id": "b013",
+       "score": 0.9413,
+       "via": "embed",
+       "visible_s": -0.066
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b013",
+       "agree": true
+      }
+     ],
+     "chips": [
+      {
+       "text": "When could you start if we made an offer?",
+       "kind": "topic",
+       "visible_s": -3.011
+      }
+     ]
+    },
+    {
+     "index": 4,
+     "category": "offbank",
+     "text": "How would you measure success for the dispatcher pilot?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "How would you measure success for the dispatcher pilot?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0009",
+       "line": "SAY: I'd start small, with a frozen test set, and gate every change on it before the dispatcher touches live routes.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0009",
+       "line": "- Before any LLM touches live routes, I'd measure it against a frozen evaluation set, like the 400 invoices I used on Lantern.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0009",
+       "line": "- I'd track ETA drift, the gap between promised and actual arrival time, and compare it against the current rules",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "d0010",
+       "line": "- I'd first set a baseline on the current rules-based dispatch, so we can compare the pilot against real numbers. (b013)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0010",
+       "line": "- I'd check every prompt change against a frozen evaluation set before release. For Lantern, that set was 400 invoices. (f018)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0010",
+       "line": "- I'd measure ETA drift, the gap between the promised and the actual arrival time, since Compass re-plans every 90 seconds. (g001, f007)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0010",
+       "line": "- I'd also track how often a human operator must step in, like the 7 percent of low-confidence Lantern invoices, and the cost against the work saved. (f015, f017)",
+       "turn_id": "r3",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r3",
+     "asr_endpoint_s": 0.722,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.722,
+     "d_first_text_s": 1.844,
+     "bank_hits": [
+      {
+       "bank_id": "b004",
+       "score": 0.656,
+       "via": "ngram",
+       "visible_s": -0.326
+      },
+      {
+       "bank_id": "b004",
+       "score": 0.569,
+       "via": "ngram",
+       "visible_s": -0.324
+      }
+     ]
+    },
+    {
+     "index": 6,
+     "category": "statement",
+     "text": "Our AI team has six people at the moment.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "Our AI team has 6 people at the moment",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0011",
+       "line": "SAY: Thanks, that's helpful to know about the team size.",
+       "turn_id": "r4",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r4",
+     "asr_endpoint_s": 0.946,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.787,
+     "chips": [
+      {
+       "text": "The Halden AI team has 6 people and reports to Ingrid.",
+       "kind": "topic",
+       "visible_s": -0.879
+      }
+     ]
+    },
+    {
+     "index": 7,
+     "category": "paraphrase",
+     "text": "Give us a figure for the pay you would expect.",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b016",
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "Give us a figure for the pay you would expect.",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "d0013",
+       "line": "- The right direction is salary: I'm looking for EUR 78,000 to 85,000 gross per year. (f023, f024)",
+       "turn_id": "r5",
+       "tier": "D"
+      },
+      {
+       "call": "d0013",
+       "line": "- I'm flexible for equity, so we can talk about the full package. (b016)",
+       "turn_id": "r5",
+       "tier": "D"
+      },
+      {
+       "call": "s0014",
+       "line": "SAY: My expectation is EUR 78,000 to 85,000 gross per year, and I'm flexible for equity.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "s0014",
+       "line": "- The range is EUR 78,000 to 85,000 gross per year.",
+       "turn_id": "r5",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.418,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.967,
+     "d_first_text_s": 0.971,
+     "bank_hits": [
+      {
+       "bank_id": "b016",
+       "score": 0.9118,
+       "via": "embed",
+       "visible_s": 0.439
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b016",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 9,
+     "category": "offbank",
+     "text": "Why are you leaving your current company?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r6"
+     ],
+     "heard": "Why are you leaving your current company?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0015",
+       "line": "SAY: I'm looking for the next step where I can own more of the LLM work end to end.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "s0015",
+       "line": "- I've led Lantern, an LLM pipeline on real volume, and I want to keep building in that direction.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "d0016",
+       "line": "- I want to own more of the LLM work end to end, and Halden is moving to an LLM-assisted dispatcher with a pilot planned for Q1 2027. (g004)",
+       "turn_id": "r6",
+       "tier": "D"
+      },
+      {
+       "call": "d0016",
+       "line": "- I led Lantern, an LLM pipeline that cut manual data entry from 11 minutes to 2 minutes per invoice. I want to build on that. (f010)",
+       "turn_id": "r6",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 0.891,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.891,
+     "d_first_text_s": 0.891
+    }
+   ],
+   "turns": 6,
+   "spurious_turns": [],
+   "answerable_turns": 5,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  },
+  {
+   "id": "d05",
+   "suite": "main",
+   "speakers": 2,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "paraphrase",
+     "text": "Have you had language models serving real users?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b017",
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "Have you had language models serving real users?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0003",
+       "line": "SAY: Yes, I've run a language model in production on real volume every month.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0003",
+       "line": "- I led Lantern, an LLM pipeline that ran on 38,000 invoices a month.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0003",
+       "line": "- Every prompt change was checked against a frozen set of 400 invoices before release.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "d0004",
+       "line": "- Lantern served real operators every day. Fields below 0.8 confidence went to a human, about 7 percent of invoices. (f014, f015)",
+       "turn_id": "r1",
+       "tier": "D"
+      },
+      {
+       "call": "d0004",
+       "line": "- Before each release, we ran a frozen set of 400 invoices. Totals were 96.4 percent accurate. (f018, f012)",
+       "turn_id": "r1",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.911,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.45,
+     "d_first_text_s": 1.779,
+     "bank_hits": [
+      {
+       "bank_id": "b017",
+       "score": 0.921,
+       "via": "embed",
+       "visible_s": 0.862
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b017",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 2,
+     "category": "exact",
+     "text": "Tell me about the route optimiser you built for the courier pilot.",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b007",
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "Tell me about the root optimizer you built for the courier pilot.",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0008",
+       "line": "SAY: Yes, I have. The Lantern pipeline ran on real invoices every month, and I led it end to end.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0008",
+       "line": "- Lantern ran on 38,000 invoices a month, with every prompt change checked against a frozen set of 400 invoices before release.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0008",
+       "line": "- Fields below 0.8 confidence go to a human operator, about 7 percent of invoices, so the model never runs",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "d0009",
+       "line": "- Yes, the LLM work is Lantern, a pipeline I led that extracts structured fields from supplier invoices, and it ran on real volume. (f006, f011)",
+       "turn_id": "r2",
+       "tier": "D"
+      },
+      {
+       "call": "d0009",
+       "line": "- It ran on 38,000 invoices a month, and low-confidence fields went to a human operator instead of the model guessing. (f011, f014)",
+       "turn_id": "r2",
+       "tier": "D"
+      },
+      {
+       "call": "d0009",
+       "line": "- Every prompt change was checked against a frozen set of 400 invoices before release. Accuracy was 96.4 percent on totals. (f018, f012)",
+       "turn_id": "r2",
+       "tier": "D"
+      },
+      {
+       "call": "d0009",
+       "line": "- I used a small model for the first pass and a larger one only on hard documents. Cost was about EUR 1,900 a month. (b017, f016)",
+       "turn_id": "r2",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 0.563,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.946,
+     "d_first_text_s": 1.585,
+     "bank_hits": [
+      {
+       "bank_id": "b007",
+       "score": 0.634,
+       "via": "ngram",
+       "visible_s": -0.536
+      },
+      {
+       "bank_id": "b007",
+       "score": 0.722,
+       "via": "ngram",
+       "visible_s": 0.42
+      }
+     ]
+    },
+    {
+     "index": 4,
+     "category": "offbank",
+     "text": "How did you decide when to retry a failed extraction?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "How did you decide when to retry a failed extraction?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0013",
+       "line": "SAY: Yes, I've run an LLM pipeline on real volume, and I built safeguards around it from the start. Each failed extraction gets one schema-validated retry, then goes to a human.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0013",
+       "line": "- Extraction is schema-validated with one retry, then escalated, so the model never guesses a total.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0013",
+       "line": "- Fields below 0.8 confidence go to a human operator; that was about 7",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "d0014",
+       "line": "- I used one retry only. If the output fails the schema check, the model gets one more try, then the invoice is escalated. (b010, b003)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0014",
+       "line": "- The model never guesses a total. If a total still fails after the retry, it goes to a person instead. (b006, b010)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0014",
+       "line": "- Separate from retries: fields below 0.8 confidence go to a human operator. That was about 7 percent of invoices. (f014, f015)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0014",
+       "line": "- I also used a small model first and a larger one only on low-confidence documents. That kept cost near EUR 1,900 a month. (b019, f016)",
+       "turn_id": "r3",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r3",
+     "asr_endpoint_s": 0.955,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.956,
+     "d_first_text_s": 2.25
+    },
+    {
+     "index": 6,
+     "category": "paraphrase",
+     "text": "What drove the choice of model size?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b019",
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "What drove the choice of module size?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0017",
+       "line": "SAY: Good question, the module size came from a trade-off I had to balance.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0017",
+       "line": "- I kept each module small so a change would not break the whole pipeline.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0017",
+       "line": "- Smaller modules were easier to test against the frozen set of 400 invoices.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "d0016",
+       "line": "- I picked a small model for the first pass, and a larger one only on low-confidence documents. This kept the cost down. (b019)",
+       "turn_id": "r4",
+       "tier": "D"
+      },
+      {
+       "call": "d0016",
+       "line": "- Fields below 0.8 confidence go to a human operator, about 7 percent of invoices. Model cost was around EUR 1,900 a month against EUR 9,500 of labour saved. (f014, f015, f017)",
+       "turn_id": "r4",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r4",
+     "asr_endpoint_s": 0.975,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.396,
+     "d_first_text_s": 1.712
+    },
+    {
+     "index": 8,
+     "category": "statement",
+     "text": "Good, thank you.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "Good, thank you.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0018",
+       "line": "SAY: Great, thanks for having me.",
+       "turn_id": "r5",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.723,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.492
+    },
+    {
+     "index": 9,
+     "category": "exact",
+     "text": "What does ETA drift mean to you?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b022",
+     "warmup": false,
+     "turn_ids": [
+      "r6"
+     ],
+     "heard": "What does eat adrift mean to you",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0021",
+       "line": "SAY: ETA drift is the gap between the promised and the actual arrival time.",
+       "turn_id": "r6",
+       "tier": "F"
+      },
+      {
+       "call": "f0021",
+       "line": "- That gap is what I'd watch to judge how well a route plan holds up.",
+       "turn_id": "r6",
+       "tier": "F"
+      },
+      {
+       "call": "d0020",
+       "line": "- ETA drift is the gap between the promised arrival time and the real arrival time. (g001)",
+       "turn_id": "r6",
+       "tier": "D"
+      },
+      {
+       "call": "d0020",
+       "line": "- It matters for Compass, which re-plans delivery routes every 90 seconds, so the promised time stays close to the real one. (g002, f007)",
+       "turn_id": "r6",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 0.912,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.768,
+     "d_first_text_s": 1.886,
+     "bank_hits": [
+      {
+       "bank_id": "b022",
+       "score": 0.655,
+       "via": "ngram",
+       "visible_s": -0.034
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b022",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 11,
+     "category": "paraphrase",
+     "text": "How do you kick off something from scratch?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b020",
+     "warmup": false,
+     "turn_ids": [
+      "r7"
+     ],
+     "heard": "How do you click off something from scratch?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0025",
+       "line": "SAY: I'm not fully sure I caught that, but I can cover the likely topic.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "s0025",
+       "line": "- Could you say the question again?",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "d0026",
+       "line": "- The question is about starting a project from scratch: I start small and ship a thin first version in the first week. (b020)",
+       "turn_id": "r7",
+       "tier": "D"
+      },
+      {
+       "call": "d0026",
+       "line": "- I used to over-engineer early prototypes, and I changed that habit on purpose. (b005)",
+       "turn_id": "r7",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r7",
+     "asr_endpoint_s": 0.697,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.697,
+     "d_first_text_s": 2.339
+    }
+   ],
+   "turns": 7,
+   "spurious_turns": [],
+   "answerable_turns": 6,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  },
+  {
+   "id": "d06",
+   "suite": "main",
+   "speakers": 2,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "exact",
+     "text": "What technical decisions are you most proud of, and what were the trade-offs?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b006",
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "What technical decisions are you most proud of and what were the trade-off",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0004",
+       "line": "SAY: The decision I'm proudest of is never letting the model guess a total.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0004",
+       "line": "- Extraction is schema-validated with one retry, then escalated to a person.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0004",
+       "line": "- Evaluation runs on a frozen set of 400 invoices before every release.",
+       "turn_id": "r1",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.38,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.73,
+     "bank_hits": [
+      {
+       "bank_id": "b006",
+       "score": 0.63,
+       "via": "ngram",
+       "visible_s": -1.714
+      },
+      {
+       "bank_id": "b006",
+       "score": 0.765,
+       "via": "ngram",
+       "visible_s": -0.761
+      },
+      {
+       "bank_id": "b006",
+       "score": 0.852,
+       "via": "ngram",
+       "visible_s": 0.195
+      },
+      {
+       "bank_id": "b006",
+       "score": 0.958,
+       "via": "ngram",
+       "visible_s": 0.2
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b006",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 2,
+     "category": "paraphrase",
+     "text": "Where do you feel you fall short?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b005",
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "Where do you feel you fall short?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0005",
+       "line": "SAY: Sure, I can walk through a few decisions and why I made them.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0005",
+       "line": "- Extraction is schema-validated with one retry, then escalated; I never let the model guess a total.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "d0006",
+       "line": "- I never let the model guess a total. Extraction is checked against a schema, retried once, then escalated. (b006, b010)",
+       "turn_id": "r2",
+       "tier": "D"
+      },
+      {
+       "call": "d0006",
+       "line": "- I used a small model first and a larger one only on hard documents. That kept cost near EUR 1,900 a month. (b006, f016)",
+       "turn_id": "r2",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 0.869,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.87,
+     "d_first_text_s": 1.596,
+     "chips": [
+      {
+       "text": "What is your biggest weakness?",
+       "kind": "topic",
+       "visible_s": -0.218
+      }
+     ]
+    },
+    {
+     "index": 4,
+     "category": "offbank",
+     "text": "Do you speak any other languages besides English?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "Do you speak any other languages besides English",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0009",
+       "line": "SAY: I speak English well, and I'm happy to answer in other languages if your team needs it.",
+       "turn_id": "r3",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r3",
+     "asr_endpoint_s": 0.421,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.773
+    },
+    {
+     "index": 6,
+     "category": "exact",
+     "text": "How does your experience relate to what we do in route planning?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b018",
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "How does your experience relate to what we do in root planning?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0014",
+       "line": "SAY: There's a direct overlap, and I can point to a specific project.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0014",
+       "line": "- I built a small route optimiser for a courier pilot that cut empty runs by 14 percent.",
+       "turn_id": "r4",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r4",
+     "asr_endpoint_s": 0.6,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.031,
+     "bank_hits": [
+      {
+       "bank_id": "b018",
+       "score": 0.592,
+       "via": "ngram",
+       "visible_s": -1.395
+      },
+      {
+       "bank_id": "b018",
+       "score": 0.681,
+       "via": "ngram",
+       "visible_s": -1.392
+      },
+      {
+       "bank_id": "b018",
+       "score": 0.785,
+       "via": "ngram",
+       "visible_s": -0.434
+      },
+      {
+       "bank_id": "b018",
+       "score": 0.875,
+       "via": "ngram",
+       "visible_s": 0.513
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b018",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 8,
+     "category": "fragment",
+     "text": "Um, so, and the",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [],
+     "heard": "",
+     "detected_answerable": false,
+     "detected_kind": [],
+     "heard_addressee": [],
+     "say_lines": 0,
+     "suggestion_lines": []
+    },
+    {
+     "index": 9,
+     "category": "paraphrase",
+     "text": "How long until you could begin if you accepted?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b015",
+     "warmup": false,
+     "turn_ids": [
+      "r5",
+      "r6"
+     ],
+     "heard": "UM, so and the. How long until you could begin if you accepted | How long until you could begin if you accepted?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question",
+      "question"
+     ],
+     "heard_addressee": [
+      "me",
+      "me"
+     ],
+     "say_lines": 2,
+     "suggestion_lines": [
+      {
+       "call": "s0018",
+       "line": "SAY: My notice period is 30 days, so I could start mid-December 2026.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "s0018",
+       "line": "- My notice period at my current company is 30 days.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "d0019",
+       "line": "- My notice period at my current company is 30 days, so I could start about 30 days after I accept. (f022, b015)",
+       "turn_id": "r5",
+       "tier": "D"
+      },
+      {
+       "call": "d0019",
+       "line": "- That puts my earliest start in mid-December 2026, and I can plan the handover with my current team. (b015)",
+       "turn_id": "r5",
+       "tier": "D"
+      },
+      {
+       "call": "s0020",
+       "line": "SAY: I can start mid-December 2026, since my notice period is 30 days.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "s0020",
+       "line": "- My notice period at my current company is 30 days.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "d0021",
+       "line": "- My notice period at my current company is 30 days. (f022, b015)",
+       "turn_id": "r6",
+       "tier": "D"
+      },
+      {
+       "call": "d0021",
+       "line": "- That means I could start in mid-December 2026 at the earliest. (b015)",
+       "turn_id": "r6",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 1.103,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.532,
+     "d_first_text_s": 2.296,
+     "bank_hits": [
+      {
+       "bank_id": "b015",
+       "score": 0.9197,
+       "via": "embed",
+       "visible_s": 1.148
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b015",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 11,
+     "category": "offbank",
+     "text": "What did the courier pilot teach you about live traffic?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r7"
+     ],
+     "heard": "What did the courier pilot teach you about liveft traffic",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0025",
+       "line": "SAY: The courier pilot taught me how much real-world data differs from the test data.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "s0025",
+       "line": "- The pilot ran for 10 weeks across 23 vans in Torino.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "s0025",
+       "line": "- It reduced empty runs by 14 percent.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "d0024",
+       "line": "- The pilot taught me how route work behaves in real life: 23 vans in Torino over 10 weeks, and empty runs fell by 14 percent. (f021, f020, f019)",
+       "turn_id": "r7",
+       "tier": "D"
+      },
+      {
+       "call": "d0024",
+       "line": "- A small optimiser can give a real result fast. This is why I like starting thin and then improving it. (b005, b020)",
+       "turn_id": "r7",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r7",
+     "asr_endpoint_s": 0.951,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.951,
+     "d_first_text_s": 0.951,
+     "bank_hits": [
+      {
+       "bank_id": "b007",
+       "score": 0.612,
+       "via": "ngram",
+       "visible_s": -0.905
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b007",
+       "agree": true
+      }
+     ]
+    }
+   ],
+   "turns": 7,
+   "spurious_turns": [],
+   "answerable_turns": 7,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  },
+  {
+   "id": "d07",
+   "suite": "main",
+   "speakers": 3,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "statement",
+     "text": "Welcome the owner. Tomas and I will take turns with the questions today.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "Welcome the owner, Tomas and I will take turns with the questions today.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0001",
+       "line": "SAY: Thanks, Ingrid, sounds good. I'm looking forward to it.",
+       "turn_id": "r1",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.795,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.646,
+     "chips": [
+      {
+       "text": "Tomas Weir is the tech lead of the platform team and is on the panel.",
+       "kind": "name",
+       "visible_s": 0.704
+      }
+     ]
+    },
+    {
+     "index": 1,
+     "category": "exact",
+     "text": "Can you tell me about yourself and your background?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b001",
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "Can you tell me about yourself and your background?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0004",
+       "line": "SAY: Sure, I'll give you the short version. I'm an engineer who has built LLM systems that run on real volume, and I like shipping things that people actually use.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0004",
+       "line": "- I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices, and it cut manual data entry from 11 minutes to 2 minutes per invoice.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0004",
+       "line": "- I also built a small",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "d0005",
+       "line": "- I led Lantern, an LLM pipeline that pulls structured fields from supplier invoices. It cut manual data entry from 11 minutes to 2 minutes per invoice. (f006, f010)",
+       "turn_id": "r2",
+       "tier": "D"
+      },
+      {
+       "call": "d0005",
+       "line": "- Lantern ran on 38,000 invoices a month. It saved about EUR 9,500 of manual work against about EUR 1,900 of model cost. (f011, f017)",
+       "turn_id": "r2",
+       "tier": "D"
+      },
+      {
+       "call": "d0005",
+       "line": "- I also built a small route optimiser for a courier pilot. It reduced empty runs by 14 percent over 10 weeks, with 23 vans in Torino. (f019, f020, f021)",
+       "turn_id": "r2",
+       "tier": "D"
+      },
+      {
+       "call": "d0005",
+       "line": "- So I have worked on both LLM extraction and route planning, which fits Halden's move to an LLM-assisted dispatcher. (g004, b001)",
+       "turn_id": "r2",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 0.72,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.721,
+     "d_first_text_s": 1.805,
+     "bank_hits": [
+      {
+       "bank_id": "b003",
+       "score": 0.684,
+       "via": "ngram",
+       "visible_s": -1.282
+      },
+      {
+       "bank_id": "b001",
+       "score": 0.83,
+       "via": "ngram",
+       "visible_s": -0.327
+      },
+      {
+       "bank_id": "b001",
+       "score": 1,
+       "via": "ngram",
+       "visible_s": 0.641
+      }
+     ]
+    },
+    {
+     "index": 3,
+     "category": "paraphrase",
+     "text": "Could you describe Lantern for us?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b003",
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "Could you describe lantern for us?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0006",
+       "line": "SAY: Sure, I'll give you the short version. I work mainly on LLM systems that handle real business data, and I like shipping them in a careful way.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0006",
+       "line": "- I led Lantern, an LLM pipeline that extracts structured fields from supplier invoices, cutting manual entry from 11 minutes to 2 minutes per invoice.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0006",
+       "line": "- Earlier I built a route optimi",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "d0007",
+       "line": "- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led the project. (f006)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0007",
+       "line": "- It cut manual data entry from 11 minutes to 2 minutes per invoice, at 38,000 invoices a month. (f010, f011)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0007",
+       "line": "- Extraction is schema-validated with one retry, then escalated. The model never guesses a total. (b003)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0007",
+       "line": "- Accuracy on the held-out set was 96.4 percent for totals and 91 percent for line items. Fields below 0.8 confidence go to a human. (f012, f013, f014)",
+       "turn_id": "r3",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r3",
+     "asr_endpoint_s": 0.988,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.988,
+     "d_first_text_s": 1.462,
+     "bank_hits": [
+      {
+       "bank_id": "b003",
+       "score": 0.9018,
+       "via": "embed",
+       "visible_s": 1.016
+      }
+     ],
+     "chips": [
+      {
+       "text": "When could you start if we made an offer?",
+       "kind": "topic",
+       "visible_s": -1.021
+      },
+      {
+       "text": "Lantern is the LLM invoice-extraction project that Fethi led.",
+       "kind": "name",
+       "visible_s": -0.061
+      },
+      {
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Fethi.",
+       "kind": "term",
+       "visible_s": -0.061
+      }
+     ]
+    },
+    {
+     "index": 5,
+     "category": "other",
+     "text": "Tomas, can you share the roadmap slide with everyone?",
+     "is_question": true,
+     "addressee": "other",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "Thomas, can you share the roadmap slide with everyone?",
+     "detected_answerable": false,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "other"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r4",
+     "asr_endpoint_s": 0.827
+    },
+    {
+     "index": 6,
+     "category": "reply",
+     "text": "Sure, sharing it now.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "Sure. Sharing it now.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0011",
+       "line": "SAY: Thanks, take your time.",
+       "turn_id": "r5",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.738,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.499
+    },
+    {
+     "index": 7,
+     "category": "offbank",
+     "text": "the owner, how did you handle invoices in different languages?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r6"
+     ],
+     "heard": "The owner, how did you handle invoices in different languages?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0014",
+       "line": "SAY: Sure, I can walk you through Lantern, the invoice project I led. It was the one I'm proudest of, and I can give you the numbers.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "s0014",
+       "line": "- Lantern is an LLM pipeline that extracts structured fields from supplier invoices, and I led it.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "s0014",
+       "line": "- It cut manual data entry from 11 minutes to 2 minutes per invoice, running on 38,000",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "d0015",
+       "line": "- What I can say for sure: Lantern pulled structured fields from supplier invoices, and every extraction was checked against a schema, with one retry (b003).",
+       "turn_id": "r6",
+       "tier": "D"
+      },
+      {
+       "call": "d0015",
+       "line": "- If a language was hard, the safety net still worked: fields below 0.8 confidence went to a human operator, about 7 percent of invoices (f014, f015).",
+       "turn_id": "r6",
+       "tier": "D"
+      },
+      {
+       "call": "d0015",
+       "line": "- Accuracy was measured on a frozen set of 400 invoices: 96.4 percent for totals and 91 percent for line items (f018, f012, f013).",
+       "turn_id": "r6",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 0.838,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.839,
+     "d_first_text_s": 2.291
+    },
+    {
+     "index": 9,
+     "category": "other",
+     "text": "Ingrid, do you want to cover the team structure now?",
+     "is_question": true,
+     "addressee": "other",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r7"
+     ],
+     "heard": "Ingrid, do you want to cover the team's structure now?",
+     "detected_answerable": false,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "other"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r7",
+     "asr_endpoint_s": 0.78,
+     "chips": [
+      {
+       "text": "Ingrid Solberg is the VP Engineering and the hiring manager on the panel.",
+       "kind": "name",
+       "visible_s": -2.19
+      }
+     ]
+    },
+    {
+     "index": 10,
+     "category": "reply",
+     "text": "Yes, in a moment.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r8"
+     ],
+     "heard": "Yes, in a moment",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0020",
+       "line": "SAY: Sure, take your time.",
+       "turn_id": "r8",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r8",
+     "asr_endpoint_s": 0.736,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.449
+    },
+    {
+     "index": 11,
+     "category": "exact",
+     "text": "What are your salary expectations?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b016",
+     "warmup": false,
+     "turn_ids": [
+      "r9"
+     ],
+     "heard": "What are your salary expectations",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0021",
+       "line": "SAY: The range I have in mind is EUR 78,000 to 85,000 gross per year, and I'm flexible for equity.",
+       "turn_id": "r9",
+       "tier": "S"
+      },
+      {
+       "call": "s0021",
+       "line": "- My target is EUR 78,000 to 85,000 gross per year.",
+       "turn_id": "r9",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r9",
+     "asr_endpoint_s": 0.446,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.447,
+     "bank_hits": [
+      {
+       "bank_id": "b016",
+       "score": 0.842,
+       "via": "ngram",
+       "visible_s": 0.173
+      },
+      {
+       "bank_id": "b016",
+       "score": 1,
+       "via": "ngram",
+       "visible_s": 0.176
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b016",
+       "agree": true
+      }
+     ]
+    }
+   ],
+   "turns": 9,
+   "spurious_turns": [],
+   "answerable_turns": 4,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  },
+  {
+   "id": "d08",
+   "suite": "main",
+   "speakers": 3,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "exact",
+     "text": "How do you evaluate an LLM system before release?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b009",
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "How do you evaluate an LLM system before release",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0003",
+       "line": "SAY: I treat evaluation as a gate on every change, so nothing ships untested.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0003",
+       "line": "- I use a frozen set of 400 invoices and rerun it on every prompt change before release.",
+       "turn_id": "r1",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.521,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.522,
+     "bank_hits": [
+      {
+       "bank_id": "b009",
+       "score": 0.607,
+       "via": "ngram",
+       "visible_s": -0.522
+      },
+      {
+       "bank_id": "b009",
+       "score": 0.776,
+       "via": "ngram",
+       "visible_s": -0.517
+      },
+      {
+       "bank_id": "b009",
+       "score": 0.885,
+       "via": "ngram",
+       "visible_s": 0.439
+      },
+      {
+       "bank_id": "b009",
+       "score": 1,
+       "via": "ngram",
+       "visible_s": 0.441
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b009",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 2,
+     "category": "other",
+     "text": "Ingrid, did you want to ask about the dispatcher?",
+     "is_question": true,
+     "addressee": "other",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "Ingrid. Did you want to ask about the dispatcher?",
+     "detected_answerable": false,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "other"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r2",
+     "asr_endpoint_s": 0.955,
+     "chips": [
+      {
+       "text": "Ingrid Solberg is the VP Engineering and the hiring manager on the panel.",
+       "kind": "name",
+       "visible_s": -1.073
+      }
+     ]
+    },
+    {
+     "index": 3,
+     "category": "reply",
+     "text": "Yes, thanks Tomas.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "Yes, thanks, Thomas.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "other"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r3",
+     "asr_endpoint_s": 0.859
+    },
+    {
+     "index": 4,
+     "category": "paraphrase",
+     "text": "How would you design a language model assistant for our dispatchers?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b013",
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "How would you design a language model assistant through our dispatches?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0009",
+       "line": "SAY: Good question, I'd design it around gates and safeguards from the start, the way I did with Lantern.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0009",
+       "line": "- I'd gate every change on a frozen evaluation set, rerun on each prompt change before release.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0009",
+       "line": "- I'd validate outputs against a schema, retry once, then escalate, and send low-confidence cases to a human operator.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "d0010",
+       "line": "- Halden is moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027, so I'd plan the design around that pilot. (f-g004, g004)",
+       "turn_id": "r4",
+       "tier": "D"
+      },
+      {
+       "call": "d0010",
+       "line": "- Before release, I'd test every prompt change on a frozen evaluation set. In Lantern, that set was 400 invoices. (f018, b006)",
+       "turn_id": "r4",
+       "tier": "D"
+      },
+      {
+       "call": "d0010",
+       "line": "- I'd check every output against a schema, retry once, then escalate. The model never guesses a value it is unsure about. (b010)",
+       "turn_id": "r4",
+       "tier": "D"
+      },
+      {
+       "call": "d0010",
+       "line": "- Low-confidence cases go to a human dispatcher. In Lantern, fields below 0.8 confidence went to a human, about 7 percent of invoices. (f014, f015)",
+       "turn_id": "r4",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r4",
+     "asr_endpoint_s": 0.857,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.857,
+     "d_first_text_s": 2.092,
+     "bank_hits": [
+      {
+       "bank_id": "b013",
+       "score": 0.9334,
+       "via": "embed",
+       "visible_s": 0.82
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b013",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 6,
+     "category": "offbank",
+     "text": "How would you test the dispatcher before it touches live routes?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r5",
+      "r6"
+     ],
+     "heard": "How would you test the dispatcher before it touches live | roots?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question",
+      "fragment"
+     ],
+     "heard_addressee": [
+      "me",
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0013",
+       "line": "SAY: Good question. I'd test it the same way I tested Lantern, with a gate before anything touches live routes. Changes would have to pass a frozen evaluation set before each release.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "s0013",
+       "line": "- I'd build a frozen evaluation set of realistic dispatch scenarios and rerun it on every change before release.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "s0013",
+       "line": "- I'd run the dispatcher in shadow mode against the current rules-",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "d0014",
+       "line": "- I'd keep a frozen evaluation set, like the 400 invoices I used for Lantern, and rerun it on every prompt change before release. (b009, f018)",
+       "turn_id": "r5",
+       "tier": "D"
+      },
+      {
+       "call": "d0014",
+       "line": "- I'd validate every output against a schema, retry once, then escalate. The model never guesses a value it can't support. (b010, b006)",
+       "turn_id": "r5",
+       "tier": "D"
+      },
+      {
+       "call": "d0014",
+       "line": "- Low-confidence cases would go to a human dispatcher. For Lantern, fields below 0.8 confidence went to a human operator, about 7 percent of invoices. (f014, f015)",
+       "turn_id": "r5",
+       "tier": "D"
+      },
+      {
+       "call": "d0014",
+       "line": "- I'd run it in a pilot first. Compass re-plans every 90 seconds, so I'd compare the assistant's plans to current plans before it controls anything live. (f007, g004)",
+       "turn_id": "r5",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.923,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.923,
+     "d_first_text_s": 1.792
+    },
+    {
+     "index": 8,
+     "category": "other",
+     "text": "Tomas, could you mute your microphone while I talk?",
+     "is_question": true,
+     "addressee": "other",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r7"
+     ],
+     "heard": "Thomas, could you mute your microphone while I talk?",
+     "detected_answerable": false,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "other"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r7",
+     "asr_endpoint_s": 0.489
+    },
+    {
+     "index": 9,
+     "category": "fragment",
+     "text": "Sorry, done.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r8"
+     ],
+     "heard": "Sorry, done.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "fragment"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r8",
+     "asr_endpoint_s": 1.304
+    },
+    {
+     "index": 10,
+     "category": "paraphrase",
+     "text": "How much homework have you done on Halden?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b008",
+     "warmup": false,
+     "turn_ids": [
+      "r9"
+     ],
+     "heard": "How much homework have you done on Walden?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "d0020",
+       "line": "- I read up on Halden: you build route-planning software for mid-size European haulage firms. Compass re-plans routes every 90 seconds. (f004, f007)",
+       "turn_id": "r9",
+       "tier": "D"
+      },
+      {
+       "call": "d0020",
+       "line": "- I also know you plan to move from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027. (g004)",
+       "turn_id": "r9",
+       "tier": "D"
+      },
+      {
+       "call": "s0021",
+       "line": "SAY: I've done a fair bit of homework, so let me share what stood out.",
+       "turn_id": "r9",
+       "tier": "S"
+      },
+      {
+       "call": "s0021",
+       "line": "- The company builds route-planning software for mid-size European haulage firms.",
+       "turn_id": "r9",
+       "tier": "S"
+      },
+      {
+       "call": "s0021",
+       "line": "- Compass re-plans delivery routes every 90 seconds using live traffic and driver status.",
+       "turn_id": "r9",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r9",
+     "asr_endpoint_s": 0.554,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.165,
+     "d_first_text_s": 1.134
+    }
+   ],
+   "turns": 9,
+   "spurious_turns": [],
+   "answerable_turns": 4,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  },
+  {
+   "id": "d09",
+   "suite": "main",
+   "speakers": 3,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "statement",
+     "text": "Tomas, please go ahead with your first question.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "Told us, please go ahead with your 1st question",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0001",
+       "line": "SAY: Thanks, I'm ready. Go ahead.",
+       "turn_id": "r1",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.699,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.549
+    },
+    {
+     "index": 1,
+     "category": "exact",
+     "text": "How did you choose between small and large models?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b019",
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "How did you choose between small and large models?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0004",
+       "line": "SAY: Good question. I used a tiered approach instead of one model for everything, starting small and only escalating when needed.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0004",
+       "line": "- I chose a small model for the first pass and a larger one only on low-confidence documents.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0004",
+       "line": "- Fields below 0.8 confidence go to a human operator; that was about 7 percent of invoices.",
+       "turn_id": "r2",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 0.878,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.878,
+     "bank_hits": [
+      {
+       "bank_id": "b019",
+       "score": 0.815,
+       "via": "ngram",
+       "visible_s": -0.165
+      },
+      {
+       "bank_id": "b019",
+       "score": 0.936,
+       "via": "ngram",
+       "visible_s": -0.161
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b019",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 3,
+     "category": "paraphrase",
+     "text": "What do you do when the model gives a bad or uncertain answer?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b010",
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "What do you do when the model gives a bad or uncertain answer?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0008",
+       "line": "SAY: I used a tiered approach rather than one model for everything.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0008",
+       "line": "- I chose a small model for the first pass and a larger one only on low-confidence documents.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0008",
+       "line": "- Fields below 0.8 confidence go to a human operator; that was about 7 percent of invoices.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "d0009",
+       "line": "- I built safeguards around the model: output is checked against a schema, retried once, then escalated. The model never guesses a total. (b010)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0009",
+       "line": "- Fields below 0.8 confidence go to a human operator. That was about 7 percent of invoices. (f014, f015)",
+       "turn_id": "r3",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r3",
+     "asr_endpoint_s": 0.919,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.92,
+     "d_first_text_s": 1.927,
+     "bank_hits": [
+      {
+       "bank_id": "b010",
+       "score": 0.9249,
+       "via": "embed",
+       "visible_s": -0.08
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b010",
+       "agree": false
+      }
+     ]
+    },
+    {
+     "index": 5,
+     "category": "other",
+     "text": "Ingrid, anything you want to add here?",
+     "is_question": true,
+     "addressee": "other",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "Ingrid, anything you want to add here?",
+     "detected_answerable": false,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "other"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r4",
+     "asr_endpoint_s": 1.014,
+     "chips": [
+      {
+       "text": "Ingrid Solberg is the VP Engineering and the hiring manager on the panel.",
+       "kind": "name",
+       "visible_s": -1.03
+      },
+      {
+       "text": "Do you have any questions for us?",
+       "kind": "topic",
+       "visible_s": -0.066
+      }
+     ]
+    },
+    {
+     "index": 6,
+     "category": "reply",
+     "text": "Not right now.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "No, right, no.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0010",
+       "line": "SAY: Okay, no problem at all.",
+       "turn_id": "r5",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.812,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.537
+    },
+    {
+     "index": 7,
+     "category": "offbank",
+     "text": "What would you change about Compass if you joined?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r6"
+     ],
+     "heard": "What would you change about trunk if you joined?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0013",
+       "line": "SAY: I'd want to understand how the team works day to day before changing anything.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "s0013",
+       "line": "- I'd first look at how Compass and the dispatcher are tested and released today.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "d0014",
+       "line": "- If \"trunk\" means the Compass or dispatch platform, I'd start with how changes are evaluated before they touch live routes. (b014)",
+       "turn_id": "r6",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 0.652,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.06,
+     "d_first_text_s": 2.519
+    },
+    {
+     "index": 9,
+     "category": "other",
+     "text": "Tomas, can you pull up the evaluation notes?",
+     "is_question": true,
+     "addressee": "other",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r7",
+      "r8"
+     ],
+     "heard": "To us Can you pull up re evaluation | Told us, can you pull up the evaluation notes?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question",
+      "question"
+     ],
+     "heard_addressee": [
+      "me",
+      "me"
+     ],
+     "say_lines": 2,
+     "suggestion_lines": [
+      {
+       "call": "s0018",
+       "line": "SAY: Sure, I'll walk you through how I evaluate before anything ships.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "s0018",
+       "line": "- I use a frozen set of 400 invoices and rerun it on every prompt change before release.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "d0017",
+       "line": "- I'd start with the tiered model split: small model first, larger one only on low-confidence documents, so cost stays low and quality stays high. (b019, b006)",
+       "turn_id": "r7",
+       "tier": "D"
+      },
+      {
+       "call": "d0017",
+       "line": "- Fields below 0.8 confidence go to a human operator, about 7 percent of invoices, against around EUR 1,900 monthly model cost. (f014, f015, f016)",
+       "turn_id": "r7",
+       "tier": "D"
+      },
+      {
+       "call": "s0019",
+       "line": "SAY: Sure, I'll pull up the evaluation notes now.",
+       "turn_id": "r8",
+       "tier": "S"
+      },
+      {
+       "call": "s0019",
+       "line": "- We use a frozen set of 400 invoices, rerun on every prompt change before release.",
+       "turn_id": "r8",
+       "tier": "S"
+      },
+      {
+       "call": "s0019",
+       "line": "- On the held-out set, accuracy was 96.4 percent for totals and 91 percent for line items.",
+       "turn_id": "r8",
+       "tier": "S"
+      },
+      {
+       "call": "d0020",
+       "line": "- I can explain how I evaluate: a frozen set of 400 invoices, rerun on every prompt change before release (prep:L26, f018)",
+       "turn_id": "r8",
+       "tier": "D"
+      },
+      {
+       "call": "d0020",
+       "line": "- On the held-out set, accuracy was 96.4 percent for totals and 91 percent for line items (f012, f013)",
+       "turn_id": "r8",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r8",
+     "asr_endpoint_s": 1.175,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.723,
+     "d_first_text_s": 2.049,
+     "chips": [
+      {
+       "text": "Why do you want to join Halden Freight Systems?",
+       "kind": "topic",
+       "visible_s": -1.827
+      }
+     ]
+    },
+    {
+     "index": 10,
+     "category": "reply",
+     "text": "One second, I have them.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r9",
+      "r10"
+     ],
+     "heard": "One second. I have them | I have them.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement",
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown",
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0022",
+       "line": "SAY: Great, take your time.",
+       "turn_id": "r10",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r10",
+     "asr_endpoint_s": 1.059,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.905
+    },
+    {
+     "index": 11,
+     "category": "exact",
+     "text": "How much did it cost to run, and was it worth it?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b012",
+     "warmup": false,
+     "turn_ids": [
+      "r11"
+     ],
+     "heard": "How much did it cost to run, and was it worth it?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0026",
+       "line": "SAY: I tracked cost against the labour it replaced, so the comparison is clear.",
+       "turn_id": "r11",
+       "tier": "S"
+      },
+      {
+       "call": "s0026",
+       "line": "- Monthly model cost was around EUR 1,900, against EUR 9,500 of manual labour saved.",
+       "turn_id": "r11",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r11",
+     "asr_endpoint_s": 1.036,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.363,
+     "bank_hits": [
+      {
+       "bank_id": "b012",
+       "score": 0.654,
+       "via": "ngram",
+       "visible_s": -1.031
+      },
+      {
+       "bank_id": "b012",
+       "score": 0.767,
+       "via": "ngram",
+       "visible_s": -1.029
+      },
+      {
+       "bank_id": "b012",
+       "score": 0.861,
+       "via": "ngram",
+       "visible_s": -0.063
+      },
+      {
+       "bank_id": "b012",
+       "score": 0.974,
+       "via": "ngram",
+       "visible_s": -0.059
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b012",
+       "agree": true
+      }
+     ]
+    }
+   ],
+   "turns": 11,
+   "spurious_turns": [],
+   "answerable_turns": 6,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  },
+  {
+   "id": "d10",
+   "suite": "main",
+   "speakers": 3,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "exact",
+     "text": "Why do you want to join Halden Freight Systems?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b002",
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "Why do you want to join Hald and Freight Systems",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0003",
+       "line": "SAY: What stands out to me is the direction the product is taking.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0003",
+       "line": "- The company is moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0003",
+       "line": "- I have built LLM pipelines: I led Lantern, which extracts structured fields from supplier invoices.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "d0004",
+       "line": "- Halden is moving from rules-based dispatch to an LLM-assisted dispatcher, with a pilot planned for Q1 2027. I want to help build that. (g004, b002)",
+       "turn_id": "r1",
+       "tier": "D"
+      },
+      {
+       "call": "d0004",
+       "line": "- I led Lantern, an LLM pipeline for supplier invoices, and built a route optimiser for a courier pilot that cut empty runs by 14 percent. (f006, f019)",
+       "turn_id": "r1",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.391,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.621,
+     "d_first_text_s": 1.325,
+     "bank_hits": [
+      {
+       "bank_id": "b002",
+       "score": 0.655,
+       "via": "ngram",
+       "visible_s": -0.88
+      },
+      {
+       "bank_id": "b002",
+       "score": 0.739,
+       "via": "ngram",
+       "visible_s": 0.079
+      },
+      {
+       "bank_id": "b002",
+       "score": 0.842,
+       "via": "ngram",
+       "visible_s": 0.086
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b002",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 2,
+     "category": "other",
+     "text": "Ingrid, should I take the technical round now?",
+     "is_question": true,
+     "addressee": "other",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "Ingrid, should I take the technical round now?",
+     "detected_answerable": false,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "other"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r2",
+     "asr_endpoint_s": 0.417,
+     "chips": [
+      {
+       "text": "Ingrid Solberg is the VP Engineering and the hiring manager on the panel.",
+       "kind": "name",
+       "visible_s": -1.623
+      }
+     ]
+    },
+    {
+     "index": 3,
+     "category": "fragment",
+     "text": "Yes, please.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "Yes, please.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "fragment"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r3",
+     "asr_endpoint_s": 1.314
+    },
+    {
+     "index": 4,
+     "category": "offbank",
+     "text": "What is the difference between a process and a thread?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "What is the difference between a process and a thread?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0010",
+       "line": "SAY: That's a fair question, and I can explain it simply.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0010",
+       "line": "- A process has its own memory and runs in isolation from other processes.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0010",
+       "line": "- A thread shares memory with other threads in the same process.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "d0011",
+       "line": "- A process is a running program with its own memory space; the operating system keeps processes separate from each other.",
+       "turn_id": "r4",
+       "tier": "D"
+      },
+      {
+       "call": "d0011",
+       "line": "- A thread lives inside a process and shares its memory with other threads, so it is lighter, but shared data needs care (locks).",
+       "turn_id": "r4",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r4",
+     "asr_endpoint_s": 0.507,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.956,
+     "d_first_text_s": 1.308
+    },
+    {
+     "index": 6,
+     "category": "paraphrase",
+     "text": "Looking back, which architectural calls do you consider the smartest, and what did they cost you?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b006",
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "Looking back, which architectural calls do you consider the smartest and what did they cost you?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0016",
+       "line": "SAY: One call I'm proud of is the tiered model setup, and I'll be honest about its cost.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "s0016",
+       "line": "- I used a small model for the first pass and a larger one only on low-confidence documents.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "s0016",
+       "line": "- The cost was more moving parts, and about 7 percent of invoices still went to a human operator.",
+       "turn_id": "r5",
+       "tier": "S"
+      },
+      {
+       "call": "d0017",
+       "line": "- I made the model validate against a schema with one retry, then escalate. The cost: some invoices need a human, but it never guesses a total. (b006, prep:L19)",
+       "turn_id": "r5",
+       "tier": "D"
+      },
+      {
+       "call": "d0017",
+       "line": "- I used a small model first and a larger one only on low-confidence documents. The cost was a more complex pipeline, but model spend stayed around EUR 1,900 a month. (b006, f016)",
+       "turn_id": "r5",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.571,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.952,
+     "d_first_text_s": 1.98,
+     "chips": [
+      {
+       "text": "How do you evaluate an LLM system before release?",
+       "kind": "topic",
+       "visible_s": -5.269
+      }
+     ]
+    },
+    {
+     "index": 8,
+     "category": "other",
+     "text": "Tomas, would you stop sharing your screen?",
+     "is_question": true,
+     "addressee": "other",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r6"
+     ],
+     "heard": "Toos, would you stop sharing your screen",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0018",
+       "line": "SAY: I'd rather not guess on that one, so let me be straight with you.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "s0018",
+       "line": "- I can talk clearly about the Lantern and courier projects I actually led.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "s0018",
+       "line": "- If you can repeat the full question, I'll answer it properly.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "d0019",
+       "line": "- Answer the architecture question: I can walk through a few decisions and what each one cost. (b006)",
+       "turn_id": "r6",
+       "tier": "D"
+      },
+      {
+       "call": "d0019",
+       "line": "- Schema-validated extraction with one retry, then escalate. The model never guesses a total. Cost: some documents go to a human. (b006, f014, f015)",
+       "turn_id": "r6",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 0.412,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.413,
+     "d_first_text_s": 1.11
+    },
+    {
+     "index": 9,
+     "category": "paraphrase",
+     "text": "How did the vehicle routing system you wrote perform in the pilot?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b007",
+     "warmup": false,
+     "turn_ids": [
+      "r7"
+     ],
+     "heard": "How did the vehicle routing system you wrote perform in the pilot",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0024",
+       "line": "SAY: The courier route work is the closest match, and it had a clear result.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "s0024",
+       "line": "- I built a small route optimiser for a courier pilot that reduced empty runs by 14 percent.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "s0024",
+       "line": "- The pilot ran for 10 weeks across 23 vans in Torino.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "d0025",
+       "line": "- The courier route optimiser reduced empty runs by 14 percent during the pilot. (f019, b007)",
+       "turn_id": "r7",
+       "tier": "D"
+      },
+      {
+       "call": "d0025",
+       "line": "- The pilot ran for 10 weeks and covered 23 vans in Torino. (f020, f021)",
+       "turn_id": "r7",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r7",
+     "asr_endpoint_s": 0.413,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.597,
+     "d_first_text_s": 1.292,
+     "bank_hits": [
+      {
+       "bank_id": "b007",
+       "score": 0.9002,
+       "via": "embed",
+       "visible_s": 0.44
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b007",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 11,
+     "category": "statement",
+     "text": "We are running about ten minutes behind schedule.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r8"
+     ],
+     "heard": "We are running about 10 minutes behind schedule.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0026",
+       "line": "SAY: No problem, I'm happy to wait and go at your pace.",
+       "turn_id": "r8",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r8",
+     "asr_endpoint_s": 0.692,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.48,
+     "chips": [
+      {
+       "text": "What is your experience running LLMs in production?",
+       "kind": "topic",
+       "visible_s": -1.453
+      },
+      {
+       "text": "The courier pilot ran for 10 weeks.",
+       "kind": "number",
+       "visible_s": -0.483
+      }
+     ]
+    }
+   ],
+   "turns": 8,
+   "spurious_turns": [],
+   "answerable_turns": 5,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  },
+  {
+   "id": "d11",
+   "suite": "main",
+   "speakers": 3,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "paraphrase",
+     "text": "Where does your past work overlap with routing and logistics?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b018",
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "Where does your past work overlap with routing and logistics",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0003",
+       "line": "SAY: There's a direct overlap, and I can point to a specific project.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "s0003",
+       "line": "- I built a small route optimiser for a courier pilot that reduced empty runs by 14 percent.",
+       "turn_id": "r1",
+       "tier": "S"
+      },
+      {
+       "call": "d0004",
+       "line": "- I built a small route optimiser for a courier pilot. It reduced empty runs by 14 percent. (b018, f019)",
+       "turn_id": "r1",
+       "tier": "D"
+      },
+      {
+       "call": "d0004",
+       "line": "- The pilot ran for 10 weeks across 23 vans in Torino. Lantern also fits your planned LLM dispatcher. (b018, f020, f021)",
+       "turn_id": "r1",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.556,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.556,
+     "d_first_text_s": 1.757,
+     "bank_hits": [
+      {
+       "bank_id": "b018",
+       "score": 0.9103,
+       "via": "embed",
+       "visible_s": 0.582
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b018",
+       "agree": true
+      }
+     ],
+     "chips": [
+      {
+       "text": "What is your biggest weakness?",
+       "kind": "topic",
+       "visible_s": -2.394
+      }
+     ]
+    },
+    {
+     "index": 2,
+     "category": "statement",
+     "text": "the owner, take your time with this one.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "The owner, take your time with this",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0005",
+       "line": "SAY: Thanks, take all the time you need.",
+       "turn_id": "r2",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 0.911,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.627
+    },
+    {
+     "index": 3,
+     "category": "offbank",
+     "text": "Where do you see yourself in five years?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r3",
+      "r4"
+     ],
+     "heard": "one. Where do you see yourself in 5 years | Where do you see yourself in 5 years?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question",
+      "question"
+     ],
+     "heard_addressee": [
+      "me",
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "d0007",
+       "line": "- I built a small route optimiser for a courier pilot that reduced empty runs by 14 percent. (b018, f019)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "d0007",
+       "line": "- The pilot ran for 10 weeks across 23 vans in Torino. My LLM work on Lantern also fits your planned dispatcher. (f020, f021, f006)",
+       "turn_id": "r3",
+       "tier": "D"
+      },
+      {
+       "call": "s0009",
+       "line": "SAY: I'd like to be leading the AI work on routing and dispatch, owning the systems people rely on.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "s0009",
+       "line": "- Halden is moving to an LLM-assisted dispatcher, and I want to help shape that work as it goes live.",
+       "turn_id": "r4",
+       "tier": "S"
+      },
+      {
+       "call": "d0010",
+       "line": "- I want to grow into a senior role where I own AI features end to end, from design to release (prep:L10).",
+       "turn_id": "r4",
+       "tier": "D"
+      },
+      {
+       "call": "d0010",
+       "line": "- The planned LLM-assisted dispatcher is exactly where I want to grow, using what I learned on Lantern and the courier pilot (g004, f006).",
+       "turn_id": "r4",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r4",
+     "asr_endpoint_s": 1.269,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.677,
+     "d_first_text_s": 2.397
+    },
+    {
+     "index": 5,
+     "category": "other",
+     "text": "Tomas, are you still on the line?",
+     "is_question": true,
+     "addressee": "other",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "Thomas, are you still on the line",
+     "detected_answerable": false,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "other"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.436
+    },
+    {
+     "index": 6,
+     "category": "reply",
+     "text": "Yes, I'm here.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r6"
+     ],
+     "heard": "Yes, I'm here.",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0013",
+       "line": "SAY: Yes, I'm here, thanks for checking.",
+       "turn_id": "r6",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 0.705,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.46
+    },
+    {
+     "index": 7,
+     "category": "exact",
+     "text": "What results did Lantern deliver?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b004",
+     "warmup": false,
+     "turn_ids": [
+      "r7"
+     ],
+     "heard": "What results did Lantern deliver?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0015",
+       "line": "SAY: I can give you concrete numbers on that.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "s0015",
+       "line": "- Manual data entry dropped from 11 minutes to 2 minutes per invoice.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "d0016",
+       "line": "- Manual data entry dropped from 11 minutes to 2 minutes per invoice, and it ran on 38,000 invoices a month. (f010, f011)",
+       "turn_id": "r7",
+       "tier": "D"
+      },
+      {
+       "call": "d0016",
+       "line": "- Model cost was about EUR 1,900 a month, and it saved EUR 9,500 of manual labour. Totals were 96.4 percent accurate. (f016, f017, f012)",
+       "turn_id": "r7",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r7",
+     "asr_endpoint_s": 0.516,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.888,
+     "d_first_text_s": 2.572,
+     "bank_hits": [
+      {
+       "bank_id": "b004",
+       "score": 0.666,
+       "via": "ngram",
+       "visible_s": -0.528
+      },
+      {
+       "bank_id": "b004",
+       "score": 0.826,
+       "via": "ngram",
+       "visible_s": 0.432
+      },
+      {
+       "bank_id": "b004",
+       "score": 1,
+       "via": "ngram",
+       "visible_s": 0.435
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b004",
+       "agree": false
+      }
+     ],
+     "chips": [
+      {
+       "text": "Lantern is the LLM invoice-extraction project that Fethi led.",
+       "kind": "name",
+       "visible_s": 0.432
+      },
+      {
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Fethi.",
+       "kind": "term",
+       "visible_s": 0.432
+      }
+     ]
+    },
+    {
+     "index": 9,
+     "category": "paraphrase",
+     "text": "What is your habit when beginning a greenfield build?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b020",
+     "warmup": false,
+     "turn_ids": [
+      "r8"
+     ],
+     "heard": "What is your habit when beginning a green field build?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0019",
+       "line": "SAY: Mostly I start with a thin version and ship it fast.",
+       "turn_id": "r8",
+       "tier": "S"
+      },
+      {
+       "call": "s0019",
+       "line": "- I used to over-engineer early prototypes, but now I ship a thin version in the first week.",
+       "turn_id": "r8",
+       "tier": "S"
+      },
+      {
+       "call": "d0020",
+       "line": "- I ship a thin version in the first week, so the team can react to something real early. (b020)",
+       "turn_id": "r8",
+       "tier": "D"
+      },
+      {
+       "call": "d0020",
+       "line": "- I used to over-engineer early prototypes, and I changed that habit on purpose. (b005)",
+       "turn_id": "r8",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r8",
+     "asr_endpoint_s": 0.681,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.682,
+     "d_first_text_s": 1.534
+    },
+    {
+     "index": 11,
+     "category": "other",
+     "text": "Tomas, did you want to follow up on that?",
+     "is_question": true,
+     "addressee": "other",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r9"
+     ],
+     "heard": "Thomas, did you want to follow up on that?",
+     "detected_answerable": false,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "other"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r9",
+     "asr_endpoint_s": 0.816
+    },
+    {
+     "index": 12,
+     "category": "exact",
+     "text": "Do you have any questions for us?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b014",
+     "warmup": false,
+     "turn_ids": [
+      "r10"
+     ],
+     "heard": "Do you have any questions for us?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0024",
+       "line": "SAY: Yes, a few, mostly about how the team tests and runs things.",
+       "turn_id": "r10",
+       "tier": "S"
+      },
+      {
+       "call": "s0024",
+       "line": "- I'd ask how the dispatcher will be evaluated before it touches live routes.",
+       "turn_id": "r10",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r10",
+     "asr_endpoint_s": 0.434,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.434,
+     "bank_hits": [
+      {
+       "bank_id": "b014",
+       "score": 0.852,
+       "via": "ngram",
+       "visible_s": -0.612
+      },
+      {
+       "bank_id": "b014",
+       "score": 0.935,
+       "via": "ngram",
+       "visible_s": 0.345
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b014",
+       "agree": true
+      }
+     ]
+    }
+   ],
+   "turns": 10,
+   "spurious_turns": [],
+   "answerable_turns": 6,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  },
+  {
+   "id": "d12",
+   "suite": "main",
+   "speakers": 3,
+   "engine": "Apple SpeechTranscriber (Nemotron not ready)",
+   "rows": [
+    {
+     "index": 0,
+     "category": "paraphrase",
+     "text": "What would a former manager say you need to work on?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b005",
+     "warmup": false,
+     "turn_ids": [
+      "r1"
+     ],
+     "heard": "What would a former manager say you need to work on",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0004",
+       "line": "SAY: Honestly, my old manager would say I over-engineered early prototypes.",
+       "turn_id": "r1",
+       "tier": "F"
+      },
+      {
+       "call": "f0004",
+       "line": "- I used to spend too long polishing before anything ran.",
+       "turn_id": "r1",
+       "tier": "F"
+      },
+      {
+       "call": "f0004",
+       "line": "- Now I ship a thin version in the first week and iterate from there.",
+       "turn_id": "r1",
+       "tier": "F"
+      },
+      {
+       "call": "d0005",
+       "line": "- I used to over-engineer early prototypes, so I changed how I work and now ship a thin version in the first week. (b005)",
+       "turn_id": "r1",
+       "tier": "D"
+      },
+      {
+       "call": "d0005",
+       "line": "- That habit shows up in how I start any new project: small first, then improve it with real feedback. (b020)",
+       "turn_id": "r1",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r1",
+     "asr_endpoint_s": 0.686,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.24,
+     "d_first_text_s": 1.535
+    },
+    {
+     "index": 2,
+     "category": "exact",
+     "text": "How accurate was the Lantern pipeline?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b011",
+     "warmup": false,
+     "turn_ids": [
+      "r2"
+     ],
+     "heard": "How accurate was the Lantern pipeline?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0006",
+       "line": "SAY: The honest answer is that I used to over-engineer early prototypes, so I now ship a thin version first.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "s0006",
+       "line": "- I now ship a thin version in the first week and iterate from there.",
+       "turn_id": "r2",
+       "tier": "S"
+      },
+      {
+       "call": "d0007",
+       "line": "- On the held-out set, Lantern was 96.4 percent accurate for totals and 91 percent for line items (f012, f013).",
+       "turn_id": "r2",
+       "tier": "D"
+      },
+      {
+       "call": "d0007",
+       "line": "- Fields below 0.8 confidence go to a human operator, about 7 percent of invoices, and a frozen set of 400 invoices is rerun on every prompt change (f014, f015, f018).",
+       "turn_id": "r2",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r2",
+     "asr_endpoint_s": 0.955,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.955,
+     "d_first_text_s": 1.92,
+     "bank_hits": [
+      {
+       "bank_id": "b011",
+       "score": 0.74,
+       "via": "ngram",
+       "visible_s": -0.135
+      },
+      {
+       "bank_id": "b011",
+       "score": 0.865,
+       "via": "ngram",
+       "visible_s": -0.131
+      },
+      {
+       "bank_id": "b011",
+       "score": 1,
+       "via": "ngram",
+       "visible_s": 0.828
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b011",
+       "agree": false
+      }
+     ],
+     "chips": [
+      {
+       "text": "Lantern is the LLM invoice-extraction project that Fethi led.",
+       "kind": "name",
+       "visible_s": -0.132
+      },
+      {
+       "text": "Lantern: An LLM pipeline that extracts structured fields from supplier invoices, led by Fethi.",
+       "kind": "term",
+       "visible_s": -0.132
+      }
+     ]
+    },
+    {
+     "index": 4,
+     "category": "offbank",
+     "text": "Have you used Terraform or any infrastructure as code tools?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r3"
+     ],
+     "heard": "Have you used Teleform or any infrastructure as code tools?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0011",
+       "line": "SAY: I haven't used Terraform in a production setting, so I'd be honest about that.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "s0011",
+       "line": "- My infrastructure work has been mostly around deploy workflows, like automating the IndexNow ping after each deploy.",
+       "turn_id": "r3",
+       "tier": "S"
+      },
+      {
+       "call": "d0012",
+       "line": "- What I can offer is my deploy work: I automated one step so each deploy pings IndexNow (b021)",
+       "turn_id": "r3",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r3",
+     "asr_endpoint_s": 1.07,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.07,
+     "d_first_text_s": 2.934
+    },
+    {
+     "index": 6,
+     "category": "other",
+     "text": "Tomas, can you share the interview notes with me?",
+     "is_question": true,
+     "addressee": "other",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r4"
+     ],
+     "heard": "Thomas, can you share the interview notes with me?",
+     "detected_answerable": false,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "other"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r4",
+     "asr_endpoint_s": 0.709
+    },
+    {
+     "index": 7,
+     "category": "reply",
+     "text": "Sending them now.",
+     "is_question": false,
+     "addressee": null,
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r5"
+     ],
+     "heard": "Sending them now",
+     "detected_answerable": false,
+     "detected_kind": [
+      "statement"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "f0016",
+       "line": "SAY: Thanks, I'll wait for it.",
+       "turn_id": "r5",
+       "tier": "F"
+      }
+     ],
+     "main_turn": "r5",
+     "asr_endpoint_s": 0.698,
+     "sf_tier": "F",
+     "sf_first_text_s": 1.479
+    },
+    {
+     "index": 8,
+     "category": "paraphrase",
+     "text": "Assuming an offer, what is the soonest you could be on board?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b015",
+     "warmup": false,
+     "turn_ids": [
+      "r6"
+     ],
+     "heard": "Assuming an offer, what is the soonest you could be on board?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0019",
+       "line": "SAY: My notice period is 30 days, so the soonest I could start is mid-December 2026.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "s0019",
+       "line": "- That timing assumes an offer and the standard 30-day notice at my current company.",
+       "turn_id": "r6",
+       "tier": "S"
+      },
+      {
+       "call": "d0020",
+       "line": "- My notice period at my current company is 30 days, so that sets the earliest date. (f022, b015)",
+       "turn_id": "r6",
+       "tier": "D"
+      },
+      {
+       "call": "d0020",
+       "line": "- Counting from an offer in late October, that points to mid-December 2026 as my start. (b015, prep:L35)",
+       "turn_id": "r6",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r6",
+     "asr_endpoint_s": 0.628,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.629,
+     "d_first_text_s": 1.533,
+     "bank_hits": [
+      {
+       "bank_id": "b015",
+       "score": 0.9142,
+       "via": "embed",
+       "visible_s": 0.621
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b015",
+       "agree": true
+      }
+     ]
+    },
+    {
+     "index": 10,
+     "category": "paraphrase",
+     "text": "Did the economics stack up against doing the work by hand?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b012",
+     "warmup": false,
+     "turn_ids": [
+      "r7"
+     ],
+     "heard": "Did the economics stack up against doing the work by hand?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "unknown"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0025",
+       "line": "SAY: Yes, it did, and I can give you the numbers.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "s0025",
+       "line": "- Monthly model cost was around EUR 1,900, against EUR 9,500 of manual labour saved.",
+       "turn_id": "r7",
+       "tier": "S"
+      },
+      {
+       "call": "d0026",
+       "line": "- Yes. Monthly model cost was around EUR 1,900, against EUR 9,500 of manual labour saved. (f017, b012)",
+       "turn_id": "r7",
+       "tier": "D"
+      },
+      {
+       "call": "d0026",
+       "line": "- That was at 38,000 invoices a month, and entry time fell from 11 minutes to 2 minutes each. (f011, f010)",
+       "turn_id": "r7",
+       "tier": "D"
+      }
+     ],
+     "main_turn": "r7",
+     "asr_endpoint_s": 0.843,
+     "sf_tier": "S",
+     "sf_first_text_s": 1.38,
+     "d_first_text_s": 1.692
+    },
+    {
+     "index": 12,
+     "category": "other",
+     "text": "Ingrid, shall we move on to the next topic?",
+     "is_question": true,
+     "addressee": "other",
+     "bank_id": null,
+     "warmup": false,
+     "turn_ids": [
+      "r8"
+     ],
+     "heard": "Ingrid, shall we move on to the next topic?",
+     "detected_answerable": false,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "other"
+     ],
+     "say_lines": 0,
+     "suggestion_lines": [],
+     "main_turn": "r8",
+     "asr_endpoint_s": 0.747,
+     "chips": [
+      {
+       "text": "Ingrid Solberg is the VP Engineering and the hiring manager on the panel.",
+       "kind": "name",
+       "visible_s": -1.266
+      }
+     ]
+    },
+    {
+     "index": 13,
+     "category": "exact",
+     "text": "How would you approach building an LLM-assisted dispatcher?",
+     "is_question": true,
+     "addressee": "me",
+     "bank_id": "b013",
+     "warmup": false,
+     "turn_ids": [
+      "r9"
+     ],
+     "heard": "How would you approach building an LM assisted dispatcher?",
+     "detected_answerable": true,
+     "detected_kind": [
+      "question"
+     ],
+     "heard_addressee": [
+      "me"
+     ],
+     "say_lines": 1,
+     "suggestion_lines": [
+      {
+       "call": "s0032",
+       "line": "SAY: I'd start small, get a thin version working fast, and check every change against a frozen evaluation set before it goes live.",
+       "turn_id": "r9",
+       "tier": "S"
+      },
+      {
+       "call": "s0032",
+       "line": "- Ship a first version quickly, then add complexity only where the data shows a need.",
+       "turn_id": "r9",
+       "tier": "S"
+      },
+      {
+       "call": "s0032",
+       "line": "- Validate outputs, retry once, then send low-confidence cases to a human operator.",
+       "turn_id": "r9",
+       "tier": "S"
+      }
+     ],
+     "main_turn": "r9",
+     "asr_endpoint_s": 0.641,
+     "sf_tier": "S",
+     "sf_first_text_s": 0.641,
+     "bank_hits": [
+      {
+       "bank_id": "b013",
+       "score": 0.713,
+       "via": "ngram",
+       "visible_s": -0.45
+      },
+      {
+       "bank_id": "b013",
+       "score": 0.801,
+       "via": "ngram",
+       "visible_s": 0.509
+      },
+      {
+       "bank_id": "b013",
+       "score": 0.903,
+       "via": "ngram",
+       "visible_s": 0.512
+      }
+     ],
+     "bank_verdicts": [
+      {
+       "bank_id": "b013",
+       "agree": true
+      }
+     ]
+    }
+   ],
+   "turns": 9,
+   "spurious_turns": [],
+   "answerable_turns": 6,
+   "statuses": [],
+   "warm_until_session_s": 0.0
+  }
+ ],
+ "aggregate": {
+  "questions_to_user": 59,
+  "excluded_warmup_utterances": 0,
+  "detection": {
+   "positives": 59,
+   "covered": 58,
+   "recall": 0.9831,
+   "predicted_turns": 63,
+   "true_positive_turns": 58,
+   "precision": 0.9206,
+   "missed": [
+    {
+     "dialogue": "d01",
+     "text": "Can you tell me about yourself and your background?",
+     "heard": "Can you tell me about yourself and your",
+     "kinds": [
+      "fragment"
+     ],
+     "addressee": [
+      "me"
+     ]
+    }
+   ],
+   "false_positives": [
+    {
+     "dialogue": "d09",
+     "category": "other",
+     "text": "Tomas, can you pull up the evaluation notes?",
+     "heard": "To us Can you pull up re evaluation | Told us, can you pull up the evaluation notes?"
+    },
+    {
+     "dialogue": "d10",
+     "category": "other",
+     "text": "Tomas, would you stop sharing your screen?",
+     "heard": "Toos, would you stop sharing your screen"
+    }
+   ]
+  },
+  "addressee": {
+   "questions_to_other": 12,
+   "no_say": 10,
+   "no_say_rate": 0.8333,
+   "three_speaker_n": 12,
+   "three_speaker_no_say": 10,
+   "classified_other": 10,
+   "not_detected_at_all": 0,
+   "failures": [
+    {
+     "dialogue": "d09",
+     "text": "Tomas, can you pull up the evaluation notes?",
+     "heard": "To us Can you pull up re evaluation | Told us, can you pull up the evaluation notes?",
+     "addressee": [
+      "me",
+      "me"
+     ],
+     "say_lines": 2
+    },
+    {
+     "dialogue": "d10",
+     "text": "Tomas, would you stop sharing your screen?",
+     "heard": "Toos, would you stop sharing your screen",
+     "addressee": [
+      "me"
+     ],
+     "say_lines": 1
+    }
+   ]
+  },
+  "bank": {
+   "banked_questions": 45,
+   "hits": 34,
+   "confirmed_by_haiku": 26,
+   "hit_rate": 0.7556,
+   "by_category": {
+    "exact": {
+     "n": 21,
+     "hit": 21,
+     "hit_via_embed": 0,
+     "confirmed": 15
+    },
+    "paraphrase": {
+     "n": 24,
+     "hit": 13,
+     "hit_via_embed": 13,
+     "confirmed": 11
+    }
+   },
+   "utterances_probed": 93,
+   "wrong_hits": 2,
+   "wrong_hit_rate": 0.0215,
+   "wrong_hits_transient": 4,
+   "wrong_hit_rate_transient": 0.043,
+   "wrong_after_haiku": 1,
+   "wrong_after_haiku_rate": 0.0108,
+   "wrong_hits_not_retracted": 2,
+   "wrong_hit_rate_not_retracted": 0.0215,
+   "wrong_final_via_embed": 0,
+   "wrong_detail": [
+    {
+     "dialogue": "d01",
+     "category": "exact",
+     "text": "Can you tell me about yourself and your background?",
+     "bank_ids": [
+      "b003",
+      "b001"
+     ],
+     "expected": "b001",
+     "via": [
+      "ngram",
+      "ngram"
+     ],
+     "retracted": []
+    },
+    {
+     "dialogue": "d04",
+     "category": "offbank",
+     "text": "How would you measure success for the dispatcher pilot?",
+     "bank_ids": [
+      "b004",
+      "b004"
+     ],
+     "expected": null,
+     "via": [
+      "ngram",
+      "ngram"
+     ],
+     "retracted": []
+    },
+    {
+     "dialogue": "d06",
+     "category": "offbank",
+     "text": "What did the courier pilot teach you about live traffic?",
+     "bank_ids": [
+      "b007"
+     ],
+     "expected": null,
+     "via": [
+      "ngram"
+     ],
+     "retracted": []
+    },
+    {
+     "dialogue": "d07",
+     "category": "exact",
+     "text": "Can you tell me about yourself and your background?",
+     "bank_ids": [
+      "b003",
+      "b001",
+      "b001"
+     ],
+     "expected": "b001",
+     "via": [
+      "ngram",
+      "ngram",
+      "ngram"
+     ],
+     "retracted": []
+    }
+   ]
+  },
+  "latency": {
+   "acoustic_end_to_turn_sent": {
+    "n": 59,
+    "p50": 0.681,
+    "p90": 1.016,
+    "max": 1.315
+   },
+   "first_visible_text_any_SF": {
+    "n": 59,
+    "p50": 0.924,
+    "p90": 1.396,
+    "max": 1.768
+   },
+   "speculation_hit_opener_visible": {
+    "n": 56,
+    "p50": 0.921,
+    "p90": 1.38,
+    "max": 1.677
+   },
+   "fresh_haiku_first_word": {
+    "n": 3,
+    "p50": 1.249,
+    "p90": 1.768,
+    "max": 1.768
+   },
+   "sonnet_deep_first_words": {
+    "n": 46,
+    "p50": 1.591,
+    "p90": 2.339,
+    "max": 2.934
+   },
+   "bank_hit_visible": {
+    "n": 34,
+    "p50": -0.113,
+    "p90": 0.82,
+    "max": 1.148
+   },
+   "fact_chip_visible": {
+    "n": 20,
+    "p50": -0.132,
+    "p90": 0.432,
+    "max": 0.611
+   },
+   "questions_with_no_sf_text": 0,
+   "questions_with_d_text": 46,
+   "n_speculation_path": 56,
+   "n_fresh_path": 3
+  },
+  "other": {
+   "statements": 10,
+   "statements_with_say": 9,
+   "statements_called_question": 0,
+   "fragments": 5,
+   "fragments_with_output": 0
+  },
+  "cost": {
+   "per_dialogue_usd": {
+    "d01": 0.032319,
+    "d02": 0.024894,
+    "d03": 0.019319,
+    "d04": 0.025498,
+    "d05": 0.034598,
+    "d06": 0.030456,
+    "d07": 0.030475,
+    "d08": 0.029842,
+    "d09": 0.024994,
+    "d10": 0.030468,
+    "d11": 0.024179,
+    "d12": 0.03156
+   },
+   "total_usd": 0.3386,
+   "replay_minutes": 13.41,
+   "usd_per_30_min": 0.7574
+  }
+ },
+ "aggregate_short": null,
+ "metas": {
+  "d01": {
+   "duration_s": 71.97,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    5.79,
+    7.38,
+    6.78
+   ],
+   "loadavg_after": [
+    4.09,
+    6.48,
+    6.49
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.032319,
+   "elapsed_s": 79.14
+  },
+  "d02": {
+   "duration_s": 65.21,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    4.09,
+    6.48,
+    6.49
+   ],
+   "loadavg_after": [
+    3.04,
+    5.66,
+    6.18
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.024894,
+   "elapsed_s": 73.9
+  },
+  "d03": {
+   "duration_s": 70.9,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    3.2,
+    5.65,
+    6.17
+   ],
+   "loadavg_after": [
+    4.74,
+    5.37,
+    6.01
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.019319,
+   "elapsed_s": 76.67
+  },
+  "d04": {
+   "duration_s": 71.57,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    4.6,
+    5.33,
+    5.99
+   ],
+   "loadavg_after": [
+    2.88,
+    4.59,
+    5.64
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.025498,
+   "elapsed_s": 78.82
+  },
+  "d05": {
+   "duration_s": 84.02,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    2.88,
+    4.59,
+    5.64
+   ],
+   "loadavg_after": [
+    4.25,
+    4.57,
+    5.53
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.034598,
+   "elapsed_s": 89.95
+  },
+  "d06": {
+   "duration_s": 74.53,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    4.6,
+    4.63,
+    5.54
+   ],
+   "loadavg_after": [
+    4.65,
+    4.73,
+    5.49
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.030456,
+   "elapsed_s": 81.78
+  },
+  "d07": {
+   "duration_s": 74.39,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    5.06,
+    4.81,
+    5.5
+   ],
+   "loadavg_after": [
+    3.31,
+    4.26,
+    5.22
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.030475,
+   "elapsed_s": 81.15
+  },
+  "d08": {
+   "duration_s": 68.73,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    3.31,
+    4.26,
+    5.22
+   ],
+   "loadavg_after": [
+    4.3,
+    4.4,
+    5.19
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.029842,
+   "elapsed_s": 75.47
+  },
+  "d09": {
+   "duration_s": 68.76,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    4.2,
+    4.37,
+    5.17
+   ],
+   "loadavg_after": [
+    4.11,
+    4.4,
+    5.12
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.024994,
+   "elapsed_s": 76.01
+  },
+  "d10": {
+   "duration_s": 69.74,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    3.94,
+    4.36,
+    5.11
+   ],
+   "loadavg_after": [
+    3.71,
+    4.16,
+    4.96
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.030468,
+   "elapsed_s": 79.55
+  },
+  "d11": {
+   "duration_s": 73.0,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    3.82,
+    4.18,
+    4.96
+   ],
+   "loadavg_after": [
+    7.34,
+    5.35,
+    5.34
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.024179,
+   "elapsed_s": 79.21
+  },
+  "d12": {
+   "duration_s": 83.85,
+   "lead_in_s": 6.0,
+   "loadavg_before": [
+    7.07,
+    5.35,
+    5.34
+   ],
+   "loadavg_after": [
+    6.33,
+    5.67,
+    5.47
+   ],
+   "exit_code": 0,
+   "cost_usd": 0.03156,
+   "elapsed_s": 90.5
+  }
+ },
+ "grounding": {
+  "lines_checked": 298,
+  "auto_supported": 291,
+  "unresolved_by_string_check": 7,
+  "judged": 0,
+  "judge_supported": 0,
+  "violations": [],
+  "unjudged": [
+   {
+    "dialogue": "d02",
+    "line": "- I used a small model for the first pass, and a larger one only on low-confidence documents. (b003, prep:L24)",
+    "unresolved": {
+     "numbers": [
+      "24"
+     ]
+    }
+   },
+   {
+    "dialogue": "d02",
+    "line": "- Output is checked against a schema with one retry, then escalated. Fields below 0.8 confidence go to a human operator. (f014, prep:L25)",
+    "unresolved": {
+     "numbers": [
+      "25"
+     ]
+    }
+   },
+   {
+    "dialogue": "d02",
+    "line": "SAY: I mostly work in Python, and I use whatever fits the problem best.",
+    "unresolved": {
+     "names": [
+      "Python"
+     ]
+    }
+   },
+   {
+    "dialogue": "d02",
+    "line": "- I used Python for Lantern's extraction pipeline and its evaluation harness.",
+    "unresolved": {
+     "names": [
+      "Python"
+     ]
+    }
+   },
+   {
+    "dialogue": "d02",
+    "line": "- I used to over-engineer early prototypes, building too much before anyone could use it. (b005, prep:L27)",
+    "unresolved": {
+     "numbers": [
+      "27"
+     ]
+    }
+   },
+   {
+    "dialogue": "d02",
+    "line": "- Now I ship a thin version in the first week, so I get feedback early. (b005, prep:L27)",
+    "unresolved": {
+     "numbers": [
+      "27"
+     ]
+    }
+   },
+   {
+    "dialogue": "d02",
+    "line": "- It keeps me focused on what matters, and I can change direction before I waste time. (b005, prep:L27)",
+    "unresolved": {
+     "numbers": [
+      "27"
+     ]
+    }
+   }
+  ],
+  "judge_cost_usd": 0.0,
+  "unresolved_but_judged_supported": 0
+ }
+}

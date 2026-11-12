@@ -270,6 +270,65 @@ final class SessionTrashTests: XCTestCase {
         XCTAssertNil(r.model.folders.folder(of: "b-call"))
     }
 
+    // MARK: people links (review U7)
+
+    /// A people store in its own scratch folder with Ada, Bob (persons) and Acme (a company), wired into the rig's hooks.
+    private func peopleRig(_ r: Rig) throws -> (EntityStore, URL) {
+        let mem = try FolderFixtures.scratch()
+        let paths = MemoryPaths(base: mem)
+        let when = Date(timeIntervalSince1970: 1_700_000_000)
+        var f = PeopleFile()
+        f.entities = [MemoryEntity(id: "e-ada", kind: .person, name: "Ada", createdAt: when),
+                      MemoryEntity(id: "e-bob", kind: .person, name: "Bob", createdAt: when),
+                      MemoryEntity(id: "e-acme", kind: .company, name: "Acme", createdAt: when)]
+        try FileManager.default.createDirectory(at: paths.people.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try PeopleCodec.encode(f).write(to: paths.people)
+        let store = EntityStore(paths: paths, sessionsRoot: root)
+        r.model.hooks = .window(controller: r.controller, sim: nil, settings: r.settings, router: r.router, people: store)
+        return (store, mem)
+    }
+
+    func testUndoBringsBackTheSessionsPeopleLinksAfterAWritePrunedThem() throws {
+        for n in ["a-call", "b-call"] { try FolderFixtures.session(n, in: root) }
+        let r = rig()
+        defer { r.defaultsCleanup() }
+        let (store, mem) = try peopleRig(r)
+        defer { try? FileManager.default.removeItem(at: mem) }
+        store.link("b-call", to: "e-ada")
+        store.unlink("b-call", from: "e-acme")
+        store.dismiss("b-call", for: "e-bob")
+        let um = undoManager()
+
+        r.model.trash(["b-call"], undoManager: um)
+        try store.rename("e-bob", to: "Robert")     // any write while it is in the Trash prunes its entries
+        XCTAssertNil(store.file.links["b-call"], "precondition: the write pruned the link")
+
+        um.undo()
+
+        XCTAssertEqual(store.file.links["b-call"], ["e-ada"], "the hand-made link is back")
+        XCTAssertEqual(store.file.unlinks["b-call"], ["e-acme"], "the removal is back")
+        XCTAssertEqual(store.file.dismissed["e-bob"], ["b-call"], "the turned-down suggestion stays turned down")
+        let onDisk = try PeopleCodec.decode(Data(contentsOf: MemoryPaths(base: mem).people))
+        XCTAssertEqual(onDisk.links["b-call"], ["e-ada"], "and it reached people.json")
+    }
+
+    func testUndoFollowsAMergeMadeWhileTheSessionWasInTheTrash() throws {
+        for n in ["a-call", "b-call"] { try FolderFixtures.session(n, in: root) }
+        let r = rig()
+        defer { r.defaultsCleanup() }
+        let (store, mem) = try peopleRig(r)
+        defer { try? FileManager.default.removeItem(at: mem) }
+        store.link("b-call", to: "e-ada")
+        let um = undoManager()
+
+        r.model.trash(["b-call"], undoManager: um)
+        try store.merge("e-ada", into: "e-bob")
+
+        um.undo()
+
+        XCTAssertEqual(store.file.links["b-call"], ["e-bob"], "the link points at the survivor")
+    }
+
     func testUndoKeepsALaterStartChoice() throws {
         for n in ["a-call", "b-call", "c-call"] { try FolderFixtures.session(n, in: root) }
         let r = rig(start: "b-call")

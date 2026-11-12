@@ -177,3 +177,41 @@ def test_opener_sentence_starting_with_may_was_is_dropped_when_the_question_has_
     out = _ground_opener("May was hard. We stayed on track.", "How did the pilot go?", g)
     assert out == "We stayed on track."
     assert g.dropped and g.dropped[0].reason == "unsupported_month"
+
+
+# ---------------------------------------------------------------------------------------------- number format by language
+
+
+@pytest.mark.parametrize("lang,tok,val", [
+    ("en", "3.141", 3.141), ("en", "3,141", 3141.0), ("en", "1,234.56", 1234.56), ("en", "1.250", 1.25), ("en", "0,125", 0.125),
+    ("it", "3.141", 3141.0), ("it", "3,141", 3.141), ("it", "1.234,56", 1234.56), ("it", "1,250", 1.25), ("it", "0.125", 0.125),
+    ("tr", "3.141", 3141.0), ("tr", "3,141", 3.141), ("tr", "12.345.678", 12345678.0),
+])
+def test_number_format_follows_the_language(lang, tok, val):
+    assert numbers_in(tok, lang) == {val}
+
+
+def test_unknown_or_missing_language_keeps_the_format_blind_guess():
+    for lang in (None, "", "de", "xx"):
+        assert numbers_in("3.141", lang) == {3141.0} and numbers_in("96,4", lang) == {96.4}
+
+
+def test_a_claim_is_checked_against_the_quote_in_the_language_both_are_written_in():
+    # English: "3.141" is a decimal, so a claim of 3141 is not in the quote; Italian: the same quote says 3141
+    assert not numbers_supported("it took 3141 ms", ["it took 3.141 ms"], "en")
+    assert numbers_supported("it took 3141 ms", ["it took 3.141 ms"], "it")
+    assert not numbers_supported("it took 3.141 ms", ["it took 3,141 ms"], "en")  # decimal vs thousands
+    assert numbers_supported("it took 3,141 ms", ["it took 3,141 ms"], "it")  # the same decimal in Italian
+    assert not numbers_supported("it took 3141 ms", ["it took 3,141 ms"], "it")
+
+
+def test_verify_facts_reads_numbers_in_the_given_language():
+    from verse_brain.prep.conversation import verify_facts
+    from verse_brain.prep.conversation_model import Page, ResearchOutput
+    url = "https://acme.example/it"
+    page = Page(url, "Acme", fetched=True, text="Il ricavo del 2024 e di 3.141 euro per cliente.")
+    raw = [{"topic": "size", "text": "Revenue is 3141 euro per customer in 2024.", "url": url, "evidence": "del 2024 e di 3.141 euro per cliente"}]
+    res = ResearchOutput("", {url: page})
+    assert verify_facts(raw, res, "it")[0].status == "sourced"
+    f = verify_facts(raw, res, "en")[0]
+    assert f.status == "unverified" and "number" in f.reason

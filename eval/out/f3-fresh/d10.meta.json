@@ -1,0 +1,139 @@
+{
+ "id": "d10",
+ "lead_in_s": 6.0,
+ "duration_s": 69.74,
+ "timeline": [
+  {
+   "index": 0,
+   "speaker": "Ingrid",
+   "t_start": 6.0,
+   "t_end": 8.71,
+   "silent": false
+  },
+  {
+   "index": 1,
+   "speaker": "the owner",
+   "t_start": 9.88,
+   "t_end": 17.18,
+   "silent": true
+  },
+  {
+   "index": 2,
+   "speaker": "Tomas",
+   "t_start": 18.16,
+   "t_end": 20.96,
+   "silent": false
+  },
+  {
+   "index": 3,
+   "speaker": "Ingrid",
+   "t_start": 22.109,
+   "t_end": 23.279,
+   "silent": false
+  },
+  {
+   "index": 4,
+   "speaker": "Tomas",
+   "t_start": 24.589,
+   "t_end": 27.509,
+   "silent": false
+  },
+  {
+   "index": 5,
+   "speaker": "the owner",
+   "t_start": 28.547,
+   "t_end": 36.547,
+   "silent": true
+  },
+  {
+   "index": 6,
+   "speaker": "Tomas",
+   "t_start": 37.877,
+   "t_end": 43.757,
+   "silent": false
+  },
+  {
+   "index": 7,
+   "speaker": "the owner",
+   "t_start": 44.949,
+   "t_end": 50.849,
+   "silent": true
+  },
+  {
+   "index": 8,
+   "speaker": "Ingrid",
+   "t_start": 51.999,
+   "t_end": 54.599,
+   "silent": false
+  },
+  {
+   "index": 9,
+   "speaker": "Ingrid",
+   "t_start": 56.053,
+   "t_end": 59.493,
+   "silent": false
+  },
+  {
+   "index": 10,
+   "speaker": "the owner",
+   "t_start": 60.733,
+   "t_end": 66.033,
+   "silent": true
+  },
+  {
+   "index": 11,
+   "speaker": "Ingrid",
+   "t_start": 67.003,
+   "t_end": 69.693,
+   "silent": false
+  }
+ ],
+ "wall_start": 1794443058.214,
+ "render_s": 4.19,
+ "elapsed_s": 79.55,
+ "loadavg_before": [
+  3.94,
+  4.36,
+  5.11
+ ],
+ "loadavg_after": [
+  3.71,
+  4.16,
+  4.96
+ ],
+ "exit_code": 0,
+ "timed_out": false,
+ "engine": [
+  {
+   "channel": "remote",
+   "engine": "SpeechTranscriber+fastResults",
+   "reason": "Nemotron model files missing in /Users/fethiomur/Library/Application Support/Verse/models/nemotron-en-0.6b-560ms: encoder/encoder_int8.mlmodelc, decoder.mlmodelc, joint.mlmodelc, tokenizer.json, metadata.json",
+   "state": "engine_fallback",
+   "type": "status",
+   "wall": 1794443060.077475
+  }
+ ],
+ "lines": 433,
+ "cost_usd": 0.030468,
+ "fake_brain": false,
+ "session_files_added": [
+  "events.jsonl"
+ ],
+ "audio_watch": {
+  "folders": [
+   "/var/folders/dz/b7hcfxl13k5c0j30wpksyzph0000gn/T/verse-eval-audio-8a397w3p/session",
+   "/Users/fethiomur/Library/Application Support/Verse/sessions",
+   "/Users/fethiomur/Desktop/ProjectExamples/CursorExamples/Verse/brain/tests/out"
+  ],
+  "polls": 311,
+  "audio_files_found": [],
+  "pass": true
+ },
+ "temp_audio_removed": true,
+ "others_passed": [
+  "Ingrid",
+  "Tomas",
+  "Thomas"
+ ],
+ "budget_usd": 0.25
+}

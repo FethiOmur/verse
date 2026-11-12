@@ -640,8 +640,9 @@ public final class MeModel: ObservableObject {
         case .done(_, let log):
             phase = .idle
             progress = nil
-            if let nothing = log.first(where: { $0.hasPrefix("no source changed") }) {
-                message = nothing.prefix(1).uppercased() + nothing.dropFirst()
+            if log.contains(where: { $0.hasPrefix("no source changed") }) {
+                // Prep's line is English; the page says it in the interface language.
+                message = L10n.tr("No source changed since the last build: nothing to do, nothing spent")
             } else {
                 message = meta.map { L10n.tr("Done · \($0.doneSummary)") } ?? L10n.tr("Done")
             }

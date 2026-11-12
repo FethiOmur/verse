@@ -151,6 +151,7 @@ public struct SettingsView: View {
     @ObservedObject var simSettings: SimSettings
     /// Render only (`--render-home`): the page header and the Meetings group, so that group can be looked at whole.
     var meetingsOnly = false
+    @ObservedObject private var embeddingModel = EmbeddingModelInstaller.shared
     @Environment(\.homeInk) private var ink
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
@@ -247,7 +248,10 @@ public struct SettingsView: View {
                 HomeRowDivider()
                 HomeSliderRow(label: "Answer bank match", value: $settings.matchThreshold, range: 0.3...0.9, step: 0.01,
                               text: settings.matchThreshold.formatted(.number.precision(.fractionLength(2))))
+                HomeRowDivider()
+                EmbeddingModelRow(installer: embeddingModel)
             }
+            HomeFootnote("The paraphrase model lets the answer bank match a question asked in other words; without it only close wordings match. It is downloaded from Hugging Face only when you click Download, checked against its SHA-256, and used from the next call.")
 
             HomeSectionHeader("Practice interview")
             HomePracticeVoiceSection(sim: simSettings)

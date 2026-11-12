@@ -3081,6 +3081,7 @@
       }
     },
     "Classic mode: %@": {
+      "extractionState": "stale",
       "localizations": {
         "it": {
           "stringUnit": {
@@ -12590,6 +12591,22 @@
         }
       }
     },
+    "Checking the file…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifica del file…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dosya denetleniyor…"
+          }
+        }
+      }
+    },
     "classic": {
       "localizations": {
         "it": {
@@ -12634,6 +12651,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "beyin başlatılamadı: %@"
+          }
+        }
+      }
+    },
+    "Download (%@)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scarica (%@)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndir (%@)"
+          }
+        }
+      }
+    },
+    "Download progress": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avanzamento del download"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirme ilerlemesi"
           }
         }
       }
@@ -12698,6 +12747,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "çıkış %d"
+          }
+        }
+      }
+    },
+    "File this session in “%@”": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivia questa sessione in «%@»"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu oturumu “%@” klasörüne koy"
           }
         }
       }
@@ -12888,6 +12953,38 @@
         }
       }
     },
+    "Incomplete copy": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia incompleta"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eksik kopya"
+          }
+        }
+      }
+    },
+    "Installed": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installato"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yüklü"
+          }
+        }
+      }
+    },
     "interviewer": {
       "localizations": {
         "it": {
@@ -12952,6 +13049,22 @@
         }
       }
     },
+    "Make the folder “%@” and file this session in it": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Crea la cartella «%@» e archiviaci questa sessione"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“%@” klasörünü oluştur ve bu oturumu içine koy"
+          }
+        }
+      }
+    },
     "my profile": {
       "localizations": {
         "it": {
@@ -13000,6 +13113,38 @@
         }
       }
     },
+    "No source changed since the last build: nothing to do, nothing spent": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna fonte è cambiata dall’ultima creazione: niente da rifare, nessun costo"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son oluşturmadan bu yana hiçbir kaynak değişmedi: yapılacak bir şey yok, harcama yapılmadı"
+          }
+        }
+      }
+    },
+    "Not installed": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non installato"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yüklü değil"
+          }
+        }
+      }
+    },
     "notes": {
       "localizations": {
         "it": {
@@ -13012,6 +13157,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "notlar"
+          }
+        }
+      }
+    },
+    "Paraphrase model": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modello per le parafrasi"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden ifade modeli"
           }
         }
       }
@@ -13214,6 +13375,54 @@
         }
       }
     },
+    "The download failed: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il download non è riuscito: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirme başarısız oldu: %@"
+          }
+        }
+      }
+    },
+    "The downloaded file did not match its checksum, so it was discarded. Try again.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file scaricato non corrisponde al suo checksum, quindi è stato scartato. Riprova."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirilen dosya sağlama toplamıyla eşleşmedi, bu yüzden silindi. Yeniden deneyin."
+          }
+        }
+      }
+    },
+    "The downloaded file has the wrong size, so it was discarded. Try again.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il file scaricato ha una dimensione sbagliata, quindi è stato scartato. Riprova."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İndirilen dosyanın boyutu yanlış, bu yüzden silindi. Yeniden deneyin."
+          }
+        }
+      }
+    },
     "the Keychain did not accept the key (%@)": {
       "localizations": {
         "it": {
@@ -13242,6 +13451,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "anahtar zinciri öğesi kaldırılamadı (çıkış %d)"
+          }
+        }
+      }
+    },
+    "The paraphrase model lets the answer bank match a question asked in other words; without it only close wordings match. It is downloaded from Hugging Face only when you click Download, checked against its SHA-256, and used from the next call.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il modello per le parafrasi permette alla banca risposte di riconoscere una domanda posta con altre parole; senza, vengono riconosciute solo le formulazioni simili. Si scarica da Hugging Face solo quando fai clic su Scarica, viene verificato con il suo SHA-256 e si usa dalla chiamata successiva."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden ifade modeli, yanıt bankasının başka sözcüklerle sorulan bir soruyu da eşleştirmesini sağlar; model yoksa yalnızca benzer ifadeler eşleşir. Yalnızca İndir’e tıkladığınızda Hugging Face’ten indirilir, SHA-256 değeriyle denetlenir ve bir sonraki görüşmeden itibaren kullanılır."
+          }
+        }
+      }
+    },
+    "The server answered %lld.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il server ha risposto %lld."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sunucu %lld yanıtını verdi."
           }
         }
       }
@@ -13306,6 +13547,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "desteklenmeyen hizmet veya hesap adı"
+          }
+        }
+      }
+    },
+    "Verse could not save the model: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse non è riuscito a salvare il modello: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse modeli kaydedemedi: %@"
           }
         }
       }

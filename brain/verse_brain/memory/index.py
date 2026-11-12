@@ -288,7 +288,9 @@ class MemoryIndex:
         path = Path(path)
         if readonly:
             try:
-                con = sqlite3.connect(f"file:{quote(str(path))}?mode=ro", uri=True, isolation_level=None)
+                # check_same_thread=False: the Ask runtime searches on a worker thread (one at a time) and reads on the loop thread
+                con = sqlite3.connect(f"file:{quote(str(path))}?mode=ro", uri=True, isolation_level=None,
+                                      check_same_thread=False)
                 ver = con.execute("PRAGMA user_version").fetchone()[0]
             except sqlite3.Error as e:
                 raise IndexUnavailable(f"{type(e).__name__}") from e

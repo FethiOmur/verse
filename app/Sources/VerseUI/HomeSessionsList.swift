@@ -61,6 +61,9 @@ struct HomeSessionsList: View {
             if let notice = model.folders.notice {
                 HomeNote(verbatim: notice).padding(.horizontal, 10).padding(.bottom, 8)
                     .onTapGesture { model.folders.dismissNotice() }
+                    // A click dismisses it; VoiceOver and the keyboard need the same as an action.
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAction(named: Text("Dismiss", bundle: .module)) { model.folders.dismissNotice() }
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
@@ -89,7 +92,13 @@ struct HomeSessionsList: View {
         .onChange(of: focus) { old, new in
             // Clicking away from an empty field cancels it, like Esc.
             if old == .create, new != .create, creating?.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true { creating = nil }
-            if old == .rename, new != .rename { renamingID = nil }
+            // Clicking away from a rename keeps what was typed, as in Finder: it is saved, or the field stays with its error.
+            if old == .rename, new != .rename, let id = renamingID, let folder = model.folders.folders.first(where: { $0.id == id }) {
+                switch Self.blurAction(draft: renameDraft.text, original: folder.name) {
+                case .commit: commitRename(folder)
+                case .cancel: renamingID = nil
+                }
+            }
         }
         .confirmationDialog(deleteTitle, isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
                             titleVisibility: .visible, presenting: pendingDelete) { f in
@@ -367,7 +376,8 @@ struct HomeSessionsList: View {
 
     /// "→ Acme" files the session in a folder that exists, "+ Acme" makes the folder first.
     private func chip(_ suggestion: FolderSuggestion, session: String, selected: Bool) -> some View {
-        let mark = if case .new = suggestion { "+" } else { "→" }
+        let isNew = if case .new = suggestion { true } else { false }
+        let mark = isNew ? "+" : "→"
         return Button { model.accept(suggestion, for: session) } label: {
             Text(verbatim: "\(mark) \(suggestion.name)").font(VT.Font.caption).foregroundStyle(ink.secondary).lineLimit(1)
                 .padding(.horizontal, 7).frame(height: 18)
@@ -379,6 +389,9 @@ struct HomeSessionsList: View {
         }
         .buttonStyle(HomePressStyle())
         .help(Text(verbatim: suggestion.name))
+        // VoiceOver would read the arrow or the plus sign; say what the click does.
+        .accessibilityLabel(isNew ? Text("Make the folder “\(suggestion.name)” and file this session in it", bundle: .module)
+                                             : Text("File this session in “\(suggestion.name)”", bundle: .module))
         .accessibilityIdentifier("verse.home.sessions.suggestion")
     }
 
@@ -449,6 +462,14 @@ struct HomeSessionsList: View {
             if let error = renameDraft.error { HomeNote(verbatim: error, isError: true).padding(.horizontal, 10) }
         }
         .onAppear { DispatchQueue.main.async { focus = .rename } }
+    }
+
+    enum BlurAction: Equatable { case commit, cancel }
+
+    /// What leaving a rename field does: an empty or unchanged name cancels, anything else is saved.
+    static func blurAction(draft: String, original: String) -> BlurAction {
+        let name = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty || name == original ? .cancel : .commit
     }
 
     private func startNewFolder(session: String?, text: String) {

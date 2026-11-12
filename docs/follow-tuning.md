@@ -5,7 +5,7 @@ Brain side of `docs/specs/2026-10-16-verse-follow-my-answer-design.md` (F1). Cod
 `FollowParams` and can be re-measured with one command:
 
 ```
-PYTHONPATH=brain brain/.venv/bin/python eval/tune_follow.py --out <scratch dir>        # about 8 minutes, needs the EmbeddingGemma model
+PYTHONPATH=brain brain/.venv/bin/python eval/tune_follow.py --out <scratch dir>        # about 8 minutes (part 5 alone about 50 s), needs the EmbeddingGemma model
 ```
 
 ## Fixtures
@@ -115,6 +115,25 @@ the card for that window (within 0.01), has four content words, and, for a point
 
 0.88: no point is ever struck that he did not say, 4 of 48 said points stay visible. A wrong strike hides a point he still owes;
 a missed strike only leaves a said point on screen.
+
+## Held-out check (2026-11-12, review E7)
+
+Every threshold above was picked by sweeping the same 87 cases that then report "46 of 46" and "0 false divergences", so those
+figures are in-sample. `eval/tune_follow.py --parts 5` (about 50 s with the model) repeats the choice honestly: 5 folds, stratified
+by kind; on each fold the (floor, margin) pair and the `cover_score` are picked on the other four folds (fewest false divergences
+first, then fewest misses; a wrong strike first, then a missed one) and scored on the fold left out (`eval/kfold.py`).
+
+| | in-sample (above) | held-out, 5 folds |
+|---|---|---|
+| floor / margin chosen | 0.80 / 0.04 | 0.80 / 0.04 in all 5 folds |
+| false divergences (of 46 stay) | 0 | 0, 95 % upper bound 6.3 % |
+| missed (of 41 diverge), part 2 rule | 3 | 3 |
+| points struck wrongly / correctly / missed (48 labelled) | 0 / 44 / 4 | 1 / 44 / 4 (cover_score 0.88 in four folds, 0.86 in one) |
+
+The operating point is stable: the same pair wins whichever fifth is held out. The zero is a measured 0 of 46, which only says the
+true rate of false divergences is below about 6 % (95 %), not that it is zero; the set is still 87 hand-written answers by one
+author. `sem_mark` (0.88), `cover_best_gap` and the lexical N and T were not folded: they are chosen on the full machine, which part 5
+does not re-run per fold. A held-out set written after this tuning is still the stronger test.
 
 ## Repeats (2026-10-29)
 

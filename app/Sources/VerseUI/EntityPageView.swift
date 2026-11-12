@@ -97,6 +97,8 @@ struct EntityPageView: View {
     @State private var renaming = false
     @State private var draft = ""
     @State private var renameError: EntityError?
+    /// A change from the menu or the merge that failed (the rename field shows its own). Shown under the header until the next change.
+    @State private var actionError: EntityError?
     @State private var mergePicker = false
     @State private var pendingMerge: (loser: MemoryEntity, survivor: MemoryEntity)?
     @State private var ticked: Set<String> = []
@@ -114,6 +116,7 @@ struct EntityPageView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     header(page)
+                    if let actionError { HomeNote(verbatim: actionError.message, isError: true) }
                     if page.entity.hidden { hiddenNote(page.entity) }
                     if let next = page.upcoming.first { nextRow(next) }
                     briefPlate(page)
@@ -144,7 +147,13 @@ struct EntityPageView: View {
     }
 
     private func loadKey(_ page: PeopleModel.Page) -> String {
-        page.entity.id + "|" + page.meetings.map(\.name).joined(separator: ",")
+        Self.loadKey(entity: page.entity.id, meetings: page.meetings.map(\.name), making: memory.briefsInFlight.contains(page.entity.id))
+    }
+
+    /// Changes when the meetings change and when a brief run starts or ends, so a brief made while this page was away (or by
+    /// another view of it) is read from disk once it is written, instead of the plate falling back to "No brief yet".
+    static func loadKey(entity: String, meetings: [String], making: Bool) -> String {
+        entity + "|" + meetings.joined(separator: ",") + (making ? "|making" : "")
     }
 
     private func load(_ page: PeopleModel.Page) async {
@@ -192,6 +201,8 @@ struct EntityPageView: View {
                         .onExitCommand { renaming = false; renameError = nil }
                         .accessibilityLabel(Text("Name", bundle: .module))
                         .accessibilityIdentifier("verse.home.people.rename")
+                        // The field is not in the hierarchy yet when Rename… sets the focus: take it once it appears.
+                        .onAppear { DispatchQueue.main.async { nameFocused = true } }
                     if let renameError { HomeNote(verbatim: renameError.message, isError: true) }
                 } else {
                     Text(verbatim: e.name).font(.system(size: 20, weight: .bold)).tracking(-0.3).foregroundStyle(ink.primary)
@@ -255,6 +266,7 @@ struct EntityPageView: View {
     private func startRename(_ e: MemoryEntity) {
         draft = e.name
         renameError = nil
+        actionError = nil
         renaming = true
         nameFocused = true
     }
@@ -271,6 +283,7 @@ struct EntityPageView: View {
 
     private func changeKind(_ e: MemoryEntity) {
         let to: MemoryEntity.Kind = e.kind == .person ? .company : .person
+        actionError = nil
         do { try store.apply(L10n.tr("Change Kind"), undoManager: undoManager) { try $0.setKind(e.id, to) } } catch {
             renameError = error
             renaming = true
@@ -280,10 +293,13 @@ struct EntityPageView: View {
 
     private func setHidden(_ e: MemoryEntity, _ hidden: Bool) {
         _ = try? store.apply(hidden ? L10n.tr("Hide") : L10n.tr("Show"), undoManager: undoManager) { $0.setHidden(e.id, hidden) }
+        // `setHidden` does not throw: a write that failed leaves the entity as it was.
+        actionError = store.resolve(id: e.id).map { $0.hidden == hidden } == false ? .writeFailed : nil
     }
 
     private func performMerge(_ loser: MemoryEntity, into survivor: MemoryEntity) {
         pendingMerge = nil
+        actionError = nil
         do {
             let before = try store.apply(L10n.tr("Merge"), undoManager: undoManager) { try $0.merge(loser.id, into: survivor.id) }
             router.selectedEntity = survivor.id
@@ -293,7 +309,8 @@ struct EntityPageView: View {
                 router.selectedEntity = loser.id
             }
         } catch {
-            renameError = error
+            // The rename field is closed here, so its error line would never show: say it under the header.
+            actionError = error
         }
     }
 

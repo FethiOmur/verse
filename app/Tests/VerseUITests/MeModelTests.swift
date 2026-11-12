@@ -301,6 +301,17 @@ final class MeModelTests: XCTestCase {
         XCTAssertEqual(m.message, "No source changed since the last build: nothing to do, nothing spent")
     }
 
+    /// Prep prints that line in English; an Italian or Turkish page must not show it as it stands.
+    func testTheNothingChangedLineFollowsTheInterfaceLanguage() async throws {
+        let runner = FakeMeRunner()
+        runner.refreshLog = ["no source changed since the last build: nothing to do, nothing spent"]
+        let m = model(try profile(), runner: runner)
+        L10nState.shared.apply(.it)
+        defer { L10nState.shared.apply(.en) }
+        await m.refresh()
+        XCTAssertEqual(m.message, "Nessuna fonte è cambiata dall’ultima creazione: niente da rifare, nessun costo")
+    }
+
     func testARefreshThatWritesShowsTheNewNumbers() async throws {
         let dir = try profile()
         let runner = FakeMeRunner()

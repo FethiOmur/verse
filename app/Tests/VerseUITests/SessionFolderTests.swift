@@ -316,4 +316,11 @@ final class SessionFolderTests: XCTestCase {
         m.move("no-such-session", to: f.id)
         XCTAssertTrue(m.folders.file.assign.isEmpty)
     }
+
+    /// Clicking away from a folder rename keeps what was typed (it is saved); an empty or unchanged name just closes the field.
+    func testLeavingARenameSavesATypedName() {
+        XCTAssertEqual(HomeSessionsList.blurAction(draft: "Acme Corp", original: "Acme"), .commit)
+        XCTAssertEqual(HomeSessionsList.blurAction(draft: "  Acme  ", original: "Acme"), .cancel)
+        XCTAssertEqual(HomeSessionsList.blurAction(draft: "   ", original: "Acme"), .cancel)
+    }
 }

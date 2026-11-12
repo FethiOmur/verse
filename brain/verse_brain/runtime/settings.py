@@ -10,6 +10,7 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass, field
 
+from .embed import AcceptRule
 from .follow import FollowParams
 from .repeat import RepeatParams
 from .own import OwnParams
@@ -153,7 +154,42 @@ class Config:
     embed_margin: float = 0.005        # over the runner-up entry; 0.0-0.01 give the same replay result, 0.01 loses 2 bench hits
     embed_min_words: int = 5           # words in the partial
     embed_consecutive: int = 3         # the same entry on this many consecutive evaluated partials (2 lets prefix spikes through)
-    embed_langs: tuple[str, ...] = ("en",)   # thresholds were tuned on English only
+    # Fast lane (2026-11-12, card delay): ONE evaluated partial at top-1 >= 0.93 with a margin >= 0.03 shows the card at once.
+    # - Stored replay f3-embed (embed.step re-deciding the recorded partials, eval/rescore_bank.py): 13/24 paraphrase hits,
+    #   0 wrong of 34 shown (unchanged), paraphrase card p50 / p90 0.57 / 0.74 s -> 0.45 / 0.60 s after the acoustic end. Edge
+    #   on that data: a single partial at 0.915 (margin 0.03) or 0.910 (margin 0.04) shows an off-bank prefix spike (1-2 wrong
+    #   cards, the dispatcher-pilot spike recorded at 0.920 is the closest); 0.925 gives 0.32 / 0.60 s with 0 wrong but only
+    #   0.005 above that spike, so 0.93 keeps 0.01.
+    # - bench/embed/ml_calib.py (every word prefix of 60 blind paraphrases, 20 near misses, 40 off-bank lines, real model): a
+    #   single partial at 0.91 (margin <= 0.02) adds a wrong card for en, en-rev-it and en-rev-tr; 0.915/0.02 and above adds
+    #   none; at 0.93/0.03 the wrong counts equal the base lane's in all three.
+    # - Two partials in a row at >= 0.905-0.94 instead: 0.48 / 0.60 s, no better; both lanes together: no better either.
+    # - Fresh live replay eval/out/f3-fresh (2026-11-12, this rule, speech engine SpeechTranscriber because the Nemotron files
+    #   are not installed): 13/24 paraphrase hits, 0 wrong from this matcher (both wrong cards of the run, 2/36, come from
+    #   Swift's n-gram matcher), cards at 0.58 / 1.02 s; the base lane alone re-decided 0.62 / 1.02 s. That engine's first
+    #   partial holding all of the question's words arrives 0.43 / 0.81 s after the acoustic end (Nemotron in f3-embed: 0.11 /
+    #   0.44 s), in bursts just before `turn` (0.68 / 1.02 s, Nemotron 0.52 / 0.72 s): on it, 0.3 s needs a faster recognizer
+    #   and endpoint, not a looser rule here.
+    embed_fast_threshold: float | None = 0.93
+    embed_fast_margin: float = 0.03
+    embed_fast_consecutive: int = 1
+    # Languages with a calibrated rule. it/tr (2026-11-12, bench/embed/ml/{it,tr}.json, bench/embed/ml_calib.py, real model):
+    # no clean separation, so they stay lexical (Swift's n-gram matcher only). Full-text top-1 cosine, n=60 blind
+    # paraphrases + 20 recognizer-style + 20 near misses + 40 off-bank per language:
+    #   it: right entry p10/p50/p90 0.879/0.904/0.947; WRONG entry top-1 for 21/60 blind paraphrases at 0.876/0.901/0.933
+    #       (en: 11/60 at 0.867/0.881/0.914); near misses max 0.913, off-bank max 0.902, prefixes up to 0.928 / 0.923.
+    #       3 in a row: 0.900 -> 21/60 + 7/20 hits with 22/50 shown wrong; 0 wrong first at 0.945 (5/60 + 0/20).
+    #   tr: right 0.874/0.909/0.946; wrong entry 13/60 at 0.867/0.895/0.933; near max 0.913 (prefixes 0.926), off-bank 0.901.
+    #       0.900 -> 28/60 + 6/20, 12/46 wrong; 0 wrong first at 0.935 / margin 0.02 (8/60 + 2/20).
+    #   Mixed (English entries with it/tr paraphrases, it/tr questions): it-mixed 20/60 + 4/20 hits, 24/48 wrong at 0.900;
+    #   tr-mixed 21/60 + 6/20, 8/35 wrong. Reverse (it/tr entries with English paraphrases, English questions, session en):
+    #   en-rev-it 24/60 hits, 6/30 wrong; en-rev-tr 24/60, 7/31 wrong (en itself on the same set: 31/60, 7/38, all 7 being
+    #   wrong-entry paraphrases and near misses; 0 off-bank). Centroid scoring, margin-weighted scores and indexing both
+    #   languages' paraphrases were tried: best recall at 0 wrong stays <= 12/57 (it) and <= 24/66 (tr), full text only.
+    embed_langs: tuple[str, ...] = ("en",)
+    # Per-language overrides (keys of AcceptRule: threshold, margin, consecutive, fast_*); a language in `embed_langs`
+    # without an entry uses the English fields. Empty: no other language is calibrated (see above).
+    embed_lang_rules: dict[str, dict[str, float]] = field(default_factory=dict)
     # One more match on the final text when a remote turn closes with no bank hit yet (partials that never matched, or a
     # statement/fragment whose cue never showed). A single evaluation is enough there (the consecutive-partials gate
     # exists against premature locks on short prefixes; a closed turn has no prefix). The hit goes through `_late_hit`.
@@ -175,6 +211,14 @@ class Config:
     room_hold_score: float = 0.35      # ... a new card replaces the one he is reading at once only when its text's own-voice share is below this (and a strong cue or the probe says question for him)
     unprepared_statement_min_words: int = 4   # unprepared: a statement shorter than this gets no probe
     card_now_match_edit: int = 6       # the real turn that follows a card-now answer within this edit distance gets no second card
+
+    def embed_rule(self, lang: str) -> AcceptRule:
+        """The paraphrase matcher's accept rule for a bank index built in `lang` (the session language)."""
+        base = {"threshold": self.embed_threshold, "margin": self.embed_margin, "consecutive": self.embed_consecutive,
+                "fast_threshold": self.embed_fast_threshold, "fast_margin": self.embed_fast_margin,
+                "fast_consecutive": self.embed_fast_consecutive}
+        base.update(self.embed_lang_rules.get(lang, {}))
+        return AcceptRule(**base)
 
 
 # Memory index and search (docs/specs/2026-10-21-verse-memory-package-design.md 2.1-2.2; memory/index.py, memory/search.py).

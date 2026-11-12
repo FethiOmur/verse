@@ -357,6 +357,9 @@ struct PeopleListColumn: View {
             searchField.padding(.bottom, 12)
             if let notice {
                 HomeNote(verbatim: notice).padding(.horizontal, 10).padding(.bottom, 8).onTapGesture(perform: onDismissNotice)
+                    // A click dismisses it; VoiceOver and the keyboard need the same as an action.
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAction(named: Text("Dismiss", bundle: .module), onDismissNotice)
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {

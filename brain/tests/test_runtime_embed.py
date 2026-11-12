@@ -74,7 +74,8 @@ class FakeEmbedder:
         self.closed = True
 
 
-PARA = [("end up where", {"b001": 0.93, "b005": 0.85})]
+# 0.925: above the base threshold (0.90), below the fast lane (0.93), so the base lane's three-in-a-row gate decides
+PARA = [("end up where", {"b001": 0.925, "b005": 0.85})]
 
 # The accept rule before the 2026-11-11 retune (settings.py): the "fix disabled" reference for the regression tests below.
 OLD_RULE = {"embed_threshold": 0.865, "embed_margin": 0.02, "embed_consecutive": 2}
@@ -165,7 +166,7 @@ def test_paraphrase_hits_after_three_consecutive_partials():
     assert len(after_three) == 1
     hit = after_three[0]
     assert (hit["turn_id"], hit["bank_id"], hit["via"]) == ("q1", "b001", "embed")
-    assert hit["score"] == pytest.approx(0.93, abs=1e-3)
+    assert hit["score"] == pytest.approx(0.925, abs=1e-3)
     assert not em.of("metric", stage="embed_final_queued"), "the turn closed with its hit: no final-text pass"
     assert len(embed_hits(em)) == 1, "the same hit is not repeated"
     assert all(n.startswith("verse-embed") for n in fe.threads), fe.threads

@@ -19,6 +19,7 @@ struct MePage: View {
     @State private var draft = ""
     @State private var pendingDelete: MeLine?
     @State private var editError: String?
+    @FocusState private var editFocused: Bool
 
     var body: some View {
         HomeColumnPage {
@@ -53,7 +54,8 @@ struct MePage: View {
                     HomeSectionHeader("Conflicts")
                     conflictsGroup
                 }
-                if let editError { HomeNote(verbatim: editError, isError: true).padding(.top, 8) }
+                // A line being edited shows its own error under its field (it may be far down the page).
+                if let editError, editing == nil { HomeNote(verbatim: editError, isError: true).padding(.top, 8) }
                 ForEach(MeSection.allCases, id: \.self) { section in
                     let lines = model.lines(section)
                     if !lines.isEmpty || section == .notes {
@@ -189,10 +191,13 @@ struct MePage: View {
                         .padding(.horizontal, 8).padding(.vertical, 6)
                         .background(ink.fill, in: RoundedRectangle(cornerRadius: VT.Radius.row, style: .continuous))
                         .onSubmit { commitEdit(line) }
+                        .focused($editFocused)
+                        .onAppear { DispatchQueue.main.async { editFocused = true } }
                         .accessibilityLabel(Text("Edit line \(line.id)", bundle: .module))
                     if line.section.fieldCount > 1 {
                         Text("\(line.section.fieldCount) parts, separated by “|”", bundle: .module).font(VT.Font.caption).foregroundStyle(ink.tertiary)
                     }
+                    if let editError { HomeNote(verbatim: editError, isError: true) }
                 } else {
                     Text(line.text).font(VT.Font.body).foregroundStyle(ink.primary).lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -201,7 +206,7 @@ struct MePage: View {
             }
             Spacer(minLength: 8)
             if isEditing {
-                HomeSecondaryButton("Cancel") { editing = nil }
+                HomeSecondaryButton("Cancel") { editing = nil; editError = nil }
                 HomeSecondaryButton("Save") { commitEdit(line) }
             } else if model.canEdit {
                 iconButton("pencil", label: "Edit line \(line.id)") {

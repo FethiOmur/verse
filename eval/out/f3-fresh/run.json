@@ -1,0 +1,35 @@
+{
+ "run": "f3-fresh",
+ "dialogues": [
+  "d01",
+  "d02",
+  "d03",
+  "d04",
+  "d05",
+  "d06",
+  "d07",
+  "d08",
+  "d09",
+  "d10",
+  "d11",
+  "d12"
+ ],
+ "requested": [
+  "d01",
+  "d02",
+  "d03",
+  "d04",
+  "d05",
+  "d06",
+  "d07",
+  "d08",
+  "d09",
+  "d10",
+  "d11",
+  "d12"
+ ],
+ "spend_usd": 0.338602,
+ "ledger_total_usd": 1.150213,
+ "fake_brain": false,
+ "note": "two invocations (d01-d06, d07-d12), verse-run release built from HEAD f6f58dc in isolation, brain = working tree 2026-11-12 (fast lane on), speech engine SpeechTranscriber (Nemotron model files are not installed), lead-in 6 s"
+}

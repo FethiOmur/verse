@@ -1,0 +1,14 @@
+{
+ "run": "it-fresh",
+ "dialogues": [
+  "it01",
+  "it02"
+ ],
+ "requested": [
+  "it01",
+  "it02"
+ ],
+ "spend_usd": 0.047471,
+ "ledger_total_usd": 1.197684,
+ "fake_brain": false
+}
