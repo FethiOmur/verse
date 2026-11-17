@@ -39,9 +39,26 @@ key matches: the noun phrase next to the figure plus the unit, and the same scop
 
 These rules came from a live run on real vault text, where the first version raised six false conflicts out of six.
 
+Third pass (five real prep runs raised 16 conflicts, all false). The cause was the key: a figure's context was every word
+of its comma clause, so it took the subject of a neighbouring figure, the month of the other end of a date range, a bracketed
+aside or a question label as its own subject. Now a figure's context is only the text that belongs to it:
+- a neighbouring figure is a boundary; the words between two figures are split at a connector (`(`, `:`, `and`, `to`, ...),
+  so in "7 s (a region mismatch cost 700 ms)" the mismatch belongs to 700 ms only (`_window`);
+- an attributive figure ("the 30-second version", "a 2-second session-start bug", "the Jan 2026 release") is named by the
+  noun after it, and that noun alone never links it to another figure: two versions are not one version;
+- a bracketed aside the figure is not in ("(why it ended: ...)") is not context; month names are values, never context;
+- a month range ("Jan-Jul 2026", "May 2024 to May 2025") is one date with two ends; two ranges agree when both ends agree;
+- a bullet label that is a question or has a person in it ("Why they ask:") names nothing;
+- when each side names a title or proper noun the other lacks ("Senior Software Engineer" / "Lead Software Engineer"),
+  the figures are about different things; dates must also be named by the same word ("case study (7 Sep)" is not
+  "contract (end of March)"); a date inside a "(source: ...)" bracket names the cited document and is not a claim.
+
 Known limits (unconfirmed recall): an entity is identified by the words next to the figure, so a pair whose
 wording shares nothing ("headcount" against "team size") is not paired; day-month dates without a year are not
-read; roles are matched against a fixed list of one-holder titles (`ROLE` below).
+read; roles are matched against a fixed list of one-holder titles (`ROLE` below). A subject cut off by a comma
+("Vantor X Labs, May 2024 to May 2025") is lost, so such a figure is not compared; two attributive figures that
+share only their noun ("a 20-minute call" / "the call lasts 30 minutes") are not compared; "N-day/-week/-month/-year"
+compounds are not read as durations (those unit words are stop words).
 """
 
 from __future__ import annotations
@@ -112,7 +129,8 @@ CURRENCY = {"€": "EUR", "eur": "EUR", "euro": "EUR", "euros": "EUR", "$": "USD
 MULT = {"k": 1e3, "thousand": 1e3, "mila": 1e3, "bin": 1e3, "m": 1e6, "mn": 1e6, "mln": 1e6, "million": 1e6,
         "milioni": 1e6, "milyon": 1e6, "bn": 1e9, "billion": 1e9}
 # unit word -> (family, factor): durations convert inside a family and are never compared across families
-TIME = {"second": ("s", 1), "sec": ("s", 1), "secs": ("s", 1), "s": ("s", 1), "ms": ("s", 0.001), "saniye": ("s", 1), "minute": ("s", 60), "min": ("s", 60), "minuto": ("s", 60),
+TIME = {"second": ("s", 1), "sec": ("s", 1), "secs": ("s", 1), "s": ("s", 1), "ms": ("s", 0.001), "millisecond": ("s", 0.001),
+        "msec": ("s", 0.001), "saniye": ("s", 1), "minute": ("s", 60), "min": ("s", 60), "minuto": ("s", 60),
         "minuti": ("s", 60), "dakika": ("s", 60), "hour": ("s", 3600), "hr": ("s", 3600), "ora": ("s", 3600),
         "ore": ("s", 3600), "saat": ("s", 3600), "day": ("s", 86400), "giorno": ("s", 86400), "giorni": ("s", 86400),
         "gün": ("s", 86400), "week": ("s", 604800), "settimana": ("s", 604800), "settimane": ("s", 604800),
@@ -157,6 +175,8 @@ _DMY = re.compile(r"(?<![\d./-])(?P<d>\d{1,2})[/.](?P<m>\d{1,2})[/.](?P<y>\d{4})
 _D_MON_Y = re.compile(rf"(?<![\d.,])(?P<d>\d{{1,2}})(?:st|nd|rd|th|\.)?\s+(?:of\s+)?(?P<mon>{_MONTH_RE})\.?,?\s+(?P<y>\d{{4}})(?!\d)", _FLAGS)
 _MON_D_Y = re.compile(rf"(?<![^\W\d_])(?P<mon>{_MONTH_RE})\.?\s+(?P<d>\d{{1,2}})(?:st|nd|rd|th)?,?\s+(?P<y>\d{{4}})(?!\d)", _FLAGS)
 _MON_Y = re.compile(rf"(?<![^\W\d_])(?P<mon>{_MONTH_RE})\.?,?\s+(?P<y>\d{{4}})(?!\d)", _FLAGS)
+_MON_RANGE = re.compile(rf"(?<![^\W\d_])(?P<mon1>{_MONTH_RE})(?![^\W\d_])\.?(?:\s+(?P<y1>\d{{4}}))?\s*(?:-|–|—|\bto\b|\buntil\b|\btill\b|\bthrough\b|\bthru\b)"
+                        rf"\s*(?P<mon2>{_MONTH_RE})\.?,?\s+(?P<y2>\d{{4}})(?!\d)", _FLAGS)
 _QUARTER = re.compile(r"(?<![^\W\d_])Q(?P<q>[1-4])\s?[/,\-]?\s?(?P<y>\d{4})(?!\d)|(?<!\d)(?P<y2>\d{4})\s?[/,\-]?\s?Q(?P<q2>[1-4])(?![\d\w])", re.U)
 _HALF = re.compile(r"(?<![^\W\d_])H(?P<h>[12])\s?[/,\-]?\s?(?P<y>\d{4})(?!\d)", re.U)
 _YEAR_WORDS = r"(?:in|by|since|until|from|during|before|after|entro|dal|nel|dopo|prima|FY)"
@@ -255,6 +275,9 @@ class Mention:
     topic: frozenset[str] = frozenset()  # words of the "Label:" the bullet starts with, when the figure comes after it
     topic_seq: tuple[str, ...] = ()
     clause: str = ""  # the comma clause the figure sits in
+    attr: bool = False  # the figure modifies the noun after it ("the 30-second version", "the Jan 2026 release")
+    names: frozenset[str] = frozenset()  # stems of the proper-noun / title words in the figure's own context
+    ends: tuple[tuple[float, float], ...] = ()  # dates: the (start, end) spans of the two ends of a range
 
     @property
     def sort_key(self):
@@ -284,28 +307,131 @@ def _qual(before_words: list[str], after_words: list[str]) -> frozenset[str]:
     return frozenset(out)
 
 
-def _context(sentence: str, start: int, end: int):
-    """Words before and after the figure inside its comma clause. Returns (before, after, words, after_prep, clause, qual, lead)."""
-    cs = 0
-    for m in _CLAUSE_SPLIT.finditer(sentence, 0, start):
+# words and marks that separate two figures of one clause: what comes before them belongs to the first figure, what comes
+# after them to the second ("7 s (a region mismatch cost 700 ms)", "a 700-millisecond region mismatch and a 2-second bug")
+_CONNECT_WORDS = frozenset("and or but nor plus vs versus to then while whereas".split())
+_CONNECT = re.compile(r"[()\[\]:;—–]|\s-\s|(?<![^\W\d_])(?:" + "|".join(sorted(_CONNECT_WORDS)) + r")(?![^\W\d_])", _FLAGS)
+
+
+def _brackets(s: str) -> list[tuple[int, int]]:
+    """Matched () and [] pairs as (open, close) positions."""
+    pairs: list[tuple[int, int]] = []
+    stack: list[tuple[str, int]] = []
+    for i, ch in enumerate(s):
+        if ch in "([":
+            stack.append((ch, i))
+        elif ch in ")]" and stack and stack[-1][0] == ("(" if ch == ")" else "["):
+            pairs.append((stack.pop()[1], i))
+    return pairs
+
+
+def _attributive(sent: str, a: int, b: int, kind: str) -> bool:
+    """Does the figure modify the noun right after it? `the 30-second version`, `a 2-second session-start bug`,
+    `the Jan 2026 release`. Such a figure names which thing is meant; it is not a statement about a thing named elsewhere."""
+    if kind not in ("duration", "count", "date"):
+        return False
+    if kind != "date" and not re.search(r"\d-[^\W\d_]+$", sent[a:b]):
+        return False  # only the hyphenated compound ("10-week pilot") is reliably attributive for a duration or a count
+    m = re.match(r"[ \t]+([^\W\d_][\w'’-]*)", sent[b:])
+    if not m or not m.group(1)[0].islower():
+        return False
+    w = m.group(1).casefold()
+    return len(w) > 1 and w not in STOP and w not in CUT_AFTER and w not in _CONNECT_WORDS and _month(w) is None
+
+
+def _names(text: str) -> frozenset[str]:
+    """Stems of the proper-noun and title words of a context: runs of capitalised words ("Senior Software Engineer",
+    "NRT Mobility Agent") and single capitalised words that are not capitalised only by their position (sentence or label start)."""
+    toks = list(_WORD.finditer(text))
+    out: set[str] = set()
+
+    def cap(i: int) -> bool:
+        w = toks[i].group()
+        return w[:1].isupper() and w.casefold() not in STOP and len(w) > 1
+
+    for i, m in enumerate(toks):
+        if not cap(i):
+            continue
+        run = (i > 0 and cap(i - 1) and not text[toks[i - 1].end():m.start()].strip()) or \
+              (i + 1 < len(toks) and cap(i + 1) and not text[m.end():toks[i + 1].start()].strip())
+        head = text[:m.start()].rstrip()
+        positional = not head or head[-1] in ".:!?\"“(*-•"
+        if run or not positional:
+            out.add(_stem(m.group()))
+    return frozenset(out)
+
+
+def _window(sentence: str, start: int, end: int, spans: Iterable[tuple[int, int]], attr: frozenset[tuple[int, int]],
+            skip_to: int = 0) -> tuple[str, str, int, int]:
+    """The text that belongs to the figure at [start, end): (before_text, after_text, clause_start, clause_end).
+
+    The clause is the comma clause (a table cell never borrows the words of the cell before it). Inside it:
+    - a bracketed aside the figure is not in says nothing about the figure ("(why it ended: ...)", "(source: ...)");
+      a figure inside brackets keeps the words before the bracket (what it annotates) but not the words after it;
+    - a neighbouring figure is a boundary: the words between two figures are split at the first connector for the
+      earlier figure and after the last connector for the later one; without a connector they go to the later figure,
+      unless the earlier one is attributive (its noun follows it).
+    """
+    cs = skip_to if skip_to <= start else 0
+    for m in _CLAUSE_SPLIT.finditer(sentence, cs, start):
         cs = m.end()
-    cs = max(cs, sentence.rfind("|", 0, start) + 1)  # a table cell never borrows the words of the cell before it
+    cs = max(cs, sentence.rfind("|", 0, start) + 1)
     ce = len(sentence)
     m = _CLAUSE_SPLIT.search(sentence, end)
     if m:
         ce = m.start()
-    before_words = [w for w in _WORD.findall(sentence[cs:start])]
+    pairs = _brackets(sentence)
+    own = min((p for p in pairs if p[0] < start and end <= p[1]), key=lambda p: p[1] - p[0], default=None)
+    masked = [p for p in pairs if not (p[0] < start and end <= p[1])]
+    vis = list(sentence)
+    for p, q in masked:
+        vis[p:q + 1] = ";" + " " * (q - p)  # an aside reads as a separator
+    text = "".join(vis)
+    hi = ce if own is None else min(ce, own[1])
+    others = [s for s in spans if (s[1] <= start or s[0] >= end) and s[0] >= cs and s[1] <= ce
+              and not any(p <= s[0] and s[1] <= q for p, q in masked)]
+    lo = cs
+    prev = max((s for s in others if s[1] <= start), key=lambda s: s[1], default=None)
+    if prev is not None:
+        r1 = own[0] if own is not None and prev[1] <= own[0] else start
+        conns = list(_CONNECT.finditer(text, prev[1], r1))
+        lo = conns[-1].end() if conns else (r1 if prev in attr else prev[1])
+    if own is not None and lo <= own[0]:
+        before = text[lo:own[0]] + " " + text[own[0] + 1:start]
+    else:
+        before = text[max(lo, own[0] + 1) if own is not None else lo:start]
+    nxt = min((s for s in others if s[0] >= end and s[1] <= hi), key=lambda s: s[0], default=None)
+    if nxt is not None:
+        c = _CONNECT.search(text, end, nxt[0])
+        hi = c.start() if c else (nxt[0] if (start, end) in attr else end)
+    return before, text[end:hi], cs, ce
+
+
+def _context(sentence: str, start: int, end: int, spans: Iterable[tuple[int, int]] = (),
+             attr: frozenset[tuple[int, int]] = frozenset(), skip_to: int = 0):
+    """Words that belong to the figure (see `_window`). Returns (before, after, words, after_prep, clause, qual, lead, names).
+    Month names are values, not subjects: the other end of a date range never becomes a context word."""
+    before_text, after_text, cs, ce = _window(sentence, start, end, spans, attr, skip_to)
+    before_words = [w for w in _WORD.findall(before_text)]
     after_words = []
-    for w in _WORD.findall(sentence[end:ce]):
+    for w in _WORD.findall(after_text):
         if w.casefold() in CUT_AFTER:
             break
         after_words.append(w)
-    bw = [w for w in before_words if w.casefold() not in STOP and len(w) > 1][-5:]
-    aw_all = [w for w in after_words if w.casefold() not in STOP and len(w) > 1][:3]
+
+    def content(w: str) -> bool:
+        return w.casefold() not in STOP and len(w) > 1 and _month(w) is None
+
+    bw = [w for w in before_words if content(w)][-5:]
+    aw_all = [w for w in after_words if content(w)][:3]
     prep = after_words[0].casefold() if after_words and after_words[0].casefold() in WEAK_AFTER_PREP else ""
     words = tuple(w.casefold() for w in bw + aw_all)
+    # an attributive figure is named by the noun after it, any other figure by the words before it
+    lead = tuple(_stem(w) for w in aw_all[:2]) if (start, end) in attr else tuple(_stem(w) for w in bw[-3:])
+    names = _names(before_text) | _names(" ".join(after_words))
+    names = frozenset(n for n in names if n in {_stem(w) for w in bw + aw_all})
     return (frozenset(_stem(w) for w in bw), frozenset(_stem(w) for w in aw_all), words, prep, sentence[cs:ce],
-            _qual(before_words, after_words), tuple(_stem(w) for w in bw[-3:]))
+            _qual(before_words, after_words), lead, names)
 
 
 def _qualifiers(clause: str) -> tuple[str, str]:
@@ -360,12 +486,12 @@ def _units(text: str, per_line: bool) -> list[tuple[str, bool]]:
 def mentions_in(text: str, ref: str, src_kind: str, *, per_line: bool = False, snap: str = "") -> list[Mention]:
     out: list[Mention] = []
     for ui, (unit, heading) in enumerate(_units(text, per_line)):
-        topic, label_end = _unit_topic(unit)
+        topic, label_end, template = _unit_topic(unit)
         # a table row is one claim: its `;` and `. ` separate figures from the cells that describe them
         for si, sent in enumerate([unit] if unit.startswith("|") else _SENT_SPLIT.split(unit)):
             if sent.strip():
                 out += _sentence_mentions(sent, ref, src_kind, (ref, ui, si), len(out), heading and si == 0 and src_kind != "prep", snap,
-                                          topic, label_end if si == 0 else 0)
+                                          topic, label_end if si == 0 else 0, label_end if (template and si == 0) else 0)
     return out
 
 
@@ -375,13 +501,22 @@ known limit open done""".split())
 _LABEL = re.compile(r"^\s*(?:\*\*)?(?P<l>[^:|\d]{2,60}?)(?:\*\*)?:\s")
 
 
-def _unit_topic(unit: str) -> tuple[tuple[str, ...], int]:
-    """`Brand spike: 11 sites, 11 credits.` -> ({brand, spike}, end of the label). Generic labels ("Result:") say nothing."""
+_WH = frozenset("why what how when where who whom which whose perche cosa come quando dove chi neden ne nasil nasıl".split())
+_PRONOUN = frozenset("i me my we us our you your they them their he him his she her".split())
+
+
+def _unit_topic(unit: str) -> tuple[tuple[str, ...], int, bool]:
+    """`Brand spike: 11 sites, 11 credits.` -> ({brand, spike}, end of the label, False). Generic labels ("Result:") say
+    nothing. A label that is a question or a clause with a person in it ("Why they ask:", "What I did:") is a template
+    label: it says what the text is for, not what the figure is about, so it names nothing (third value True)."""
     m = _LABEL.match(unit)
     if not m or len(_WORD.findall(m["l"])) > 8:
-        return (), 0
+        return (), 0, False
+    raw = [w.casefold() for w in _WORD.findall(m["l"])]
+    if raw and (raw[0] in _WH or any(w in _PRONOUN for w in raw)):
+        return (), m.end(), True
     words = [_stem(w) for w in _WORD.findall(m["l"]) if w.casefold() not in STOP and w.casefold() not in GENERIC_LABEL and len(w) > 1]
-    return tuple(words), m.end()
+    return tuple(words), m.end(), False
 
 
 def _approx(sentence: str, start: int) -> bool:
@@ -406,7 +541,13 @@ def _label_date(sent: str, a: int, b: int, heading: bool) -> bool:
         return True
     if len(_WORD.findall(sent[:a])) <= 2 and re.match(r"\s*[|:\-–—]", sent[b:b + 6]):
         return True  # "DECISIONS 2026-10-16 |": the date heads a log entry
+    op = sent.rfind("(", 0, a)
+    if op >= 0 and ")" not in sent[op:a] and _SOURCE_BRACKET.match(sent, op):
+        return True  # "(source: ServiceNow newsroom, Jan 2026 release, ...)": the date names the cited document
     return bool(_CITATION.search(sent[max(0, a - 60):b + 60]))
+
+
+_SOURCE_BRACKET = re.compile(r"\(\s*(?:sources?|kaynak(?:lar)?|fonte|fonti|via|cited|citation)\s*:", re.I)
 
 
 # ---- scope, skip rules, totals (second pass) --------------------------------------------------------
@@ -564,47 +705,69 @@ _LABEL_COUNT = re.compile(rf"(?:^|[|;(]\s*|[.!?]\s+)(?P<label>[^\W\d_]+(?:[\s-][
 
 
 def _sentence_mentions(sent: str, ref: str, src_kind: str, sid: tuple[str, int, int], base: int, heading: bool = False,
-                       snap: str = "", topic: tuple[str, ...] = (), topic_from: int = 0) -> list[Mention]:
+                       snap: str = "", topic: tuple[str, ...] = (), topic_from: int = 0, skip_to: int = 0) -> list[Mention]:
     found: list[Mention] = []
     used: list[tuple[int, int]] = []
+    kinds: dict[tuple[int, int], str] = {}
+    pending: list[tuple] = []
 
     def free(a: int, b: int) -> bool:
         return all(b <= s or a >= e for s, e in used)
 
     sc = _scope(sent)
 
-    def add(kind, a, b, display, lo, hi, raw, unit, tags=frozenset(), mods=frozenset(), labelled=False):
+    def add(kind, a, b, display, lo, hi, raw, unit, tags=frozenset(), mods=frozenset(), labelled=False, ends=()):
         if kind != "role":
             used.append((a, b))
+            kinds[(a, b)] = kind
         if kind in ("money", "count", "percent", "duration") and _not_a_claim(sent, a, b, kind):
             return
         if kind == "money" and hi < 0.01:
             return  # sub-cent amounts say nothing comparable
-        before, after, words, prep, clause, qual, lead = _context(sent, a, b)
-        if labelled:
-            after, words = frozenset(), tuple(w for w in words if _stem(w) in before)  # "Tests: 2,399 + 72 in the suite": the label names it, the tail does not
-        tp = topic if a >= topic_from else ()
-        if not lead and tp:  # "Halden spend: $8 to 16 Oct, ..., about $9 in all": the total restates the label's subject
-            before, lead = before | frozenset(tp), tuple(tp[-3:])
-            words = tuple(tp[-3:]) + words
-        gn, period = _qualifiers(clause) if kind in ("money", "count", "percent") else ("", "")
-        fig = kind in ("money", "count", "percent", "duration")
-        found.append(Mention(kind, src_kind, ref, _quote(sent, a, b), sent[a:b].strip(), display, lo, hi, tuple(raw), unit,
-                             before, after, words, prep, _approx(sent, a), gn, period, sid, frozenset(tags), base + a, snap,
-                             sc if fig else frozenset(), qual if fig else frozenset(), fig and bool(_TOTAL.search(clause)),
-                             False, frozenset(mods), lead if fig else (), frozenset(tp) if fig else frozenset(), tp, clause))
+        pending.append((kind, a, b, display, lo, hi, raw, unit, tags, mods, labelled, ends))
+
+    def build() -> None:
+        """Contexts are built once every figure of the sentence is known: each figure is a boundary for its neighbours."""
+        spans = sorted(set(used))
+        attr = frozenset(s for s in spans if _attributive(sent, s[0], s[1], kinds.get(s, "")))
+        for kind, a, b, display, lo, hi, raw, unit, tags, mods, labelled, ends in pending:
+            before, after, words, prep, clause, qual, lead, names = _context(sent, a, b, spans, attr, skip_to)
+            if labelled:
+                after, words = frozenset(), tuple(w for w in words if _stem(w) in before)  # "Tests: 2,399 + 72 in the suite": the label names it, the tail does not
+            tp = topic if a >= topic_from else ()
+            if not lead and tp:  # "Halden spend: $8 to 16 Oct, ..., about $9 in all": the total restates the label's subject
+                before, lead = before | frozenset(tp), tuple(tp[-3:])
+                words = tuple(tp[-3:]) + words
+            gn, period = _qualifiers(clause) if kind in ("money", "count", "percent") else ("", "")
+            fig = kind in ("money", "count", "percent", "duration")
+            found.append(Mention(kind, src_kind, ref, _quote(sent, a, b), sent[a:b].strip(), display, lo, hi, tuple(raw), unit,
+                                 before, after, words, prep, _approx(sent, a), gn, period, sid, frozenset(tags), base + a, snap,
+                                 sc if fig else frozenset(), qual if fig else frozenset(), fig and bool(_TOTAL.search(clause)),
+                                 False, frozenset(mods), lead if (fig or kind == "date") else (), frozenset(tp) if fig else frozenset(),
+                                 tp, clause, (a, b) in attr, names if kind != "role" else frozenset(), tuple(ends)))
 
     def span_of(y, m1=1, d1=1, m2=12, d2=None):
         return _span(int(y), m1, d1, m2, d2)
 
     # dates ------------------------------------------------------------------------------------
-    def date_hit(m, sp, display, tags=()):
+    def date_hit(m, sp, display, tags=(), ends=()):
         if sp and free(m.start(), m.end()):
             if _label_date(sent, m.start(), m.end(), heading):
                 used.append((m.start(), m.end()))  # consumed, but not a claim
+                kinds[(m.start(), m.end())] = "date"
                 return
-            add("date", m.start(), m.end(), display, sp[0], sp[1], (), "", tags)
+            add("date", m.start(), m.end(), display, sp[0], sp[1], (), "", tags, ends=ends)
 
+    # a month range is one figure with two ends: "Jan-Jul 2026", "May 2024 to May 2025", "Oct 2022-Jan 2024"
+    for m in _MON_RANGE.finditer(sent):
+        m1, m2, y2 = _month(m["mon1"]), _month(m["mon2"]), int(m["y2"])
+        if m1 is None or m2 is None:
+            continue
+        y1 = int(m["y1"]) if m["y1"] else (y2 if m1 <= m2 else y2 - 1)
+        s1, s2 = span_of(y1, m1, 1, m1), span_of(y2, m2, 1, m2)
+        if not s1 or not s2 or s1[0] > s2[0]:
+            continue
+        date_hit(m, (s1[0], s2[1]), f"{y1}-{m1:02d} to {y2}-{m2:02d}", (m["mon1"].casefold(), m["mon2"].casefold()), (s1, s2))
     for m in _ISO.finditer(sent):
         date_hit(m, span_of(m["y"], int(m["m"]), int(m["d"]), int(m["m"]), int(m["d"])), f"{m['y']}-{m['m']}-{m['d']}")
     for m in _DMY.finditer(sent):
@@ -711,6 +874,7 @@ def _sentence_mentions(sent: str, ref: str, src_kind: str, sid: tuple[str, int, 
     # role holders -----------------------------------------------------------------------------
     for role, name, a, b in _roles(sent):
         add("role", a, b, re.sub(r"\s+", " ", name), 0.0, 0.0, (), role, set(norm(name).split()))
+    build()
     return _mark_parts(found, sc)
 
 
@@ -778,11 +942,15 @@ def _comparable(a: Mention, b: Mention) -> bool:
     ca, cb = a.before | a.after, b.before | b.after
     if a.kind == "date":  # a bare log word ("decisions", "update") does not make two dates the same event
         ca, cb = ca - LABELISH, cb - LABELISH
+    if (a.names - cb) and (b.names - ca):
+        return False  # each side names something the other does not: "Senior Software Engineer" against "Lead Software Engineer"
     inter = ca & cb
     if not inter:
         return False
-    if len(inter) == 1 and max(len(ca), len(cb)) > 2:
-        return False  # one shared word in a long context is too weak a link (e.g. "duration" in two unrelated lines)
+    if len(inter) == 1 and (max(len(ca), len(cb)) > 2 or a.attr or b.attr):
+        # one shared word in a long context is too weak a link (e.g. "duration" in two unrelated lines); so is the noun of an
+        # attributive figure alone ("the 30-second version" / "the 90-second version" are two versions, not one)
+        return False
     return len(inter) / min(len(ca), len(cb)) >= 0.5
 
 
@@ -791,6 +959,8 @@ def _agree(a: Mention, b: Mention) -> bool:
         ta, tb = a.tags, b.tags
         return ta <= tb or tb <= ta
     if a.kind == "date":
+        if a.ends and b.ends:  # two ranges agree when their starts agree and their ends agree
+            return all(x[0] <= y[1] and y[0] <= x[1] for x, y in zip(a.ends, b.ends))
         return a.lo <= b.hi and b.lo <= a.hi
     ta = 0.05 * max(abs(a.lo), abs(a.hi)) if (a.approx or b.approx) else max(abs(a.hi), abs(b.hi), 1.0) * 1e-9
     tb = 0.05 * max(abs(b.lo), abs(b.hi)) if (a.approx or b.approx) else 0.0

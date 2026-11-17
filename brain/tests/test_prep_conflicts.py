@@ -6,7 +6,7 @@ from pathlib import Path
 
 from test_prep_pipeline import FakeModel
 from verse_brain.prep import build
-from verse_brain.prep.conflicts import conflict_phrase, find_conflicts
+from verse_brain.prep.conflicts import conflict_phrase, find_conflicts, mentions_in
 from verse_brain.prep.git_digest import Commit
 from verse_brain.prep.sources import SourceBook, norm
 from verse_brain.prep.vault import VaultRecord
@@ -289,6 +289,124 @@ def test_conflict_phrase_groups_refs_per_value():
             {"value": "EUR 42,000", "source_ref": "commit:r@abc", "quote": "y"},
             {"value": "EUR 45,000", "source_ref": "vault:a.md", "quote": "z"}]
     assert conflict_phrase(ents) == "conflicting in sources: EUR 42,000 (prep:L7, commit:r@abc) vs EUR 45,000 (vault:a.md)"
+
+
+# ---------------------------------------------------------------------------------------------- false positives, round 3
+# Five real prep runs raised 16 conflicts and all 16 were false. Each test below is a short excerpt of the prep-note lines
+# one of those reports pointed at (one prep line per list item, as the pipeline feeds them).
+
+
+def test_two_people_with_different_titles_are_not_one_start_date():
+    """'linkedin software engineer corvane': two interviewers' start dates. The titles differ (Senior / Lead)."""
+    _no_conflict(book([
+        '**Mara Lindqvist** - "Senior Developer" on corvane.example. LinkedIn: Senior Software Engineer at Corvane since Mar 2024',
+        'scalable cloud platforms" on tessaly.example. LinkedIn: Lead Software Engineer at Corvane since Jan 2024 and at Tessaly AI',
+    ]))
+
+
+def test_a_month_of_a_date_range_is_not_the_subject_of_a_figure():
+    """'jan': the start month of one range became the context word of its end date, and of unrelated ranges."""
+    _no_conflict(book([
+        "since May 2025. Before: Orbis Systems (Senior Software Engineer, Oct 2022-Jan 2024), DELTARON, Grey Harbor.",
+        "- Forward Deployed AI Engineer at Brightline SRL (learnloop), Milan, Jan-Jul 2026. AI Tutor: an Italian RAG tutor",
+        'Follow-ups: "What is learnloop?" I was Forward Deployed AI Engineer at Brightline SRL, Jan to Jul 2026.',
+        "Parsec was part-time and remote, Jan 2025 to Jan 2026, which is why it overlaps. learnloop, Jan to Jul 2026: "
+        "the contract ended and I chose not to extend it.",
+    ]))
+
+
+def test_question_template_labels_are_not_the_subject_of_a_figure():
+    """'ask': the label 'Why they ask:' was taken as the subject of 30 s / 90 s and 45 s / 20 s."""
+    _no_conflict(book(["Why they ask: standard opener; the 30-second version tests focus.",
+                       "Why they ask: the 90-second version; they listen for a thread, not a CV readout."]))
+    _no_conflict(book(["Why they ask: the closing pitch, about 45 seconds.",
+                       "Why they ask: the last impression, about 20 seconds."]))
+
+
+def test_two_causes_in_one_sentence_keep_their_own_subjects():
+    """'opening region mismatch': 700 ms (one cause) against 2 s (another cause of the same sentence)."""
+    _no_conflict(book([
+        "  largely on my own. I fixed the coach's opening latency of about 7 s (a region mismatch cost about 700 ms); turn",
+        '- "I traced a 7-second AI-coach opening to a 700-millisecond region mismatch and a 2-second session-start bug; '
+        'turns now take about 0.14 seconds." (me.md m406-m409)',
+    ]))
+
+
+def test_a_publication_date_is_not_the_contract_date_of_the_same_project():
+    """'mobility agent': the case study's date (7 Sep 2026) against the contract date (end of March 2026)."""
+    _no_conflict(book([
+        "- NRT Mobility Agent case study (7 Sep 2026): contract end of March 2026, proof of concept accepted seven weeks later,",
+        "- Cases: the NRT Mobility Agent went from contract (end of March 2026) to an accepted PoC in 7 weeks, built by 2 people, "
+        "tested by 70 NRT staff, and has been in production since August 2026 (source: https://tessaly.example/en/resources/nrt-mobility-agent).",
+    ]))
+
+
+def test_the_ends_of_one_date_range_are_one_figure_and_an_aside_is_not_a_subject():
+    """'ended owner supply': the start and end of 'May 2024 to May 2025' were two values, keyed by a '(why it ended: ...)' aside."""
+    _no_conflict(book([
+        "- Now: my learnloop role ended in July 2026 (why: OWNER TO SUPPLY).",
+        "Vantor X Labs, May 2024 to May 2025 (why it ended: OWNER TO SUPPLY).",
+    ]))
+
+
+def test_two_unrelated_releases_are_not_one_date():
+    """'release': a press release in the sources line against a product release cited in an answer."""
+    _no_conflict(book([
+        "release of 11 Nov 2024; EIN Presswire release of 9 Jun 2026; anthropic.com; Glassdoor, all read 12 Nov 2026)",
+        'Answer: Open with: "I have not worked in ServiceNow yet." Publicly documented: Claude is the default model in '
+        "ServiceNow Build Agent (source: ServiceNow newsroom, Jan 2026 release, URL in Context).",
+    ]))
+
+
+def test_date_range_is_read_as_one_mention_spanning_both_ends():
+    ms = [m for m in mentions_in("Vantor X Labs, May 2024 to May 2025.", "prep:L1", "prep", per_line=True) if m.kind == "date"]
+    assert len(ms) == 1 and ms[0].display == "2024-05 to 2025-05"
+    short = [m for m in mentions_in("Brightline SRL, Jan-Jul 2026.", "prep:L1", "prep", per_line=True) if m.kind == "date"]
+    assert len(short) == 1 and short[0].display == "2026-01 to 2026-07"
+    assert not any("jan" in m.words for m in short)
+
+
+def test_hyphenated_milliseconds_are_a_duration():
+    ms = mentions_in("I traced it to a 700-millisecond region mismatch.", "prep:L1", "prep", per_line=True)
+    assert [(m.kind, round(m.lo, 9)) for m in ms] == [("duration", 0.7)]
+
+
+def test_neighbouring_figures_do_not_lend_each_other_their_subjects():
+    ms = mentions_in("A 700-millisecond region mismatch and a 2-second session-start bug.", "prep:L1", "prep", per_line=True)
+    two = next(m for m in ms if m.display == "2 seconds")
+    assert {"region", "mismatch"}.isdisjoint(two.before | two.after)
+    assert {"session-start", "bug"} <= two.after
+
+
+# ---- the same subject, the same kind of figure, a different value: still a conflict
+
+
+def test_still_flags_a_different_amount_raised_by_the_same_company():
+    found = find_conflicts(book(["- Parkwise raised $125K in its pre-seed round."], ["Parkwise raised $150K in its pre-seed round."]))
+    assert len(found) == 1 and values(found[0]) == {"USD 125,000", "USD 150,000"}
+
+
+def test_still_flags_a_different_go_live_month_for_the_same_product():
+    found = find_conflicts(book(["- The Halden app has been live since August 2026."],
+                                ["Halden app live since September 2026 (per the launch post)."]))
+    assert len(found) == 1 and values(found[0]) == {"2026-08", "2026-09"}
+
+
+def test_still_flags_a_date_range_whose_start_differs():
+    found = find_conflicts(book(["- Halden pilot: Jan-Jul 2026."], ["The Halden pilot ran Feb-Jul 2026."]))
+    assert len(found) == 1 and values(found[0]) == {"2026-01 to 2026-07", "2026-02 to 2026-07"}
+    assert find_conflicts(book(["- Halden pilot: Jan-Jul 2026."], ["The Halden pilot ended in July 2026."])) == []
+
+
+def test_still_flags_an_attributive_duration_when_the_subject_is_named():
+    found = find_conflicts(book(["- Halden runs a 20-minute onboarding call."], ["The Halden onboarding call lasts 30 minutes."]))
+    assert len(found) == 1 and values(found[0]) == {"20 minutes", "30 minutes"}
+
+
+def test_still_flags_the_same_title_with_a_different_start_date():
+    found = find_conflicts(book(["- LinkedIn: Senior Software Engineer at Corvane since Mar 2024"],
+                                ["Mara has been Senior Software Engineer at Corvane since Jan 2024."]))
+    assert len(found) == 1 and values(found[0]) == {"2024-03", "2024-01"}
 
 
 # ---------------------------------------------------------------------------------------------- pipeline
