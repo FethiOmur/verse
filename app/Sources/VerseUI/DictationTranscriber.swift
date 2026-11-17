@@ -1,0 +1,133 @@
+import Foundation
+import VerseSpeech
+
+/// What dictation records and transcribes with. One instance per dictation: `begin`, then `finish` (or `cancel`).
+///
+/// The on-device Apple engine is the only one now (`AppleDictationTranscriber`). A cloud transcriber (record in `begin`,
+/// upload in `finish`) can be added behind this protocol, with the Apple one as its offline fallback, without changing
+/// `DictationController`.
+@MainActor
+public protocol DictationTranscribing: AnyObject {
+    /// Opens the microphone and starts transcribing in `lang` ("en", "it" or "tr"). Throws when it cannot start (permission,
+    /// engine). `onFailure` is called when transcription stops by itself while recording (the controller reports it once).
+    func begin(lang: String, onFailure: @escaping @MainActor (String) -> Void) async throws
+    /// Stops the microphone, lets the engine settle the last words and returns the whole transcript.
+    func finish() async throws -> String
+    /// Stops the microphone at once and drops everything. Safe at any time, also while `begin` is still under way.
+    func cancel() async
+}
+
+/// Builds the transcript of one dictation from the engine's events: settled (final) text in order, plus a volatile tail that
+/// no final has covered yet.
+struct DictationTranscript: Sendable, Equatable {
+    private var finals: [String] = []
+    private var lastFinalEnd: TimeInterval = -.infinity
+    private var volatile: (text: String, start: TimeInterval)?
+
+    static func == (a: Self, b: Self) -> Bool { a.text == b.text }
+
+    mutating func add(text: String, isFinal: Bool, start: TimeInterval, end: TimeInterval) {
+        if isFinal {
+            finals.append(text)
+            lastFinalEnd = max(lastFinalEnd, end)
+            volatile = nil
+        } else {
+            volatile = (text, start)
+        }
+    }
+
+    mutating func add(_ e: TranscriptEvent) {
+        add(text: e.text, isFinal: e.isFinal, start: e.audioStart, end: e.audioEnd)
+    }
+
+    var text: String {
+        var parts = finals
+        // A volatile result for audio a final already covers is an older guess of the same words.
+        if let v = volatile, v.start >= lastFinalEnd - 0.05 { parts.append(v.text) }
+        return Self.clean(parts.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }.joined(separator: " "))
+    }
+
+    /// What gets inserted: the text without leading or trailing whitespace. Line breaks inside are kept.
+    static func clean(_ s: String) -> String { s.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    /// The session issues that end a dictation. Recoveries and a silent microphone do not: a silent microphone just gives an
+    /// empty transcript.
+    static func isFatal(_ issue: ListenError) -> Bool {
+        switch issue {
+        case .captureRecovered, .speechRecovered, .deadStream: return false
+        default: return true
+        }
+    }
+}
+
+/// The on-device Apple engine on the microphone alone, through the same `ListenSession` the meeting uses (the shape the
+/// teleprompter's script mode already uses: no remote source, the microphone as the `me` channel). The engine is the
+/// language's Apple engine (`SpeechTranscriber` for en/it, `DictationTranscriber` for tr): never Nemotron, so dictation
+/// loads no large model and never unloads the meeting's.
+@MainActor
+final class AppleDictationTranscriber: DictationTranscribing {
+    private var session: ListenSession?
+    private var collector: Task<String, Never>?
+    private var issueWatch: Task<Void, Never>?
+    private var stopTask: Task<Void, Never>?
+    private var cancelled = false
+
+    /// The listen configuration of a dictation in `lang`.
+    nonisolated static func config(lang: String) -> ListenConfig {
+        var c = ListenConfig(lang: lang, remoteBundleIDs: [], micEnabled: true, source: .live)
+        c.engineKind = EngineFactory.defaultKind(for: lang)
+        c.statusSink = nil
+        c.releaseIdleModelsOnStop = false
+        return c
+    }
+
+    /// The system environment without a remote source: only the microphone opens.
+    nonisolated static var environment: ListenEnvironment {
+        var e = ListenEnvironment.system
+        e.makeRemoteSource = { _ in nil }
+        return e
+    }
+
+    func begin(lang: String, onFailure: @escaping @MainActor (String) -> Void) async throws {
+        let s = ListenSession(config: Self.config(lang: lang), environment: Self.environment)
+        session = s
+        let stream = try await s.start()
+        // Cancelled while the engine loaded: a stop() issued then found nothing open yet, so close what has opened since.
+        if cancelled {
+            await s.stop()
+            throw CancellationError()
+        }
+        collector = Task.detached {
+            var t = DictationTranscript()
+            for await e in stream { t.add(e) }
+            return t.text
+        }
+        issueWatch = Task {
+            for await issue in s.issues where DictationTranscript.isFatal(issue) {
+                onFailure(issue.description)
+                break
+            }
+        }
+    }
+
+    func finish() async throws -> String {
+        guard let s = session else { return "" }
+        await stop(s)
+        let text = await collector?.value ?? ""
+        issueWatch?.cancel()
+        return text
+    }
+
+    func cancel() async {
+        cancelled = true
+        issueWatch?.cancel()
+        collector?.cancel()
+        if let s = session { await stop(s) }
+    }
+
+    /// One stop per session, whichever of finish and cancel comes first.
+    private func stop(_ s: ListenSession) async {
+        if stopTask == nil { stopTask = Task { await s.stop() } }
+        await stopTask?.value
+    }
+}
