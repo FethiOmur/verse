@@ -63,6 +63,8 @@ public final class VerseController: ObservableObject {
     @Published public private(set) var stopArmed = false
     /// False when ⌥⌘V is taken by another app.
     @Published public private(set) var startHotKeyAvailable = false
+    /// The earlier/newer answer keys (⌥⌘←, ⌥⌘→, ⇧<) another app holds in the running session; empty otherwise.
+    @Published public private(set) var unavailableAnswerKeys: [String] = []
     /// The me layer, as the brain reported it for the running session: nil = no layer.
     @Published public private(set) var meLayer: MeLayerInfo?
     /// Where the me layer and the meeting pack disagree on a number (the brain's `notice`, once after start).
@@ -342,6 +344,7 @@ public final class VerseController: ObservableObject {
         running = true
         lastExitCode = nil
         hotKeys?.setSessionRunning(true)
+        reportAnswerKeys()
         showPanel()
         runTask = Task.detached { [weak self] in
             let code = await r.run()
@@ -355,11 +358,48 @@ public final class VerseController: ObservableObject {
     public func installGlobalHotKeys() {
         guard hotKeys == nil else { return }
         let keys = GlobalHotKeys(onStartStop: { [weak self] in self?.startStopKeyPressed() },
-                                 onCardNow: { [weak self] in self?.cardNow() })
+                                 onCardNow: { [weak self] in self?.cardNow() },
+                                 onEarlierAnswer: { [weak self] in self?.showEarlierAnswer() },
+                                 onNewerAnswer: { [weak self] in self?.showNewerAnswer() })
         hotKeys = keys
         startHotKeyAvailable = keys.registerStartStop()
         if !startHotKeyAvailable { log("⌥⌘V is taken by another app; Start now stays in the menu") }
         keys.setSessionRunning(running)
+        reportAnswerKeys()
+    }
+
+    /// ⌥⌘← / ⌥⌘→ / ⇧< another app holds in this session: logged, and published for Settings. The island's buttons still work.
+    private func reportAnswerKeys() {
+        let taken = (hotKeys?.unavailableAnswerKeys ?? []).map(Self.keyLabel)
+        if taken != unavailableAnswerKeys { unavailableAnswerKeys = taken }
+        for k in taken { log("\(k) is taken by another app; the island's buttons still show earlier answers") }
+        if let shift = hotKeys?.earlierAnswerShiftSpec, hotKeys?.earlierAnswerShiftRegistered == true {
+            log("⇧< is key code \(shift.keyCode) in this keyboard layout")
+        }
+    }
+
+    static func keyLabel(_ spec: HotKeySpec) -> String {
+        switch spec {
+        case .earlierAnswer: return "⌥⌘←"
+        case .newerAnswer: return "⌥⌘→"
+        case .cardNow: return "⌥⌘↩"
+        case .startStop: return "⌥⌘V"
+        case _ where spec.isShiftLessThan: return "⇧<"
+        default: return "?"
+        }
+    }
+
+    /// Back to the earlier answer in the notch (⌥⌘←, ⇧<). The session itself is not touched. Ignored while the prompter
+    /// covers the card, so a pin never happens out of sight.
+    public func showEarlierAnswer() {
+        guard running, !stopping, !prompter.isOpen else { return }
+        overlay.showEarlierAnswer()
+    }
+
+    /// Forward to the newer answer, then live (⌥⌘→).
+    public func showNewerAnswer() {
+        guard running, !stopping else { return }
+        overlay.showNewerAnswer()
     }
 
     /// What ⌥⌘V means right now. Not running: start. Running: the first press arms the stop, a second one inside
@@ -565,6 +605,7 @@ public final class VerseController: ObservableObject {
         running = false
         stopping = false
         hotKeys?.setSessionRunning(false)
+        reportAnswerKeys()
         stopConfirm.reset()
         setStopArmed(false)
         lastExitCode = code

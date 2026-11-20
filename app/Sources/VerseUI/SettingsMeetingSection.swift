@@ -83,3 +83,21 @@ public enum RemoteFilePicker {
         return p.runModal() == .OK ? p.url : nil
     }
 }
+
+/// Settings for earlier answers in the notch: the keys, and any of them another app holds in the running call.
+struct SettingsEarlierAnswersSection: View {
+    @ObservedObject var controller: VerseController
+
+    var body: some View {
+        HomeGroup {
+            HomeRow("Earlier and newer answer", verbatimDetail: keysDetail) { EmptyView() }
+        }
+    }
+
+    private var keysDetail: String {
+        let base = L10n.tr("During a call: ⌥⌘← or ⇧< earlier answer, ⌥⌘→ newer answer, or the arrows beside Stop on the island. While a call runs, these keys go to Verse instead of other apps.")
+        guard !controller.unavailableAnswerKeys.isEmpty else { return base }
+        let taken = controller.unavailableAnswerKeys.joined(separator: ", ")
+        return base + " " + L10n.tr("Taken by another app in this call: \(taken).")
+    }
+}

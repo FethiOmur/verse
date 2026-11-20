@@ -424,6 +424,8 @@ struct CardView: View {
     var spokenWords = 0
     /// The said words by index, when the reading jumped (`CardReading.struck`).
     var struck: IndexSet?
+    /// An earlier answer is on screen (`AnswerHistory.marker`): one quiet line above it says so.
+    var marker: String? = nil
 
     var body: some View {
         if let maxHeight {
@@ -446,6 +448,9 @@ struct CardView: View {
     private func content(dropping n: Int) -> some View {
         let deep = Array(card.deepPoints.dropFirst(n))
         return VStack(alignment: .leading, spacing: 0) {
+            if let marker {
+                EarlierAnswerMark(text: marker).padding(.bottom, 6)
+            }
             if let say = card.say {
                 // Prompter style: the heard question (or "Following you") on one line, the SAY in teleprompter type under
                 // it, then the points and chips.
@@ -500,10 +505,27 @@ struct LiveCardView: View {
     var scale: CGFloat
     var maxHeight: CGFloat?
     @ObservedObject var reading: CardReading
+    var marker: String? = nil
 
     var body: some View {
         CardView(card: card, scale: scale, maxHeight: maxHeight, spokenWords: reading.spoken(for: card.say),
-                 struck: reading.struckWords(for: card.say))
+                 struck: reading.struckWords(for: card.say), marker: marker)
+    }
+}
+
+/// "Earlier answer" over a pinned card: the meta type in the tertiary ink, a small history glyph, nothing that moves.
+struct EarlierAnswerMark: View {
+    var text: String
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "clock.arrow.circlepath").font(.system(size: 10, weight: .semibold))
+            Text(verbatim: text).lineLimit(1).truncationMode(.tail)
+        }
+        .font(VT.Font.meta)
+        .foregroundStyle(VT.Island.tertiary)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("verse.earlierMark")
     }
 }
 

@@ -2274,6 +2274,22 @@
         }
       }
     },
+    "Back to the live answer": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Torna alla risposta in corso"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canlı yanıta dön"
+          }
+        }
+      }
+    },
     "Back to the top of the page": {
       "localizations": {
         "it": {
@@ -4043,6 +4059,86 @@
         }
       }
     },
+    "During a call: ⌥⌘← or ⇧< earlier answer, ⌥⌘→ newer answer, or the arrows beside Stop on the island. While a call runs, these keys go to Verse instead of other apps.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durante una chiamata: ⌥⌘← o ⇧< risposta precedente, ⌥⌘→ risposta successiva, oppure le frecce accanto a Interrompi sull’isola. Durante una chiamata questi tasti vanno a Verse invece che alle altre app."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görüşme sırasında: ⌥⌘← veya ⇧< önceki yanıt, ⌥⌘→ sonraki yanıt ya da adadaki Durdur düğmesinin yanındaki oklar. Görüşme sürerken bu tuşlar diğer uygulamalara değil Verse’e gider."
+          }
+        }
+      }
+    },
+    "Earlier and newer answer": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta precedente e successiva"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki ve sonraki yanıt"
+          }
+        }
+      }
+    },
+    "Earlier answer": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta precedente"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki yanıt"
+          }
+        }
+      }
+    },
+    "Earlier answer (⌥⌘← or ⇧<)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta precedente (⌥⌘← o ⇧<)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki yanıt (⌥⌘← veya ⇧<)"
+          }
+        }
+      }
+    },
+    "Earlier answer · newer ones arrived": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta precedente · ne sono arrivate di nuove"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki yanıt · yenileri geldi"
+          }
+        }
+      }
+    },
     "Earlier meeting preps": {
       "localizations": {
         "it": {
@@ -5287,6 +5383,22 @@
         }
       }
     },
+    "Live answer (⌥⌘→)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta in corso (⌥⌘→)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canlı yanıt (⌥⌘→)"
+          }
+        }
+      }
+    },
     "Load my voices": {
       "localizations": {
         "it": {
@@ -6175,6 +6287,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Konuşmadan yeni oturum…"
+          }
+        }
+      }
+    },
+    "Newer answer (⌥⌘→)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta successiva (⌥⌘→)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonraki yanıt (⌥⌘→)"
           }
         }
       }
@@ -9391,6 +9519,22 @@
         }
       }
     },
+    "Show the earlier answer": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra la risposta precedente"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki yanıtı göster"
+          }
+        }
+      }
+    },
     "Show the interviewer's line": {
       "localizations": {
         "it": {
@@ -9419,6 +9563,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Mülakatçının cümlesini altyazı olarak göster"
+          }
+        }
+      }
+    },
+    "Show the newer answer": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra la risposta successiva"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonraki yanıtı göster"
           }
         }
       }
@@ -10113,6 +10273,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sistem (%@)"
+          }
+        }
+      }
+    },
+    "Taken by another app in this call: %@.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Occupati da un’altra app in questa chiamata: %@."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu görüşmede başka bir uygulama kullanıyor: %@."
           }
         }
       }

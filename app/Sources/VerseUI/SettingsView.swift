@@ -177,6 +177,7 @@ public struct SettingsView: View {
 
             HomeSectionHeader("Meetings")
             SettingsMeetingSection(meeting: controller.meeting, settings: settings)
+            SettingsEarlierAnswersSection(controller: controller).padding(.top, 12)
 
             if !meetingsOnly { remainingSections }
         }

@@ -49,6 +49,9 @@ public struct OverlayCard: Equatable, Sendable {
     /// "Follow my answer": The owner went his own way and `say`/`bullets` are the C tier's continuation of his line, not the
     /// answer to the question. The view marks the card "following you".
     public var following = false
+    /// While `following`: the follow card on screen (the brain's `card_id`). Each one is an answer of its own for the answer
+    /// history (`AnswerHistory.key(for:)`). nil otherwise.
+    public var followCardID: String?
     /// Indices into `bullets` that the owner has already said (the brain's `covered`); the view strikes them through.
     public var struck: Set<Int> = []
 
@@ -1027,6 +1030,7 @@ public struct OverlayReducer: Sendable {
         card.chips = info.chips
         card.deepPoints = Array(deep.prefix(config.maxDeepPoints))
         card.following = following
+        card.followCardID = following ? fi.shownFollowID : nil
         // `covered` counts the brain's numbered points; the card strikes the displayed line that has that number.
         card.struck = Set(shownItems.enumerated().compactMap { i, item in item.point.flatMap { coveredNow.contains($0) ? i : nil } })
         if card != before {

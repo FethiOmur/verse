@@ -49,6 +49,9 @@ struct IslandBand: View {
     /// The Stop button in the right wing while the pointer is over a bare capsule of a running session.
     var onStop: (() -> Void)?
     var stopping = false
+    /// Back to the earlier answer, beside Stop in the wing (nil: there is none to go back to). Only on a capsule wide enough
+    /// for both buttons; the hot keys and the card's control row always have it.
+    var onBack: (() -> Void)?
     @Environment(\.islandHover) private var hover
 
     var body: some View {
@@ -117,6 +120,9 @@ struct IslandBand: View {
     @ViewBuilder private var rightWing: some View {
         switch kind {
         case .capsule where hover && state.running && onStop != nil:
+            if let onBack, width >= metrics.listeningWidth {
+                IslandHistoryButton(direction: .back, enabled: true, compact: true, action: onBack)
+            }
             IslandStopButton(stopping: stopping, compact: true) { onStop?() }
         case .capsule:
             if let s = state.status {
@@ -240,7 +246,8 @@ public struct OverlayView: View {
         self.forcePracticeCapsule = forcePracticeCapsule
     }
 
-    private var state: OverlayState { model.state }
+    /// The live state, or with an earlier answer in place of the card while one is pinned (`OverlayModel.history`).
+    private var state: OverlayState { model.displayState }
     private var scale: CGFloat { settings.textScale.factor }
     private var kind: IslandKind { IslandKind.resolve(state, prompterOpen: prompter.isOpen) }
     private var cardWidth: CGFloat { CGFloat(settings.cardWidth) }
@@ -300,7 +307,8 @@ public struct OverlayView: View {
     private var content: some View {
         VStack(spacing: 0) {
             IslandBand(state: state, kind: kind, metrics: metrics, width: width, prompter: prompterInfo,
-                       onStop: { model.stopSession() }, stopping: model.stopping)
+                       onStop: { model.stopSession() }, stopping: model.stopping,
+                       onBack: model.history.canGoBack ? { model.showEarlierAnswer() } : nil)
                 .contentShape(Rectangle())
                 // Click the band: close the card (or the start-up panel). The panel never becomes key, so Esc can't
                 // reach it; the click is the dismiss.
@@ -357,7 +365,8 @@ public struct OverlayView: View {
                 .onTapGesture { model.collapse() }   // a click on the row clears the topic hints
                 .overlay(alignment: .bottomTrailing) { stopRow }
         case .card(let card):
-            LiveCardView(card: card, scale: scale, maxHeight: max(maxIslandHeight - metrics.capsuleHeight, 120), reading: prompter.cardReading)
+            LiveCardView(card: card, scale: scale, maxHeight: max(maxIslandHeight - metrics.capsuleHeight, 120), reading: prompter.cardReading,
+                         marker: model.history.marker)
                 .overlay(alignment: .bottom) {
                     ResizeGrip(onDrag: resize, onEnd: { dragStart = nil })
                 }
@@ -365,12 +374,21 @@ public struct OverlayView: View {
         }
     }
 
-    /// Stop, in the hover control row at the bottom right of the card (the prompter and practice rows work the same way:
-    /// the panel never becomes key, `acceptsFirstMouse` lets the first click through).
+    /// Back (and, on an earlier answer, Forward) and Stop, in the hover control row at the bottom right of the card (the
+    /// prompter and practice rows work the same way: the panel never becomes key, `acceptsFirstMouse` lets the first click
+    /// through).
     @ViewBuilder private var stopRow: some View {
         if state.running {
             HoverControls(horizontalInset: VT.islandCardInset - 12) {
-                IslandStopButton(stopping: model.stopping) { model.stopSession() }
+                HStack(spacing: 6) {
+                    IslandHistoryButton(direction: .back, enabled: model.history.canGoBack) { model.showEarlierAnswer() }
+                    if model.history.canGoForward {
+                        IslandHistoryButton(direction: model.history.forwardReturnsToLive ? .live : .forward, enabled: true) {
+                            model.showNewerAnswer()
+                        }
+                    }
+                    IslandStopButton(stopping: model.stopping) { model.stopSession() }
+                }
             }
         }
     }

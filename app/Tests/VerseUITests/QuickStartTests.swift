@@ -199,9 +199,13 @@ final class QuickStartTests: XCTestCase {
     final class FakeRegistrar: HotKeyRegistrar {
         var live: [Int: (spec: HotKeySpec, id: UInt32, action: @MainActor () -> Void)] = [:]
         var refuse: Set<UInt32> = []
+        /// Combinations another app holds, by key code (for the ⇧< fallbacks, which share one id).
+        var refuseKeyCodes: Set<UInt32> = []
+        private(set) var tried: [HotKeySpec] = []
         private var next = 1
         func register(_ spec: HotKeySpec, id: UInt32, action: @escaping @MainActor () -> Void) -> Int? {
-            if refuse.contains(id) { return nil }
+            tried.append(spec)
+            if refuse.contains(id) || refuseKeyCodes.contains(spec.keyCode) { return nil }
             defer { next += 1 }
             live[next] = (spec, id, action)
             return next
@@ -220,16 +224,19 @@ final class QuickStartTests: XCTestCase {
     func testStartKeyIsAlwaysOnAndCardNowOnlyWhileASessionRuns() {
         let reg = FakeRegistrar()
         var presses: [String] = []
-        let keys = GlobalHotKeys(registrar: reg, onStartStop: { presses.append("start") }, onCardNow: { presses.append("card") })
+        let keys = GlobalHotKeys(registrar: reg, onStartStop: { presses.append("start") }, onCardNow: { presses.append("card") },
+                                 lessThanKeyCodes: { [50] })
         XCTAssertTrue(keys.registerStartStop())
         XCTAssertEqual(reg.live.values.map(\.id), [GlobalHotKeys.startStopID])
         XCTAssertFalse(keys.cardNowRegistered, "⌥⌘↩ belongs to other apps until a session runs")
 
         keys.setSessionRunning(true)
         XCTAssertTrue(keys.cardNowRegistered)
-        XCTAssertEqual(Set(reg.live.values.map(\.id)), [GlobalHotKeys.startStopID, GlobalHotKeys.cardNowID])
+        XCTAssertEqual(Set(reg.live.values.map(\.id)), [GlobalHotKeys.startStopID, GlobalHotKeys.cardNowID,
+                                                       GlobalHotKeys.earlierAnswerID, GlobalHotKeys.newerAnswerID,
+                                                       GlobalHotKeys.earlierAnswerShiftID])
         keys.setSessionRunning(true)
-        XCTAssertEqual(reg.live.count, 2, "registering twice does not duplicate")
+        XCTAssertEqual(reg.live.count, 5, "registering twice does not duplicate")
         reg.press(GlobalHotKeys.startStopID)
         reg.press(GlobalHotKeys.cardNowID)
         XCTAssertEqual(presses, ["start", "card"])
@@ -245,7 +252,7 @@ final class QuickStartTests: XCTestCase {
     func testAKeyTakenByAnotherAppIsReported() {
         let reg = FakeRegistrar()
         reg.refuse = [GlobalHotKeys.startStopID]
-        let keys = GlobalHotKeys(registrar: reg, onStartStop: {}, onCardNow: {})
+        let keys = GlobalHotKeys(registrar: reg, onStartStop: {}, onCardNow: {}, lessThanKeyCodes: { [50] })
         XCTAssertFalse(keys.registerStartStop())
         XCTAssertFalse(keys.startStopRegistered)
         keys.setSessionRunning(true)
@@ -253,11 +260,106 @@ final class QuickStartTests: XCTestCase {
         keys.unregisterAll()
     }
 
+    func testAnswerKeysAreOptionCommandArrowsOnlyWhileASessionRunsAndATakenOneIsReported() {
+        XCTAssertEqual(HotKeySpec.earlierAnswer.modifiers, HotKeySpec.startStop.modifiers)
+        XCTAssertEqual(HotKeySpec.earlierAnswer.keyCode, 123, "left arrow")
+        XCTAssertEqual(HotKeySpec.newerAnswer.keyCode, 124, "right arrow")
+
+        let reg = FakeRegistrar()
+        reg.refuse = [GlobalHotKeys.newerAnswerID]
+        var presses: [String] = []
+        let keys = GlobalHotKeys(registrar: reg, onStartStop: {}, onCardNow: {},
+                                 onEarlierAnswer: { presses.append("earlier") }, onNewerAnswer: { presses.append("newer") },
+                                 lessThanKeyCodes: { [50] })
+        XCTAssertTrue(keys.registerStartStop())
+        XCTAssertFalse(keys.earlierAnswerRegistered, "not before a session")
+        XCTAssertTrue(keys.unavailableAnswerKeys.isEmpty)
+
+        keys.setSessionRunning(true)
+        XCTAssertTrue(keys.earlierAnswerRegistered)
+        XCTAssertFalse(keys.newerAnswerRegistered)
+        XCTAssertEqual(keys.unavailableAnswerKeys, [.newerAnswer])
+        reg.press(GlobalHotKeys.earlierAnswerID)
+        XCTAssertEqual(presses, ["earlier"])
+
+        keys.setSessionRunning(false)
+        XCTAssertFalse(keys.earlierAnswerRegistered)
+        XCTAssertTrue(keys.unavailableAnswerKeys.isEmpty)
+        XCTAssertEqual(reg.live.values.map(\.id), [GlobalHotKeys.startStopID])
+        keys.unregisterAll()
+    }
+
+    func testShiftLessThanIsBackOnlyWhileASessionRunsWithFallbacksTriedInOrder() {
+        let reg = FakeRegistrar()
+        var presses: [String] = []
+        var lookups = 0
+        let keys = GlobalHotKeys(registrar: reg, onStartStop: {}, onCardNow: {},
+                                 onEarlierAnswer: { presses.append("earlier") }, onNewerAnswer: { presses.append("newer") },
+                                 lessThanKeyCodes: { lookups += 1; return LessThanKey.fallbacks })
+        reg.refuseKeyCodes = [0x0A]
+        XCTAssertTrue(keys.registerStartStop())
+        XCTAssertEqual(lookups, 0, "the layout is read when a session starts, not at launch")
+        XCTAssertFalse(keys.earlierAnswerShiftRegistered)
+
+        keys.setSessionRunning(true)
+        XCTAssertEqual(lookups, 1)
+        XCTAssertTrue(keys.earlierAnswerShiftRegistered)
+        XCTAssertEqual(keys.earlierAnswerShiftSpec, HotKeySpec(keyCode: 0x32, modifiers: 0x0200), "⇧ + grave, after ⇧ + ISO was refused")
+        XCTAssertEqual(reg.tried.filter(\.isShiftLessThan).map(\.keyCode), [0x0A, 0x32])
+        XCTAssertTrue(keys.unavailableAnswerKeys.isEmpty)
+        reg.press(GlobalHotKeys.earlierAnswerShiftID)
+        XCTAssertEqual(presses, ["earlier"], "⇧< is Back, never Forward")
+
+        keys.setSessionRunning(true)
+        XCTAssertEqual(lookups, 1, "registering twice neither looks up nor duplicates")
+        XCTAssertEqual(reg.live.values.filter { $0.id == GlobalHotKeys.earlierAnswerShiftID }.count, 1)
+
+        keys.setSessionRunning(false)
+        XCTAssertFalse(keys.earlierAnswerShiftRegistered)
+        XCTAssertNil(keys.earlierAnswerShiftSpec)
+        XCTAssertEqual(reg.live.values.map(\.id), [GlobalHotKeys.startStopID])
+        keys.unregisterAll()
+    }
+
+    func testShiftLessThanTakenByAnotherAppIsReported() {
+        let reg = FakeRegistrar()
+        reg.refuse = [GlobalHotKeys.earlierAnswerShiftID]
+        let keys = GlobalHotKeys(registrar: reg, onStartStop: {}, onCardNow: {}, lessThanKeyCodes: { [50] })
+        keys.setSessionRunning(true)
+        XCTAssertFalse(keys.earlierAnswerShiftRegistered)
+        XCTAssertEqual(keys.unavailableAnswerKeys, [.shiftLessThan(keyCode: 50)])
+        XCTAssertEqual(VerseController.keyLabel(.shiftLessThan(keyCode: 50)), "⇧<")
+        XCTAssertTrue(keys.earlierAnswerRegistered, "⌥⌘← still works")
+        keys.setSessionRunning(false)
+        XCTAssertTrue(keys.unavailableAnswerKeys.isEmpty)
+    }
+
+    func testLessThanKeyIsTheKeyThatTypesItUnshiftedElseTheFallbacks() {
+        // A Turkish-like layout: `<` on the key left of Z (0x32 here), `>` only with ⇧, so not seen unshifted.
+        let turkish: [UInt16: String] = [0x06: "z", 0x32: "<", 0x0A: "\"", 0x2B: "ö"]
+        XCTAssertEqual(LessThanKey.candidates { turkish[$0] }, [0x32])
+        // A layout where `<` sits on the ISO key.
+        XCTAssertEqual(LessThanKey.candidates { $0 == 0x0A ? "<" : "a" }, [0x0A])
+        // A US-like layout: `<` needs ⇧ (on the comma key), so no key types it alone.
+        let us: [UInt16: String] = [0x2B: ",", 0x32: "`", 0x0A: "§"]
+        XCTAssertEqual(LessThanKey.candidates { us[$0] }, [0x0A, 0x32])
+        XCTAssertEqual(LessThanKey.fallbacks, [0x0A, 0x32], "kVK_ISO_Section, then kVK_ANSI_Grave")
+        // No layout data at all.
+        XCTAssertEqual(LessThanKey.candidates(layoutData: nil, keyboardType: 0), [0x0A, 0x32])
+        XCTAssertEqual(LessThanKey.candidates(layoutData: Data(), keyboardType: 0), [0x0A, 0x32])
+        XCTAssertEqual(HotKeySpec.shiftLessThan(keyCode: 0x32).modifiers, 0x0200, "shift alone")
+    }
+
     /// The real Carbon registration, on a combination nobody uses (⌃⌥⌘F19), so it cannot collide with a running Verse.
     func testCarbonRegistrationRoundTrip() throws {
         let odd = HotKeySpec(keyCode: 80 /* F19 */, modifiers: UInt32(0x1000 | 0x0800 | 0x0100))
+        // Every session key gets an unused combination too (F18, F17, F16): ⌥⌘← and ⌥⌘→ must never be taken from the
+        // running app by a test.
         let keys = GlobalHotKeys(startStop: odd, cardNow: HotKeySpec(keyCode: 79 /* F18 */, modifiers: odd.modifiers),
-                                 onStartStop: {}, onCardNow: {})
+                                 earlierAnswer: HotKeySpec(keyCode: 64 /* F17 */, modifiers: odd.modifiers),
+                                 newerAnswer: HotKeySpec(keyCode: 106 /* F16 */, modifiers: odd.modifiers),
+                                 onStartStop: {}, onCardNow: {},
+                                 lessThanKeyCodes: { [113 /* F15, with ⇧ */] })
         guard keys.registerStartStop() else { throw XCTSkip("the system refused the test hot key in this process") }
         keys.setSessionRunning(true)
         XCTAssertTrue(keys.cardNowRegistered)

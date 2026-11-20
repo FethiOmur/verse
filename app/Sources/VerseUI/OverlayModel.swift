@@ -19,6 +19,10 @@ public final class OverlayModel: ObservableObject {
     public let levels = IslandLevels()
     /// The running session is shutting down (the Stop controls show "Stopping…" and take no clicks). The controller sets it.
     @Published public private(set) var stopping = false
+    /// The answers the notch showed in this session, and whether the island shows one of them instead of the live card.
+    /// Recorded from `state.card` after every change; `state` itself stays the live state (the controller and the prompter
+    /// read it), and only the view draws `displayState`.
+    @Published public private(set) var history = AnswerHistory()
     private var reducer: OverlayReducer
     private let clock: () -> TimeInterval
     private var timer: Timer?
@@ -59,6 +63,7 @@ public final class OverlayModel: ObservableObject {
     public func sessionStarting(lang: String, session: String = "", app: String? = nil, route: AudioRoute? = nil, unprepared: Bool = false,
                                 auto: Bool = false) {
         reducer.sessionStarting(lang: lang, session: session, app: app, route: route, unprepared: unprepared, auto: auto)
+        history.clear()
         publish()
     }
 
@@ -103,10 +108,36 @@ public final class OverlayModel: ObservableObject {
         startChipActions?(a)
     }
 
-    /// Click on the capsule: closes the open card, else the start-up panel.
+    /// Click on the capsule: closes the open card, else the start-up panel. While an earlier answer is shown, the click puts
+    /// the live island back instead (the live card stays as it was).
     public func collapse() {
+        if history.isPinned {
+            history.returnToLive()
+            return
+        }
         reducer.collapse()
         publish()
+    }
+
+    // MARK: earlier answers
+
+    /// What the island draws: the live state, or the live state with the pinned earlier answer in place of the card.
+    public var displayState: OverlayState { history.display(state) }
+
+    /// Back (the island's button, ⌥⌘←, ⇧<): one answer older. Only while a meeting session runs.
+    public func showEarlierAnswer() {
+        guard state.running, state.sim == nil else { return }
+        history.back()
+    }
+
+    /// Forward (the island's button, ⌥⌘→): one answer newer, then live again.
+    public func showNewerAnswer() {
+        guard state.running else { return }
+        history.forward()
+    }
+
+    public func showLiveAnswer() {
+        history.returnToLive()
     }
 
     /// Shows an error message (with Retry) for a run that ended without saying why.
@@ -183,6 +214,19 @@ public final class OverlayModel: ObservableObject {
 
     private func publish() {
         if state != reducer.state { state = reducer.state }
+        recordHistory()
+    }
+
+    /// The history follows the live card of a meeting session; a session that is not running (stopped, or not started yet)
+    /// keeps none. Practice interviews keep none either.
+    private func recordHistory() {
+        var h = history
+        if !state.running || state.sim != nil {
+            h.clear()
+        } else {
+            h.observe(state.card)
+        }
+        if h != history { history = h }
     }
 }
 
