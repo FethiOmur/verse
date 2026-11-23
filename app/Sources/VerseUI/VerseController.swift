@@ -90,6 +90,8 @@ public final class VerseController: ObservableObject {
     private var remoteFileOverride: URL?
     /// Meeting detection ("Meeting detected · Start Verse?") and the summary-to-vault question.
     public lazy var meeting = MeetingCoordinator(host: self)
+    /// Dictation (⌃⌥⌘D). Created on first use; registers nothing until `installDictation` at launch (VerseController+Dictation).
+    public lazy var dictation = DictationController()
 
     // Anytime calls
     private var hotKeys: GlobalHotKeys?

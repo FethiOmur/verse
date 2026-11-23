@@ -14,7 +14,7 @@ struct VerseApp: App {
             VerseMenu(controller: delegate.controller, settings: delegate.settings, sim: delegate.sim)
                 .interfaceLocale()
         } label: {
-            MenuBarLabel(controller: delegate.controller)
+            MenuBarLabel(controller: delegate.controller, dictation: delegate.controller.dictation)
         }
         .menuBarExtraStyle(.menu)
 
@@ -31,9 +31,20 @@ struct VerseApp: App {
 
 struct MenuBarLabel: View {
     @ObservedObject var controller: VerseController
+    /// Dictation shows in the menu-bar icon: a microphone while it records (never together with a meeting).
+    @ObservedObject var dictation: DictationController
     @Environment(\.openWindow) private var openWindow
+
+    private var symbol: String {
+        switch dictation.phase {
+        case .recording: return "mic.circle.fill"
+        case .finalising, .inserting: return "mic.circle"
+        case .idle: return controller.running ? "waveform.circle.fill" : "waveform.circle"
+        }
+    }
+
     var body: some View {
-        Image(systemName: controller.running ? "waveform.circle.fill" : "waveform.circle")
+        Image(systemName: symbol)
             .accessibilityLabel(Text("Verse", bundle: L10n.bundle))
             // The label is always alive: it hands the scene's openWindow to the router, so code outside a view (the
             // practice report, the launch options) can open the home window.
@@ -235,6 +246,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if launch.autostart { controller.start() }
         controller.meeting.begin()
+        // Dictation (⌃⌥⌘D): off by default; while it is off no hot key is registered.
+        controller.installDictation(practice: sim)
     }
 
     /// `terminate` runs a nested event loop while the reply is pending. Called from inside a main-queue job (a Task,

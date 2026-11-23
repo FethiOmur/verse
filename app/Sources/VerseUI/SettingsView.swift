@@ -260,6 +260,9 @@ public struct SettingsView: View {
             HomeSectionHeader("Teleprompter")
             PrompterSettingsSection(settings: controller.prompter.settings)
 
+            HomeSectionHeader("Dictation")
+            SettingsDictationSection(dictation: controller.dictation)
+
             HomeSectionHeader("Spend")
             HomeGroup {
                 HomeRow("This session", value: controller.sessionSpend.formatted(Self.usd))
