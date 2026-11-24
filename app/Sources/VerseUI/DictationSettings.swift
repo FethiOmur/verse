@@ -27,6 +27,8 @@ public final class DictationSettings: ObservableObject {
     /// The system's Accessibility prompt was asked for once (the first dictation that needed the permission). It is never
     /// asked for again; Settings shows the missing permission instead.
     @Published public var accessibilityPrompted: Bool { didSet { defaults.set(accessibilityPrompted, forKey: "dictationAXPrompted") } }
+    /// The short start and stop cues (`DictationSound`). On by default.
+    @Published public var sounds: Bool { didSet { defaults.set(sounds, forKey: "dictationSounds") } }
 
     public init(defaults: UserDefaults? = nil, preferredLanguages: [String] = Locale.preferredLanguages) {
         let d = defaults ?? (Bundle.main.bundleIdentifier == AppSettings.suiteName ? .standard
@@ -37,5 +39,6 @@ public final class DictationSettings: ObservableObject {
         let stored = d.string(forKey: "dictationLanguage") ?? fallback
         language = Self.languages.contains(stored) ? stored : fallback
         accessibilityPrompted = d.bool(forKey: "dictationAXPrompted")
+        sounds = d.object(forKey: "dictationSounds") as? Bool ?? true
     }
 }

@@ -131,6 +131,28 @@ final class DictationTests: XCTestCase {
 
     final class Box<T> { var value: T; init(_ v: T) { value = v } }
 
+    final class FakeSounds: DictationSoundPlaying {
+        private(set) var played: [DictationSound] = []
+        func play(_ sound: DictationSound) { played.append(sound) }
+    }
+
+    /// The permission watch's timer, fired by hand.
+    @MainActor
+    final class FakeTicker {
+        private(set) var intervals: [TimeInterval] = []
+        private var ticks: [Int: @MainActor @Sendable () -> Void] = [:]
+        private var next = 0
+        var running: Int { ticks.count }
+        func make(_ interval: TimeInterval, _ tick: @escaping @MainActor @Sendable () -> Void) -> AnyCancellable {
+            intervals.append(interval)
+            let id = next
+            next += 1
+            ticks[id] = tick
+            return AnyCancellable { [weak self] in MainActor.assumeIsolated { _ = self?.ticks.removeValue(forKey: id) } }
+        }
+        func fire() { for t in Array(ticks.values) { t() } }
+    }
+
     private func defaults() -> UserDefaults {
         let name = "verse.dictation.tests.\(UUID().uuidString)"
         let d = UserDefaults(suiteName: name)!
@@ -146,6 +168,10 @@ final class DictationTests: XCTestCase {
         let inserter: FakeInserter
         let notifier: FakeNotifier
         let made: Box<[FakeTranscriber]>
+        let sounds: FakeSounds
+        let ax: FakeAccessibility
+        let ticker: FakeTicker
+        let logs: Box<[String]>
         var last: FakeTranscriber? { made.value.last }
     }
 
@@ -157,14 +183,16 @@ final class DictationTests: XCTestCase {
         settings.language = lang
         let reg = FakeRegistrar(), tap = FakeKeyTap(), fakeInserter = FakeInserter(), notifier = FakeNotifier()
         let made = Box<[FakeTranscriber]>([])
+        let sounds = FakeSounds(), ax = FakeAccessibility(trusted: false), ticker = FakeTicker(), logs = Box<[String]>([])
         let c = DictationController(settings: settings, registrar: reg, keyTap: tap, makeTranscriber: {
             let t = FakeTranscriber()
             prepare(t)
             made.value.append(t)
             return t
-        }, inserter: inserter ?? fakeInserter, notifier: notifier, log: { _ in })
+        }, inserter: inserter ?? fakeInserter, notifier: notifier, sounds: sounds, accessibility: ax,
+           ticker: { ticker.make($0, $1) }, log: { logs.value.append($0) })
         return Rig(controller: c, settings: settings, registrar: reg, keyTap: tap, inserter: fakeInserter, notifier: notifier,
-                   made: made)
+                   made: made, sounds: sounds, ax: ax, ticker: ticker, logs: logs)
     }
 
     private func waitUntil(_ what: String = "condition", _ cond: () -> Bool) async {
@@ -588,6 +616,11 @@ final class DictationTests: XCTestCase {
             Row(type: .keyDown, key: Self.space, flags: Self.fn, isRepeat: false, want: .toggle, why: "Fn + Space"),
             Row(type: .keyDown, key: Self.space, flags: [Self.fn, .maskAlphaShift], isRepeat: false, want: .toggle, why: "Caps Lock does not count"),
             Row(type: .keyDown, key: Self.space, flags: [Self.fn, .maskNumericPad], isRepeat: false, want: .toggle, why: "the numeric-pad flag does not count"),
+            Row(type: .keyDown, key: Self.space, flags: [Self.fn, .maskNonCoalesced], isRepeat: false, want: .toggle, why: "the non-coalesced bit real key events carry"),
+            Row(type: .keyDown, key: Self.space, flags: CGEventFlags(rawValue: 0x80_0100), isRepeat: false, want: .toggle, why: "raw Fn + Space flags as a keyboard sends them"),
+            Row(type: .keyDown, key: Self.space, flags: CGEventFlags(rawValue: 0xA0_0100), isRepeat: false, want: .toggle, why: "raw Fn + numeric pad + non-coalesced"),
+            Row(type: .keyDown, key: Self.space, flags: [Self.fn, .maskNumericPad, .maskNonCoalesced, .maskHelp], isRepeat: false, want: .toggle, why: "other non-modifier bits do not count"),
+            Row(type: .keyDown, key: Self.space, flags: CGEventFlags(rawValue: 0x80_0108 | CGEventFlags.maskCommand.rawValue), isRepeat: false, want: .pass, why: "raw Fn ⌘ Space with the left-⌘ device bit"),
             Row(type: .keyDown, key: Self.space, flags: [], isRepeat: false, want: .pass, why: "a plain space is typed"),
             Row(type: .keyDown, key: Self.space, flags: [Self.fn, .maskShift], isRepeat: false, want: .pass, why: "Fn ⇧ Space is another combination"),
             Row(type: .keyDown, key: Self.space, flags: [Self.fn, .maskControl], isRepeat: false, want: .pass, why: "Fn ⌃ Space"),
@@ -696,6 +729,221 @@ final class DictationTests: XCTestCase {
                       "⌃⌥⌘D taken: Fn + Space still works")
     }
 
+    // MARK: Accessibility permission watch
+
+    func testAMissingPermissionIsAskedForOnceThenFnSpaceInstallsTheMomentItIsGranted() async {
+        let r = rig(enabled: true)
+        r.keyTap.permitted = false
+        r.controller.activate()
+        XCTAssertTrue(r.controller.fnSpaceUnavailable)
+        XCTAssertEqual(r.ax.asked, [true], "the system prompt, at once")
+        XCTAssertTrue(r.settings.accessibilityPrompted, "so a dictation's paste does not prompt a second time")
+        XCTAssertEqual(r.ticker.intervals, [DictationController.permissionPollInterval])
+        XCTAssertEqual(DictationController.permissionPollInterval, 2)
+        XCTAssertEqual(r.ticker.running, 1)
+
+        r.ticker.fire()
+        r.ticker.fire()
+        XCTAssertEqual(r.keyTap.installs, 3, "one retry per tick")
+        XCTAssertEqual(r.ax.asked, [true], "never asked again")
+        XCTAssertTrue(r.controller.fnSpaceUnavailable)
+        XCTAssertEqual(r.logs.value.filter { $0.contains("unavailable") }.count, 1, "the missing permission is logged once")
+
+        // Granted in System Settings: the next tick installs the tap and the watch ends.
+        r.keyTap.permitted = true
+        r.ticker.fire()
+        XCTAssertTrue(r.controller.fnSpaceActive)
+        XCTAssertFalse(r.controller.fnSpaceUnavailable)
+        XCTAssertEqual(r.ticker.running, 0, "the timer stops once trusted")
+        XCTAssertFalse(r.controller.isWatchingPermission)
+        XCTAssertEqual(r.logs.value.filter { $0.contains("available now") }.count, 1, "one line when it becomes available")
+
+        // And Fn + Space now starts a dictation.
+        r.keyTap.onToggle?()
+        await waitUntil("recording") { r.controller.phase == .recording }
+    }
+
+    func testTurningDictationOffStopsTheWatchAndThePromptIsOncePerLaunch() {
+        let r = rig(enabled: true)
+        r.keyTap.permitted = false
+        r.controller.activate()
+        XCTAssertEqual(r.ticker.running, 1)
+        r.settings.enabled = false
+        XCTAssertEqual(r.ticker.running, 0, "no polling while dictation is off")
+        XCTAssertFalse(r.controller.isWatchingPermission)
+        r.settings.enabled = true
+        XCTAssertEqual(r.ticker.running, 1, "polling again")
+        XCTAssertEqual(r.ax.asked, [true], "but no second prompt in this launch")
+        r.controller.refreshFnSpace()
+        XCTAssertEqual(r.ax.asked, [true], "the Settings page does not prompt again either")
+        XCTAssertEqual(r.ticker.running, 1, "one timer")
+        r.controller.deactivate()
+        XCTAssertEqual(r.ticker.running, 0)
+    }
+
+    func testThePromptWaitsWhileARunIsActive() {
+        let r = rig(enabled: true)
+        r.keyTap.permitted = false
+        let active = Box(true)
+        r.controller.isRunActive = { active.value }
+        r.controller.activate()
+        XCTAssertTrue(r.ax.asked.isEmpty, "no dialog during a meeting")
+        XCTAssertEqual(r.ticker.running, 1, "but the watch runs")
+        r.ticker.fire()
+        XCTAssertTrue(r.ax.asked.isEmpty)
+        active.value = false
+        r.ticker.fire()
+        XCTAssertEqual(r.ax.asked, [true], "asked once the run is over")
+        r.ticker.fire()
+        XCTAssertEqual(r.ax.asked, [true])
+    }
+
+    func testAHotKeyPressWithoutThePermissionNeverPrompts() async {
+        let r = rig(enabled: true)
+        r.keyTap.permitted = false
+        let active = Box(true)
+        r.controller.isRunActive = { active.value }
+        r.controller.activate()          // a run at launch: the prompt is deferred
+        active.value = false
+        r.registrar.press(DictationController.hotKeyID)
+        await waitUntil("recording") { r.controller.phase == .recording }
+        XCTAssertTrue(r.ax.asked.isEmpty, "⌃⌥⌘D behaves as before: no prompt on the key")
+        r.ticker.fire()
+        XCTAssertTrue(r.ax.asked.isEmpty, "nor while the dictation records")
+        r.registrar.press(DictationController.hotKeyID)
+        await waitUntil("inserted") { r.inserter.calls.count == 1 }
+        XCTAssertEqual(r.inserter.calls.first?.mayPrompt, true, "the paste path keeps its own one-time prompt")
+    }
+
+    func testAGrantedPermissionStartsNoWatch() {
+        let r = rig(enabled: true)
+        r.controller.activate()
+        XCTAssertTrue(r.controller.fnSpaceActive)
+        XCTAssertTrue(r.ax.asked.isEmpty)
+        XCTAssertTrue(r.ticker.intervals.isEmpty)
+    }
+
+    // MARK: sounds
+
+    func testTheStartCuePlaysOnceTheMicrophoneIsOpenAndTheStopCueAtTheSecondPress() async {
+        let r = rig { $0.holdBegin = true; $0.holdFinish = true }
+        let start = Task { await r.controller.press() }
+        await waitUntil("begin held") { r.last?.beginHeld == true }
+        XCTAssertTrue(r.sounds.played.isEmpty, "not before the microphone is open")
+        r.last?.releaseBegin()
+        await start.value
+        XCTAssertEqual(r.sounds.played, [.start])
+
+        let stop = Task { await r.controller.press() }
+        await waitUntil("finish held") { r.last?.finishHeld == true }
+        XCTAssertEqual(r.sounds.played, [.start, .stop], "at once, before the engine settles")
+        XCTAssertTrue(r.inserter.calls.isEmpty)
+        r.last?.releaseFinish()
+        await stop.value
+        XCTAssertEqual(r.inserter.calls.count, 1)
+        XCTAssertEqual(r.sounds.played, [.start, .stop])
+    }
+
+    func testAStopWhileTheMicrophoneIsOpeningPlaysOnlyTheStopCue() async {
+        let r = rig { $0.holdBegin = true }
+        let first = Task { await r.controller.press() }
+        await waitUntil("begin held") { r.last?.beginHeld == true }
+        let second = Task { await r.controller.press() }
+        await waitUntil("finalising") { r.controller.phase == .finalising }
+        r.last?.releaseBegin()
+        await first.value
+        await second.value
+        XCTAssertEqual(r.sounds.played, [.stop])
+    }
+
+    func testNoCuesWhenTheSettingIsOff() async {
+        let r = rig()
+        r.settings.sounds = false
+        await r.controller.press()
+        await r.controller.press()
+        XCTAssertEqual(r.inserter.calls.count, 1)
+        XCTAssertTrue(r.sounds.played.isEmpty)
+    }
+
+    func testNoCueWhileARunIsActiveOnACancelOrOnAFailure() async {
+        let busy = rig()
+        busy.controller.isRunActive = { true }
+        await busy.controller.press()
+        XCTAssertTrue(busy.sounds.played.isEmpty, "busy: no cue that could reach the call")
+
+        let cancelled = rig()
+        let runs = PassthroughSubject<Bool, Never>()
+        cancelled.controller.observeRuns(runs)
+        await cancelled.controller.press()
+        runs.send(true)
+        XCTAssertEqual(cancelled.sounds.played, [.start], "a run starting cancels without a stop cue")
+
+        let openingRun = rig { $0.holdBegin = true }
+        let active = Box(false)
+        openingRun.controller.isRunActive = { active.value }
+        let press = Task { await openingRun.controller.press() }
+        await waitUntil("begin held") { openingRun.last?.beginHeld == true }
+        active.value = true
+        openingRun.last?.releaseBegin()
+        await press.value
+        XCTAssertTrue(openingRun.sounds.played.isEmpty, "a run that started while the microphone opened: no start cue")
+
+        let failed = rig { $0.beginError = Boom(description: "no mic") }
+        await failed.controller.press()
+        XCTAssertTrue(failed.sounds.played.isEmpty)
+
+        let midFail = rig()
+        await midFail.controller.press()
+        midFail.last?.failNow("speech failed")
+        XCTAssertEqual(midFail.sounds.played, [.start], "no stop cue on a failure")
+    }
+
+    func testTheSynthesisedCuesAreShortPercussiveAndDistinct() {
+        let sr = Double(DictationSoundSynth.sampleRate)
+        var peaks: [DictationSound: Float] = [:]
+        var crossings: [DictationSound: Int] = [:]
+        for sound in DictationSound.allCases {
+            let s = DictationSoundSynth.samples(sound)
+            let ms = Double(s.count) / sr * 1000
+            XCTAssertTrue((80...150).contains(ms), "\(sound): \(ms) ms")
+            let peak = s.map(abs).max() ?? 0
+            peaks[sound] = peak
+            XCTAssertTrue(peak > 0.15 && peak <= 0.5, "\(sound): moderate volume, peak \(peak)")
+            XCTAssertEqual(s.last ?? 1, 0, accuracy: 0.001, "\(sound): ends silent, no click")
+            // Percussive: the first fifth holds far more energy than the last.
+            let fifth = s.count / 5
+            let head = s.prefix(fifth).map { $0 * $0 }.reduce(0, +), tail = s.suffix(fifth).map { $0 * $0 }.reduce(0, +)
+            XCTAssertGreaterThan(head, tail * 20, "\(sound): decays")
+            crossings[sound] = zip(s, s.dropFirst()).filter { ($0 < 0) != ($1 < 0) }.count
+
+            let wav = DictationSoundSynth.wav(sound)
+            XCTAssertEqual(wav.count, 44 + 2 * s.count)
+            XCTAssertEqual(String(decoding: wav.prefix(4), as: UTF8.self), "RIFF")
+            XCTAssertEqual(String(decoding: wav[8..<12], as: UTF8.self), "WAVE")
+            XCTAssertEqual(String(decoding: wav[36..<40], as: UTF8.self), "data")
+        }
+        XCTAssertGreaterThan(peaks[.start]!, peaks[.stop]!, "the stop cue is softer")
+        XCTAssertGreaterThan(crossings[.start]!, crossings[.stop]!, "and lower")
+    }
+
+    func testSoundsAreOnByDefaultAndPersist() {
+        let d = defaults()
+        XCTAssertTrue(DictationSettings(defaults: d).sounds)
+        DictationSettings(defaults: d).sounds = false
+        XCTAssertFalse(DictationSettings(defaults: d).sounds)
+        XCTAssertEqual(d.object(forKey: "dictationSounds") as? Bool, false)
+    }
+
+    func testThePermissionRowSaysWhetherFnSpaceIsActive() {
+        let ready = SettingsDictationSection.permissionDetail(fnSpaceReady: true)
+        let missing = SettingsDictationSection.permissionDetail(fnSpaceReady: false)
+        XCTAssertTrue(ready.contains("Fn + Space"), ready)
+        XCTAssertTrue(missing.contains("Fn + Space") && missing.contains("⌃⌥⌘D"), missing)
+        XCTAssertNotEqual(ready, missing)
+        XCTAssertEqual(SettingsDictationSection.accessibilityPane.absoluteString,
+                       "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+    }
+
     // MARK: hot key ids
 
     /// Every key the app registers through `CarbonRegistrar` shares the signature 'VRHQ' and one action table keyed by id, so
@@ -711,11 +959,13 @@ final class DictationTests: XCTestCase {
         let settings = DictationSettings(defaults: defaults(), preferredLanguages: ["en"])
         settings.enabled = true
         let made = Box<[FakeTranscriber]>([])
+        let ticker = FakeTicker()
         let dictation = DictationController(settings: settings, registrar: reg, keyTap: FakeKeyTap(), makeTranscriber: {
             let t = FakeTranscriber()
             made.value.append(t)
             return t
-        }, inserter: FakeInserter(), notifier: FakeNotifier(), log: { _ in })
+        }, inserter: FakeInserter(), notifier: FakeNotifier(), sounds: FakeSounds(),
+           accessibility: FakeAccessibility(trusted: true), ticker: { ticker.make($0, $1) }, log: { _ in })
         dictation.activate()
 
         let ids = reg.live.values.map(\.id)

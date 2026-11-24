@@ -49,8 +49,20 @@ public protocol DictationNotifying: AnyObject {
 /// where the keyboard focus is. Toggle only. It never runs while a meeting or another run is active and never starts one; a run
 /// that starts while it records cancels it (`observeRuns`). Both keys exist only while the feature is on: ⌃⌥⌘D is a Carbon hot
 /// key (no permission), Fn + Space an event tap (`FnSpaceEventTap`, needs Accessibility; without it only ⌃⌥⌘D works).
+///
+/// When the permission is missing, the controller asks for it once per launch (the system's Accessibility prompt) and then
+/// retries the tap every `permissionPollInterval` until it is granted, so Fn + Space starts working without a relaunch.
+///
+/// Cues: a short drum-like sound once the microphone is actually open, a lower, softer one when the second press is taken
+/// (`DictationSound`, setting `sounds`). Never while a run is active (dictation cannot run then anyway; the check stays so a
+/// cue can never reach a call Verse is listening to), and none on a cancel or a failure (the notice says what happened).
 @MainActor
 public final class DictationController: ObservableObject {
+    /// Calls `tick` every `interval` seconds until the returned token is cancelled. The app's is a main run loop `Timer`.
+    public typealias Ticker = @MainActor (_ interval: TimeInterval, _ tick: @escaping @MainActor @Sendable () -> Void) -> AnyCancellable
+
+    /// How often the missing Accessibility permission is checked again.
+    public static let permissionPollInterval: TimeInterval = 2
     /// The hot key's id in the shared Carbon handler (`CarbonRegistrar`, signature 'VRHQ'). `GlobalHotKeys` uses 1...7 and 9 under
     /// the same signature, and the registrar's action table is keyed by id alone, so the id must be none of theirs (it was 3,
     /// the earlier-answer key's id: a call's ⌥⌘← took over ⌃⌥⌘D's action and removed it when the call ended).
@@ -82,7 +94,16 @@ public final class DictationController: ObservableObject {
     private let makeTranscriber: @MainActor () -> any DictationTranscribing
     private let inserter: any DictationTextInserting
     private let notifier: any DictationNotifying
+    private let sounds: any DictationSoundPlaying
+    private let accessibility: any AccessibilityTrust
+    private let ticker: Ticker
     private let log: (String) -> Void
+
+    /// The system's Accessibility prompt was shown in this launch (it is shown at most once per launch).
+    private(set) var promptedThisLaunch = false
+    /// The retry timer while Fn + Space waits for the permission.
+    private var permissionWatch: AnyCancellable?
+    var isWatchingPermission: Bool { permissionWatch != nil }
 
     private var activated = false
     private var token: Int?
@@ -99,6 +120,8 @@ public final class DictationController: ObservableObject {
                 keyTap: (any DictationKeyTap)? = nil,
                 makeTranscriber: (@MainActor () -> any DictationTranscribing)? = nil,
                 inserter: (any DictationTextInserting)? = nil, notifier: (any DictationNotifying)? = nil,
+                sounds: (any DictationSoundPlaying)? = nil, accessibility: (any AccessibilityTrust)? = nil,
+                ticker: Ticker? = nil,
                 log: @escaping (String) -> Void = { FileLog.shared.write($0) }) {
         self.settings = settings
         self.registrar = registrar ?? CarbonRegistrar()
@@ -106,7 +129,18 @@ public final class DictationController: ObservableObject {
         self.makeTranscriber = makeTranscriber ?? { AppleDictationTranscriber() }
         self.inserter = inserter ?? PasteboardTextInserter()
         self.notifier = notifier ?? DictationHUD()
+        self.sounds = sounds ?? SynthDictationSoundPlayer()
+        self.accessibility = accessibility ?? SystemAccessibilityTrust()
+        self.ticker = ticker ?? Self.timerTicker
         self.log = log
+    }
+
+    /// A repeating `Timer` on the main run loop (common modes, so it also fires while a menu is open).
+    static func timerTicker(_ interval: TimeInterval, _ tick: @escaping @MainActor @Sendable () -> Void) -> AnyCancellable {
+        let timer = Timer(timeInterval: interval, repeats: true) { _ in MainActor.assumeIsolated { tick() } }
+        timer.tolerance = interval / 4
+        RunLoop.main.add(timer, forMode: .common)
+        return AnyCancellable { timer.invalidate() }
     }
 
     public var isRecording: Bool { phase == .recording }
@@ -142,7 +176,7 @@ public final class DictationController: ObservableObject {
             hotKeyRefused = token == nil
             log(token == nil ? "dictation: \(Self.hotKeyLabel) is taken by another app" : "dictation: \(Self.hotKeyLabel) registered")
             // `$enabled` sends the new value before the property changes: pass it on.
-            installFnSpace(enabled: true)
+            installFnSpace(enabled: true, mayPrompt: true)
         } else {
             if let t = token {
                 registrar.unregister(t)
@@ -157,27 +191,66 @@ public final class DictationController: ObservableObject {
             }
             fnSpaceActive = false
             fnSpaceUnavailable = false
+            stopPermissionWatch()
             cancelCurrent(notice: nil)
         }
     }
 
     /// Installs Fn + Space when the feature is on and it is not live yet (the permission may have been granted since the last
-    /// try). Called when the feature turns on, when Settings shows the dictation section, and at every press of a dictation key.
-    /// Never shows a permission prompt, so it is safe at any time, also during a call.
-    public func refreshFnSpace() { installFnSpace(enabled: settings.enabled) }
+    /// try). Called when the feature turns on, when Settings shows the dictation section, at every press of a dictation key and
+    /// by the permission watch. A press never shows the permission prompt (⌃⌥⌘D behaves as without the watch); the other
+    /// callers may, once per launch and never while a run is active or a dictation is under way.
+    public func refreshFnSpace() { installFnSpace(enabled: settings.enabled, mayPrompt: true) }
 
-    private func installFnSpace(enabled: Bool) {
+    private func installFnSpace(enabled: Bool, mayPrompt: Bool) {
         guard activated, enabled, !fnSpaceActive else { return }
         let ok = keyTap.install { [weak self] in
             Task { await self?.press() }
         }
         fnSpaceActive = ok
         if ok {
-            log("dictation: \(Self.fnSpaceLabel) installed")
-        } else if !fnSpaceUnavailable {
-            log("dictation: \(Self.fnSpaceLabel) unavailable (no Accessibility permission); \(Self.hotKeyLabel) only")
+            log(permissionWatch == nil ? "dictation: \(Self.fnSpaceLabel) installed"
+                                       : "dictation: \(Self.fnSpaceLabel) available now (Accessibility granted), installed")
+            stopPermissionWatch()
+        } else {
+            if !fnSpaceUnavailable {
+                log("dictation: \(Self.fnSpaceLabel) unavailable (no Accessibility permission); \(Self.hotKeyLabel) only")
+            }
+            if mayPrompt { promptForPermissionIfDue() }
+            startPermissionWatch()
         }
         fnSpaceUnavailable = !ok
+    }
+
+    // MARK: Accessibility permission
+
+    /// The system's Accessibility prompt, once per launch, and only while nothing listens: not during a run, not during a
+    /// dictation. Also marks the setting the insertion path reads, so a dictation's paste does not show the prompt a second time.
+    private func promptForPermissionIfDue() {
+        guard !promptedThisLaunch, phase == .idle, !isRunActive() else { return }
+        promptedThisLaunch = true
+        settings.accessibilityPrompted = true
+        log("dictation: asking for the Accessibility permission (\(Self.fnSpaceLabel))")
+        _ = accessibility.isTrusted(prompt: true)
+    }
+
+    private func startPermissionWatch() {
+        guard permissionWatch == nil else { return }
+        permissionWatch = ticker(Self.permissionPollInterval) { [weak self] in self?.permissionTick() }
+    }
+
+    private func stopPermissionWatch() {
+        permissionWatch?.cancel()
+        permissionWatch = nil
+    }
+
+    /// One retry: the tap installs the moment the permission is there (`FnSpaceEventTap.install` checks it without a prompt).
+    private func permissionTick() {
+        guard activated, settings.enabled, !fnSpaceActive else {
+            stopPermissionWatch()
+            return
+        }
+        installFnSpace(enabled: true, mayPrompt: true)
     }
 
     // MARK: runs
@@ -202,7 +275,7 @@ public final class DictationController: ObservableObject {
 
     /// One press of a dictation key (Fn + Space or ⌃⌥⌘D): idle starts, recording stops and inserts. Presses while finalising or inserting are ignored.
     public func press() async {
-        refreshFnSpace()
+        installFnSpace(enabled: settings.enabled, mayPrompt: false)
         switch phase {
         case .idle: await startRecording()
         case .recording: await finishRecording()
@@ -236,7 +309,18 @@ public final class DictationController: ObservableObject {
         }
         // A run that started while the microphone was opening cancels now (its own observer found nothing to cancel then,
         // or did: then this dictation is already over).
-        if generation == mine, isRunActive() { runBecameActive() }
+        if generation == mine, isRunActive() {
+            runBecameActive()
+            return
+        }
+        // The microphone is open now: the start cue. Not when the second press came while it was opening (the stop cue
+        // follows instead) or the dictation is already over.
+        if generation == mine, phase == .recording { cue(.start) }
+    }
+
+    private func cue(_ sound: DictationSound) {
+        guard settings.sounds, !isRunActive() else { return }
+        sounds.play(sound)
     }
 
     private func finishRecording() async {
@@ -249,6 +333,8 @@ public final class DictationController: ObservableObject {
         // Still opening: wait for it. A failure to open is reported by the start.
         do { try await beginTask?.value } catch { return }
         guard generation == mine else { return }
+        // The stop cue at once, not after the engine has settled the last words (that can take a moment).
+        cue(.stop)
         let text: String
         do {
             text = try await t.finish()

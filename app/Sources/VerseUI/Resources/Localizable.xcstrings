@@ -1622,6 +1622,22 @@
         }
       }
     },
+    "A short drum when listening starts, a softer one when it stops.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un breve colpo di tamburo quando inizia l’ascolto, uno più tenue quando si ferma."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dinleme başlarken kısa bir davul sesi, dururken daha yumuşak bir ses."
+          }
+        }
+      }
+    },
     "A spoken mock interview, built from a meeting you prepared or from a job posting.": {
       "localizations": {
         "it": {
@@ -4335,6 +4351,22 @@
         }
       }
     },
+    "Dictation sounds": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suoni della dettatura"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikte sesleri"
+          }
+        }
+      }
+    },
     "Dictation stopped: Verse started listening": {
       "localizations": {
         "it": {
@@ -5169,6 +5201,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ad en az bir karakter içermeli."
+          }
+        }
+      }
+    },
+    "Granted: %@ is active.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concesso: %@ è attivo."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verildi: %@ etkin."
           }
         }
       }
@@ -8009,6 +8057,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Açık: mikrofonun duyduğu soru için kart görünür. Kapalı: yalnızca ⌥⌘↩ kart ister. Oda modu, Mac’in yanında hoparlörlü bir görüşmedir."
+          }
+        }
+      }
+    },
+    "Once it is granted, %@ works within a few seconds; no restart needed.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una volta concesso, %@ funziona entro pochi secondi, senza riavviare."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin verildiğinde %@ birkaç saniye içinde çalışır; yeniden başlatmak gerekmez."
           }
         }
       }

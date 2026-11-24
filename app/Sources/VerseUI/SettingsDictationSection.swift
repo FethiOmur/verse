@@ -2,13 +2,15 @@ import AppKit
 import ApplicationServices
 import SwiftUI
 
-/// Settings > Dictation: the on/off switch, the two keys (Fn + Space and ⌃⌥⌘D), the dictation language, and what keeps it from
-/// working (⌃⌥⌘D held by another app, the missing Accessibility permission, which Fn + Space and typing both need).
+/// Settings > Dictation: the on/off switch, the two keys (Fn + Space and ⌃⌥⌘D), the dictation language, the start/stop sounds,
+/// and the Accessibility permission (granted, or missing with the way to System Settings: Fn + Space and typing both need it),
+/// plus ⌃⌥⌘D held by another app.
 struct SettingsDictationSection: View {
     @ObservedObject var dictation: DictationController
     @ObservedObject private var settings: DictationSettings
     /// Read when the page appears (and after the switch is turned on); granting it in System Settings shows on the next visit.
     @State private var accessibilityTrusted = true
+    @Environment(\.homeInk) private var ink
 
     init(dictation: DictationController) {
         self.dictation = dictation
@@ -38,6 +40,13 @@ struct SettingsDictationSection: View {
         L10n.tr("Missing: dictated text goes to the clipboard instead of being typed, and \(DictationController.fnSpaceLabel) does not work (\(DictationController.hotKeyLabel) does).")
     }
 
+    /// The permission row's line: granted (Fn + Space is live), or what is missing and that granting it is enough.
+    static func permissionDetail(fnSpaceReady: Bool) -> String {
+        let fn = DictationController.fnSpaceLabel
+        if fnSpaceReady { return L10n.tr("Granted: \(fn) is active.") }
+        return accessibilityDetail + " " + L10n.tr("Once it is granted, \(fn) works within a few seconds; no restart needed.")
+    }
+
     var body: some View {
         HomeGroup {
             HomeToggleRow("Dictation", verbatimDetail: Self.status(hotKeyRefused: dictation.hotKeyRefused,
@@ -54,18 +63,31 @@ struct SettingsDictationSection: View {
                           options: DictationSettings.languages.map { HomeOption(verbatim: StartRoutes.languageName($0), $0) })
             }
             .disabled(!settings.enabled)
-            if settings.enabled && (!accessibilityTrusted || dictation.fnSpaceUnavailable) {
+            HomeRowDivider()
+            HomeToggleRow("Dictation sounds", detail: "A short drum when listening starts, a softer one when it stops.",
+                          isOn: $settings.sounds)
+                .disabled(!settings.enabled)
+            if settings.enabled {
+                let ready = accessibilityTrusted && dictation.fnSpaceActive
                 HomeRowDivider()
-                HomeRow("Accessibility permission", verbatimDetail: Self.accessibilityDetail) {
-                    HomeSecondaryButton("Open System Settings…") { NSWorkspace.shared.open(Self.accessibilityPane) }
+                HomeRow("Accessibility permission", verbatimDetail: Self.permissionDetail(fnSpaceReady: ready)) {
+                    if ready {
+                        Image(systemName: "checkmark.circle.fill").font(.system(size: 13)).foregroundStyle(ink.secondary)
+                            .accessibilityHidden(true)
+                    } else {
+                        HomeSecondaryButton("Open System Settings…") { NSWorkspace.shared.open(Self.accessibilityPane) }
+                    }
                 }
             }
         }
         .onAppear { refresh() }
         .onChange(of: settings.enabled) { refresh() }
+        // The controller's permission watch installs Fn + Space the moment the permission is granted: follow it here.
+        .onChange(of: dictation.fnSpaceActive) { accessibilityTrusted = AXIsProcessTrusted() }
     }
 
-    /// Reads the permission (no prompt) and installs Fn + Space if it was granted since.
+    /// Reads the permission and installs Fn + Space if it was granted since (the controller may show the system prompt, once
+    /// per launch, if it has not yet).
     private func refresh() {
         accessibilityTrusted = AXIsProcessTrusted()
         dictation.refreshFnSpace()
