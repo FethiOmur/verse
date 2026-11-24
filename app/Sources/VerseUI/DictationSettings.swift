@@ -7,7 +7,7 @@ import Foundation
 public final class DictationSettings: ObservableObject {
     /// The languages dictation can listen in: the on-device Apple engines (`EngineFactory.defaultKind`: `SpeechTranscriber` for
     /// en/it, `DictationTranscriber` for tr).
-    public static let languages = ["en", "it", "tr"]
+    nonisolated public static let languages = ["en", "it", "tr"]
 
     /// The language a first dictation uses: the first of the system's preferred languages (`tr-TR`, `en-GB`, …) that dictation
     /// can listen in, else English.
@@ -29,6 +29,13 @@ public final class DictationSettings: ObservableObject {
     @Published public var accessibilityPrompted: Bool { didSet { defaults.set(accessibilityPrompted, forKey: "dictationAXPrompted") } }
     /// The short start and stop cues (`DictationSound`). On by default.
     @Published public var sounds: Bool { didSet { defaults.set(sounds, forKey: "dictationSounds") } }
+
+    /// Hold to talk (gap G8): Fn + Space held at least `DictationHoldToTalk.threshold` stops on release; a short press still
+    /// toggles. ⌃⌥⌘D always toggles. On by default.
+    @Published public var holdToTalk: Bool { didSet { defaults.set(holdToTalk, forKey: "dictationHoldToTalk") } }
+    /// Press Return after inserting (gap G9): one Return goes to the app in front after a dictation's text was pasted (sends
+    /// the message in chat apps). Never after "Paste last dictation" or a paste that went nowhere. Off by default.
+    @Published public var pressReturnAfterInsert: Bool { didSet { defaults.set(pressReturnAfterInsert, forKey: "dictationPressReturn") } }
 
     /// The small recording indicator at the top of the screen while a dictation is under way (gap G5). On by default.
     @Published public var showIndicator: Bool { didSet { defaults.set(showIndicator, forKey: "dictationIndicator") } }
@@ -57,6 +64,30 @@ public final class DictationSettings: ObservableObject {
 
     public var vocabularyTerms: [String] { Self.terms(fromVocabulary: vocabulary) }
 
+    /// Corrections as typed in Settings: one "heard -> wanted" per line (gap G11), applied to every dictation's final text
+    /// in every language. `correctionList` is what is applied.
+    @Published public var corrections: String { didSet { defaults.set(corrections, forKey: "dictationCorrections") } }
+
+    public var correctionList: [DictationCorrection] { DictationCorrections.parse(corrections) }
+
+    /// Smart spacing and capitalisation (gap G13): the text is adjusted to the text around the caret when the field can be
+    /// read (`DictationSmartInsertion`). On by default.
+    @Published public var smartInsertion: Bool { didSet { defaults.set(smartInsertion, forKey: "dictationSmartInsertion") } }
+
+    /// Per-app language (gap G12): bundle id -> language code. A dictation that starts while that app is in front listens in
+    /// that language; any other app uses `language`.
+    @Published public var appLanguages: [String: String] { didSet { defaults.set(appLanguages, forKey: "dictationAppLanguages") } }
+
+    /// Sets (or with nil clears) the language used whenever the app with `bundleID` is in front.
+    public func setLanguage(_ lang: String?, forApp bundleID: String) {
+        if let lang, Self.languages.contains(lang) { appLanguages[bundleID] = lang } else { appLanguages[bundleID] = nil }
+    }
+
+    /// The language a dictation started now would listen in, with the app `bundleID` in front.
+    public func language(forApp bundleID: String?) -> String {
+        DictationLanguageChoice.resolve(defaultLanguage: language, perApp: appLanguages, bundleID: bundleID)
+    }
+
     public init(defaults: UserDefaults? = nil, preferredLanguages: [String] = Locale.preferredLanguages) {
         let d = defaults ?? (Bundle.main.bundleIdentifier == AppSettings.suiteName ? .standard
                                                                                  : UserDefaults(suiteName: AppSettings.suiteName) ?? .standard)
@@ -67,8 +98,14 @@ public final class DictationSettings: ObservableObject {
         language = Self.languages.contains(stored) ? stored : fallback
         accessibilityPrompted = d.bool(forKey: "dictationAXPrompted")
         sounds = d.object(forKey: "dictationSounds") as? Bool ?? true
+        holdToTalk = d.object(forKey: "dictationHoldToTalk") as? Bool ?? true
+        pressReturnAfterInsert = d.bool(forKey: "dictationPressReturn")
         showIndicator = d.object(forKey: "dictationIndicator") as? Bool ?? true
         indicatorLiveText = d.object(forKey: "dictationIndicatorLiveText") as? Bool ?? true
         vocabulary = d.string(forKey: "dictationVocabulary") ?? ""
+        corrections = d.string(forKey: "dictationCorrections") ?? ""
+        smartInsertion = d.object(forKey: "dictationSmartInsertion") as? Bool ?? true
+        let apps = d.dictionary(forKey: "dictationAppLanguages") as? [String: String] ?? [:]
+        appLanguages = apps.filter { Self.languages.contains($0.value) }
     }
 }

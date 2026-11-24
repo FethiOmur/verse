@@ -2,8 +2,9 @@ import AppKit
 import ApplicationServices
 import SwiftUI
 
-/// Settings > Dictation: the on/off switch, the two keys (Fn + Space and ⌃⌥⌘D) and Esc, the dictation language, the
-/// start/stop sounds, the recording indicator (and its live text), the vocabulary, and the Accessibility permission (granted, or missing with the way to System Settings: Fn + Space and typing both need it),
+/// Settings > Dictation: the on/off switch, the two keys (Fn + Space and ⌃⌥⌘D) and Esc, hold to talk, Return after inserting, the dictation language, the
+/// start/stop sounds, the recording indicator (and its live text), the vocabulary, the corrections (G11), smart spacing and
+/// capitalisation (G13), the per-app languages set from the menu (G12), and the Accessibility permission (granted, or missing with the way to System Settings: Fn + Space and typing both need it),
 /// plus ⌃⌥⌘D held by another app.
 struct SettingsDictationSection: View {
     @ObservedObject var dictation: DictationController
@@ -37,6 +38,11 @@ struct SettingsDictationSection: View {
             + " " + escapeDetail
     }
 
+    /// Hold to talk (gap G8): Fn + Space held stops on release; ⌃⌥⌘D stays a toggle.
+    static var holdToTalkDetail: String {
+        L10n.tr("Hold \(DictationController.fnSpaceLabel) while you speak and let go to stop. A short press starts, the next press stops; \(DictationController.hotKeyLabel) always works that way.")
+    }
+
     /// Esc cancels through the Fn + Space event tap only: without the Accessibility permission there is no Esc cancel.
     static var escapeDetail: String {
         L10n.tr("Esc cancels a dictation under way, nothing is typed. Like \(DictationController.fnSpaceLabel), it needs the Accessibility permission.")
@@ -50,6 +56,29 @@ struct SettingsDictationSection: View {
         }
         return what + " " + L10n.tr("Only Turkish dictation uses them: the English and Italian engine ignores them.")
     }
+
+    /// The corrections field's help (gap G11).
+    static var correctionsDetail: String {
+        L10n.tr("Fix words dictation keeps getting wrong, one per line as “heard -> wanted”. Whole words only, any capitalisation, in every language (up to \(DictationCorrections.cap)).")
+    }
+
+    /// The per-app languages' help (gap G12).
+    static var appLanguagesDetail: String {
+        L10n.tr("Set in the menu bar: Dictation language › Always use … in the app in front. Dictation listens in that language whenever the app is in front.")
+    }
+
+    /// An app's name from its bundle id, else the bundle id. Looked up once per bundle id: the view body asks on every render.
+    @MainActor static func appName(bundleID: String) -> String {
+        if let known = appNames[bundleID] { return known }
+        var name = bundleID
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+            let display = FileManager.default.displayName(atPath: url.path)
+            name = display.hasSuffix(".app") ? String(display.dropLast(4)) : display
+        }
+        appNames[bundleID] = name
+        return name
+    }
+    @MainActor private static var appNames: [String: String] = [:]
 
     static var accessibilityDetail: String {
         L10n.tr("Missing: dictated text goes to the clipboard instead of being typed, and \(DictationController.fnSpaceLabel) does not work (\(DictationController.hotKeyLabel) does).")
@@ -72,6 +101,14 @@ struct SettingsDictationSection: View {
                 HomeSecondaryButton("Keyboard Settings…") { NSWorkspace.shared.open(Self.keyboardPane) }
             }
             .disabled(!settings.enabled)
+            HomeRowDivider()
+            HomeToggleRow("Hold to talk", verbatimDetail: Self.holdToTalkDetail, isOn: $settings.holdToTalk)
+                .disabled(!settings.enabled)
+            HomeRowDivider()
+            HomeToggleRow("Press Return after inserting",
+                          detail: "After the text is pasted, Return is pressed too, so a chat message is sent. Not after “Paste last dictation”, and not in a terminal, where it would run the text as a command.",
+                          isOn: $settings.pressReturnAfterInsert)
+                .disabled(!settings.enabled)
             HomeRowDivider()
             HomeRow("Dictation language") {
                 HomePopup(selection: $settings.language,
@@ -101,6 +138,32 @@ struct SettingsDictationSection: View {
             }
             .padding(14)
             .disabled(!settings.enabled)
+            HomeRowDivider()
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Corrections", bundle: .module).font(VT.Font.body).foregroundStyle(ink.primary)
+                Text(verbatim: Self.correctionsDetail)
+                    .font(VT.Font.caption).foregroundStyle(ink.tertiary).fixedSize(horizontal: false, vertical: true)
+                HomeTextArea(text: $settings.corrections, placeholder: "heard -> wanted", minHeight: 54)
+            }
+            .padding(14)
+            .disabled(!settings.enabled)
+            HomeRowDivider()
+            HomeToggleRow("Smart spacing and capitalisation",
+                          detail: "Adds a space, lower-cases the first word mid-sentence and drops a stray final period, from the text around the cursor. Apps whose text cannot be read get the text as it is.",
+                          isOn: $settings.smartInsertion)
+                .disabled(!settings.enabled)
+            if !settings.appLanguages.isEmpty {
+                HomeRowDivider()
+                HomeRow("Per-app languages", verbatimDetail: Self.appLanguagesDetail) { EmptyView() }
+                ForEach(settings.appLanguages.keys.sorted(), id: \.self) { bundleID in
+                    HomeRow(verbatim: Self.appName(bundleID: bundleID),
+                            detail: StartRoutes.languageName(settings.appLanguages[bundleID] ?? settings.language)) {
+                        HomeSecondaryButton("Remove") { settings.setLanguage(nil, forApp: bundleID) }
+                    }
+                    .padding(.leading, 16)
+                }
+                .disabled(!settings.enabled)
+            }
             if settings.enabled {
                 let ready = accessibilityTrusted && dictation.fnSpaceActive
                 HomeRowDivider()

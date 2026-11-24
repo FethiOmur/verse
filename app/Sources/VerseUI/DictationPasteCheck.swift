@@ -2,8 +2,9 @@ import AppKit
 import ApplicationServices
 import Foundation
 
-/// What the keyboard focus looked like at one moment, as far as the Accessibility API tells (gap G2). Only shapes and counts,
-/// never the text itself: the character count, the selection and a length are enough to see that a paste changed the field.
+/// What the keyboard focus looked like at one moment, as far as the Accessibility API tells (gap G2). For the paste check only
+/// shapes and counts: the character count, the selection and a length are enough to see that a paste changed the field. The
+/// text around the caret is read only when asked for (smart insertion, gap G13), only before the paste, and never logged.
 public struct DictationFocusSnapshot: Sendable, Equatable {
     public enum Kind: Sendable, Equatable {
         /// The Accessibility API did not answer (no front app, timeout, the app does not support it).
@@ -32,10 +33,19 @@ public struct DictationFocusSnapshot: Sendable, Equatable {
     public var selectionLength: Int?
     /// The value's length, read only when the character count is not available.
     public var valueLength: Int?
+    /// The text right before the caret (before the selection, which a paste replaces) and right after it (after the
+    /// selection), at most `contextLength` UTF-16 units each; "" at the start or end of the field. Read only when asked for,
+    /// only from a native, editable, readable, non-secure field; both nil when either side could not be read.
+    public var textBefore: String?
+    public var textAfter: String?
+
+    /// How much context smart insertion reads on each side of the caret.
+    public static let contextLength = 64
 
     public init(kind: Kind, role: String? = nil, subrole: String? = nil, editable: Bool = false, web: Bool = false,
                 terminal: Bool = false, chromium: Bool = false, identity: Int? = nil, characterCount: Int? = nil,
-                selectionLocation: Int? = nil, selectionLength: Int? = nil, valueLength: Int? = nil) {
+                selectionLocation: Int? = nil, selectionLength: Int? = nil, valueLength: Int? = nil,
+                textBefore: String? = nil, textAfter: String? = nil) {
         self.kind = kind
         self.role = role
         self.subrole = subrole
@@ -48,6 +58,8 @@ public struct DictationFocusSnapshot: Sendable, Equatable {
         self.selectionLocation = selectionLocation
         self.selectionLength = selectionLength
         self.valueLength = valueLength
+        self.textBefore = textBefore
+        self.textAfter = textAfter
     }
 
     public static let unreadable = DictationFocusSnapshot(kind: .unreadable)
@@ -60,6 +72,13 @@ public struct DictationFocusSnapshot: Sendable, Equatable {
 @MainActor
 public protocol DictationFocusProbing: AnyObject {
     func snapshot() -> DictationFocusSnapshot
+    /// `readingContext`: also read the text around the caret (`textBefore`/`textAfter`), within the same time budget.
+    func snapshot(readingContext: Bool) -> DictationFocusSnapshot
+}
+
+extension DictationFocusProbing {
+    /// A probe that cannot read context (test fakes script it into the snapshot instead).
+    public func snapshot(readingContext: Bool) -> DictationFocusSnapshot { snapshot() }
 }
 
 /// Whether a paste landed (gap G2, after TypeWhisper's paste verification: 10 polls at 50 ms after ⌘V).
@@ -186,12 +205,20 @@ final class SystemFocusProbe: DictationFocusProbing {
     private var chromiumByBundle: [String: Bool] = [:]
     private var deadline: TimeInterval = 0
     private var overBudget = false
+    private var readingContext = false
 
-    func snapshot() -> DictationFocusSnapshot {
+    func snapshot() -> DictationFocusSnapshot { snapshot(readingContext: false) }
+
+    func snapshot(readingContext: Bool) -> DictationFocusSnapshot {
         deadline = ProcessInfo.processInfo.systemUptime + Self.budget
         overBudget = false
+        self.readingContext = readingContext
         var s = probe()
-        if overBudget { s.kind = .unreadable }
+        if overBudget {
+            s.kind = .unreadable
+            s.textBefore = nil
+            s.textAfter = nil
+        }
         return s
     }
 
@@ -242,8 +269,58 @@ final class SystemFocusProbe: DictationFocusProbing {
                 s.selectionLength = range.length
             }
         }
-        if s.characterCount == nil, let value = read(el, kAXValueAttribute) as? String { s.valueLength = value.utf16.count }
+        var value: String?
+        if s.characterCount == nil, let v = read(el, kAXValueAttribute) as? String {
+            value = v
+            s.valueLength = v.utf16.count
+        }
+        if readingContext {
+            readContext(el, into: &s, value: value)
+            // Only the context read ran over: the paste-check fields above are complete, so keep them (the paste is still
+            // polled) and insert the text as it is.
+            if overBudget {
+                overBudget = false
+                s.textBefore = nil
+                s.textAfter = nil
+            }
+        }
         return s
+    }
+
+    /// Smart insertion's context (gap G13): the text before the selection's start and after its end, by range
+    /// (`kAXStringForRangeParameterizedAttribute`), else cut from the value. Both sides or neither.
+    private func readContext(_ el: AXUIElement, into s: inout DictationFocusSnapshot, value known: String?) {
+        guard let loc = s.selectionLocation, let len = s.selectionLength, loc >= 0, len >= 0 else { return }
+        let n = DictationFocusSnapshot.contextLength
+        let end = loc + len
+        var value = known
+        func whole() -> NSString? {
+            if value == nil { value = read(el, kAXValueAttribute) as? String }
+            return value.map { $0 as NSString }
+        }
+        func text(_ location: Int, _ length: Int) -> String? {
+            guard length > 0 else { return "" }
+            if let r = stringForRange(el, location: location, length: length) { return r }
+            guard let v = whole(), location + length <= v.length else { return nil }
+            return v.substring(with: NSRange(location: location, length: length))
+        }
+        let total = s.characterCount ?? s.valueLength ?? whole()?.length
+        guard let total, end <= total else { return }
+        let start = max(0, loc - n)
+        guard let before = text(start, loc - start), let after = text(end, min(n, total - end)) else { return }
+        s.textBefore = before
+        s.textAfter = after
+    }
+
+    /// `kAXStringForRangeParameterizedAttribute`, within the snapshot's budget; nil when unsupported or failed.
+    private func stringForRange(_ el: AXUIElement, location: Int, length: Int) -> String? {
+        guard ProcessInfo.processInfo.systemUptime < deadline else { overBudget = true; return nil }
+        var range = CFRange(location: location, length: length)
+        guard let param = AXValueCreate(.cfRange, &range) else { return nil }
+        var ref: CFTypeRef?
+        guard AXUIElementCopyParameterizedAttributeValue(el, kAXStringForRangeParameterizedAttribute as CFString, param, &ref) == .success
+        else { return nil }
+        return ref as? String
     }
 
     /// One attribute: its value, `kCFNull` when the element has none, nil when the call failed (timeout, app gone) or the

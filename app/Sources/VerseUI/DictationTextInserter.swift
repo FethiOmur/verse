@@ -7,6 +7,9 @@ import Foundation
 public enum DictationInsertOutcome: String, Sendable, Equatable {
     /// Pasted into the app in front.
     case pasted
+    /// Pasted into a terminal, where the paste cannot be checked. Like `.pasted`, except that Return is never pressed after
+    /// it: there it would run the dictated (possibly misheard) text as a command.
+    case pastedIntoTerminal
     /// No Accessibility permission: the text was left on the clipboard for the owner to paste.
     case copiedToClipboard
     /// Nothing to insert.
@@ -19,11 +22,33 @@ public enum DictationInsertOutcome: String, Sendable, Equatable {
     case notInsertedClipboardChanged
 }
 
+/// Smart spacing and capitalisation for one insertion (gap G13): the dictation language and the words whose case is kept.
+public struct DictationInsertFormatting: Sendable, Equatable {
+    public var language: String
+    /// Vocabulary terms (names): never lower-cased mid-sentence.
+    public var keepCase: [String]
+    public init(language: String, keepCase: [String] = []) {
+        self.language = language
+        self.keepCase = keepCase
+    }
+}
+
 /// Puts dictated text where the keyboard focus is.
 @MainActor
 public protocol DictationTextInserting: AnyObject {
     /// `mayPromptForPermission`: when the Accessibility permission is missing, ask the system to show its prompt.
     func insert(_ text: String, mayPromptForPermission: Bool) async -> DictationInsertOutcome
+    /// The same, with smart insertion when `formatting` is set: the text is adjusted to the text around the caret, if the
+    /// field can be read, before it is pasted.
+    func insert(_ text: String, mayPromptForPermission: Bool, formatting: DictationInsertFormatting?) async -> DictationInsertOutcome
+}
+
+extension DictationTextInserting {
+    /// An inserter without smart insertion inserts the text as it is.
+    public func insert(_ text: String, mayPromptForPermission: Bool,
+                       formatting: DictationInsertFormatting?) async -> DictationInsertOutcome {
+        await insert(text, mayPromptForPermission: mayPromptForPermission)
+    }
 }
 
 /// The Accessibility permission check (`AXIsProcessTrusted`). Fake in tests.
@@ -70,6 +95,10 @@ public protocol PasteKeystroke: AnyObject {
 /// `SystemFocusProbe.budget` plus one message timeout for a slow one) and polled after it (`DictationPasteCheck`, at most 10 × 50 ms, inside the restore delay, so
 /// the restore keeps its timing). A miss leaves the text on the clipboard (no longer marked transient: the owner needs it),
 /// skips the restore and returns `.notInserted`; delivered and unverifiable behave as before.
+///
+/// Smart insertion (gap G13): with `formatting` set, the same snapshot before the paste also reads the text around the caret
+/// (same probe, same time budget) and `DictationSmartInsertion` adjusts the text to it. That adjusted text is what goes on
+/// the pasteboard, is checked, and stays on the clipboard after a miss. Unreadable context: the text as it is.
 @MainActor
 public final class PasteboardTextInserter: DictationTextInserting {
     /// How long the target app gets to read the pasteboard before the previous contents come back.
@@ -98,15 +127,26 @@ public final class PasteboardTextInserter: DictationTextInserting {
     }
 
     public func insert(_ text: String, mayPromptForPermission: Bool) async -> DictationInsertOutcome {
-        guard !text.isEmpty else { return .nothing }
+        await insert(text, mayPromptForPermission: mayPromptForPermission, formatting: nil)
+    }
+
+    public func insert(_ raw: String, mayPromptForPermission: Bool,
+                       formatting: DictationInsertFormatting?) async -> DictationInsertOutcome {
+        guard !raw.isEmpty else { return .nothing }
         // Without the permission a synthesised key event is dropped silently: leave the text on the clipboard instead.
         guard accessibility.isTrusted(prompt: mayPromptForPermission) else {
-            pasteboard.write(text, transient: false)
+            pasteboard.write(raw, transient: false)
             return .copiedToClipboard
+        }
+        let before = focus.snapshot(readingContext: formatting != nil)
+        var text = raw
+        if let formatting {
+            text = DictationSmartInsertion.format(raw, before: before.textBefore, after: before.textAfter,
+                                                  language: formatting.language, keepCase: formatting.keepCase)
+            if text != raw { log("dictation: smart insertion adjusted the text") }
         }
         let saved = pasteboard.snapshot()
         let ours = pasteboard.write(text, transient: true)
-        let before = focus.snapshot()
         await keystroke.waitForModifierRelease()
         keystroke.postPaste()
 
@@ -139,7 +179,55 @@ public final class PasteboardTextInserter: DictationTextInserting {
         if waited < restoreDelay { await sleep(restoreDelay - waited) }
         // Something copied meanwhile (by the owner or another app) is newer than what was saved: it stays.
         if pasteboard.changeCount == ours { pasteboard.restore(saved) }
-        return .pasted
+        return verdict == .unverifiable(.terminal) ? .pastedIntoTerminal : .pasted
+    }
+}
+
+/// Where an insertion came from.
+public enum DictationInsertSource: Sendable, Equatable {
+    /// A dictation that just ended.
+    case dictation
+    /// The menu's "Paste last dictation".
+    case pasteLast
+}
+
+/// Press Return after inserting (gap G9): the decision, and how long after the paste the Return goes out.
+public enum DictationReturnAfterInsert {
+    /// TypeWhisper posts its Return 50 ms after the insertion.
+    public static let delay: Duration = .milliseconds(50)
+
+    /// One Return only with the setting on, after a dictation (never "Paste last dictation") whose paste was delivered or
+    /// could not be verified (`.pasted`). Never in a terminal (`.pastedIntoTerminal`), when the text ended on the clipboard
+    /// (no permission, or the paste went nowhere) or there was nothing to insert. A cancelled dictation never reaches the
+    /// insertion at all.
+    public static func shouldPress(enabled: Bool, outcome: DictationInsertOutcome, source: DictationInsertSource) -> Bool {
+        enabled && source == .dictation && outcome == .pasted
+    }
+}
+
+/// The synthesised Return key. Fake in tests.
+@MainActor
+public protocol DictationReturnKeyPosting: AnyObject {
+    /// Waits (bounded) until no modifier is held, so the Return does not go out as ⌘Return or ⇧Return.
+    func waitForModifierRelease() async
+    func postReturn()
+}
+
+extension DictationReturnKeyPosting {
+    public func waitForModifierRelease() async {}
+}
+
+/// Return as two HID-level key events with no modifiers (kVK_Return is a physical key position, layout-independent).
+final class CGReturnKeystroke: DictationReturnKeyPosting {
+    func waitForModifierRelease() async { await CGPasteKeystroke.waitForModifierRelease() }
+
+    func postReturn() {
+        let source = CGEventSource(stateID: .hidSystemState)
+        for down in [true, false] {
+            let e = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_Return), keyDown: down)
+            e?.flags = []
+            e?.post(tap: .cghidEventTap)
+        }
     }
 }
 
@@ -190,7 +278,9 @@ final class SystemDictationPasteboard: DictationPasteboard {
 
 /// ⌘V as two HID-level key events. kVK_ANSI_V is a physical key position: V on the US, Italian and Turkish Q layouts.
 final class CGPasteKeystroke: PasteKeystroke {
-    func waitForModifierRelease() async {
+    func waitForModifierRelease() async { await Self.waitForModifierRelease() }
+
+    static func waitForModifierRelease() async {
         // Fn too: the second press of Fn + Space may still be held when the paste goes out.
         let held: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift, .maskSecondaryFn]
         for _ in 0..<50 {   // at most a second

@@ -56,7 +56,8 @@ struct MenuBarLabel: View {
 /// Start (a preview of ⌥⌘V), Start unprepared (⌥⇧⌘V), Prepare, the Session and Audio source submenus. Idle with no meeting: the
 /// same without the info rows. Running: Listening, Stop, Previous answer, Answer the last question, New answer to this question,
 /// Mark the answer bad, Audio source, and the
-/// teleprompter's controls while it is open. Language never appears: every start runs in Settings' call language (Auto).
+/// teleprompter's controls while it is open. The call language never appears: every start runs in Settings' call language
+/// (Auto). Dictation's own language does (gap G12): the "Dictation language" submenu while dictation is on and idle of runs.
 /// Native menu rows are plain text: no colours, no badges.
 struct VerseMenu: View {
     @ObservedObject var controller: VerseController
@@ -74,6 +75,8 @@ struct VerseMenu: View {
         Divider()
         // The last dictation, while dictation is on and one is kept (rows and their divider, or nothing).
         DictationMenuItems(dictation: controller.dictation)
+        // Dictation's language and the per-app choice for the app in front (submenu and its divider, or nothing).
+        DictationLanguageMenu(dictation: controller.dictation)
         Button { HomeRouter.shared.show(HomeRouter.shared.page, openWindow: openWindow) } label: { Text("Open Verse", bundle: L10n.bundle) }
         Button {
             HomeRouter.shared.show(.settings, openWindow: openWindow)

@@ -1670,6 +1670,22 @@
         }
       }
     },
+    "After the text is pasted, Return is pressed too, so a chat message is sent. Not after “Paste last dictation”, and not in a terminal, where it would run the text as a command.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dopo che il testo è stato incollato viene premuto anche Invio, così un messaggio di chat viene inviato. Non dopo “Incolla l'ultima dettatura”, né in un terminale, dove eseguirebbe il testo come comando."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Metin yapıştırılınca Return’e de basılır, böylece sohbet mesajı gönderilir. “Son dikteyi yapıştır” sonrasında ve metni komut olarak çalıştıracağı bir terminalde basılmaz."
+          }
+        }
+      }
+    },
     "AI-generated voice": {
       "localizations": {
         "it": {
@@ -5425,6 +5441,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yönetici"
+          }
+        }
+      }
+    },
+    "Hold %@ while you speak and let go to stop. A short press starts, the next press stops; %@ always works that way.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tieni premuto %@ mentre parli e rilascia per fermare. Una pressione breve avvia, la successiva ferma; %@ funziona sempre così."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konuşurken %@ tuşlarını basılı tut, durdurmak için bırak. Kısa basış başlatır, sonraki basış durdurur; %@ hep böyle çalışır."
+          }
+        }
+      }
+    },
+    "Hold to talk": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tieni premuto per parlare"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Basılı tutup konuş"
           }
         }
       }
@@ -9267,6 +9315,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ veya %@ tuşuna bas, konuş, tekrar bas: metin imlecin olduğu yere gider. Cihaz üzerinde; Verse dinlerken asla."
+          }
+        }
+      }
+    },
+    "Press Return after inserting": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premi Invio dopo l’inserimento"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekledikten sonra Return’e bas"
           }
         }
       }
@@ -15695,6 +15759,166 @@
           "stringUnit": {
             "state": "translated",
             "value": "Gösterge şu ana kadar tanınan son kelimeleri gösterir."
+          }
+        }
+      }
+    },
+    "Fix words dictation keeps getting wrong, one per line as “heard -> wanted”. Whole words only, any capitalisation, in every language (up to %lld).": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Correggi le parole che la dettatura sbaglia sempre, una per riga come “sentito -> voluto”. Solo parole intere, maiuscole o minuscole, in ogni lingua (fino a %lld)."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diktenin hep yanlış yazdığı kelimeleri düzelt: her satıra bir tane, “duyulan -> istenen” biçiminde. Yalnızca tam kelimeler, büyük-küçük harf fark etmez, her dilde (en fazla %lld)."
+          }
+        }
+      }
+    },
+    "Set in the menu bar: Dictation language › Always use … in the app in front. Dictation listens in that language whenever the app is in front.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Si imposta dalla barra dei menu: Lingua della dettatura › Usa sempre … nell'app in primo piano. La dettatura ascolta in quella lingua ogni volta che l'app è in primo piano."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Menü çubuğundan ayarlanır: Dikte dili › Öndeki uygulamada her zaman … kullan. O uygulama öndeyken dikte hep o dilde dinler."
+          }
+        }
+      }
+    },
+    "Corrections": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Correzioni"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düzeltmeler"
+          }
+        }
+      }
+    },
+    "heard -> wanted": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sentito -> voluto"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "duyulan -> istenen"
+          }
+        }
+      }
+    },
+    "Smart spacing and capitalisation": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spazi e maiuscole intelligenti"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Akıllı boşluk ve büyük harf"
+          }
+        }
+      }
+    },
+    "Adds a space, lower-cases the first word mid-sentence and drops a stray final period, from the text around the cursor. Apps whose text cannot be read get the text as it is.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In base al testo intorno al cursore aggiunge uno spazio, rende minuscola la prima parola a metà frase e toglie un punto finale di troppo. Le app il cui testo non si può leggere ricevono il testo così com'è."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İmlecin çevresindeki metne bakarak boşluk ekler, cümle ortasında ilk kelimeyi küçük harfle başlatır ve fazladan son noktayı kaldırır. Metni okunamayan uygulamalara metin olduğu gibi gider."
+          }
+        }
+      }
+    },
+    "Per-app languages": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lingue per app"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygulamaya göre diller"
+          }
+        }
+      }
+    },
+    "Default language": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lingua predefinita"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varsayılan dil"
+          }
+        }
+      }
+    },
+    "Always use %@ in %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa sempre %1$@ in %2$@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ uygulamasında her zaman %1$@ kullan"
+          }
+        }
+      }
+    },
+    "Use default in %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa la predefinita in %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ uygulamasında varsayılanı kullan"
           }
         }
       }

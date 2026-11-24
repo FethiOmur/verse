@@ -32,19 +32,22 @@ final class DictationTests: XCTestCase {
         private(set) var installs = 0
         private(set) var removes = 0
         private(set) var onToggle: (@MainActor @Sendable () -> Void)?
+        private(set) var onRelease: (@MainActor @Sendable () -> Void)?
         private(set) var onCancel: (@MainActor @Sendable () -> Void)?
         /// Every change of the Esc arming, in order.
         private(set) var armed: [Bool] = []
         var isInstalled: Bool { onToggle != nil }
-        func install(onToggle: @escaping @MainActor @Sendable () -> Void, onCancel: @escaping @MainActor @Sendable () -> Void) -> Bool {
+        func install(onToggle: @escaping @MainActor @Sendable () -> Void, onRelease: @escaping @MainActor @Sendable () -> Void,
+                     onCancel: @escaping @MainActor @Sendable () -> Void) -> Bool {
             installs += 1
             guard permitted else { return false }
             self.onToggle = onToggle
+            self.onRelease = onRelease
             self.onCancel = onCancel
             return true
         }
         func setCancelArmed(_ on: Bool) { armed.append(on) }
-        func remove() { removes += 1; onToggle = nil; onCancel = nil }
+        func remove() { removes += 1; onToggle = nil; onRelease = nil; onCancel = nil }
     }
 
     struct Boom: Error, CustomStringConvertible { var description: String }
@@ -116,8 +119,15 @@ final class DictationTests: XCTestCase {
     final class FakeInserter: DictationTextInserting {
         var outcome = DictationInsertOutcome.pasted
         private(set) var calls: [(text: String, mayPrompt: Bool)] = []
+        /// The smart-insertion options of each call (gap G13), in order.
+        private(set) var formattings: [DictationInsertFormatting?] = []
         func insert(_ text: String, mayPromptForPermission: Bool) async -> DictationInsertOutcome {
+            await insert(text, mayPromptForPermission: mayPromptForPermission, formatting: nil)
+        }
+        func insert(_ text: String, mayPromptForPermission: Bool,
+                    formatting: DictationInsertFormatting?) async -> DictationInsertOutcome {
             calls.append((text, mayPromptForPermission))
+            formattings.append(formatting)
             return outcome
         }
     }
@@ -226,13 +236,15 @@ final class DictationTests: XCTestCase {
         let history: DictationHistory
         let pasteboard: FakePasteboard
         let frontApp: Box<String?>
+        /// The bundle id of the app in front (gap G12).
+        let frontBundle: Box<String?>
         let indicatorTicker: FakeTicker
         var last: FakeTranscriber? { made.value.last }
     }
 
     /// A controller with every dependency faked. `prepare` configures each transcriber as it is made.
     func rig(enabled: Bool = true, lang: String = "en", inserter: (any DictationTextInserting)? = nil,
-             history: DictationHistory? = nil,
+             history: DictationHistory? = nil, returnKey: (any DictationReturnKeyPosting)? = nil,
              prepare: @escaping (FakeTranscriber) -> Void = { _ in }) -> Rig {
         let settings = DictationSettings(defaults: defaults())
         settings.enabled = enabled
@@ -242,6 +254,7 @@ final class DictationTests: XCTestCase {
         let sounds = FakeSounds(), ax = FakeAccessibility(trusted: false), ticker = FakeTicker(), logs = Box<[String]>([])
         let clock = FakeClock(), store = history ?? DictationHistory(fileURL: nil), pb = FakePasteboard()
         let frontApp = Box<String?>("Notes")
+        let frontBundle = Box<String?>("com.example.notes")
         let indicatorTicker = FakeTicker()
         let c = DictationController(settings: settings, registrar: reg, keyTap: tap, makeTranscriber: {
             let t = FakeTranscriber()
@@ -252,10 +265,11 @@ final class DictationTests: XCTestCase {
         }, inserter: inserter ?? fakeInserter, notifier: notifier, sounds: sounds, accessibility: ax,
            ticker: { ticker.make($0, $1) }, history: store, pasteboard: pb, frontAppName: { frontApp.value },
            now: { clock.t }, sleep: { d in await clock.sleep(d) }, indicatorTicker: { indicatorTicker.make($0, $1) },
-           presentsIndicator: false, log: { logs.value.append($0) })
+           presentsIndicator: false, returnKey: returnKey ?? FakeReturnKey(), frontAppBundleID: { frontBundle.value },
+           frontApp: DictationFrontAppTracker(observe: false), log: { logs.value.append($0) })
         return Rig(controller: c, settings: settings, registrar: reg, keyTap: tap, inserter: fakeInserter, notifier: notifier,
                    made: made, sounds: sounds, ax: ax, ticker: ticker, logs: logs, clock: clock, history: store, pasteboard: pb,
-                   frontApp: frontApp, indicatorTicker: indicatorTicker)
+                   frontApp: frontApp, frontBundle: frontBundle, indicatorTicker: indicatorTicker)
     }
 
     private func waitUntil(_ what: String = "condition", _ cond: () -> Bool) async {
@@ -710,7 +724,8 @@ final class DictationTests: XCTestCase {
         XCTAssertEqual(f.decide(type: .keyDown, keyCode: Self.space, flags: [], isRepeat: true), .swallow,
                        "Fn let go first: the held space still types nothing")
         XCTAssertEqual(f.decide(type: .keyDown, keyCode: 0, flags: [], isRepeat: false), .pass, "other keys meanwhile are untouched")
-        XCTAssertEqual(f.decide(type: .keyUp, keyCode: Self.space, flags: [], isRepeat: false), .swallow)
+        XCTAssertEqual(f.decide(type: .keyUp, keyCode: Self.space, flags: [], isRepeat: false), .release,
+                       "dropped, and the end of the hold is reported (gap G8)")
         XCTAssertFalse(f.swallowing)
         XCTAssertEqual(f.decide(type: .keyUp, keyCode: Self.space, flags: [], isRepeat: false), .pass, "only the one key-up")
         // A plain space afterwards is typed, repeats included.

@@ -58,7 +58,7 @@ public protocol DictationNotifying: AnyObject {
 }
 
 /// Dictation: Fn + Space (or ⌃⌥⌘D) starts recording the microphone, the same key again stops, and the transcript is inserted
-/// where the keyboard focus is. Toggle only. It never runs while a meeting or another run is active and never starts one; a run
+/// where the keyboard focus is. Fn + Space held a while stops on release (hold to talk, below); ⌃⌥⌘D toggles only. It never runs while a meeting or another run is active and never starts one; a run
 /// that starts while it records cancels it (`observeRuns`). Both keys exist only while the feature is on: ⌃⌥⌘D is a Carbon hot
 /// key (no permission), Fn + Space an event tap (`FnSpaceEventTap`, needs Accessibility; without it only ⌃⌥⌘D works).
 ///
@@ -101,6 +101,22 @@ public protocol DictationNotifying: AnyObject {
 ///   below it (`DictationHUD.avoid`).
 /// - Vocabulary (G3): `settings.vocabularyTerms` goes to the transcriber at every start; the Apple transcriber passes it on
 ///   only where the engine honours it (`AppleDictationTranscriber.config`).
+/// - Hold to talk (G8, setting `holdToTalk`, on by default): the Fn + Space key-down starts as before; let go after at least
+///   `DictationHoldToTalk.threshold` (the clock restarting when the microphone opens) it stops through the same path as a
+///   second press (release tail, stop cue after the tail, insertion); let go sooner it stays on until the next press. Only a
+///   press that started the dictation counts; ⌃⌥⌘D stays toggle only; Esc, a run or a failure disarm it.
+/// - Return after inserting (G9, setting `pressReturnAfterInsert`, off by default): one Return `DictationReturnAfterInsert.delay`
+///   after a dictation's paste was delivered or unverifiable (`.pasted`), once no modifier is held, never after "Paste last
+///   dictation", a paste into a terminal (it would run the text), a paste that went nowhere, a clipboard-only insertion or a
+///   cancel, and never while a run is active.
+/// - Corrections (G11): `settings.correctionList` is applied to the cleaned transcript (`DictationCorrections`), in every
+///   language. The corrected text is what the recent list keeps; a transcript the corrections empty is "heard nothing".
+/// - Language (G12): at the start the language is the one set for the app in front (`settings.appLanguages`, by bundle id),
+///   else the default (`DictationLanguageChoice`). It holds for the whole dictation (a change in the menu meanwhile applies
+///   to the next one) and shows as a short code in the indicator.
+/// - Smart insertion (G13, setting `smartInsertion`, on by default): the inserter adjusts the corrected text to the text
+///   around the caret before the paste (`DictationSmartInsertion`); "Paste last dictation" too, in the language the app in
+///   front resolves to now. Order: transcript -> corrections -> smart insertion -> paste.
 @MainActor
 public final class DictationController: ObservableObject {
     /// Calls `tick` every `interval` seconds until the returned token is cancelled. The app's is a main run loop `Timer`.
@@ -160,10 +176,16 @@ public final class DictationController: ObservableObject {
     private let inserter: any DictationTextInserting
     private let notifier: any DictationNotifying
     private let sounds: any DictationSoundPlaying
+    private let returnKey: any DictationReturnKeyPosting
     private let accessibility: any AccessibilityTrust
     private let ticker: Ticker
     private let pasteboard: any DictationPasteboard
     private let frontAppName: @MainActor () -> String?
+    private let frontAppBundleID: @MainActor () -> String?
+    /// The last app in front other than Verse: the menu's per-app language rows (gap G12).
+    public let frontApp: DictationFrontAppTracker
+    /// The current dictation's language (resolved at its start).
+    private(set) var dictationLanguage = "en"
     private let now: @MainActor () -> TimeInterval
     private let sleep: @Sendable (Duration) async -> Void
     private let log: (String) -> Void
@@ -193,6 +215,8 @@ public final class DictationController: ObservableObject {
     private(set) var warnedSilent = false
     /// This dictation's "no audio at all" was logged.
     private var loggedNoAudio = false
+    /// Hold to talk (gap G8): armed by the Fn + Space press that started the current dictation.
+    private(set) var hold = DictationHoldToTalk()
 
     public init(settings: DictationSettings = DictationSettings(), registrar: (any HotKeyRegistrar)? = nil,
                 keyTap: (any DictationKeyTap)? = nil,
@@ -202,7 +226,8 @@ public final class DictationController: ObservableObject {
                 ticker: Ticker? = nil, history: DictationHistory? = nil, pasteboard: (any DictationPasteboard)? = nil,
                 frontAppName: (@MainActor () -> String?)? = nil, now: (@MainActor () -> TimeInterval)? = nil,
                 sleep: (@Sendable (Duration) async -> Void)? = nil, indicatorTicker: Ticker? = nil,
-                presentsIndicator: Bool = true,
+                presentsIndicator: Bool = true, returnKey: (any DictationReturnKeyPosting)? = nil,
+                frontAppBundleID: (@MainActor () -> String?)? = nil, frontApp: DictationFrontAppTracker? = nil,
                 log: @escaping (String) -> Void = { FileLog.shared.write($0) }) {
         self.settings = settings
         let clock = now ?? { ProcessInfo.processInfo.systemUptime }
@@ -213,6 +238,8 @@ public final class DictationController: ObservableObject {
         self.history = history ?? DictationHistory(log: log)
         self.pasteboard = pasteboard ?? SystemDictationPasteboard()
         self.frontAppName = frontAppName ?? { NSWorkspace.shared.frontmostApplication?.localizedName }
+        self.frontAppBundleID = frontAppBundleID ?? { NSWorkspace.shared.frontmostApplication?.bundleIdentifier }
+        self.frontApp = frontApp ?? DictationFrontAppTracker()
         self.now = clock
         self.sleep = sleep ?? { try? await Task.sleep(for: $0) }
         self.registrar = registrar ?? CarbonRegistrar()
@@ -226,6 +253,7 @@ public final class DictationController: ObservableObject {
             panel.onFrameChange = { [weak hud] in hud?.reposition() }
         }
         self.sounds = sounds ?? SynthDictationSoundPlayer()
+        self.returnKey = returnKey ?? CGReturnKeystroke()
         self.accessibility = accessibility ?? SystemAccessibilityTrust()
         self.ticker = ticker ?? Self.timerTicker
         self.log = log
@@ -301,7 +329,9 @@ public final class DictationController: ObservableObject {
     private func installFnSpace(enabled: Bool, mayPrompt: Bool) {
         guard activated, enabled, !fnSpaceActive else { return }
         let ok = keyTap.install(onToggle: { [weak self] in
-            Task { await self?.press() }
+            Task { await self?.press(fnSpace: true) }
+        }, onRelease: { [weak self] in
+            Task { await self?.releaseFnSpace() }
         }, onCancel: { [weak self] in self?.cancelByKey() })
         fnSpaceActive = ok
         if ok {
@@ -412,10 +442,12 @@ public final class DictationController: ObservableObject {
             return
         }
         phase = .inserting
-        let outcome = await inserter.insert(text, mayPromptForPermission: false)
+        let outcome = await inserter.insert(text, mayPromptForPermission: false,
+                                            formatting: formatting(language: settings.language(forApp: frontAppBundleID())))
         log("dictation: last dictation \(outcome.rawValue) chars=\(text.count)")
         if outcome == .copiedToClipboard { notifier.show(.copiedToClipboard) }
         if outcome == .notInserted { notifier.show(.notInserted) }
+        await pressReturnIfDue(after: outcome, source: .pasteLast)
         phase = .idle
     }
 
@@ -435,26 +467,48 @@ public final class DictationController: ObservableObject {
 
     // MARK: the key
 
-    /// One press of a dictation key (Fn + Space or ⌃⌥⌘D): idle starts, recording stops and inserts. Presses while finalising or inserting are ignored.
-    public func press() async {
+    /// One press of a dictation key (⌃⌥⌘D, toggle only): idle starts, recording stops and inserts. Presses while finalising or
+    /// inserting are ignored.
+    public func press() async { await press(fnSpace: false) }
+
+    /// One press: `fnSpace` is the Fn + Space key-down, the only one that can arm hold to talk (gap G8).
+    public func press(fnSpace: Bool) async {
+        let pressedAt = now()
         installFnSpace(enabled: settings.enabled, mayPrompt: false)
         switch phase {
-        case .idle: await startRecording()
-        case .recording: await finishRecording()
+        case .idle: await startRecording(holdFrom: fnSpace && settings.holdToTalk ? pressedAt : nil)
+        case .recording:
+            hold.disarm()
+            await finishRecording()
         case .finalising, .inserting: log("dictation: key ignored while \(phase.rawValue)")
         }
     }
 
-    private func startRecording() async {
+    /// The Fn + Space press was let go (gap G8): after a hold of at least `DictationHoldToTalk.threshold` from the press that
+    /// started this dictation, it stops exactly like a second press; a shorter press leaves it recording (toggle).
+    public func releaseFnSpace() async {
+        let held = hold.released(at: now())
+        guard held, settings.holdToTalk, phase == .recording else { return }
+        log("dictation: key released after a hold, stopping")
+        await finishRecording()
+    }
+
+    private func startRecording(holdFrom: TimeInterval? = nil) async {
+        hold.disarm()
         guard settings.enabled else { return }
         if isRunActive() {
             log("dictation: key ignored, a run is active")
             notifier.show(.busy)
             return
         }
+        if let holdFrom { hold.pressStarted(at: holdFrom) }
         generation += 1
         let mine = generation
-        let lang = settings.language
+        let bundleID = frontAppBundleID()
+        let lang = settings.language(forApp: bundleID)
+        let perApp = bundleID.flatMap { settings.appLanguages[$0] } == lang
+        dictationLanguage = lang
+        indicator.language = lang
         let vocabulary = settings.vocabularyTerms
         let t = makeTranscriber()
         transcriber = t
@@ -462,7 +516,7 @@ public final class DictationController: ObservableObject {
         warnedSilent = false
         loggedNoAudio = false
         phase = .recording
-        log("dictation: recording lang=\(lang) vocabulary=\(vocabulary.count)")
+        log("dictation: recording lang=\(lang)\(perApp ? " (app)" : "") vocabulary=\(vocabulary.count)")
         let task = Task { @MainActor [weak self] in
             try await t.begin(lang: lang, vocabulary: vocabulary, onFailure: { why in self?.fail(why, generation: mine) })
         }
@@ -473,7 +527,10 @@ public final class DictationController: ObservableObject {
             fail(Self.describe(error), generation: mine)
             return
         }
-        if generation == mine { openedAt = now() }
+        if generation == mine {
+            openedAt = now()
+            hold.microphoneOpened(at: openedAt ?? now())
+        }
         // A run that started while the microphone was opening cancels now (its own observer found nothing to cancel then,
         // or did: then this dictation is already over).
         if generation == mine, isRunActive() {
@@ -558,6 +615,7 @@ public final class DictationController: ObservableObject {
         }
         let mine = generation
         let pressedAt = now()
+        hold.disarm()
         phase = .finalising
         stopSilenceWatch()
         // Still opening: wait for it. A failure to open is reported by the start.
@@ -582,7 +640,8 @@ public final class DictationController: ObservableObject {
         if level.chunks == 0 { log("dictation: the microphone delivered no audio") }
         transcriber = nil
         beginTask = nil
-        let clean = DictationTranscript.clean(text)
+        let corrections = settings.correctionList
+        let clean = DictationCorrections.apply(corrections, to: DictationTranscript.clean(text), language: dictationLanguage)
         guard !clean.isEmpty else {
             log(silent ? "dictation: the microphone gave no sound, nothing inserted" : "dictation: empty transcript, nothing inserted")
             notifier.show(silent ? .microphoneSilentNothingInserted : .nothingHeard)
@@ -596,14 +655,37 @@ public final class DictationController: ObservableObject {
         history.add(DictationRecord(text: clean, date: Date(), app: frontAppName()))
         phase = .inserting
         let mayPrompt = !settings.accessibilityPrompted
-        let outcome = await inserter.insert(clean, mayPromptForPermission: mayPrompt)
+        let outcome = await inserter.insert(clean, mayPromptForPermission: mayPrompt,
+                                            formatting: formatting(language: dictationLanguage))
         log("dictation: \(outcome.rawValue) chars=\(clean.count)")
         if outcome == .copiedToClipboard {
             if mayPrompt { settings.accessibilityPrompted = true }
             notifier.show(.copiedToClipboard)
         }
         if outcome == .notInserted { notifier.show(.notInserted) }
+        await pressReturnIfDue(after: outcome, source: .dictation)
         phase = .idle
+    }
+
+    /// Smart insertion's options for one paste, nil with the setting off (gap G13).
+    private func formatting(language: String) -> DictationInsertFormatting? {
+        settings.smartInsertion ? DictationInsertFormatting(language: language, keepCase: settings.vocabularyTerms) : nil
+    }
+
+    /// Return after inserting (gap G9): one Return a moment after the paste, when `DictationReturnAfterInsert` says so. The
+    /// phase is still `.inserting` meanwhile (presses are ignored, Esc reaches the app in front), and a run that became active
+    /// in between stops it: it never types into a call.
+    private func pressReturnIfDue(after outcome: DictationInsertOutcome, source: DictationInsertSource) async {
+        guard DictationReturnAfterInsert.shouldPress(enabled: settings.pressReturnAfterInsert, outcome: outcome,
+                                                     source: source) else { return }
+        await sleep(DictationReturnAfterInsert.delay)
+        await returnKey.waitForModifierRelease()
+        if runBlocks {
+            log("dictation: return skipped, a run is active")
+            return
+        }
+        returnKey.postReturn()
+        log("dictation: return pressed")
     }
 
     /// Reports an engine or microphone failure once and returns to idle.
@@ -626,6 +708,7 @@ public final class DictationController: ObservableObject {
 
     private func endDictation() {
         stopSilenceWatch()
+        hold.disarm()
         generation += 1
         transcriber = nil
         beginTask = nil

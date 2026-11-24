@@ -23,14 +23,17 @@ public struct DictationIndicatorContent: Sendable, Equatable {
     public var text: String
     /// "Show live text" is on: the wide layout with room for two lines.
     public var showsText: Bool
+    /// The dictation's language code ("tr"), shown as "TR" (gap G12); empty: not shown.
+    public var language: String
 
     public init(stage: DictationIndicatorStage, elapsed: TimeInterval = 0, levels: [Double] = [0, 0, 0], text: String = "",
-                showsText: Bool = true) {
+                showsText: Bool = true, language: String = "") {
         self.stage = stage
         self.elapsed = elapsed
         self.levels = levels
         self.text = text
         self.showsText = showsText
+        self.language = language
     }
 }
 
@@ -95,8 +98,9 @@ public enum DictationIndicatorRules {
 
     /// The text column of the indicator's wide layout (live text on).
     public static let textWidth: CGFloat = 282
-    /// The indicator's text font: 13 pt medium, the island's card lead.
-    static var textFont: NSFont { NSFont.systemFont(ofSize: 13, weight: .medium) }
+    /// The indicator's text font, as AppKit measures it: the island card's point type (`VT.Font.point()`, 15 regular) at
+    /// text size M.
+    static var textFont: NSFont { NSFont.systemFont(ofSize: 15) }
     /// The text font's line height, measured once (the font is fixed).
     private static let textLineHeight: CGFloat = NSLayoutManager().defaultLineHeight(for: textFont)
 
@@ -111,6 +115,33 @@ public enum DictationIndicatorRules {
     static func measuredTail(_ text: String) -> String {
         tail(text) { fits($0, width: textWidth - 6, lines: 2) }
     }
+
+    /// The island's veil for the free-standing indicator, top to bottom: the user's floor, and the island's lower rim
+    /// (the last `VT.islandRimHeight` points ease to `IslandVeil.rimFactor` of the floor). There is no camera band to
+    /// cover, so no black head. A surface no taller than the rim is all rim.
+    static func veilStops(height: CGFloat, floor: Double) -> [IslandVeil.Stop] {
+        let h = Double(max(height, 1))
+        let rimStart = max(0, 1 - Double(VT.islandRimHeight) / h)
+        let rim = floor * IslandVeil.rimFactor
+        var stops = [IslandVeil.Stop(location: 0, opacity: floor)]
+        for i in 0...6 {
+            let t = Double(i) / 6
+            stops.append(IslandVeil.Stop(location: rimStart + (1 - rimStart) * t, opacity: floor - (floor - rim) * IslandVeil.smootherstep(t)))
+        }
+        return stops
+    }
+
+    /// The user's Island opacity (Settings > Island opacity), read from the app's defaults the way `AppSettings` stores
+    /// it, so the indicator's veil matches the notch's.
+    @MainActor static func islandOpacity(in defaults: UserDefaults?) -> Double {
+        let stored = defaults?.object(forKey: "islandOpacity") as? Double ?? 0.62
+        return min(max(stored, AppSettings.islandOpacityRange.lowerBound), AppSettings.islandOpacityRange.upperBound)
+    }
+
+    /// The defaults `AppSettings` uses: the standard ones inside the bundle, else its suite.
+    @MainActor static var appDefaults: UserDefaults? {
+        Bundle.main.bundleIdentifier == AppSettings.suiteName ? .standard : UserDefaults(suiteName: AppSettings.suiteName)
+    }
 }
 
 /// The recording indicator's state (gap G5): fed the controller's phase, the current transcriber and whether a run is active,
@@ -121,6 +152,8 @@ public final class DictationIndicatorModel: ObservableObject {
     public static let tickInterval: TimeInterval = 1.0 / 25
 
     @Published public private(set) var content: DictationIndicatorContent?
+    /// The current dictation's language (gap G12), set by the controller before the dictation starts.
+    public var language = ""
 
     private let ticker: DictationController.Ticker
     private let now: @MainActor () -> TimeInterval
@@ -216,21 +249,38 @@ public final class DictationIndicatorModel: ObservableObject {
         }
         let elapsed = frozenElapsed ?? recordingSince.map { now() - $0 } ?? 0
         let next = DictationIndicatorContent(stage: stage, elapsed: elapsed, levels: levels,
-                                             text: liveTextOn ? fittedText : "", showsText: liveTextOn)
+                                             text: liveTextOn ? fittedText : "", showsText: liveTextOn, language: language)
         if next != content { content = next }
     }
 }
 
 // MARK: - View
 
-/// The indicator: a compact dark capsule in the island's colours and type. Level bars and a mint dot while recording, the
-/// elapsed time, and the last two lines of what has been recognised (cut at the head), or the stage's label.
+/// The indicator, in the meeting island's materials and type: the island's Liquid Glass (`NotchGlassBackdrop`) under its
+/// black veil at the user's Island opacity, cut to a free-standing rounded shape with the island's lower corners. The
+/// dot and level bars as in the island's wing, the live text in the card's point type, the stage label in the card's
+/// "Listening to the question…" type, and the elapsed time in the wing type.
 struct DictationIndicatorView: View {
     var content: DictationIndicatorContent
+    /// The veil's floor before the accessibility rules (`IslandVeil.floor`): the user's Island opacity.
+    var islandOpacity: Double = 0.62
 
-    /// The wide layout (live text on).
+    @Environment(\.accessibilityReduceTransparency) private var systemReduceTransparency
+    @Environment(\.colorSchemeContrast) private var systemContrast
+    @Environment(\.islandA11yOverride) private var a11yOverride
+
+    /// The wide layout (live text on), without the language code.
     static let width: CGFloat = 400
     static var textWidth: CGFloat { DictationIndicatorRules.textWidth }
+    /// The language code's column and its spacing (gap G12), added to the wide layout when a language is shown.
+    static let languageWidth: CGFloat = 20
+    static func layoutWidth(_ content: DictationIndicatorContent) -> CGFloat {
+        width + (content.language.isEmpty ? 0 : languageWidth + 10)
+    }
+
+    private var a11y: IslandA11y {
+        a11yOverride ?? IslandA11y(reduceTransparency: systemReduceTransparency, increaseContrast: systemContrast == .increased)
+    }
 
     private var label: String? {
         switch content.stage {
@@ -241,37 +291,47 @@ struct DictationIndicatorView: View {
     }
 
     var body: some View {
+        let a = a11y
         HStack(alignment: .center, spacing: 10) {
-            HStack(spacing: 6) {
+            HStack(spacing: 7) {
                 dot
                 if content.stage == .recording { LevelBars(levels: content.levels) }
             }
-            .frame(width: 23, alignment: .leading)
+            .frame(width: 24, alignment: .leading)
             Group {
                 if let label {
-                    Text(verbatim: label).foregroundStyle(VT.Island.tertiary).lineLimit(1)
+                    // The card's hearing line ("Listening to the question…"): point size, medium, tertiary.
+                    Text(verbatim: label).font(VT.Font.point().weight(.medium)).foregroundStyle(VT.Island.tertiary).lineLimit(1)
                 } else {
-                    Text(verbatim: content.text).foregroundStyle(VT.Island.primary)
+                    // The card's points: point type, secondary (white under Increase Contrast), 2 pt line spacing.
+                    Text(verbatim: content.text).font(VT.Font.point())
+                        .foregroundStyle(a.increaseContrast ? Color.white : VT.Island.secondary)
+                        .lineSpacing(2)
                         .lineLimit(2).truncationMode(.head).fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .font(Font(DictationIndicatorRules.textFont))
             .frame(width: content.showsText ? Self.textWidth : nil, alignment: .leading)
+            if !content.language.isEmpty {
+                // The language (gap G12), in the elapsed time's wing type and colour.
+                Text(verbatim: DictationLanguageChoice.shortCode(content.language))
+                    .font(VT.Font.wing)
+                    .foregroundStyle(a.increaseContrast ? Color.white.opacity(0.85) : VT.Island.tertiary)
+                    .frame(width: Self.languageWidth, alignment: .trailing)
+            }
             if content.stage != .preparing {
                 Text(verbatim: DictationIndicatorRules.elapsedLabel(content.elapsed))
-                    .font(VT.Font.meta.monospacedDigit())
-                    .foregroundStyle(VT.Island.tertiary)
+                    .font(VT.Font.wing.monospacedDigit())
+                    .foregroundStyle(a.increaseContrast ? Color.white.opacity(0.85) : VT.Island.tertiary)
                     .frame(width: 40, alignment: .trailing)
             }
         }
-        .padding(.leading, 16)
-        .padding(.trailing, 16)
+        .padding(.horizontal, 16)
         .padding(.vertical, 9)
         .frame(minHeight: 34)
-        .frame(width: content.showsText ? Self.width : nil, alignment: .leading)
-        .background(VT.islandSolid, in: RoundedRectangle(cornerRadius: VT.Radius.islandBottom, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: VT.Radius.islandBottom, style: .continuous).strokeBorder(Color.white.opacity(0.08)))
+        .frame(width: content.showsText ? Self.layoutWidth(content) : nil, alignment: .leading)
+        .background { DictationIndicatorSurface(a11y: a, islandOpacity: islandOpacity) }
         .environment(\.colorScheme, .dark)
+        .environment(\.islandContrast, a.increaseContrast)
         .accessibilityElement(children: .combine)
     }
 
@@ -284,9 +344,43 @@ struct DictationIndicatorView: View {
     }
 }
 
+/// The indicator's surface: the island's glass and veil (`OverlayView`'s two layers) in the free-standing shape.
+/// Reduce Transparency: the island's solid surface, no glass. Increase Contrast: the veil at 92 % or more and the
+/// island's white edge. Otherwise the island's lower-rim edge, brightening towards the bottom.
+struct DictationIndicatorSurface: View {
+    var a11y: IslandA11y
+    var islandOpacity: Double
+
+    var body: some View {
+        GeometryReader { proxy in
+            let shape = RoundedRectangle(cornerRadius: NotchGlassShape.roundedCornerRadius(height: proxy.size.height), style: .continuous)
+            let floor = IslandVeil.floor(userOpacity: islandOpacity, reduceTransparency: a11y.reduceTransparency,
+                                         increaseContrast: a11y.increaseContrast)
+            ZStack {
+                if a11y.reduceTransparency {
+                    shape.fill(VT.islandSolid)
+                } else {
+                    // Outside any rasterizing effect, or the window-server glass renders blank.
+                    NotchGlassBackdrop(shape: .rounded)
+                    shape.fill(LinearGradient(stops: DictationIndicatorRules.veilStops(height: proxy.size.height, floor: floor)
+                                                .map { Gradient.Stop(color: .black.opacity($0.opacity), location: $0.location) },
+                                              startPoint: .top, endPoint: .bottom))
+                }
+                if a11y.increaseContrast {
+                    shape.strokeBorder(Color.white.opacity(0.6), lineWidth: 1.5)
+                } else if !a11y.reduceTransparency {
+                    shape.strokeBorder(LinearGradient(colors: [.white.opacity(0), .white.opacity(0.20)], startPoint: .top, endPoint: .bottom),
+                                       lineWidth: 1)
+                }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 // MARK: - Panel
 
-/// The indicator's window: a borderless panel that never becomes key or main (`OverlayPanel`), ignores the mouse, joins every
+/// The indicator's window: a transparent borderless panel that never becomes key or main (`OverlayPanel`), ignores the mouse, joins every
 /// Space, stays out of the window cycle, and sits top centre just under the menu bar (and the notch, which the menu bar
 /// covers) with a gap that clears the island's band. Made on first show and reused.
 @MainActor
@@ -297,6 +391,8 @@ final class DictationIndicatorPanel {
     private let model: DictationIndicatorModel
     private var panel: OverlayPanel?
     private var host: NSHostingView<DictationIndicatorView>?
+    /// The user's Island opacity, read each time the indicator appears.
+    private var islandOpacity = 0.62
     private var sub: AnyCancellable?
     private var screen: NSScreen?
     private var lastLayout: DictationIndicatorContent?
@@ -322,16 +418,18 @@ final class DictationIndicatorPanel {
         }
         let panel = self.panel ?? makePanel()
         self.panel = panel
+        let wasVisible = panel.isVisible
+        if !wasVisible { islandOpacity = DictationIndicatorRules.islandOpacity(in: DictationIndicatorRules.appDefaults) }
+        let view = DictationIndicatorView(content: content, islandOpacity: islandOpacity)
         let host: NSHostingView<DictationIndicatorView>
         if let h = self.host {
-            h.rootView = DictationIndicatorView(content: content)
+            h.rootView = view
             host = h
         } else {
-            host = NSHostingView(rootView: DictationIndicatorView(content: content))
+            host = NSHostingView(rootView: view)
             panel.contentView = host
             self.host = host
         }
-        let wasVisible = panel.isVisible
         // Only a change of what takes room re-measures: the level and the seconds do not.
         var layout = content
         layout.levels = []
@@ -343,8 +441,6 @@ final class DictationIndicatorPanel {
             if let f = (screen ?? NSScreen.main)?.visibleFrame {
                 panel.setFrame(NSRect(x: (f.midX - size.width / 2).rounded(), y: (f.maxY - Self.topGap - size.height).rounded(),
                                       width: size.width, height: size.height), display: true)
-                // A transparent panel's shadow follows the drawn shape: recompute it after a size change.
-                panel.invalidateShadow()
             }
             if !wasVisible { panel.orderFrontRegardless() }
             onFrameChange?()
@@ -356,7 +452,8 @@ final class DictationIndicatorPanel {
                              backing: .buffered, defer: true)
         p.isOpaque = false
         p.backgroundColor = .clear
-        p.hasShadow = true
+        // As the notch: no window shadow; the glass's edge lies inside the shape.
+        p.hasShadow = false
         p.level = .statusBar
         p.ignoresMouseEvents = true
         p.isReleasedWhenClosed = false

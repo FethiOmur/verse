@@ -189,6 +189,19 @@ extension DictationTests {
         XCTAssertEqual(logs.value, ["dictation: paste check unverifiable (webContent)"])
     }
 
+    func testAPasteIntoATerminalIsReportedSoReturnIsNotPressed() async {
+        let pb = FakePasteboard(), keys = FakeKeystroke(), sleeps = SleepLog(), logs = Box<[String]>([])
+        pb.externalCopy("old")
+        var terminal = DictationFocusSnapshot.field(chars: 500, at: 500, role: "AXTextArea")
+        terminal.terminal = true
+        let inserter = checkedInserter(FakeFocus(terminal), pb: pb, keys: keys, sleeps: sleeps, logs: logs)
+
+        let outcome = await inserter.insert("dictated", mayPromptForPermission: false)
+        XCTAssertEqual(outcome, .pastedIntoTerminal)
+        XCTAssertEqual(pb.string, "old", "restored like any unverifiable paste")
+        XCTAssertFalse(DictationReturnAfterInsert.shouldPress(enabled: true, outcome: outcome, source: .dictation))
+    }
+
     func testAMissedPasteDoesNotOverwriteSomethingCopiedMeanwhile() async {
         let pb = FakePasteboard(), keys = FakeKeystroke(), sleeps = SleepLog(), logs = Box<[String]>([])
         let focus = FakeFocus(.field(chars: 4, at: 4))
