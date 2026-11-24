@@ -30,7 +30,7 @@ as a guarantee. The same file drives the unit tests (with a concept-vector fake 
 ## What the lexical test alone would do (why there is no lexical fallback)
 
 Count rule N unmatched content words in the last 8, or a run of unmatched words lasting T seconds (at least 3 words). Share of the
-46 on-card answers it would flip:
+46 on-card answers it would flip (a sweep: the default T has since moved from 1.2 s to 4.0 s, see "Time and refresh limits"):
 
 | N, T | would flip (of 46) | missed of 41 | detection median |
 |---|---|---|---|
@@ -89,7 +89,8 @@ score is at least `sem_mark` 0.88; mark 0.82 missed 5 and flipped one paraphrase
 * diverge: 39 of 41 (off_pack 15/16, off_other 16/17, read_then_off 8/8). The two misses are borderline by construction
   ("I tested both on a labelled sample first" under the card on small versus large models; "my manager liked simple things").
 * detection: median 3.9 s, p90 5.0 s, max 7.8 s after the first chunk with an off-card word; in content words of the new topic:
-  median 4, p90 7, max 9. The spec's 5 content words / 1.2 s is reached by the lexical test on its own; the extra time is the
+  median 4, p90 7, max 9 (measured with the time rule at 1.2 s; the count rule decided most of these, so the 4.0 s default moves
+  them little, but the figures were not re-measured). The spec's 5 content words / 1.2 s is reached by the lexical test on its own; the extra time is the
   evidence the embedding needs (a four-word stretch is ambiguous even to a person). `sem_floor_long` 0.83 for an unmatched run of
   9 or more words recovered one more miss without a false divergence.
 * per card: 8/10 on b019, 9 or 10 of 10 on the rest.
@@ -97,6 +98,70 @@ score is at least `sem_mark` 0.88; mark 0.82 missed 5 and flipped one paraphrase
 Faster settings exist and are one parameter away: N=4, T=1.0 s with two-word runs, floor 0.80, margin 0.04 gave a 2.8 s median
 with 3 false divergences and 2 misses in an earlier sweep (before `sem_mark`); N=3 gave the same 2.8 s with 2 to 4 false. The
 default prefers zero false divergences, because a card that flips while the owner reads it is the failure he named.
+
+## Time and refresh limits
+
+| field | default | meaning |
+|---|---|---|
+| `diverge_s` | 4.0 | the time rule: the trailing run of unmatched content words (at least `time_min_words` = 3) spans this many seconds of his speech. Owner decision (2026-11-24): at least 4 s of his own speech before the card changes; the spec's first value was 1.2 s. |
+| `count_min_s` | 4.0 | the count rule (`diverge_words` = 5 unmatched content words among his last `window` = 8) also needs those unmatched words to span this long: from the first unmatched word in the window to the newest content word in it. Owner rule: no card change in the first 4 s of his own speech, however fast he talks. |
+| `max_refreshes_per_answer` | 2 | after the first follow card of an answer, at most this many further cards (3 in all). One replayed answer got 13 refreshes and one live answer 17 cards, so the card could never be read. |
+| `min_card_show_s` | 8.0 | a follow card is not replaced before it has been on screen this long (from the moment its SAY line reached the machine, else from the launch of its call). The first follow card replaces the original card and only waits for the divergence rules. |
+
+Both lexical rules now need 4 s: `diverge_s` for the time rule, `count_min_s` for the count rule, each measured between the arrival
+times of words of his own speech, so the first card change cannot come before 4 s of his speech (the embedding check decides only
+after a rule has raised suspicion, so it comes later still). The count rule's window holds 8 content words, so it can only see
+speech slower than about 1.75 content words per second (its window must span 4 s); faster unmatched speech diverges through the
+time rule, which watches the whole trailing run. Before `count_min_s` existed, five fast unmatched words could raise suspicion after
+about 1.5 s. The refresh cap is a gate on top of the existing refresh rules (`refresh_gap_s`, `refresh_new_words`,
+sentence ends only): it is checked last, so it only ever holds back a refresh that would otherwise have gone out. The counters start
+again with every new remote question and when follow mode ends; a launch the engine refuses (rate bucket, halted) is not counted.
+
+## Reading the log
+
+The machine writes its decisions to the session's `events.jsonl` (the same writer and line shape as `card_mark`: `{"t": <unix s>,
+"ev": <kind>, ...fields}`, `null` fields left out). Numbers, booleans and short enums only: no word of his or the other party's is
+ever written. `turn` is the turn id of the question being answered.
+
+`follow_diverged`: one line per divergence decision, written just before the follow call is launched.
+
+| field | meaning |
+|---|---|
+| `rule` | the lexical rule that raised the suspicion: `lexical` (the count rule; also when both fired) or `time` (only the time rule) |
+| `by_count`, `by_time` | whether each rule held |
+| `decided_by` | always `embedding`: the lexical rules only raise suspicion |
+| `embed_why` | what the embedding check said: `floor` (card score under `sem_floor`), `margin` (another pack line beat the card by `sem_margin`), `both` |
+| `embed`, `margin` | best cosine of his words to a card line; best pack-line cosine minus that |
+| `sem_floor`, `sem_margin` | the thresholds in force (the floor is `sem_floor_long` for a run of 9 or more words) |
+| `unmatched`, `window`, `diverge_words` | unmatched content words among his last `window`, and the count threshold |
+| `run_words`, `run_s`, `diverge_s`, `time_min_words` | words in the trailing unmatched run, the seconds it spans, and the time-rule thresholds |
+| `count_span_s`, `count_min_s` | seconds the window's unmatched words span (first unmatched word to newest content word), and the count rule's minimum |
+| `since_run_s`, `since_start_s` | seconds since the run's first word and since his first word of the answer |
+| `words` | tokens of his answer so far |
+| `reason` | the machine's label for the decision (`lexical+embed`) |
+
+`follow_state`: one line per state change of follow mode; `reason` says why.
+
+| `state` | `reason` | other fields |
+|---|---|---|
+| `entered` | `diverged` | `card` (follow card id), `c_calls`, `refreshes` |
+| `refreshed` | `refresh` | same; `refreshes` counts this one |
+| `launch_refused` | `halted`, `closing`, `no_session`, `no_turn`, `call_refused:<diverged\|refresh>` | `mode`, `c_calls` |
+| `refresh_blocked` | `refresh_capped` or `refresh_too_soon` | `refreshes`, `max_refreshes`, `card_age_s`, `min_card_show_s`, `new_words`; at most once per sentence end |
+| `ended` | `new_question`, `short_card`, `remote_spoke_again` | `mode`, `c_calls` |
+
+`follow_embed_state`: the divergence check's embedding request. A check is asked for whenever a lexical rule is suspicious; it is not
+written per token, but a long off-card answer that the embedding keeps on the card produces one `requested`/`arrived` pair per
+recognizer update.
+
+| `state` | fields |
+|---|---|
+| `requested` | `seq`, `wait_s` (`embed_wait_s`), `by_count`, `by_time`, `unmatched`, `run_words` |
+| `arrived` | `seq`, `verdict` (`diverge`, `stay`, or `stale` when his words changed under the request, then asked again), `embed`, `margin`, `sem_floor`, `sem_margin`, `on_card`, `suspicious` |
+| `timed_out` | `seq`, `waited_s`; the check is asked again, nothing is decided without the embedding |
+
+To list one call's decisions: `jq -c 'select(.ev | startswith("follow_"))' events.jsonl`. The engine's metrics of the same names
+(`follow_diverged`, `follow_state`, `follow_embed_state`) go to the app, not to this file.
 
 ## Coverage
 

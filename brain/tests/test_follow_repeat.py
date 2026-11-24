@@ -188,7 +188,7 @@ def test_new_material_still_asks_for_a_card():
 
 def test_a_card_that_showed_nothing_makes_the_next_refresh_wait_longer():
     clock = Clock(10.0)
-    m, drv, clock, fx = following(clock, FollowParams(refresh_gap_s=2.0))
+    m, drv, clock, fx = following(clock, FollowParams(refresh_gap_s=2.0, min_card_show_s=0.0, max_refreshes_per_answer=99, count_min_s=0.0))
     m.c_started("c0002", now=clock.t)
     m.c_done(shown=False)
     first = "injuries and sleep shape every schedule, hydration reminders"

@@ -2192,7 +2192,7 @@ class Brain:
         if not self.follow_on or self.session is None:
             self.follow = None
             return
-        self.follow = FollowMachine(cfg.follow, time.monotonic, embed_ok=False)
+        self.follow = FollowMachine(cfg.follow, time.monotonic, embed_ok=False, log=self._ev)   # decisions -> events.jsonl
         self._follow_pack = follow_pack_lines(self.session)
         self._follow_embed_failed = False
         if self.embed is not None and self.lang in cfg.embed_langs:
@@ -2515,7 +2515,7 @@ class Brain:
         st = self.ts.get(f.turn_id or "") if f is not None else None
         if f is None or st is None or self.halted or self.closing or self.session is None:
             if f is not None:
-                f.c_failed()
+                f.c_failed(reason="no_turn" if st is None else "halted" if self.halted else "closing" if self.closing else "no_session")
             return
         orig = f.card_lines(f.original_id)
         card = [("SAY: " if ln.kind == "say" else "- ") + ln.text for ln in orig]
@@ -2530,7 +2530,7 @@ class Brain:
         tail = follow_tail(st.final_text, self._call_lang(), his, card, said, now_card, reason, me_on=self.about is not None, shown=shown)
         call = self._launch("C", st.turn_id, his, tail, st.turns_before, buffered=False)
         if call is None:
-            f.c_failed()
+            f.c_failed(reason=f"call_refused:{reason}")
             self.emitter.metric(st.turn_id, "follow_dropped", reason=reason)
             return
         call.follow_reason = reason

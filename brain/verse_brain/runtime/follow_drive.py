@@ -87,8 +87,9 @@ def chunks(text: str, wps: float = 2.7, chunk_s: float = 0.56, start: float = 0.
 
 def make_machine(card: dict, params: FollowParams | None, embedder: Embedder | None, clock: Clock,
                  card_id: str = "f0001", tier: str = "F", pack: list[str] | None = None,
-                 cache: dict[str, list[float]] | None = None) -> tuple[FollowMachine, SyncDriver]:
-    m = FollowMachine(params, clock, embed_ok=embedder is not None)
+                 cache: dict[str, list[float]] | None = None,
+                 log: Callable[..., None] | None = None) -> tuple[FollowMachine, SyncDriver]:
+    m = FollowMachine(params, clock, embed_ok=embedder is not None, log=log)
     m.new_turn("q1")
     m.add_line(card_id, tier, "say", card["say"])
     for p in card["points"]:
@@ -99,11 +100,11 @@ def make_machine(card: dict, params: FollowParams | None, embedder: Embedder | N
 def simulate(card: dict, text: str, *, params: FollowParams | None = None, embedder: Embedder | None = None,
              wps: float = 2.7, chunk_s: float = 0.56, tail_s: float = 3.0, turn_id: str = "m1",
              machine: tuple[FollowMachine, SyncDriver] | None = None, clock: Clock | None = None, pack: list[str] | None = None,
-             cache: dict[str, list[float]] | None = None,
+             cache: dict[str, list[float]] | None = None, log: Callable[..., None] | None = None,
              start: float = 0.0, final: bool = True, step_s: float = 0.1) -> Run:
     """Feed `text` to a fresh machine (or the given one) as a stream, then let `tail_s` of silence pass in `step_s` ticks."""
     clock = clock or Clock(start)
-    m, drv = machine or make_machine(card, params, embedder, clock, pack=pack, cache=cache)
+    m, drv = machine or make_machine(card, params, embedder, clock, pack=pack, cache=cache, log=log)
     run = Run(machine=m)
 
     def sink(fx: Effect) -> None:

@@ -26,7 +26,7 @@ def test_a1_a_stale_embedding_does_not_decide_a_corrected_paraphrase():
     """The scores belong to the words of the request. If he (or the recognizer) revised those words meanwhile, the old
     scores must not flip the card for the new words; a fresh embedding of the current text is asked for instead."""
     clk = Clock(0.0)
-    m = FollowMachine(FollowParams(), clk, embed_ok=True)
+    m = FollowMachine(FollowParams(count_min_s=0.0), clk, embed_ok=True)     # about stale scores, not the 4 s rule
     m.new_turn("q1")
     m.add_line("orig-q1", "F", "say", "I built it mostly solo.")
     m.drain()
@@ -52,7 +52,7 @@ def test_a1_a_stale_embedding_does_not_decide_a_corrected_paraphrase():
 def test_a1_words_added_to_the_end_do_not_invalidate_the_answer():
     """Only a revision of the words the request was about makes its scores stale; he simply talking on does not."""
     clk = Clock(0.0)
-    m = FollowMachine(FollowParams(), clk, embed_ok=True)
+    m = FollowMachine(FollowParams(count_min_s=0.0), clk, embed_ok=True)     # about stale scores, not the 4 s rule
     m.new_turn("q1")
     m.add_line("orig-q1", "F", "say", "I built it mostly solo.")
     clk.t = 1.0

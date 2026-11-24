@@ -27,7 +27,9 @@ C_CANNED = ("SAY: And that is where I keep the model on a short leash.\n"
             "- Fields below 0.8 confidence go to a human operator.\n- Reviews take a few hours every week.")
 OFF_CARD = ("Actually the thing I am most proud of is a running app for the marathon, it is called TrailHead and it is on "
             "the App Store with thousands of weekly users")
-FAST_PARAMS = FollowParams(pause_s=0.15, refresh_gap_s=0.4, embed_wait_s=0.3, embed_gap_s=0.0, end_silence_s=0.5)
+FAST_PARAMS = FollowParams(pause_s=0.15, refresh_gap_s=0.4, embed_wait_s=0.3, embed_gap_s=0.0, end_silence_s=0.5,
+                          min_card_show_s=0.0, max_refreshes_per_answer=99,    # the cap has its own tests (test_follow_cap.py)
+                          count_min_s=0.0)             # engine tests feed a whole answer in milliseconds: they test the wiring, not the 4 s rule (test_follow_detector.py)
 
 
 def responder(c_script=C_CANNED, c_delay=0.0, f_body=FAST_OK):
@@ -346,3 +348,31 @@ def test_a_bug_in_the_follow_machine_turns_it_off_and_never_touches_the_answer(m
     assert [e for e in em.events if e["type"] == "metric" and e["stage"] == "follow_error"]
     assert b.follow is None and len(t.by_route("F")) + len(t.by_route("S")) >= 2
     assert not c_calls(t)
+
+
+def test_the_engine_writes_the_follow_decisions_to_events_jsonl(tmp_path, monkeypatch):
+    """The machine's decisions reach the session's events.jsonl through the engine's event writer: numbers and enums only."""
+    import json
+    import shutil
+
+    monkeypatch.setenv("VERSE_EVENTS", "1")
+    sess = tmp_path / "s"
+    shutil.copytree(FIX, sess)
+
+    async def go():
+        b, t, em, _, fol = make(session=sess)
+        await start(b, sess, fol)
+        await question(b)
+        await me(b, OFF_CARD)
+        await asyncio.sleep(0.3)
+        await settle(b)
+        await question(b, "q2", "What is your biggest weakness?")
+
+    run(go())
+    lines = [json.loads(x) for x in (sess / "events.jsonl").read_text(encoding="utf-8").splitlines() if x.strip()]
+    fol = [(e["ev"], e.get("state")) for e in lines if e["ev"].startswith("follow_")]
+    assert ("follow_embed_state", "requested") in fol and ("follow_diverged", None) in fol
+    assert fol.index(("follow_embed_state", "requested")) < fol.index(("follow_diverged", None)) < fol.index(("follow_state", "entered"))
+    assert ("follow_state", "ended") in fol, "the new question ended the answer"
+    blob = json.dumps([e for e in lines if e["ev"].startswith("follow_")]).lower()
+    assert "trailhead" not in blob and "marathon" not in blob

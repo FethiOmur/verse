@@ -12,6 +12,10 @@ How it is driven (runtime/engine.py is the only production caller):
     m.on_embed(seq, scores)                         # the answer to a NeedEmbed (cosines per text and card line)
     m.tick()                                        # timers: pause = sentence end, embed timeout, 4 s silence end
 
+Every decision is also reported to the optional `log(event, **fields)` callback (`follow_diverged`, `follow_state`,
+`follow_embed_state`; numbers and enums only, never his words). The engine passes its events.jsonl writer; the default is a
+no-op, so a machine built without it behaves exactly as before.
+
 What is measured (every number lives in `FollowParams`; the evidence for the values is in docs/follow-tuning.md):
 
 * Tokens: lower-cased words, number words folded to digits ("eleven" -> "11", "ninety six point four" -> "96.4"), British
@@ -23,12 +27,17 @@ What is measured (every number lives in `FollowParams`; the evidence for the val
 * Semantic match (EmbeddingGemma, same model and prefix as the bank matcher): the cosine between a window of his last words
   and each card line. A window that is similar enough to a line counts as matched ("rescued"), whatever the words.
 * Diverged: among his last `window` content words at least `diverge_words` are unmatched, or the trailing run of unmatched
-  content words lasts `diverge_s` seconds of his speech (with at least `time_min_words` words). The lexical test only raises
-  suspicion; the embedding gets the last word. Without the embedder (`embed_ok` false: model missing, still loading, failed)
+  content words lasts `diverge_s` (4.0) seconds of his speech (with at least `time_min_words` words). The count rule also
+  needs the unmatched words of the window to span `count_min_s` (4.0): from the first unmatched word in the window to its
+  newest content word. So neither rule can raise suspicion before 4 s of his unmatched speech, and the first card change never
+  comes before 4 s of his own speech. The lexical test only raises suspicion; the embedding gets the last word. Without the embedder (`embed_ok` false: model missing, still loading, failed)
   nothing ever diverges: the lexical test alone flips 12 to 26 of 46 on-card answers (docs/follow-tuning.md), so the card
   stays; coverage keeps working. A pending check whose embedding never comes is asked again, never decided without it.
 * Coverage: a point is covered when most of its content stems occur close together in his speech, or a window of his
   words is semantically close enough to the point (numbers must not contradict). Covered points are struck through.
+* Refresh cap: an extra gate on top of the refresh rules below: at most `max_refreshes_per_answer` refreshes per answer
+  (the counter starts again with each new remote question and when follow mode ends; a refused launch does not count), and
+  none until the card on screen has been shown for `min_card_show_s`. A refresh the cap blocks is logged once per sentence end.
 * Refresh: after a follow card, at his sentence ends only (a final result, or `pause_s` without new words), at most every
   `refresh_gap_s`, only with `refresh_new_words` new content words since the last C call (words that match a card that is not
   on screen, the original or the bank, are not news), and once every point on the card is covered only with that many new
@@ -52,7 +61,11 @@ class FollowParams:
     # divergence
     window: int = 8                  # content words the unmatched count looks at
     diverge_words: int = 5           # spec: >= 5 content words that do not match the card
-    diverge_s: float = 1.2           # spec: ... or >= 1.2 s of his speech
+    diverge_s: float = 4.0           # ... or the unmatched run spans >= 4.0 s of his speech (owner, 2026-11-24: at least 4 s of his own
+                                     # speech before the card changes; the spec's first value was 1.2 s)
+    count_min_s: float = 4.0         # the count rule also needs the window's unmatched words to span this long: from the first unmatched word
+                                     # of the window to its newest content word (owner, 2026-11-24: no card change in the first 4 s of
+                                     # his own speech, however fast he talks)
     time_min_words: int = 3          # the time rule needs this many unmatched content words in the run (one slow word is not a topic)
     cluster_span: int = 3            # +-content words around a word that must hold a second stem of the same line
     cluster_min: int = 2             # distinct stems of one line (the word itself included)
@@ -86,6 +99,11 @@ class FollowParams:
     min_gap_after_fail_s: float = 4.0
     repeat_backoff_max: int = 2      # each follow card that came out as nothing new (NONE, or every line a repeat) makes the next refresh
                                      # wait one more `refresh_gap_s` and `refresh_new_words`, up to this many extra steps
+    max_refreshes_per_answer: int = 2   # after the first follow card of an answer at most this many further cards (3 in all): a card he
+                                        # can never finish reading is worse than a stale one (replay: up to 13 refreshes, live: 17 cards)
+    min_card_show_s: float = 8.0     # a follow card is never replaced before it has been on screen this long (measured from its SAY line
+                                     # reaching the machine, else from the launch of its call); the first card replacing the original
+                                     # card is not a replacement in follow mode and only waits for the divergence rules
     carry_back_s: float = 1.0        # his turn that began this long before the question's last word still counts as an answer to it
 
 
@@ -397,16 +415,28 @@ def score_matrix(embed: Callable[[str], list[float]], req: NeedEmbed, cache: dic
 # --------------------------------------------------------------------------------------------------------- machine
 class FollowMachine:
     def __init__(self, params: FollowParams | None = None, clock: Callable[[], float] = time.monotonic, *,
-                 embed_ok: bool = False) -> None:
+                 embed_ok: bool = False, log: Callable[..., None] | None = None) -> None:
         self.p = params or FollowParams()
         self.clock = clock
         self.embed_ok = embed_ok
+        self._log_sink = log                           # log(event, **fields): the session's events.jsonl; None = off
         self._fx: list[Effect] = []
         self.turn_id: str | None = None
         self._seq = 0                                  # request numbers never restart: a late answer of an old turn finds no meta
         self._applied_seq = 0
         self._stale_turns: set[str] = set()
         self._reset()
+
+    # ------------------------------------------------------------------------------------------------- event log
+    def _log(self, ev: str, **fields) -> None:
+        """One line for the session's events.jsonl. Numbers, booleans and enums only (never his or the other party's words).
+        A sink that raises must not take the machine down: the log is a diagnosis aid."""
+        if self._log_sink is None:
+            return
+        try:
+            self._log_sink(ev, turn=self.turn_id, **fields)
+        except Exception:  # noqa: BLE001
+            pass
 
     # ---------------------------------------------------------------------------------------------- state
     def _reset(self) -> None:
@@ -437,6 +467,9 @@ class FollowMachine:
         self._last_req_content = 0
         self.stats = {"diverged": 0, "refresh": 0, "covered": 0}
         self.all_covered_t: float | None = None        # when the card on screen became fully covered
+        self.refresh_count = 0                         # follow cards of this answer that replaced an earlier follow card
+        self.card_shown_t: float | None = None         # when the follow card on screen got its SAY line (None: not known)
+        self._block_logged: tuple[str, float | None] | None = None   # (reason, last_word_t) of the last blocked-refresh log line
         self._fast_say = False                         # the S/F card has its SAY line (the bank card is no longer on screen)
         self.last_embed: float | None = None
         self.last_margin: float | None = None
@@ -450,6 +483,8 @@ class FollowMachine:
         questions, and an open one that keeps sending cumulative text is ignored from now on."""
         if turn_id == self.turn_id:
             return
+        if self.turn_id is not None and self.mode == "following" and not self.ended:
+            self._log("follow_state", state="ended", reason="new_question", mode="following", c_calls=self.c_count)
         self.turn_id = turn_id
         keep = self.stats
         carried: dict[str, tuple[list[Tok], str]] = {}
@@ -479,6 +514,8 @@ class FollowMachine:
         self.c_in_flight = False
         self.all_covered_t = None
         self._fast_say = False
+        self.refresh_count = 0
+        self.card_shown_t = None
 
     # ------------------------------------------------------------------------------------------------ cards
     def add_line(self, card_id: str, tier: str, kind: str, text: str, *, source: str = "model",
@@ -502,6 +539,7 @@ class FollowMachine:
                 self.visible_id = card_id
         if tier == "C" and kind == "say" and self.visible_id != card_id:
             self.visible_id = card_id          # the overlay switches to a follow card once its SAY line is there
+            self.card_shown_t = self.clock()
             self.all_covered_t = None
         if tier in ("S", "F") and kind == "say" and not self._fast_say:
             self._fast_say = True              # the fast tier's card replaces the bank card on screen
@@ -614,12 +652,23 @@ class FollowMachine:
         return run
 
     # ---------------------------------------------------------------------------------------------- decisions
-    def _lex_trigger(self) -> tuple[bool, int, list[Tok]]:
+    def _count_span(self) -> float:
+        """Seconds from the first unmatched word of the window to its newest content word (0 when none is unmatched)."""
+        win = self._content()[-self.p.window:]
+        first = next((t for t in win if not t.matched), None)
+        return win[-1].t - first.t if first is not None else 0.0
+
+    def _lex_rules(self) -> tuple[bool, bool, int, list[Tok]]:
+        """(count rule, time rule, unmatched words in the window, the trailing unmatched run)."""
         p = self.p
         n, _ = self._unmatched_window()
         run = self._run()
-        by_count = n >= p.diverge_words
+        by_count = n >= p.diverge_words and self._count_span() >= p.count_min_s
         by_time = len(run) >= p.time_min_words and run[-1].t - run[0].t >= p.diverge_s
+        return by_count, by_time, n, run
+
+    def _lex_trigger(self) -> tuple[bool, int, list[Tok]]:
+        by_count, by_time, n, run = self._lex_rules()
         return (by_count or by_time), n, run
 
     def _check_all(self, now: float | None = None, final: bool = False) -> None:
@@ -648,13 +697,32 @@ class FollowMachine:
             self._pend_div = {"seq": req.seq if req else None, "deadline": now + self.p.embed_wait_s}
             if req is None:
                 self._pend_div = None
+            else:
+                by_count, by_time, _, _ = self._lex_rules()
+                self._log("follow_embed_state", state="requested", seq=req.seq, wait_s=self.p.embed_wait_s,
+                          by_count=by_count, by_time=by_time, unmatched=n, run_words=len(run))
 
     def _diverge(self, now: float, reason: str, n: int, run: list[Tok], embed: float | None,
-                 margin: float | None = None) -> None:
+                 margin: float | None = None, floor: float | None = None) -> None:
         self._pend_div = None
         first = run[0].t if run else now
         self.diverged_at = now
         self.stats["diverged"] += 1
+        by_count, by_time, _, _ = self._lex_rules()
+        p = self.p
+        # `rule`: which lexical rule raised the suspicion (the count rule when both did: it needs no time); the embedding
+        # then decided (`embed_why`: the card score under the floor, a pack line beating the card by the margin, or both).
+        below = embed is not None and floor is not None and embed < floor
+        over = margin is not None and margin >= p.sem_margin
+        self._log("follow_diverged", rule=("lexical" if by_count else "time"), decided_by="embedding",
+                  embed_why=("both" if below and over else "floor" if below else "margin" if over else "other"),
+                  by_count=by_count, by_time=by_time, reason=reason,
+                  count_span_s=round(self._count_span(), 3), count_min_s=p.count_min_s,
+                  unmatched=n, window=len(self._content()[-p.window:]), diverge_words=p.diverge_words,
+                  run_words=len(run), run_s=round(run[-1].t - run[0].t, 3) if run else 0.0, diverge_s=p.diverge_s,
+                  time_min_words=p.time_min_words, since_run_s=round(now - first, 3),
+                  since_start_s=round(now - (self.toks()[0].t if self.toks() else now), 3),
+                  words=len(self.toks()), embed=embed, margin=margin, sem_floor=floor, sem_margin=p.sem_margin)
         toks = self.toks()
         start = toks[0].t if toks else now
         self._fx.append(Diverged(reason, n, embed, margin, round(n / max(1, min(self.p.window, len(self._content()))), 3),
@@ -780,11 +848,15 @@ class FollowMachine:
                 if not same:
                     # his words changed under the request (a revision): these scores are about other words. Ask again for
                     # the current text instead of deciding on them.
+                    self._log("follow_embed_state", state="arrived", seq=seq, verdict="stale")
                     self._check_diverge(now)
                 else:
                     trig, n, run = self._lex_trigger()
+                    verdict = "diverge" if trig and not on_card else "stay"
+                    self._log("follow_embed_state", state="arrived", seq=seq, verdict=verdict, embed=round(best_stay, 4),
+                              margin=margin, sem_floor=floor, sem_margin=p.sem_margin, on_card=on_card, suspicious=trig)
                     if trig and not on_card:
-                        self._diverge(now, "lexical+embed", n, run, round(best_stay, 4), margin)
+                        self._diverge(now, "lexical+embed", n, run, round(best_stay, 4), margin, floor)
         self._maybe_request(now)
         if self.mode == "following":
             self._check_refresh(now)
@@ -831,17 +903,23 @@ class FollowMachine:
     def c_started(self, card_id: str, now: float | None = None) -> None:
         """The engine launched a C call (after a Diverged or Refresh effect)."""
         now = self.clock() if now is None else now
+        first = self.mode != "following"
         self.mode = "following"
         self.c_launch_t = now
         self.last_c_t = now
         self.c_in_flight = True
         self.c_count += 1
         self._pend_div = None
+        if not first:
+            self.refresh_count += 1            # counted on a launch that went out: a refused one (`c_failed`) never gets here
+        self._log("follow_state", state=("entered" if first else "refreshed"), reason=("diverged" if first else "refresh"),
+                  card=card_id, c_calls=self.c_count, refreshes=self.refresh_count)
 
-    def c_failed(self, now: float | None = None) -> None:
+    def c_failed(self, now: float | None = None, reason: str = "refused") -> None:
         """The launch was refused (rate bucket, halted): stay as before and retry no earlier than `min_gap_after_fail_s`."""
         now = self.clock() if now is None else now
         self.fail_t = now
+        self._log("follow_state", state="launch_refused", reason=reason, mode=self.mode, c_calls=self.c_count)
         if self.mode == "watch":
             self.diverged_at = None
 
@@ -909,9 +987,36 @@ class FollowMachine:
         n = self._new_words_since_c(after)
         if n < p.refresh_new_words * step:
             return
+        if self._refresh_blocked(now, n):
+            return
         self.refreshed_at_word_t = self.last_word_t
         self.stats["refresh"] += 1
         self._fx.append(Refresh(n, self.his_text()))
+
+    def _card_age(self, now: float) -> float:
+        """Seconds the card on screen has been shown: from its SAY line, else from its call's launch (never later than that:
+        a card whose start is unknown counts from the launch, which can only make the age larger)."""
+        t = self.card_shown_t if self.card_shown_t is not None and self.visible_id != self.original_id else self.c_launch_t
+        return now - t if t is not None else 1e9
+
+    def _refresh_blocked(self, now: float, new_words: int) -> bool:
+        """The cap: a refresh that would go out now is held back when the answer has had its refreshes or the card on screen is
+        younger than `min_card_show_s`. The reason is logged once per sentence end (numbers and enums only)."""
+        p = self.p
+        age = self._card_age(now)
+        if self.refresh_count >= p.max_refreshes_per_answer:
+            reason = "refresh_capped"
+        elif age < p.min_card_show_s:
+            reason = "refresh_too_soon"
+        else:
+            return False
+        key = (reason, self.last_word_t)
+        if self._block_logged != key:
+            self._block_logged = key
+            self._log("follow_state", state="refresh_blocked", reason=reason, refreshes=self.refresh_count,
+                      max_refreshes=p.max_refreshes_per_answer, card_age_s=round(min(age, 1e6), 3),
+                      min_card_show_s=p.min_card_show_s, new_words=new_words)
+        return True
 
     # ------------------------------------------------------------------------------------------------- timers
     def tick(self, now: float | None = None) -> None:
@@ -922,6 +1027,7 @@ class FollowMachine:
         pend = self._pend_div
         if pend is not None and now >= pend["deadline"] and self.mode == "watch" and self.diverged_at is None:
             self._pend_div = None             # the embedding did not come: ask again; nothing is decided without it
+            self._log("follow_embed_state", state="timed_out", seq=pend["seq"], waited_s=round(self.p.embed_wait_s, 3))
             self._check_diverge(now)
         if self.mode == "following":
             self._check_refresh(now)
@@ -935,7 +1041,9 @@ class FollowMachine:
             return
         self.ended = True
         self._pend_div = None
+        self.refresh_count = 0
         self._fx.append(Ended(reason))
+        self._log("follow_state", state="ended", reason=reason, mode=self.mode, c_calls=self.c_count)
 
     # -------------------------------------------------------------------------------------------------- output
     def drain(self) -> list[Effect]:

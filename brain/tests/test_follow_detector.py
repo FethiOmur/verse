@@ -70,7 +70,7 @@ def test_the_lexical_test_alone_would_flip_a_long_paraphrase_and_the_embedding_i
     m.drain()
     fired = False
     for i, w in enumerate(text.split(), 1):
-        m.clock.t = 0.4 * i
+        m.clock.t = 0.8 * i                 # a slow speaker: the count rule needs its unmatched words to span 4 s
         m.on_me("m1", " ".join(text.split()[:i]), False)
         fired = fired or m._lex_trigger()[0]
         m.drain()
@@ -94,7 +94,7 @@ def test_a_new_project_diverges_within_five_content_words():
 
 def test_another_pack_topic_diverges_through_the_margin():
     """Talking about Compass is on the pack but not on this card: the margin (another pack line beats the card) says so."""
-    r = run("What I like at Halden is that Compass re-plans the routes every ninety seconds with live traffic")
+    r = run("What I like at Halden is that Compass replans the dispatch routes every ninety seconds with live traffic")
     d = diverged(r)
     assert d is not None and d.fx.margin is not None and d.fx.margin >= 0.04
 
@@ -123,7 +123,7 @@ def test_divergence_waits_for_the_card():
     m.new_turn("q1")
     fx: list = []
     for i in range(1, 9):
-        clock.t = 0.4 * i
+        clock.t = 0.8 * i                       # a word every 0.8 s: the run spans more than the time rule's 4 s
         m.on_me("m1", " ".join(NEW_PROJECT.split()[: i + 6]), False)
     drv.pump(fx.append, now=clock.t)
     assert not fx
@@ -170,13 +170,83 @@ def test_diverge_then_return_to_the_card_does_not_flicker():
 
 
 def test_the_time_rule_fires_without_the_count():
-    """>= 1.2 s of his speech that matches nothing (with at least three content words) also diverges."""
-    text = "Honestly marathon training taught me patience"
-    r = run(text, params=replace(FollowParams(), diverge_words=9))
-    assert diverged(r) is not None
+    """>= 4 s of his speech that matches nothing (with at least three content words) also diverges. 0.8 s per word: the run of
+    "marathon training taught patience" (four content words) spans 2.4 s, so the stream carries on past 4 s with more talk."""
+    text = "Honestly marathon training taught me patience and discipline and also humility during every long winter"
+    r = simulate(CARD, text, params=replace(FollowParams(), diverge_words=99), embedder=ConceptEmbedder(),
+                 pack=PACK_FOR_DETECTOR, wps=1.25, chunk_s=0.8)
+    e = diverged(r)
+    assert e is not None
+    assert e.t >= 4.0, "no time rule below 4 s of unmatched speech"
+
+
+def _stream_run(times, text="marathon training patience discipline humility", params=None):
+    """Words of `text` arrive at `times` (seconds); the machine has the card and an embedder that sees an off-card topic.
+    `params` default: the count rule off (diverge_words=99), so only the time rule can decide. Returns the Diverged effects."""
+    from follow_helpers import PACK_FOR_DETECTOR as pack
+    from verse_brain.runtime.follow_drive import make_machine
+    clock = Clock()
+    m, drv = make_machine(CARD, params or replace(FollowParams(), diverge_words=99), ConceptEmbedder(), clock, pack=pack)
+    out = []
+    ws = text.split()
+    for i, t in enumerate(times):
+        clock.t = t
+        m.on_me("m1", " ".join(ws[:i + 1]), False, now=t)
+        drv.pump(out.append, now=t)
+    return [e for e in out if isinstance(e, Diverged)]
+
+
+@pytest.mark.parametrize("span,expect", [(1.5, False), (3.0, False), (3.9, False), (4.0, True), (5.5, True)])
+def test_the_time_rule_needs_four_seconds_of_unmatched_speech(span, expect):
+    """Three unmatched content words (the minimum) whose first and last arrivals are `span` seconds apart. The count rule
+    (diverge_words) is out of the way, so only the time rule can decide; with 4.0 s or more of speech it does."""
+    got = _stream_run([0.0, span / 2, span], text="marathon training patience")
+    assert bool(got) is expect
+
+
+def test_the_time_rule_needs_enough_words_even_after_four_seconds():
+    """Two unmatched content words five seconds apart are one slow word and one more, not a topic (`time_min_words`)."""
+    assert not _stream_run([0.0, 5.0], text="marathon training")
+    assert _stream_run([0.0, 2.5, 5.0], text="marathon training patience")
 
 
 def test_a_single_stray_card_word_inside_other_talk_is_not_a_match():
     """"small", "reduced" and "supplier" occur on the card, but far apart and alone they are no cluster of one line."""
     r = run("Honestly my small marathon training app had a reduced budget and a supplier problem with shirts at the finish")
     assert diverged(r) is not None
+
+
+SIX = "marathon training patience discipline humility winters"        # six content words that match nothing on the card
+COUNT_ONLY = replace(FollowParams(), diverge_s=99.0)                  # the time rule out of the way: only the count rule can decide
+
+
+@pytest.mark.parametrize("span,expect", [(1.5, False), (3.0, False), (3.9, False), (4.0, True), (6.0, True)])
+def test_the_count_rule_needs_its_unmatched_words_to_span_four_seconds(span, expect):
+    """Six unmatched content words (more than `diverge_words`) whose first and last arrivals are `span` seconds apart: said
+    within 1.5 s, 3 s or 3.9 s they do not diverge by count; spread over 4 s or more they do."""
+    times = [span * i / 5 for i in range(6)]
+    assert bool(_stream_run(times, text=SIX, params=COUNT_ONLY)) is expect
+
+
+def test_fast_speech_diverges_only_through_the_time_rule_and_not_before_four_seconds():
+    """Twenty unmatched content words at four per second. The count rule cannot see them (its window of 8 words spans under
+    2 s); the time rule decides, at 4 s of his unmatched speech and not a moment earlier."""
+    words = ("marathon training patience discipline humility winters weather snow cold mountain valley river forest meadow "
+             "village cottage orchard harbour garden market").split()
+    times = [i / 4.0 for i in range(len(words))]
+    got = _stream_run(times, text=" ".join(words), params=FollowParams())
+    assert got and got[0].start_ms >= 4000, got
+    assert not _stream_run(times, text=" ".join(words), params=COUNT_ONLY), "the count rule alone never fires at this pace"
+
+
+def test_no_divergence_is_logged_before_four_seconds_of_his_speech():
+    """Over a set of scripted answers, with the count rule's old speed, every `follow_diverged` line carries >= 4 s of his speech."""
+    from test_follow_log import Sink
+    answers = [NEW_PROJECT, PARAPHRASES[1], "Honestly marathon training taught me patience and discipline and also humility "
+               "during every long winter in the mountains", "Compass re-plans the dispatch routes every ninety seconds"]
+    for text in answers:
+        for wps in (2.5, 4.0, 6.0):
+            sink = Sink()
+            simulate(CARD, text, embedder=ConceptEmbedder(), pack=PACK_FOR_DETECTOR, log=sink, wps=wps, chunk_s=0.4)
+            for d in sink.of("follow_diverged"):
+                assert d["since_start_s"] >= 4.0 and d["count_span_s"] >= 0 and d["count_min_s"] == 4.0, (text, wps, d)
