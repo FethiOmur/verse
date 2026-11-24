@@ -36,9 +36,12 @@ public struct CalendarEntry: Sendable, Equatable {
     public var url: URL?
     /// The attendee that is the calendar's owner (EventKit's `isCurrentUser`); nil when the owner is not on the list.
     public var currentUser: Attendee?
+    /// The event repeats (EventKit's `hasRecurrenceRules`; every occurrence shares `id`).
+    public var isRecurring: Bool
 
     public init(id: String, title: String, start: Date, end: Date, isAllDay: Bool = false, attendees: [Attendee] = [],
-                notes: String? = nil, location: String? = nil, url: URL? = nil, currentUser: Attendee? = nil) {
+                notes: String? = nil, location: String? = nil, url: URL? = nil, currentUser: Attendee? = nil,
+                isRecurring: Bool = false) {
         self.id = id
         self.title = title
         self.start = start
@@ -49,6 +52,7 @@ public struct CalendarEntry: Sendable, Equatable {
         self.location = location
         self.url = url
         self.currentUser = currentUser
+        self.isRecurring = isRecurring
     }
 }
 
@@ -107,6 +111,13 @@ public struct CalendarSource: Sendable {
         return events(from: now.addingTimeInterval(-margin), to: now.addingTimeInterval(margin))
     }
 
+    /// Events that overlap `[from, to]`, soonest first, for the session auto-select. Synchronous and never prompts: without full
+    /// access it returns an empty list. All-day events are skipped; `realMeetingsOnly` as in `upcoming`.
+    public func events(overlapping from: Date, _ to: Date, realMeetingsOnly: Bool = false) -> [MeetingEvent] {
+        guard backend.authorization() == .fullAccess else { return [] }
+        return events(from: from, to: to, realMeetingsOnly: realMeetingsOnly).filter { $0.end > from && $0.start <= to }
+    }
+
     /// One event by identifier, searched from a day ago to two weeks ahead (a recurring event: the next occurrence).
     public func event(id: String, now: Date = Date()) async throws -> MeetingEvent? {
         try await ensureAccess()
@@ -120,8 +131,11 @@ public struct CalendarSource: Sendable {
             .sorted { ($0.start, $0.id) < ($1.start, $1.id) }
             .map { e in
                 let link = MeetingLink.extract(url: e.url, location: e.location, notes: e.notes)
+                // A Webex or FaceTime link that is only in the location is kept as the url, so the event still reads as a
+                // real meeting once the location is gone (G13).
                 return MeetingEvent(id: e.id, title: e.title, start: e.start, end: e.end, attendees: e.attendees,
-                                    notes: e.notes, url: link.url, provider: link.provider, currentUser: e.currentUser)
+                                    notes: e.notes, url: link.url ?? RealMeeting.callLink(in: e.location), provider: link.provider,
+                                    currentUser: e.currentUser, isRecurring: e.isRecurring)
             }
     }
 }

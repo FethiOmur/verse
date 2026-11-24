@@ -137,7 +137,7 @@ public enum ScreenRenderer {
         var detectedNoEvent = OverlayState()
         detectedNoEvent.meetingPrompt = .detected(appName: "Comet", eventTitle: nil, plan: .selected("mara-northwindlabs"))
         var detectedInvite = OverlayState()
-        detectedInvite.meetingPrompt = .detected(appName: "Zoom", eventTitle: "Design review with Ingrid", plan: .fromInvite)
+        detectedInvite.meetingPrompt = .detected(appName: "Zoom", eventTitle: "Design review with Ingrid", plan: .unprepared)
         var upcoming = OverlayState()
         upcoming.meetingPrompt = .upcoming(eventTitle: "Mara · Northwind Labs", minutes: 4, plan: .prepared("mara-northwindlabs"))
         var saveSummary = OverlayState()
@@ -192,7 +192,7 @@ public enum ScreenRenderer {
         page7.presentForPreview(page: PromptPage(text: "Northwind Labs keeps shops on the first screen. I build the tools that turn that into a product your team can sell without me in the room."),
                                 state: { var st = PrompterState(); st.pageCount = 5; st.pageIndex = 1; st.wordCount = 28; st.wordPosition = 14.2
                                     st.isPaused = false; st.isSpeaking = true; st.mode = .voicePaced; st.requestedMode = .voicePaced; return st }())
-        // Anytime calls: the start card (route and language chips, "Unprepared"), the stop confirmation, the profile status.
+        // Anytime calls: the start card (route chip, "Unprepared"), the stop confirmation, the profile status.
         var startRoom = OverlayState()
         startRoom.running = true
         startRoom.activity = .listening

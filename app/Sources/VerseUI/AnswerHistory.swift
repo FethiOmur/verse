@@ -55,8 +55,15 @@ public struct AnswerHistory: Equatable, Sendable {
             liveKey = nil
             return
         }
+        liveKey = Self.key(for: card)
+        record(card)
+    }
+
+    /// A card that streams off screen (a regenerated card holds the island): it updates its own entry, or adds one once it shows an
+    /// answer. What the live island shows (`liveKey`) does not change.
+    public mutating func record(_ card: OverlayCard) {
+        guard Self.isAnswer(card) else { return }
         let key = Self.key(for: card)
-        liveKey = key
         if let i = entries.firstIndex(where: { $0.key == key }) {
             if entries[i].card != card { entries[i].card = card }
             return

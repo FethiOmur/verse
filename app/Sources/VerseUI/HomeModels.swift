@@ -419,13 +419,17 @@ public final class HomeUpNextModel: ObservableObject {
     private let prepare: @Sendable (MeetingEvent, String) async throws -> URL
     private let onPrepared: @MainActor (String) -> Void
     private let afterPrepare: @MainActor (MeetingEvent, String) -> Void
+    private let sidecars: () -> [String: EventSidecar]
+    private let onPrepStart: @MainActor (MeetingEvent) -> Void
     static let window: TimeInterval = 36 * 3600
 
     public init(settings: AppSettings, meeting: MeetingSettings, sessions: @escaping () -> [String],
                 calendar: CalendarSource = CalendarSource(), eventMap: EventSessionMap = EventSessionMap(),
                 prepare: (@Sendable (MeetingEvent, String) async throws -> URL)? = nil,
                 onPrepared: @escaping @MainActor (String) -> Void = { _ in },
-                afterPrepare: @escaping @MainActor (MeetingEvent, String) -> Void = { _, _ in }) {
+                afterPrepare: @escaping @MainActor (MeetingEvent, String) -> Void = { _, _ in },
+                sidecars: @escaping () -> [String: EventSidecar] = { [:] },
+                onPrepStart: @escaping @MainActor (MeetingEvent) -> Void = { _ in }) {
         self.settings = settings
         self.meeting = meeting
         self.sessions = sessions
@@ -433,6 +437,8 @@ public final class HomeUpNextModel: ObservableObject {
         self.eventMap = eventMap
         self.onPrepared = onPrepared
         self.afterPrepare = afterPrepare
+        self.sidecars = sidecars
+        self.onPrepStart = onPrepStart
         let brainDir = VerseController.brainDir()
         self.prepare = prepare ?? EventPrep.prepare(brainDir: brainDir)
     }
@@ -451,9 +457,11 @@ public final class HomeUpNextModel: ObservableObject {
         let events = (try? await calendar.upcoming(within: Self.window, realMeetingsOnly: true)) ?? []
         let remembered = eventMap.load()
         let names = sessions()
+        let carried = sidecars()
         items = events.prefix(6).map { e in
             var prepared: String?
-            if case .prepared(let n) = MeetingSessionResolver.plan(for: e, sessions: names, remembered: remembered, selected: nil) { prepared = n }
+            if case .prepared(let n) = MeetingSessionResolver.plan(for: e, sessions: names, remembered: remembered, selected: nil,
+                                                                   sidecars: carried) { prepared = n }
             return HomeUpNextItem(id: e.id, title: e.title, meta: Self.meta(e), session: prepared, event: e)
         }
     }
@@ -473,14 +481,15 @@ public final class HomeUpNextModel: ObservableObject {
         }
     }
 
-    /// Prepares `event` from its invite (the call the Prepare button makes), remembers which session belongs to the event
-    /// and tells `onPrepared`. Returns the new session folder. The Practice page's "Upcoming" meetings use it too, so there
-    /// is one event-prep path.
+    /// Prepares `event` from its invite (the call the Prepare button makes), remembers which session belongs to the event, writes
+    /// the folder's `event.json` (G14) and tells `onPrepared`. Returns the new session folder. The Practice page's "Upcoming"
+    /// meetings use it too, so there is one event-prep path; the background prep is told, so it leaves the meeting alone.
     public func prepareSession(for event: MeetingEvent) async throws -> URL {
         let lang = settings.language
         let prepare = self.prepare
+        onPrepStart(event)
         let dir = try await prepare(event, lang)
-        eventMap.remember(eventID: event.id, session: dir.lastPathComponent)
+        eventMap.recordPrep(event, sessionDir: dir)
         onPrepared(dir.lastPathComponent)
         afterPrepare(event, dir.lastPathComponent)
         return dir
@@ -495,7 +504,7 @@ public final class HomeUpNextModel: ObservableObject {
         return (try? await calendar.upcoming(within: within, now: now, realMeetingsOnly: true)) ?? []
     }
 
-    /// Event id -> session folder name, for the sessions the app prepared from an event.
+    /// Link key (occurrence key, or a bare event id from before) -> session folder name, for the sessions the app prepared from an event.
     public var rememberedSessions: [String: String] { eventMap.load() }
 
     /// "Today 14:30 · Zoom · in 4 minutes".

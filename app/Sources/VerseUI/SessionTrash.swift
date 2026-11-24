@@ -45,6 +45,9 @@ struct TrashBatch: Equatable, Sendable {
     var startWas: String?
     /// What Start fell back to (`refreshSessions`): the undo gives the choice back only if it is still that.
     var startFallback: String?
+    /// His pick by hand of that session, which the fallback ended: the undo puts it back with the choice, so the next session
+    /// auto-select keeps the choice instead of selecting the next meeting's session again.
+    var manualWas: ManualChoice?
 
     var names: [String] { items.map(\.name) }
 }
@@ -70,6 +73,9 @@ struct SessionTrashHooks {
     var block: (String) -> SessionTrashBlock? = { _ in nil }
     var startSession: () -> String = { "" }
     var setStartSession: (String) -> Void = { _ in }
+    /// The live pick by hand of the Start choice (`settings.sessionPickManual`).
+    var manualPick: () -> ManualChoice? = { nil }
+    var setManualPick: (ManualChoice?) -> Void = { _ in }
     /// Called after sessions left or came back: the menu's list and the Practice meetings read the folder again.
     var sessionsChanged: () -> Void = {}
     var selected: () -> String? = { nil }
@@ -95,6 +101,8 @@ extension SessionTrashHooks {
             },
             startSession: { settings.sessionName },
             setStartSession: { settings.sessionName = $0 },
+            manualPick: { settings.sessionPickManual },
+            setManualPick: { settings.sessionPickManual = $0 },
             sessionsChanged: { [weak controller, weak sim, weak memory] in
                 controller?.refreshSessions()
                 sim?.refreshMeetings()
@@ -198,6 +206,7 @@ extension HomeSessionsModel {
         var outcome = TrashOutcome()
         var items: [TrashedSession] = []
         let startBefore = hooks.startSession()
+        let manualBefore = hooks.manualPick()
         let shown = session(named: hooks.selected())?.name ?? sessions.first?.name
         let order = displayOrder.contains(where: { $0 == shown }) ? displayOrder : sessions.map(\.name)
         var seen = Set<String>()
@@ -227,7 +236,8 @@ extension HomeSessionsModel {
         // The Start choice falls back the way a refresh does when its session is gone.
         hooks.sessionsChanged()
         let wasStart = removed.contains(startBefore)
-        let batch = TrashBatch(items: items, startWas: wasStart ? startBefore : nil, startFallback: wasStart ? hooks.startSession() : nil)
+        let batch = TrashBatch(items: items, startWas: wasStart ? startBefore : nil, startFallback: wasStart ? hooks.startSession() : nil,
+                               manualWas: wasStart && manualBefore?.session == startBefore ? manualBefore : nil)
         outcome.batch = batch
         if let shown, removed.contains(shown) {
             hooks.select(SessionTrashRules.nextSelection(order: order, removed: removed, current: shown))
@@ -290,6 +300,7 @@ extension HomeSessionsModel {
         reload()
         hooks.sessionsChanged()
         if let was = batch.startWas, back.contains(was), hooks.startSession() == (batch.startFallback ?? ""), hooks.startSession() != was {
+            if let m = batch.manualWas, hooks.manualPick() == nil { hooks.setManualPick(m) }
             hooks.setStartSession(was)
         }
         if let first = back.first { hooks.select(first) }

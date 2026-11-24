@@ -139,6 +139,8 @@ public struct HomeContext {
     let people: EntityStore
     /// The automatic brief after a session is prepared, and the briefs made from a session's detail.
     let briefs: AutoBriefCenter
+    /// Learning from his calls into the master persona. It starts nothing in tests and renders.
+    let persona: PersonaService
     private var peopleSubscriptions: [AnyCancellable] = []
 
     public init(settings: AppSettings, controller: VerseController, simSettings: SimSettings, sim: SimController,
@@ -185,6 +187,16 @@ public struct HomeContext {
         peopleStore.onChange = { [weak memoryService] in memoryService?.requestSync(.labelsChanged) }
         memoryService.recordingSession = { [weak controller] in controller?.recordingSessionName }
         memoryService.attach(controller: controller)
+        // A test or render process never touches the owner's profile folder or starts the brain for the persona.
+        let personaService = PersonaService(
+            paths: isApp ? .live : PersonaPaths(profile: scratchMemory.base.appendingPathComponent("profile", isDirectory: true),
+                                                sessionsRoot: sessionsModel.root),
+            enabled: isApp,
+            makeBrain: { [weak controller] local in try PersonaService.makeBrainProcess(fake: controller?.fakeBrain ?? false, local: local) })
+        personaService.toggleOn = { settings.learnFromCalls }
+        personaService.ownerName = { settings.ownerName }
+        personaService.attach(controller: controller, memory: memoryService)
+        self.persona = personaService
         // Move to Trash asks the window what is running, which session Start uses and which row is shown.
         sessionsModel.hooks = .window(controller: controller, sim: sim, settings: settings, router: router, memory: memoryService,
                                       people: peopleStore)
@@ -193,16 +205,36 @@ public struct HomeContext {
             onPrepared: { [weak controller] name in
                 controller?.refreshSessions()
                 sessionsModel.reload()
-                if controller?.running == false { settings.sessionName = name }
+                // Selected only when it is for the next meeting, or no meeting is ahead (G6); never during a call.
+                controller?.selector.didPrepare(name, byHand: true)
             },
             // Who is in the meeting, for People, then the one automatic brief (Up next and Practice's Upcoming both come through here).
             afterPrepare: { [weak peopleStore, weak briefCenter] event, session in
                 peopleStore?.recordAttendees(event.attendees, owner: event.currentUser, session: session)
                 briefCenter?.afterPrepare(event, session: session)
-            })
+            },
+            sidecars: { [weak controller] in controller?.sessionSidecars() ?? [:] },
+            // A prep started here is one the background prep must not start again.
+            onPrepStart: { [weak controller] event in controller?.autoPrep.noteAttempt(event, now: Date()) })
         self.me = me ?? MeModel(fake: { [weak controller] in controller?.fakeBrain ?? false })
         self.router = router
-        if isApp { startPeople(controller: controller, sessions: sessionsModel) }
+        // The background prep (owner decision 3) records the same things a Prepare click does: people, the brief, the lists.
+        let upNextForPrep = self.upNext
+        controller.onEventPrepared = { [weak peopleStore, weak briefCenter, weak sessionsModel, weak upNextForPrep] event, session in
+            sessionsModel?.reload()
+            peopleStore?.recordAttendees(event.attendees, owner: event.currentUser, session: session)
+            briefCenter?.afterPrepare(event, session: session)
+            Task { @MainActor in await upNextForPrep?.refresh() }
+        }
+        if isApp {
+            startPeople(controller: controller, sessions: sessionsModel)
+            // Up next follows calendar changes, wake, a new day and the minute tick, not only its page appearing (G11).
+            let upNextModel = self.upNext
+            peopleSubscriptions.append(controller.calendarWatcher.changes.sink { [weak upNextModel, weak controller] _ in
+                guard controller?.running == false else { return }
+                Task { @MainActor in await upNextModel?.refresh() }
+            })
+        }
     }
 
     /// The app only: People follows the folders and sessions, the Start-from-invite path records attendees, and once per launch the
@@ -222,7 +254,7 @@ public struct HomeContext {
         Task { @MainActor [weak store] in
             try? await Task.sleep(for: .seconds(8))
             guard useCalendar(), calendar.authorization() == .fullAccess else { return }
-            await store?.backfill(eventSessions: eventMap.load(), lookup: { id in try? await calendar.event(id: id) })
+            await store?.backfill(eventSessions: eventMap.load(), lookup: { key in try? await calendar.event(id: MeetingEvent.eventID(fromLinkKey: key)) })
         }
     }
 }
@@ -300,10 +332,10 @@ public struct HomeRoot: View {
                                   memory: SessionMemoryEnvironment(memory: context.memory, people: context.people, sessions: context.sessions,
                                                                    router: router, briefs: context.briefs))
         case .me:
-            MePage(model: context.me, controller: context.controller, settings: settings)
+            MePage(model: context.me, controller: context.controller, settings: settings, persona: context.persona)
         case .sessions:
             HomeSessionsPage(model: context.sessions, router: router, controller: context.controller, settings: settings,
-                             memory: context.memory, people: context.people, briefs: context.briefs)
+                             memory: context.memory, people: context.people, briefs: context.briefs, persona: context.persona)
         case .people:
             PeoplePage(store: context.people, sessions: context.sessions, upNext: context.upNext, memory: context.memory,
                        router: router, settings: settings)
@@ -406,11 +438,12 @@ private struct HomeSidebar: View {
     }
 
     private var statusLines: (String, Color, String) {
-        if controller.stopping { return (L10n.tr("Stopping"), VT.amber, controller.settings.sessionName) }
-        if controller.running { return (L10n.tr("Listening · \(controller.settings.sessionName)"), VT.mint, L10n.tr("Also stops with ⌥⌘V twice")) }
+        // While a call runs: the folder it records into, "Unprepared call" for an adhoc one (G12).
+        if controller.stopping { return (L10n.tr("Stopping"), VT.amber, controller.runLabel) }
+        if controller.running { return (L10n.tr("Listening · \(controller.runLabel)"), VT.mint, L10n.tr("Also stops with ⌥⌘V twice")) }
         if sim.running { return (L10n.tr("Practice running"), VT.mint, L10n.tr("Answer under the notch")) }
         if controller.sessions.isEmpty { return (L10n.tr("No session"), VT.amber, L10n.tr("Prepare one to start")) }
-        return (L10n.tr("Ready"), VT.mint, controller.settings.sessionName)
+        return (L10n.tr("Ready"), VT.mint, controller.selectedLabel)
     }
 }
 

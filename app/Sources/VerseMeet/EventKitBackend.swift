@@ -65,7 +65,8 @@ public final class EventKitBackend: CalendarBackend, @unchecked Sendable {
                 title: (e.title ?? "").isEmpty ? "(no title)" : e.title!,
                 start: e.startDate, end: e.endDate, isAllDay: e.isAllDay,
                 attendees: (e.attendees ?? []).map(Self.attendee),
-                notes: e.notes, location: e.location, url: e.url, currentUser: me.map(Self.attendee))
+                notes: e.notes, location: e.location, url: e.url, currentUser: me.map(Self.attendee),
+                isRecurring: e.hasRecurrenceRules)
         }
     }
 
@@ -78,4 +79,9 @@ public final class EventKitBackend: CalendarBackend, @unchecked Sendable {
         if let n = name, n.isEmpty || n == email { name = nil }
         return Attendee(name: name, email: email)
     }
+}
+
+public extension CalendarSource {
+    /// Posted (by EventKit) when anything in the calendar store changed: a new, moved or deleted event, a calendar added.
+    static var storeChangedNotification: Notification.Name { .EKEventStoreChanged }
 }

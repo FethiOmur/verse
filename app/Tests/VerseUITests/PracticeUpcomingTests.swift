@@ -364,10 +364,12 @@ final class PracticeUpcomingTestsEventPrep: XCTestCase {
         let root = try scratch()
         defer { try? FileManager.default.removeItem(at: root) }
         let rig = makeRig(root: root, calendar: FakeCalendar(), prepare: { _, _ in URL(fileURLWithPath: "/tmp/sessions/20261020-100000-abcd1234") })
-        let dir = try await rig.upNext.prepareSession(for: event("e9", "Design review", start: at(21, 10)))
+        let e = event("e9", "Design review", start: at(21, 10))
+        let dir = try await rig.upNext.prepareSession(for: e)
         XCTAssertEqual(dir.lastPathComponent, "20261020-100000-abcd1234")
-        XCTAssertEqual(rig.eventMap.load()["e9"], "20261020-100000-abcd1234")
-        XCTAssertEqual(rig.upNext.rememberedSessions["e9"], "20261020-100000-abcd1234")
+        // Keyed on the occurrence, so the next occurrence of a recurring event is not taken for this one (G10).
+        XCTAssertEqual(rig.eventMap.load()[e.occurrenceKey], "20261020-100000-abcd1234")
+        XCTAssertEqual(rig.upNext.rememberedSessions[e.occurrenceKey], "20261020-100000-abcd1234")
         XCTAssertEqual(rig.prepared.names, ["20261020-100000-abcd1234"])
     }
 
@@ -380,7 +382,7 @@ final class PracticeUpcomingTestsEventPrep: XCTestCase {
         rig.upNext.prepare(rig.upNext.items[0])
         for _ in 0..<150 where rig.prepared.names.isEmpty { try await Task.sleep(for: .milliseconds(20)) }
         XCTAssertEqual(rig.prepared.names, ["design-review"])
-        XCTAssertEqual(rig.eventMap.load()["e10"], "design-review")
+        XCTAssertEqual(rig.eventMap.load()[e.occurrenceKey], "design-review")
     }
 
     func testUpcomingEventsAreGatedOnTheCalendarSettingAndAccess() async throws {

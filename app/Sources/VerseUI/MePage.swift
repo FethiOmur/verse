@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
+import VerseAudio
 import VerseTurns
 
 /// The home window's Me page (anytime-calls spec 2.2, "UI"): what Verse knows about him in every call. The sections of
@@ -11,6 +12,8 @@ struct MePage: View {
     @ObservedObject var model: MeModel
     @ObservedObject var controller: VerseController
     @ObservedObject var settings: AppSettings
+    /// The master persona's row (last update, open contradictions). nil in tests and renders that build the page without one.
+    var persona: PersonaService?
     @Environment(\.homeInk) private var ink
 
     /// Each add-a-note field has its own text: the notes row and the sources row are on screen together.
@@ -37,8 +40,10 @@ struct MePage: View {
 
             HomeSectionHeader("General prep")
             HomeGroup {
-                HomeRow("General prep", verbatimDetail: GeneralPrep.status(root: controller.sessionsRoot)?.text() ?? L10n.tr("Not built yet")) { EmptyView() }
+                HomeRow("General prep", verbatimDetail: generalPrepText) { EmptyView() }
             }
+
+            if let persona { PersonaMeSection(persona: persona, controller: controller) }
 
             if model.showSourcesChanged {
                 HomeGroup {
@@ -82,6 +87,15 @@ struct MePage: View {
             Text("“\(line.text)” is removed from your profile. Refresh will not bring it back.", bundle: .module)
         }
         .accessibilityIdentifier("verse.home.me")
+    }
+
+    /// What unprepared calls start with now: the compiled persona once it exists, else the general prep (owner decision 4).
+    private var generalPrepText: String {
+        guard let current = GeneralPrep.status(root: controller.sessionsRoot, personaOn: OwnerProfile.current.personaURL != nil) else {
+            return L10n.tr("Not built yet")
+        }
+        let from = current.source == .persona ? L10n.tr("From your persona") : L10n.tr("From the general prep")
+        return from + " · " + current.status.text()
     }
 
     // MARK: status
@@ -339,5 +353,64 @@ struct MePage: View {
             }
             HomeFootnote("Build reads the sources it finds on this Mac (your profile file, project notes, earlier meeting facts) and shows you what it kept. Nothing is read from the rest of the vault.")
         }
+    }
+}
+
+// MARK: - Persona
+
+/// The Me page's persona rows: the last update after a call, and the contradictions between things he said, each with both
+/// quotes and a way to keep one. The other claim stays in the note as history; nothing is deleted.
+struct PersonaMeSection: View {
+    @ObservedObject var persona: PersonaService
+    @ObservedObject var controller: VerseController
+
+    private var folder: URL? { OwnerProfile.current.personaURL }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HomeSectionHeader("Persona")
+            HomeGroup {
+                HomeRow("Learned from your calls", verbatimDetail: lastText) {
+                    if persona.active != nil || persona.resolving != nil { ProgressView().controlSize(.small) }
+                    if let folder {
+                        HomeSecondaryButton("Open folder") { NSWorkspace.shared.open(folder) }
+                            .disabled(!FileManager.default.fileExists(atPath: folder.path))
+                    }
+                }
+                ForEach(persona.open) { c in
+                    HomeRowDivider()
+                    HomeRow(verbatim: c.topic.isEmpty ? L10n.tr("Two different answers") : c.topic, detail: detail(c)) {
+                        HomeSecondaryButton("Keep first") { persona.resolve(c.id, keep: 1) }
+                        HomeSecondaryButton("Keep second") { persona.resolve(c.id, keep: 2) }
+                    }
+                    .disabled(persona.resolving != nil || persona.active != nil || controller.running || controller.stopping)
+                }
+            }
+            if let kind = persona.resolveError {
+                HomeNote(verbatim: L10n.tr("Could not settle it: \(PersonaRunRecord.reason(kind))"), isError: true).padding(.top, 8)
+            }
+            HomeFootnote(persona.open.isEmpty
+                         ? "After each call Verse keeps what you said in your own words, with the quote and the minute. Edit or delete any line in the note; Verse keeps your changes."
+                         : "Until you keep one, neither answer reaches a call. The other stays in the note as history.")
+        }
+        .onAppear { persona.refreshStatus() }
+    }
+
+    private var lastText: String {
+        if folder == nil { return L10n.tr("Off until a persona folder is set in the owner profile.") }
+        if let name = persona.active { return L10n.tr("Learning from \(title(name))…") }
+        if let last = persona.last { return last.text(title: title(last.session)) }
+        return L10n.tr("Nothing learned yet")
+    }
+
+    private func title(_ session: String) -> String { HomeSession.load(name: session, root: controller.sessionsRoot).title }
+
+    /// "1 · “quote” (date, ref)" and "2 · …" on two lines.
+    private func detail(_ c: PersonaContradiction) -> String {
+        func line(_ n: Int, _ s: PersonaSide) -> String {
+            let place = [s.date, s.ref].filter { !$0.isEmpty }.joined(separator: ", ")
+            return "\(n) · “\(s.quote.isEmpty ? s.text : s.quote)”" + (place.isEmpty ? "" : " (\(place))")
+        }
+        return line(1, c.first) + "\n" + line(2, c.second)
     }
 }

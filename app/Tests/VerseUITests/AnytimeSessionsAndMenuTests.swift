@@ -218,17 +218,6 @@ final class AnytimeSessionsAndMenuTests: XCTestCase {
         XCTAssertEqual(c.settings.sessionName, "mara-northwindlabs")
     }
 
-    func testTheLanguageChoiceBeforeAStartIsTheDefaultCallLanguage() {
-        let c = controller()
-        XCTAssertEqual(c.settings.defaultCallLanguage, "auto")
-        c.chooseLanguage("tr")
-        XCTAssertEqual(c.settings.defaultCallLanguage, "tr")
-        c.chooseLanguage("fr")
-        XCTAssertEqual(c.settings.defaultCallLanguage, "tr", "only auto, en, it and tr")
-        c.chooseLanguage("it")
-        XCTAssertEqual(c.settings.defaultCallLanguage, "it")
-    }
-
     func testSwitchingDoesNothingWithoutARunningCall() async {
         let c = controller()
         await c.switchListening(route: .room, lang: "it")

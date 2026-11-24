@@ -63,6 +63,8 @@ public final class VerseController: ObservableObject {
     @Published public private(set) var stopArmed = false
     /// False when ⌥⌘V is taken by another app.
     @Published public private(set) var startHotKeyAvailable = false
+    /// False when ⌥⇧⌘V (Start unprepared) is taken by another app.
+    @Published public private(set) var startUnpreparedHotKeyAvailable = false
     /// The earlier/newer answer keys (⌥⌘←, ⌥⌘→, ⇧<) another app holds in the running session; empty otherwise.
     @Published public private(set) var unavailableAnswerKeys: [String] = []
     /// The me layer, as the brain reported it for the running session: nil = no layer.
@@ -86,7 +88,8 @@ public final class VerseController: ObservableObject {
     private var runSessionDir: URL?
     private var runWasFake = false
     private var cancellables: Set<AnyCancellable> = []
-    /// "Play test file as remote…": the file is the remote channel and the microphone stays "me". Cleared when the run ends.
+    /// Settings > Testing's "Play as remote…": the file is the remote channel and the microphone stays "me". Cleared when the run
+    /// ends.
     private var remoteFileOverride: URL?
     /// Meeting detection ("Meeting detected · Start Verse?") and the summary-to-vault question.
     public lazy var meeting = MeetingCoordinator(host: self)
@@ -100,12 +103,17 @@ public final class VerseController: ObservableObject {
     /// The route picked by hand in the menu for the next Start; nil = the automatic pick. Used once.
     @Published public private(set) var routeChoice: AudioRoute?
     /// A route or language change of the running call is under way (one at a time).
-    private var switching = false
+    private(set) var switching = false
     /// The clock the double-press stop uses; tests replace it.
     public var clock: () -> Date = { Date() }
-    /// Calendar events around a time, for choosing a prepared session. Default: the calendar, when its access was granted.
-    public var eventsAround: (Date) -> [MeetingEvent] = { when in
-        CalendarSource().overlapping(now: when, margin: QuickStart.eventWindow)
+    /// The calendar the pickers' "Today 14:00" labels are made in; tests pin the time zone.
+    public var calendar: Calendar = .current
+    /// Calendar events around a time, for choosing the session a Start uses (and the menu's preview of it). Default: the calendar,
+    /// while "Use my calendar" is on and its access was granted; empty otherwise. Tests replace it.
+    public lazy var eventsAround: (Date) -> [MeetingEvent] = { [weak self] when in
+        guard let self, self.meeting.settings.useCalendar else { return [] }
+        // A real meeting beats a focus block that overlaps it (G13); with none, any event still counts.
+        return RealMeeting.preferReal(self.calendarSource.overlapping(now: when, margin: QuickStart.eventMargin))
     }
     /// The facts the route is picked from. Default: Core Audio's per-process flags, never audio.
     public var routeFacts: () -> QuickStart.RouteFacts = {
@@ -125,6 +133,161 @@ public final class VerseController: ObservableObject {
     /// Where the unprepared session folders go. Tests point it at a temp folder.
     public var sessionsRoot: URL = SessionCatalog.root
 
+    // Calendar-aware session selection
+    /// One calendar source for the selector and the watcher (one EventKit store, so its change notices arrive).
+    public lazy var calendarSource = CalendarSource()
+    /// Calendar events from an hour before `now` to the auto-select's lookahead, real meetings only. Empty while "Use my calendar"
+    /// is off or full access is missing (never prompts). Tests replace it.
+    public lazy var selectionEvents: (Date) -> [MeetingEvent] = { [weak self] now in
+        guard let self, self.meeting.settings.useCalendar else { return [] }
+        return self.calendarSource.events(overlapping: now.addingTimeInterval(-3600), now.addingTimeInterval(SessionAutoSelect.lookahead),
+                                          realMeetingsOnly: true)
+    }
+    /// Picks the Start session from the calendar (G1). Its published state is what the pickers and the status line show.
+    public lazy var selector: SessionSelector = {
+        let s = SessionSelector(
+            settings: settings,
+            busy: { [weak self] in self?.selectionBusy ?? true },
+            sessions: { [weak self] in self?.sessions ?? [] },
+            readEvents: { [weak self] now in self?.selectionEvents(now) ?? [] },
+            loadMatcher: { [weak self] names in
+                guard let self else { return SessionMatcher(sessions: names) }
+                return SessionMatcher.load(sessions: names, root: self.sessionsRoot, eventMap: self.eventSessions)
+            },
+            createdAt: { [weak self] names in
+                guard let self else { return [:] }
+                return SessionAutoSelect.createdAt(sessions: names, root: self.sessionsRoot)
+            },
+            clock: { [weak self] in self?.clock() ?? Date() },
+            log: { [weak self] in self?.log($0) })
+        s.autoSelectEnabled = launch.session == nil
+        return s
+    }()
+    /// Calendar changes, wake, a new day and a 60 s tick (G11); `beginSessionSelection` starts it.
+    public lazy var calendarWatcher = CalendarWatcher(authorization: { [weak self] in self?.calendarSource.authorization() ?? .notDetermined })
+    private var selectionSubs: Set<AnyCancellable> = []
+    /// The prep from an invite (the brain's calendar prep). Read once, when `autoPrep` is made; tests set it before that.
+    public lazy var eventPrepare: @Sendable (MeetingEvent, String) async throws -> URL = EventPrep.prepare(brainDir: Self.brainDir())
+    /// The background prep of upcoming meetings without a session (owner decision 3); the pickers show its "Preparing…".
+    public lazy var autoPrep = MeetingAutoPrep(
+        settings: meeting.settings, prepare: eventPrepare,
+        language: { [weak self] in self?.settings.language ?? "en" },
+        onPrepared: { [weak self] event, dir in self?.eventPrepared(event, dir: dir) },
+        log: { [weak self] in self?.log($0) })
+    /// After a prep from an event that the controller ran (the background prep, Prepare in the picker): who was in the meeting
+    /// and the automatic brief. The home window sets it; without it the meeting coordinator's attendee hook is told.
+    public var onEventPrepared: (@MainActor (MeetingEvent, String) -> Void)?
+    /// Every run that ended, after the meeting coordinator heard of it (the persona queues its session here).
+    var onRunFinished: (@MainActor (FinishedRun) -> Void)?
+    /// Created times and `event.json` files of the sessions, read once per session list (the pickers render often).
+    private var sessionInfoCache: (names: [String], createdAt: [String: Date], sidecars: [String: EventSidecar])?
+
+    /// Something is under way that the selection must not change under: a run, a stop, a route or language switch, the practice
+    /// interview or a meeting prompt.
+    var selectionBusy: Bool {
+        running || stopping || switching || startBlocked() || overlay.state.running || overlay.state.meetingPrompt != nil
+    }
+
+    /// The app calls this once at launch, after the session list is read and before meeting detection starts: picks the session
+    /// for the next meeting now and again on every calendar change, wake, new day, 60 s tick, session list change and run end.
+    public func beginSessionSelection() {
+        guard !calendarWatcher.isWatching else { return }
+        calendarWatcher.changes.sink { [weak self] _ in
+            self?.selector.reevaluate()
+            self?.considerAutoPrep()
+        }.store(in: &selectionSubs)
+        $sessions.removeDuplicates().dropFirst().sink { [weak self] _ in
+            // After the change has landed, and never inside a Start (the run is then under way and the selector does nothing).
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.selector.reevaluate() } }
+        }.store(in: &selectionSubs)
+        meeting.settings.$useCalendar.removeDuplicates().dropFirst().sink { [weak self] _ in
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.calendarWatcher.fire(.settings) } }
+        }.store(in: &selectionSubs)
+        calendarWatcher.start()
+        calendarWatcher.fire(.launch)
+    }
+
+    /// The folders' `event.json` files, for the meeting prompt's match.
+    public func sessionSidecars() -> [String: EventSidecar] {
+        sessionInfo().sidecars
+    }
+
+    /// Created times and sidecars of the current sessions, read again only when the list changed.
+    func sessionInfo() -> (createdAt: [String: Date], sidecars: [String: EventSidecar]) {
+        if let c = sessionInfoCache, c.names == sessions { return (c.createdAt, c.sidecars) }
+        let info = (names: sessions, createdAt: SessionAutoSelect.createdAt(sessions: sessions, root: sessionsRoot),
+                    sidecars: EventSidecar.loadAll(sessions: sessions, root: sessionsRoot))
+        sessionInfoCache = info
+        return (info.createdAt, info.sidecars)
+    }
+
+    /// What the Session pickers show (G5): Next meetings, Other sessions, the marks and the "not prepared" line.
+    public func pickerModel() -> SessionPickerModel {
+        let info = sessionInfo()
+        return SessionPickerModel.build(now: clock(), sessions: sessions, upcoming: selector.upcoming, matches: selector.matches,
+                                        target: selector.target, selected: settings.sessionName, manual: selector.manual,
+                                        sidecars: info.sidecars, createdAt: info.createdAt, preparing: autoPrep.inFlight,
+                                        calendar: calendar)
+    }
+
+    /// The calendar row of the menu and Home (G2): Turn on, or permission missing.
+    public var calendarNudge: CalendarNudge? {
+        CalendarNudge.state(hasSessions: !sessions.isEmpty, useCalendar: meeting.settings.useCalendar,
+                            authorization: calendarWatcher.authorization, running: running || stopping || startBlocked(),
+                            done: meeting.settings.calendarNudgeDone)
+    }
+
+    /// The one-time Turn on (owner decision 4): asks for calendar access through the Settings path, never during a run.
+    public func turnOnCalendar() {
+        guard !running, !stopping, !startBlocked() else { return }
+        meeting.settings.calendarNudgeDone = true
+        Task { [weak self] in
+            await self?.meeting.requestCalendarAccess()
+            self?.calendarWatcher.fire(.settings)
+        }
+    }
+
+    /// One look for the background prep (owner decision 3): only while nothing is under way and auto-select is on.
+    func considerAutoPrep() {
+        guard selector.autoSelectEnabled else { return }
+        let now = clock()
+        // A meeting he picked a session for by hand counts as prepared while the pick holds (design 4).
+        var matched = Set(selector.matches.keys)
+        if let key = selector.manualTargetKey(now: now) { matched.insert(key) }
+        autoPrep.consider(now: now, busy: selectionBusy, upcoming: selector.upcoming, matched: matched)
+    }
+
+    /// "Use for this meeting": links `session` to the next meeting's occurrence and selects it (G3, G5).
+    public func useForNextMeeting(_ session: String) {
+        guard let t = selector.target, sessions.contains(session), !running, !stopping else { return }
+        eventSessions.link(t, session: session)
+        log("session \(session) linked by hand to \(t.occurrenceKey)")
+        selector.choose(session)
+        selector.reevaluate()
+    }
+
+    /// Prepare in the picker: the next meeting's session is prepared now, in the background (nothing waits for it).
+    public func prepareNextMeeting() {
+        guard let t = selector.target, !selectionBusy else { return }
+        preparingByHand.insert(t.occurrenceKey)
+        autoPrep.prepareNow(t, now: clock())
+    }
+
+    /// Occurrence keys of preps he started from the picker; their session may end a manual pick when done.
+    private var preparingByHand: Set<String> = []
+
+    /// A prep from an event finished: the occurrence is linked, the folder gets its `event.json` (G14), the people and the brief
+    /// are told, and the session is selected when it is for the next meeting (G6).
+    func eventPrepared(_ event: MeetingEvent, dir: URL) {
+        let name = dir.lastPathComponent
+        eventSessions.recordPrep(event, sessionDir: dir)
+        sessionInfoCache = nil
+        refreshSessions()
+        if let hook = onEventPrepared { hook(event, name) } else { meeting.onPreparedFromEvent?(event, name) }
+        let byHand = preparingByHand.remove(event.occurrenceKey) != nil
+        selector.didPrepare(name, event: event, byHand: byHand)
+    }
+
     public init(settings: AppSettings, launch: LaunchOptions = LaunchOptions()) {
         self.settings = settings
         self.launch = launch
@@ -134,6 +297,12 @@ public final class VerseController: ObservableObject {
         }
         overlay.startChipActions = { [weak self] action in
             MainActor.assumeIsolated { self?.startChip(action) }
+        }
+        overlay.regenerateActions = { [weak self] req in
+            MainActor.assumeIsolated { self?.sendRegenerate(req) ?? false }
+        }
+        overlay.markActions = { [weak self] e in
+            MainActor.assumeIsolated { self?.sendMark(e) }
         }
         prompter.language = { [weak self] in self?.settings.language ?? "en" }
         if let s = launch.session { settings.sessionName = s }
@@ -158,7 +327,8 @@ public final class VerseController: ObservableObject {
         // Unprepared (adhoc) folders are not sessions to pick: Start would run them as prepared ones.
         // The standing general prep is a source for unprepared calls, not a session to pick or map to an event.
         sessions = SessionCatalog.list(root: sessionsRoot).filter { !SessionCatalog.isAdhoc($0) && !GeneralPrep.isGeneral($0) }
-        if !sessions.contains(settings.sessionName) { settings.sessionName = sessions.first ?? "" }
+        // The selection is gone (or was never set): the next meeting's session, else the newest one (G7). Never reads the calendar.
+        if !sessions.contains(settings.sessionName) { selector.selectionMissing() }
     }
 
     /// The brain folder: `VERSE_BRAIN_DIR`, then the repo path written into Info.plist at bundle time, then the
@@ -172,16 +342,28 @@ public final class VerseController: ObservableObject {
     /// The folder name of the session being recorded right now, nil when none is (Ask this meeting waits for the call to end).
     public var recordingSessionName: String? { running ? runSessionDir?.lastPathComponent : nil }
 
+    /// What the running call records into (G12): the run's own folder, "Unprepared call" for an adhoc one. Not running: the
+    /// selected session.
+    public var runLabel: String {
+        guard running || stopping, let name = runSessionDir?.lastPathComponent else { return settings.sessionName }
+        return SessionCatalog.isAdhoc(name) ? L10n.tr("Unprepared call") : name
+    }
+
+    /// The selected session as the pickers label it ("Today 14:00 · <meeting>", or the folder name).
+    public var selectedLabel: String {
+        pickerModel().label(of: settings.sessionName) ?? settings.sessionName
+    }
+
     public var statusLine: String {
         if stopping { return L10n.tr("Stopping…") }
         if running {
-            var s = L10n.tr("Listening · \(settings.sessionName)")
+            var s = L10n.tr("Listening · \(runLabel)")
             if testFile != nil { s += L10n.tr(" (test file)") }
             if fakeBrain { s += L10n.tr(" · fake brain") }
             return s
         }
         if sessions.isEmpty { return L10n.tr("No session prepared") }
-        return L10n.tr("Ready · \(settings.sessionName)")
+        return L10n.tr("Ready · \(selectedLabel)")
     }
 
     // MARK: start / stop
@@ -253,15 +435,40 @@ public final class VerseController: ObservableObject {
             showPanel()
             return
         }
-        launchSession(name: settings.sessionName, mode: .prepared, route: .meeting, lang: settings.language)
+        // Owner decision 7: every start path runs in Settings' call language, Auto by default (never the Meeting language).
+        launchSession(name: settings.sessionName, mode: .prepared, route: .meeting, lang: settings.defaultCallLanguage)
     }
 
     // MARK: start anytime
 
-    /// Starts now, with or without a prepared session (⌥⌘V, the menu, the island): a prepared session linked to a calendar
-    /// event around now when there is one, otherwise an unprepared folder. The audio route is picked from what the Mac is
-    /// doing. Nothing waits for a preparation.
-    public func startNow() {
+    /// Starts now, with or without a prepared session (⌥⌘V, the menu's Start row, the island): `startChoice` (the next meeting's
+    /// session from 60 minutes before it starts, else the session he picked by hand while that pick holds, otherwise an unprepared
+    /// folder). The audio route is picked from what the Mac is doing. Nothing waits for a preparation.
+    public func startNow() { startNow(unpreparedOnly: false) }
+
+    /// Start unprepared (⌥⇧⌘V, the menu row under Start, the meeting prompt when no prepared session matches): an unprepared call
+    /// at once, fed by the persona or the general prep when that is on. The selected session and the manual pick are left as
+    /// they are (owner decision 5).
+    public func startUnprepared() { startNow(unpreparedOnly: true) }
+
+    /// The session he picked by hand that a start may use (`SessionSelector.manualSession`).
+    public func manualSessionForStart() -> String? { selector.manualSession(now: clock()) }
+
+    /// What ⌥⌘V starts at `now`: the one decision both `startNow` and the menu's Start row use, from the same inputs (the calendar
+    /// around now, the session list with its links and `event.json` files, the manual pick).
+    public func startChoice(now: Date? = nil) -> QuickStart.SessionChoice {
+        let now = now ?? clock()
+        let matcher = SessionMatcher(sessions: sessions, links: eventSessions.load(), sidecars: sessionInfo().sidecars)
+        return QuickStart.pickSession(now: now, events: eventsAround(now), matcher: matcher, manualSession: selector.manualSession(now: now))
+    }
+
+    /// The menu's Start row: a pure preview of `startNow` (owner decision 3).
+    public func startPreview(now: Date? = nil) -> StartRowPreview {
+        let choice = startChoice(now: now)
+        return StartRowPreview(choice: choice, sessionLabel: { name in self.pickerModel().label(of: name) ?? name })
+    }
+
+    private func startNow(unpreparedOnly: Bool) {
         guard !running, !stopping, !switching else {
             log("start now ignored: running=\(running) stopping=\(stopping) switching=\(switching)")
             return
@@ -270,14 +477,13 @@ public final class VerseController: ObservableObject {
             log("start now ignored: the microphone is in use by the practice interview")
             return
         }
-        retryPlan = .now
+        retryPlan = unpreparedOnly ? .unprepared : .now
         refreshSessions()
         let now = clock()
-        let events = meeting.settings.useCalendar ? eventsAround(now) : []
+        let choice: QuickStart.SessionChoice = unpreparedOnly ? .adhoc : startChoice(now: now)
         do {
-            let plan = try QuickStart.plan(now: now, facts: routeFacts(), events: events, remembered: eventSessions.load(),
-                                           sessions: sessions, lang: settings.defaultCallLanguage, root: sessionsRoot,
-                                           routeOverride: routeChoice, useGeneralPrep: settings.useGeneralPrep)
+            let plan = try QuickStart.plan(choice: choice, now: now, facts: routeFacts(), lang: settings.defaultCallLanguage,
+                                           root: sessionsRoot, routeOverride: routeChoice, useGeneralPrep: settings.useGeneralPrep)
             routeChoice = nil
             refreshSessions()
             if plan.mode == .prepared { settings.sessionName = plan.session }
@@ -291,20 +497,23 @@ public final class VerseController: ObservableObject {
     }
 
     /// `anytimeStart`: the session came from Start now (or a route/language change of one), so the island shows the start
-    /// card with its route and language chips.
+    /// card with its route chip.
     private func launchSession(name: String, mode: SessionMode, route: AudioRoute, lang requested: String, anytimeStart: Bool = false) {
         let request = LaunchRequest(name: name, mode: mode, route: route, lang: requested, anytimeStart: anytimeStart,
                                     remoteFile: remoteFileOverride)
         retryPlan = .launch(request)
         if let launchOverride { launchOverride(request); return }
         let dir = SessionCatalog.url(name, root: sessionsRoot)
-        // "auto" starts in English (the fastest engine) and lets the call's own speech pick the language.
-        let auto = requested == AppSettings.autoLanguage
-        let lang = auto ? "en" : requested
+        // Auto starts in the session's prepared language (else English) and lets the call's own speech pick it from then on; the
+        // cards follow the call's dominant language, which starts there too (owner decisions 7 and 8).
+        let start = CallLanguage.start(requested: requested, prepared: CallLanguage.prepared(sessionDir: dir))
+        let auto = start.auto
+        let lang = start.engine
         var o = Self.runOptions(sessionDir: dir, settings: settings, fakeBrain: fakeBrain, testFile: testFile,
                                 micWithFile: remoteFileOverride != nil, follow: meeting.settings.followMyAnswer,
                                 mode: mode, route: route, lang: lang)
         o.autoLanguage = auto
+        o.answerLangHint = start.hint
         o.onAutoLanguage = { [weak self] picked in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.autoSwitched(to: picked) } }
         }
@@ -356,25 +565,31 @@ public final class VerseController: ObservableObject {
 
     // MARK: hot keys
 
-    /// Registers ⌥⌘V. Called at launch by the controller itself inside the app.
+    /// Registers ⌥⌘V and ⌥⇧⌘V. Called at launch by the controller itself inside the app.
     public func installGlobalHotKeys() {
         guard hotKeys == nil else { return }
         let keys = GlobalHotKeys(onStartStop: { [weak self] in self?.startStopKeyPressed() },
                                  onCardNow: { [weak self] in self?.cardNow() },
                                  onEarlierAnswer: { [weak self] in self?.showEarlierAnswer() },
-                                 onNewerAnswer: { [weak self] in self?.showNewerAnswer() })
+                                 onNewerAnswer: { [weak self] in self?.showNewerAnswer() },
+                                 onStartUnprepared: { [weak self] in self?.startUnpreparedKeyPressed() },
+                                 onRegenerate: { [weak self] in self?.regenerate() },
+                                 onMarkBad: { [weak self] in self?.markAnswer(.bad) })
         hotKeys = keys
         startHotKeyAvailable = keys.registerStartStop()
-        if !startHotKeyAvailable { log("⌥⌘V is taken by another app; Start now stays in the menu") }
+        if !startHotKeyAvailable { log("⌥⌘V is taken by another app; Start stays in the menu") }
+        startUnpreparedHotKeyAvailable = keys.registerStartUnprepared()
+        if !startUnpreparedHotKeyAvailable { log("⌥⇧⌘V is taken by another app; Start unprepared stays in the menu") }
         keys.setSessionRunning(running)
         reportAnswerKeys()
     }
 
-    /// ⌥⌘← / ⌥⌘→ / ⇧< another app holds in this session: logged, and published for Settings. The island's buttons still work.
+    /// ⌥⌘← / ⌥⌘→ / ⇧< / ⌥⌘R / ⌥⌘↓ another app holds in this session: logged, and published for Settings. The island's
+    /// buttons still work.
     private func reportAnswerKeys() {
         let taken = (hotKeys?.unavailableAnswerKeys ?? []).map(Self.keyLabel)
         if taken != unavailableAnswerKeys { unavailableAnswerKeys = taken }
-        for k in taken { log("\(k) is taken by another app; the island's buttons still show earlier answers") }
+        for k in taken { log("\(k) is taken by another app; the island's buttons still work") }
         if let shift = hotKeys?.earlierAnswerShiftSpec, hotKeys?.earlierAnswerShiftRegistered == true {
             log("⇧< is key code \(shift.keyCode) in this keyboard layout")
         }
@@ -386,6 +601,9 @@ public final class VerseController: ObservableObject {
         case .newerAnswer: return "⌥⌘→"
         case .cardNow: return "⌥⌘↩"
         case .startStop: return "⌥⌘V"
+        case .startUnprepared: return "⌥⇧⌘V"
+        case .regenerate: return "⌥⌘R"
+        case .markBad: return "⌥⌘↓"
         case _ where spec.isShiftLessThan: return "⇧<"
         default: return "?"
         }
@@ -396,6 +614,49 @@ public final class VerseController: ObservableObject {
     public func showEarlierAnswer() {
         guard running, !stopping, !prompter.isOpen else { return }
         overlay.showEarlierAnswer()
+    }
+
+    /// Regenerate (⌥⌘R, the island's button, the menu): a new answer to the question on screen, at once. Ignored while the prompter
+    /// covers the card (the press would act on a card out of sight) and while one is in flight.
+    public func regenerate() {
+        guard running, !stopping, !prompter.isOpen else { return }
+        if overlay.regenerate() == nil { log("regenerate ignored: no answer on screen, or one is already on its way") }
+    }
+
+    /// BAD on the answer on screen (⌥⌘↓, the island's button, the menu); the same mark again clears it.
+    public func markAnswer(_ m: CardMark) {
+        guard running, !stopping, !prompter.isOpen else { return }
+        overlay.mark(m)
+    }
+
+    /// What the overlay's Regenerate sends: the brain's `control regenerate`. When the answer on screen was not in the dominant
+    /// language, the brain resets the dominant language and the recognizers go back to it too (AUTO stays on).
+    private func sendRegenerate(_ req: RegenerateRequest) -> Bool {
+        guard running, !stopping, let r = runner else { return false }
+        guard r.regenerate(turn: req.turn, question: req.question, lang: req.lang, reset: req.reset, avoid: req.avoid) else {
+            log("regenerate not sent: the brain is not running")
+            return false
+        }
+        log("regenerate turn=\(req.turn) lang=\(req.lang ?? "-") reset=\(req.reset)")
+        if let lang = Self.recognizerReset(req, auto: autoLanguage, listening: callLanguage) {
+            Task { await switchListening(lang: lang) }
+        }
+        return true
+    }
+
+    /// The language the recognizers go back to after a regenerate that reset the automatic language: the regenerated answer's
+    /// language, when AUTO is on and the recognizers run in another one. nil: nothing to swap.
+    nonisolated static func recognizerReset(_ req: RegenerateRequest, auto: Bool, listening: String) -> String? {
+        guard req.reset, auto, let lang = req.lang, lang != listening else { return nil }
+        return lang
+    }
+
+    private func sendMark(_ e: CardMarkEvent) {
+        guard let r = runner, r.markCard(card: e.card, mark: e.mark, turn: e.turn, question: e.question) else {
+            log("mark not recorded: the brain is not running")
+            return
+        }
+        log("mark \(e.mark) card=\(e.card)")
     }
 
     /// Forward to the newer answer, then live (⌥⌘→).
@@ -413,6 +674,15 @@ public final class VerseController: ObservableObject {
         case .start, .stop: setStopArmed(false)
         }
         return action
+    }
+
+    /// ⌥⇧⌘V: an unprepared call at once. It never stops a call; during one, and while a practice interview runs, it does nothing.
+    public func startUnpreparedKeyPressed() {
+        guard !running, !stopping else {
+            log("⌥⇧⌘V ignored: a call is running")
+            return
+        }
+        startUnprepared()
     }
 
     public func startStopKeyPressed() {
@@ -486,25 +756,13 @@ public final class VerseController: ObservableObject {
         }
     }
 
-    /// The Language submenu / the language chips: before a call it is the default call language; during one the call
-    /// listens and answers in that language from now on (and the default stays what it was).
-    ///
-    /// "auto" turns the interim AUTO mode on (the call follows the spoken language); "en", "it" and "tr" pin that language and
-    /// turn AUTO off, so a pinned call never switches by itself.
-    public func chooseLanguage(_ lang: String) {
-        guard AppSettings.callLanguages.contains(lang) else { return }
-        guard running else {
-            settings.defaultCallLanguage = lang
-            return
-        }
-        guard let r = runner, !stopping else { return }
-        let auto = lang == AppSettings.autoLanguage
-        r.setAutoLanguage(auto)
-        autoLanguage = auto
-        overlay.listeningChanged(route: route, lang: callLanguage, app: route == .meeting ? Self.meetingAppName() : nil, auto: auto)
-        log("language \(auto ? "auto" : "pinned " + lang)")
-        if !auto { Task { await switchListening(lang: lang) } }
-    }
+    /// AUTO language (owner decision 8): the call's dominant language, the one new answers are written in, as the brain reported
+    /// it; nil when AUTO is off, no call runs or the brain has not said yet.
+    public var dominantLanguage: String? { running ? overlay.state.dominantLang : nil }
+
+    /// The language of the answer on screen (the live card, or the earlier one shown with Back); nil when unknown. A later
+    /// regenerate compares it with `dominantLanguage`.
+    public var answerLanguageOnScreen: String? { running ? overlay.displayState.card?.answerLang : nil }
 
     /// AUTO swapped the recognizers to the language it heard: the labels follow (the runner already told the brain).
     private func autoSwitched(to lang: String) {
@@ -517,7 +775,6 @@ public final class VerseController: ObservableObject {
     private func startChip(_ action: StartChipAction) {
         switch action {
         case .cycleRoute: chooseRoute(StartRoutes.next(after: route))
-        case .setLanguage(let l): chooseLanguage(l)
         }
     }
 
@@ -553,7 +810,7 @@ public final class VerseController: ObservableObject {
         r.cardNow()
     }
 
-    /// The menu's "Play test file as remote…": runs the selected session with `url` as the remote channel (the same file
+    /// Settings > Testing's "Play as remote…": runs the selected session with `url` as the remote channel (the same file
     /// path as `--file`) while the real microphone stays "me", so the app can be tested without a meeting app.
     public func start(remoteFile url: URL) {
         guard !running, !stopping else { return }
@@ -619,8 +876,10 @@ public final class VerseController: ObservableObject {
         monthSpend = SpendLedger.thisMonth()
         log("run ended code=\(code)")
         if let dir = runSessionDir {
-            meeting.runFinished(FinishedRun(code: code, sessionName: dir.lastPathComponent, sessionDir: dir, startedAt: runStartedAt,
-                                            isTest: runWasFake || remoteFileOverride != nil || testFile != nil))
+            let finished = FinishedRun(code: code, sessionName: dir.lastPathComponent, sessionDir: dir, startedAt: runStartedAt,
+                                       isTest: runWasFake || remoteFileOverride != nil || testFile != nil)
+            meeting.runFinished(finished)
+            onRunFinished?(finished)
         }
         remoteFileOverride = nil
         // A brain given up on mid-call is a normal end (the runner exits 0): the transcript is complete, answers were off for the
@@ -645,6 +904,11 @@ public final class VerseController: ObservableObject {
         }
         // Keep the overlay up only for a message that needs reading (permission, credit, error) or a question to answer.
         if overlay.state.status?.needsPanel != true, overlay.state.meetingPrompt == nil { panel?.hide() }
+        // The next meeting's session, now that the call is over (a no-op while a prompt is still up; the next tick catches up).
+        if calendarWatcher.isWatching {
+            selector.reevaluate()
+            considerAutoPrep()
+        }
     }
 
     private func handle(_ e: RunnerEvent) {
@@ -701,6 +965,7 @@ public final class VerseController: ObservableObject {
         switch retryPlan {
         case nil, .prepared?: start()
         case .now?: startNow()
+        case .unprepared?: startUnprepared()
         case .launch(let r)?:
             log("retry session=\(r.name) mode=\(r.mode.rawValue) route=\(r.route.rawValue)")
             remoteFileOverride = r.remoteFile
@@ -759,7 +1024,12 @@ public enum SystemSettingsLink {
     public static func url(permission: String) -> URL {
         // Microphone has its own pane; process taps (system audio recording) sit under
         // "Screen & System Audio Recording".
-        let anchor = permission == "microphone" ? "Privacy_Microphone" : "Privacy_ScreenCapture"
+        let anchor: String
+        switch permission {
+        case "microphone": anchor = "Privacy_Microphone"
+        case "calendar": anchor = "Privacy_Calendars"
+        default: anchor = "Privacy_ScreenCapture"
+        }
         return URL(string: "x-apple.systempreferences:com.apple.preference.security?\(anchor)")!
     }
 
@@ -776,7 +1046,7 @@ struct LaunchRequest: Equatable, Sendable {
     /// As requested ("auto" stays "auto").
     var lang: String
     var anytimeStart: Bool
-    /// "Play test file as remote…": the file that was the remote channel.
+    /// "Play as remote…": the file that was the remote channel.
     var remoteFile: URL?
 }
 
@@ -786,6 +1056,8 @@ enum RetryPlan: Equatable, Sendable {
     case prepared
     /// Start now failed before it launched anything (no session folder): plan again.
     case now
+    /// Start unprepared failed before it had a folder: an unprepared call again.
+    case unprepared
     /// A launched run failed: launch the same one again.
     case launch(LaunchRequest)
 }

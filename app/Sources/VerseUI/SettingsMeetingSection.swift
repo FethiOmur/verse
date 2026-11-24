@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
+import VerseAudio
 
 /// Settings for meeting detection and the summary-to-vault question: the Meetings group of the Settings page.
 struct SettingsMeetingSection: View {
@@ -26,8 +27,11 @@ struct SettingsMeetingSection: View {
                           detail: "Unprepared calls start with your standing answers",
                           isOn: $app.useGeneralPrep)
             HomeRowDivider()
+            HomeToggleRow("Learn from my calls", verbatimDetail: learnDetail, isOn: $app.learnFromCalls)
+                .disabled(!personaConfigured)
+            HomeRowDivider()
             HomeRow("Default call language",
-                    detail: "What ⌥⌘V and Start now listen in. Change it during a call from the island or the menu.") {
+                    detail: "Every Start listens and answers in it. Auto follows the language the call is in; pick one only when Auto gets it wrong.") {
                 HomePopup(selection: $app.defaultCallLanguage,
                           options: AppSettings.callLanguages.map { HomeOption(verbatim: StartRoutes.languageName($0), $0) })
             }
@@ -49,6 +53,11 @@ struct SettingsMeetingSection: View {
                 }))
             .disabled(!settings.detectMeetings)
             HomeRowDivider()
+            HomeToggleRow("Prepare upcoming meetings automatically",
+                          detail: "For each upcoming meeting without a session, Verse prepares one from the invite in the background, once, never during a call. Uses your Anthropic key.",
+                          isOn: $settings.autoPrepare)
+            .disabled(!settings.useCalendar)
+            HomeRowDivider()
             HomeToggleRow("After a meeting, offer to save the summary to the vault", isOn: $settings.offerSummaryToVault)
             HomeRowDivider()
             HomeRow("Vault") {
@@ -58,6 +67,14 @@ struct SettingsMeetingSection: View {
             .disabled(!settings.offerSummaryToVault)
         }
         HomeFootnote("Detection only reads which meeting app (Comet, Brave, Chrome, Safari, Arc, Zoom, Teams) has its microphone on; no audio. Nothing starts without your click. A summary is written only after you press Save, as a new note in 000-Inbox/Verse of the vault.")
+    }
+
+    /// The persona needs `persona_dir` in the owner profile; without it the toggle stays as it is and nothing runs.
+    private var personaConfigured: Bool { OwnerProfile.current.personaURL != nil }
+
+    private var learnDetail: String {
+        let base = L10n.tr("After each call, Verse adds what you said in your own words to your persona, and unprepared calls answer from it. One request per call with your Anthropic key, usually $0.05–0.20. Never during a call.")
+        return personaConfigured ? base : base + " " + L10n.tr("Off until a persona folder is set in the owner profile.")
     }
 
     private func chooseVault() {
@@ -70,7 +87,7 @@ struct SettingsMeetingSection: View {
     }
 }
 
-/// The menu's "Play test file as remote…" file picker.
+/// Settings > Testing's "Play as remote…" file picker.
 public enum RemoteFilePicker {
     @MainActor
     public static func choose() -> URL? {
@@ -84,18 +101,19 @@ public enum RemoteFilePicker {
     }
 }
 
-/// Settings for earlier answers in the notch: the keys, and any of them another app holds in the running call.
+/// Settings for the answer keys of a call (earlier / newer answer, regenerate, bad): the keys, and any of them another app
+/// holds in the running call.
 struct SettingsEarlierAnswersSection: View {
     @ObservedObject var controller: VerseController
 
     var body: some View {
         HomeGroup {
-            HomeRow("Earlier and newer answer", verbatimDetail: keysDetail) { EmptyView() }
+            HomeRow("Answer keys", verbatimDetail: keysDetail) { EmptyView() }
         }
     }
 
     private var keysDetail: String {
-        let base = L10n.tr("During a call: ⌥⌘← or ⇧< earlier answer, ⌥⌘→ newer answer, or the arrows beside Stop on the island. While a call runs, these keys go to Verse instead of other apps.")
+        let base = L10n.tr("During a call: ⌥⌘← or ⇧< earlier answer, ⌥⌘→ newer answer, ⌥⌘R new answer to the same question, ⌥⌘↓ bad answer (again: clears the mark), or the buttons beside Stop on the island. While a call runs, these keys go to Verse instead of other apps.")
         guard !controller.unavailableAnswerKeys.isEmpty else { return base }
         let taken = controller.unavailableAnswerKeys.joined(separator: ", ")
         return base + " " + L10n.tr("Taken by another app in this call: \(taken).")

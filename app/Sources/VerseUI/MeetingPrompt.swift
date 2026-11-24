@@ -29,8 +29,8 @@ public struct MeetingPrompt: Equatable, Sendable {
     public var acceptLabel: String
     /// nil: only the accept button (information).
     public var dismissLabel: String?
-    /// Work in progress after the accept button ("Preparing from the invite…"): the accept button waits; the quiet one
-    /// stays live and cancels the work.
+    /// Work in progress after the accept button: the accept button waits; the quiet one stays live and cancels the work. No
+    /// start prompt sets it any more (a start never waits for a prep, owner decision 3).
     public var busy: Bool
     /// The island's layout of a start prompt (UI redesign spec 3.2, state 0): a small meta line ("Comet is using the
     /// microphone"), the meeting title, and one line of what Start will use. nil: the island shows `title` and
@@ -58,8 +58,9 @@ public struct MeetingPrompt: Equatable, Sendable {
     public enum SessionPlan: Equatable, Sendable {
         /// A session folder already exists for this meeting (a remembered one, or one named like the event).
         case prepared(String)
-        /// None exists: Start builds one from the calendar invite first.
-        case fromInvite
+        /// None exists: Start begins an unprepared call at once (the background prep may make one for the next meeting; a
+        /// start never waits for it).
+        case unprepared
         /// No calendar event: Start uses the session chosen in the menu (nil: none is prepared yet).
         case selected(String?)
     }
@@ -82,7 +83,7 @@ public struct MeetingPrompt: Equatable, Sendable {
                              eyebrow: when, headline: eventTitle, detailLine: detailLine(plan: plan, questionCount: questionCount))
     }
 
-    /// "Prepared · 14 questions" (or the session's name when the count is not known), "Prepares a session from the invite".
+    /// "Prepared · 14 questions" (or the session's name when the count is not known), "Unprepared call".
     private static func detailLine(plan: SessionPlan, questionCount: Int?) -> String {
         func prepared(_ name: String) -> String {
             if let n = questionCount { return L10n.tr("Prepared · \(n) questions") }
@@ -90,7 +91,7 @@ public struct MeetingPrompt: Equatable, Sendable {
         }
         switch plan {
         case .prepared(let name): return prepared(name)
-        case .fromInvite: return L10n.tr("Prepares a session from the invite")
+        case .unprepared: return L10n.tr("Unprepared call")
         case .selected(let name?): return prepared(name)
         case .selected(nil): return L10n.tr("No session prepared yet")
         }
@@ -101,19 +102,11 @@ public struct MeetingPrompt: Equatable, Sendable {
         let tail: String
         switch plan {
         case .prepared(let name): tail = L10n.tr("session \(name)")
-        case .fromInvite: tail = L10n.tr("prepares a session from the invite")
+        case .unprepared: tail = L10n.tr("unprepared call")
         case .selected(let name?): tail = L10n.tr("session \(name)")
         case .selected(nil): tail = L10n.tr("no session prepared yet")
         }
         return head.isEmpty ? tail : head + "\n" + tail
-    }
-
-    /// The accept button was pressed and a session is being prepared.
-    public func preparing() -> MeetingPrompt {
-        var p = self
-        p.subtitle = L10n.tr("Preparing a session from the invite…")
-        p.busy = true
-        return p
     }
 
     // MARK: summary prompts

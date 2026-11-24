@@ -68,6 +68,49 @@ struct IslandHistoryButton: View {
     }
 }
 
+/// Regenerate: a new answer to the question on screen (⌥⌘R). The same neutral icon button; dimmed and inert while a new answer is
+/// on its way.
+struct IslandRegenerateButton: View {
+    var enabled: Bool
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            IslandControlGlyph(symbol: "arrow.clockwise", compact: false)
+        }
+        .buttonStyle(IslandControlButtonStyle(compact: false))
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.4)
+        .help(Text("New answer to this question (⌥⌘R)", bundle: .module))
+        .accessibilityLabel(Text("New answer to this question", bundle: .module))
+        .accessibilityIdentifier("verse.island.regenerate")
+    }
+}
+
+/// BAD on the answer on screen (⌥⌘↓). The same neutral icon button; a marked card shows the filled glyph (no colour, no badge),
+/// and pressing it again clears the mark.
+struct IslandMarkButton: View {
+    var mark: CardMark
+    var marked: Bool
+    var action: () -> Void
+
+    static func symbol(_ mark: CardMark, marked: Bool) -> String {
+        marked ? "hand.thumbsdown.fill" : "hand.thumbsdown"
+    }
+
+    var body: some View {
+        Button(action: action) {
+            IslandControlGlyph(symbol: Self.symbol(mark, marked: marked), compact: false)
+        }
+        .buttonStyle(IslandControlButtonStyle(compact: false))
+        .help(marked ? Text("Marked bad. Press again to clear (⌥⌘↓)", bundle: .module) : Text("Bad answer (⌥⌘↓)", bundle: .module))
+        .accessibilityLabel(Text("Mark the answer bad", bundle: .module))
+        .accessibilityValue(marked ? Text("Marked", bundle: .module) : Text(verbatim: ""))
+        .accessibilityAddTraits(marked ? .isSelected : [])
+        .accessibilityIdentifier("verse.island.markBad")
+    }
+}
+
 /// The glyph of an island control button: 26 × 22 on a capsule in the wing, the plain glyph in the card's control row
 /// (the style draws its plate).
 private struct IslandControlGlyph: View {

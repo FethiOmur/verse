@@ -3,7 +3,7 @@ import VerseMeet
 @testable import VerseUI
 import XCTest
 
-/// The start prompt's life after a click or a pause: "Preparing…" withdrawn when the call ends (V4), and a dismissed
+/// The start prompt's life after a click or a pause: the question withdrawn when the call ends (V4), and a dismissed
 /// call not asked about again after its microphone pauses (S11).
 @MainActor
 final class MeetingPromptLifecycleTests: XCTestCase {
@@ -19,10 +19,9 @@ final class MeetingPromptLifecycleTests: XCTestCase {
         init(_ d: Date) { now = d }
     }
 
-    private func make(_ host: FakeHost, clock: Clock,
-                      prepare: @escaping @Sendable (MeetingEvent, String) async throws -> URL = neverPrepare) throws -> MeetingCoordinator {
+    private func make(_ host: FakeHost, clock: Clock) throws -> MeetingCoordinator {
         MeetingCoordinator(host: host, settings: meetingSettings(), calendar: CalendarSource(backend: NoCalendar()),
-                           detector: MeetingDetector(table: MicTable()), prepare: prepare, upcoming: { _ in [] },
+                           detector: MeetingDetector(table: MicTable()), upcoming: { _ in [] },
                            eventMap: EventSessionMap(url: try tempDir().appendingPathComponent("map.json")), now: { clock.now })
     }
 
@@ -35,31 +34,23 @@ final class MeetingPromptLifecycleTests: XCTestCase {
 
     // MARK: V4
 
-    func testTheCallEndingWhilePreparingWithdrawsTheQuestionAndStopsThePrep() async throws {
+    func testTheCallEndingBeforeStartWithdrawsTheQuestionOfAMeetingWithoutASession() async throws {
         let host = FakeHost(sessions: ["sample-interview"])
         let clock = Clock(t0)
-        let cancelled = expectation(description: "prep cancelled")
-        let c = try make(host, clock: clock, prepare: { _, _ in
-            do { try await Task.sleep(for: .seconds(30)) } catch { cancelled.fulfill(); throw error }
-            return URL(fileURLWithPath: "/tmp/never")
-        })
+        let c = try make(host, clock: clock)
         let table = MicTable()
         let ev = MeetingEvent(id: "ev9", title: "Quarterly review", start: at(-60), end: at(1800), attendees: [], notes: nil,
                               url: URL(string: "https://meet.google.com/abc-defg-hij"), provider: .meet)
         let d = MeetingDetector(table: table, eventLookup: { _ in [ev] })
         table.set([cometMic])
         await run(c, d, clock: clock, 0...5)
-        host.overlay.promptAction(.accept)
-        XCTAssertTrue(host.overlay.state.meetingPrompt?.busy ?? false, "preparing…")
-        // Accept is ignored while busy (only "Not now" answers).
-        host.overlay.promptAction(.accept)
-        XCTAssertTrue(host.overlay.state.meetingPrompt?.busy ?? false)
+        XCTAssertNotNil(host.overlay.state.meetingPrompt)
+        XCTAssertFalse(host.overlay.state.meetingPrompt?.busy ?? true, "nothing is prepared behind the question")
 
         table.set([cometOnlyAudio])
         await run(c, d, clock: clock, 6...30)
-        XCTAssertNil(host.overlay.state.meetingPrompt, "the call ended: \"Preparing…\" is taken back")
-        await fulfillment(of: [cancelled], timeout: 5)
-        XCTAssertEqual(host.startCount, 0)
+        XCTAssertNil(host.overlay.state.meetingPrompt, "the call ended: the question is taken back")
+        XCTAssertEqual(host.startCount + host.unpreparedStarts, 0)
     }
 
     // MARK: S11

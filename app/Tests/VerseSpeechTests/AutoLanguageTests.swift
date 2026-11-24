@@ -148,16 +148,34 @@ final class AutoLanguageTests: XCTestCase {
 
     // MARK: channels
 
-    func testTheMicrophoneVotesOnlyWhenTheRemoteIsQuiet() {
-        var d = AutoLanguageDetector(current: "it", auto: true)
-        // The remote speaks Italian up to 20 s; the owner answers in English meanwhile: the remote has priority.
-        XCTAssertNil(feed(&d, [fin(Self.it1, 0, 4), fin(Self.en1, 5, 8, channel: .me), fin(Self.en2, 9, 12, channel: .me)]))
-        XCTAssertEqual(d.current, "it")
-        // Long after the remote's last word the microphone's English counts.
+    func testTheMicrophoneNeverVotes() {
+        // Owner decision 8: his own speech never changes the call's language. Before the remote has said anything ...
+        var d = AutoLanguageDetector(current: "en", auto: true)
+        XCTAssertNil(feed(&d, [fin(Self.it1, 0, 4, channel: .me), fin(Self.it2, 5, 8, channel: .me), fin(Self.it3, 9, 16, channel: .me)]))
+        XCTAssertEqual(d.current, "en")
+        XCTAssertNil(d.openRun)
+        // ... and long after the remote's last word (his own long answer).
         var q = AutoLanguageDetector(current: "it", auto: true)
-        let x = feed(&q, [fin(Self.it1, 0, 4), fin(Self.en1, 30, 33, channel: .me), fin(Self.en2, 34, 37, channel: .me)])
-        XCTAssertEqual(x?.to, "en")
-        XCTAssertEqual(x?.channel, .me)
+        XCTAssertNil(feed(&q, [fin(Self.it1, 0, 4), fin(Self.en1, 30, 33, channel: .me), fin(Self.en2, 34, 37, channel: .me)]))
+        XCTAssertEqual(q.current, "it")
+        // The remote still switches it.
+        XCTAssertEqual(feed(&q, [fin(Self.en1, 40, 43), fin(Self.en2, 44, 47)])?.to, "en")
+    }
+
+    func testGreetingsAndShortPhrasesNeverVote() {
+        // Two short Italian greetings from the other side in an English call: the recognizers stay English.
+        var d = AutoLanguageDetector(current: "en", auto: true)
+        XCTAssertNil(feed(&d, [fin("ciao come sta", 0, 1.5), fin("piacere di conoscerla", 2, 3.5), fin("molto bene grazie", 4, 5)]))
+        XCTAssertNil(d.openRun, "under \(AutoLangConfig().minVoteWords) words a final abstains")
+        XCTAssertEqual(d.current, "en")
+        // Nor does a short shadow text outvote anything.
+        var s = AutoLanguageDetector(current: "en", auto: true)
+        s.shadowActive = true
+        s.note(fin("ciao come sta", 10, 12, lang: "it", shadow: true))
+        s.note(fin("piacere di conoscerla", 13, 15, lang: "it", shadow: true))
+        XCTAssertNil(s.advance(to: 20))
+        XCTAssertNil(s.openRun)
+        XCTAssertEqual(AutoLangConfig().minVoteWords, 6, "the brain's SUBSTANTIVE_WORDS")
     }
 
     // MARK: shadow

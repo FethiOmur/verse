@@ -102,7 +102,9 @@ final class Wave2FilesTests: XCTestCase {
         let lines = W2Box<[String]>([])
         let outcome = await MePrep(python: py).run(.build, profileDir: dir, brainDir: dir, fake: true, onLine: { l in lines.with { $0.append(l) } })
         XCTAssertEqual(outcome, .done(stdout: "profile-folder-line", log: ["progress-1", "progress-2", "tail-no-newline"]))
-        XCTAssertEqual(lines.with { $0 }, ["progress-1", "progress-2", "tail-no-newline"])
+        // Since 193cd76 the page never shows prep's raw English lines: each line it does not know becomes the catalog's
+        // "Working…" (the raw text goes to verse.log), while the outcome's log keeps every raw line.
+        XCTAssertEqual(lines.with { $0 }, Array(repeating: L10n.tr("Working…"), count: 3))
     }
 
     func testMePrepCancelBeforeRunStartsNothing() async throws {

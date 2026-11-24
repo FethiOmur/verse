@@ -167,17 +167,14 @@ public actor MeetingDetector {
         pollTask = nil
     }
 
-    /// The event that overlaps `now` (±margin); the one running now wins, else the one starting nearest.
+    /// The event that overlaps `now` (±margin), ranked by `MeetingRanking` (the running one, else the one starting nearest; the
+    /// next one at a back-to-back handover).
     private func attach(at now: Date) async -> MeetingEvent? {
         let margin = config.eventMargin
         let near = await eventLookup(now).filter {
             $0.start <= now.addingTimeInterval(margin) && $0.end >= now.addingTimeInterval(-margin)
         }
-        return near.min { a, b in
-            let ra = a.start <= now && a.end > now, rb = b.start <= now && b.end > now
-            if ra != rb { return ra }
-            return abs(a.start.timeIntervalSince(now)) < abs(b.start.timeIntervalSince(now))
-        }
+        return MeetingRanking.best(near, now: now)
     }
 
     private static func root(of bundleID: String?, app: MeetingApp) -> String {

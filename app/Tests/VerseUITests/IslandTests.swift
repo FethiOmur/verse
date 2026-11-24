@@ -231,9 +231,9 @@ final class IslandTests: XCTestCase {
         XCTAssertEqual(p.headline, "Mara · Northwind Labs")
         XCTAssertEqual(p.detailLine, "Prepared · 14 questions")
         XCTAssertEqual(p.dismissLabel, "Dismiss", "the model's label stays; the island shows it as \"Not now\"")
-        let q = MeetingPrompt.detected(appName: "Zoom", eventTitle: nil, plan: .fromInvite)
+        let q = MeetingPrompt.detected(appName: "Zoom", eventTitle: nil, plan: .unprepared)
         XCTAssertEqual(q.headline, "Meeting detected")
-        XCTAssertEqual(q.detailLine, "Prepares a session from the invite")
+        XCTAssertEqual(q.detailLine, "Unprepared call")
         XCTAssertEqual(MeetingPrompt.detected(appName: "Zoom", eventTitle: "x", plan: .prepared("mara")).detailLine, "Prepared · mara")
         XCTAssertEqual(MeetingPrompt.upcoming(eventTitle: "x", minutes: 4, plan: .selected(nil)).eyebrow, "Meeting in 4 min")
     }

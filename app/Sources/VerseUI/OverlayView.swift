@@ -368,15 +368,18 @@ public struct OverlayView: View {
             LiveCardView(card: card, scale: scale, maxHeight: max(maxIslandHeight - metrics.capsuleHeight, 120), reading: prompter.cardReading,
                          marker: model.history.marker)
                 .overlay(alignment: .bottom) {
+                    // Centred, unless the control row (Back, Forward, Regenerate, Bad, Stop) would cover it at a narrow card.
+                    let buttons = CardControlRow.buttons(canGoForward: model.history.canGoForward, hasAnswer: model.answerOnScreen != nil)
                     ResizeGrip(onDrag: resize, onEnd: { dragStart = nil })
+                        .offset(x: state.running ? CardControlRow.gripShift(cardWidth: cardWidth, buttons: buttons) : 0)
                 }
                 .overlay(alignment: .bottomTrailing) { stopRow }
         }
     }
 
-    /// Back (and, on an earlier answer, Forward) and Stop, in the hover control row at the bottom right of the card (the
-    /// prompter and practice rows work the same way: the panel never becomes key, `acceptsFirstMouse` lets the first click
-    /// through).
+    /// Back (and, on an earlier answer, Forward), Regenerate, Bad and Stop, in the hover control row at the bottom right of
+    /// the card (the prompter and practice rows work the same way: the panel never becomes key, `acceptsFirstMouse` lets the first
+    /// click through). Regenerate and Bad act on the card on screen and show only under an answer card.
     @ViewBuilder private var stopRow: some View {
         if state.running {
             HoverControls(horizontalInset: VT.islandCardInset - 12) {
@@ -386,6 +389,10 @@ public struct OverlayView: View {
                         IslandHistoryButton(direction: model.history.forwardReturnsToLive ? .live : .forward, enabled: true) {
                             model.showNewerAnswer()
                         }
+                    }
+                    if model.answerOnScreen != nil {
+                        IslandRegenerateButton(enabled: model.canRegenerate) { model.regenerate() }
+                        IslandMarkButton(mark: .bad, marked: model.markOnScreen == .bad) { model.mark(.bad) }
                     }
                     IslandStopButton(stopping: model.stopping) { model.stopSession() }
                 }

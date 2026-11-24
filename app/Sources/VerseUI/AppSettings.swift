@@ -49,11 +49,26 @@ public final class AppSettings: ObservableObject {
     @Published public var windowOpacity: Double { didSet { defaults.set(windowOpacity, forKey: "windowOpacity") } }
     /// The session folder name chosen in the menu.
     @Published public var sessionName: String { didSet { defaults.set(sessionName, forKey: "sessionName") } }
+    /// The last session picked by hand, and for which meeting (`ManualChoice`); nil when the selection is automatic. Only
+    /// `SessionSelector.choose` writes a pick; programmatic writes of `sessionName` leave it alone.
+    @Published public var sessionPickManual: ManualChoice? {
+        didSet {
+            if let m = sessionPickManual, let d = try? JSONEncoder().encode(m) {
+                defaults.set(d, forKey: "sessionPickManual")
+            } else {
+                defaults.removeObject(forKey: "sessionPickManual")
+            }
+        }
+    }
     /// Anytime calls (spec 2.2): the permanent "me" layer goes into every session. Off: `start.me` is null and the prompt
     /// prefix is what it was before the layer existed.
     @Published public var useMeProfile: Bool { didSet { defaults.set(useMeProfile, forKey: "useMeProfile") } }
-    /// Unprepared calls start from the standing general prep (`sessions/general-core`) when it is built.
+    /// Unprepared calls start from the standing prep when it is built: the compiled persona (`sessions/persona-core`) once it
+    /// exists, else the general prep (`sessions/general-core`). See `GeneralPrep.source`.
     @Published public var useGeneralPrep: Bool { didSet { defaults.set(useGeneralPrep, forKey: "useGeneralPrep") } }
+    /// After each call, learn from what he said into the master persona (owner decision 1: on by default). Only the automatic
+    /// run; "Learn from this call" on a session works either way. Without `persona_dir` in the owner profile nothing runs.
+    @Published public var learnFromCalls: Bool { didSet { defaults.set(learnFromCalls, forKey: "learnFromCalls") } }
     /// The language a Start by hotkey, menu or island listens in: "auto" (the default; the call switches between en, it and tr by
     /// itself, spec 2.5 "interim AUTO"), or "en", "it", "tr" to pin one. Changed during a session from the island.
     @Published public var defaultCallLanguage: String { didSet { defaults.set(defaultCallLanguage, forKey: "defaultCallLanguage") } }
@@ -95,8 +110,10 @@ public final class AppSettings: ObservableObject {
         islandOpacity = (d.object(forKey: "islandOpacity") as? Double ?? 0.62).clamped(to: Self.islandOpacityRange)
         windowOpacity = (d.object(forKey: "windowOpacity") as? Double ?? 0.34).clamped(to: Self.windowOpacityRange)
         sessionName = d.string(forKey: "sessionName") ?? ""
+        sessionPickManual = d.data(forKey: "sessionPickManual").flatMap { try? JSONDecoder().decode(ManualChoice.self, from: $0) }
         useMeProfile = d.object(forKey: "useMeProfile") as? Bool ?? true
         useGeneralPrep = d.object(forKey: "useGeneralPrep") as? Bool ?? true
+        learnFromCalls = d.object(forKey: "learnFromCalls") as? Bool ?? true
         let callLang = d.string(forKey: "defaultCallLanguage") ?? Self.autoLanguage
         defaultCallLanguage = Self.callLanguages.contains(callLang) ? callLang : Self.autoLanguage
         roomAutoCards = d.object(forKey: "roomAutoCards") as? Bool ?? true

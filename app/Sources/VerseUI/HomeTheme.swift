@@ -357,10 +357,27 @@ struct HomeOption<T: Hashable> {
     }
 }
 
+/// A titled group of popup choices ("Next meetings", "Other sessions"); a nil title draws the choices without a header.
+struct HomeOptionSection<T: Hashable>: Identifiable {
+    var title: HomeText?
+    var options: [HomeOption<T>]
+    var id: Int
+
+    init(_ title: LocalizedStringKey?, id: Int, options: [HomeOption<T>]) {
+        self.title = title.map { HomeText($0) }
+        self.options = options
+        self.id = id
+    }
+}
+
 /// A value with up/down chevrons that opens a menu (the mockup's popup).
 struct HomePopup<T: Hashable>: View {
     @Binding var selection: T
     var options: [HomeOption<T>]
+    /// The options in titled groups; empty: `options` as one list.
+    var sections: [HomeOptionSection<T>] = []
+    /// What the closed popup shows for `selection`, when that differs from its row (rows can carry a mark).
+    var current: HomeText?
     /// Shown when `selection` is none of the options.
     var fallback: HomeText = HomeText(verbatim: "")
     @Environment(\.homeInk) private var ink
@@ -376,18 +393,70 @@ struct HomePopup<T: Hashable>: View {
         self.options = options
     }
 
+    init(selection: Binding<T>, sections: [HomeOptionSection<T>], current: String?, fallback: LocalizedStringKey) {
+        _selection = selection
+        self.sections = sections
+        self.options = sections.flatMap(\.options)
+        self.current = current.map { HomeText(verbatim: $0) }
+        self.fallback = HomeText(fallback)
+    }
+
+    private func choices(_ list: [HomeOption<T>]) -> some View {
+        ForEach(list, id: \.value) { $0.label.text.tag($0.value).disabled(!$0.enabled) }
+    }
+
     var body: some View {
         Menu {
             Picker("", selection: $selection) {
-                ForEach(options, id: \.value) { $0.label.text.tag($0.value).disabled(!$0.enabled) }
+                if sections.isEmpty {
+                    choices(options)
+                } else {
+                    ForEach(sections) { section in
+                        if let title = section.title {
+                            Section { choices(section.options) } header: { title.text }
+                        } else {
+                            choices(section.options)
+                        }
+                    }
+                }
             }
             .pickerStyle(.inline).labelsHidden()
         } label: {
             HStack(spacing: 5) {
-                (options.first { $0.value == selection }?.label ?? fallback).text.font(VT.Font.body).foregroundStyle(ink.primary)
+                (options.first { $0.value == selection }.map { current ?? $0.label } ?? fallback).text.font(VT.Font.body).foregroundStyle(ink.primary)
                 Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(ink.secondary)
             }
             .contentShape(Rectangle())
+        }
+        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
+    }
+}
+
+/// A menu drawn as a secondary button ("Use for this meeting"): the same label, size and fill as `HomeSecondaryButton`.
+struct HomeMenuButton<Content: View>: View {
+    var title: HomeText
+    @ViewBuilder var content: Content
+    @Environment(\.homeInk) private var ink
+    @Environment(\.isEnabled) private var enabled
+
+    init(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) {
+        self.title = HomeText(title)
+        self.content = content()
+    }
+
+    var body: some View {
+        Menu { content } label: {
+            title.text.lineLimit(1).fixedSize()
+                .font(.system(size: 13, weight: .medium)).foregroundStyle(ink.primary)
+                .padding(.horizontal, 12).frame(height: 28)
+                .background(ink.fill, in: RoundedRectangle(cornerRadius: VT.Radius.control, style: .continuous))
+                .overlay {
+                    if ink.increaseContrast {
+                        RoundedRectangle(cornerRadius: VT.Radius.control, style: .continuous).strokeBorder(ink.controlBorder)
+                    }
+                }
+                .opacity(enabled ? 1 : 0.4)
+                .contentShape(Rectangle())
         }
         .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
     }

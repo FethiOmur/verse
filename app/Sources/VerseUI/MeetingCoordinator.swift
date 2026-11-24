@@ -13,9 +13,21 @@ public protocol MeetingHost: AnyObject {
     var sessions: [String] { get }
     func refreshSessions()
     func start()
+    /// An unprepared call, started at once (the prompt's Start when no prepared session matches; owner decision 3).
+    func startUnprepared()
     func showOverlayPanel()
     func hideOverlayPanel()
     func log(_ line: String)
+    /// Session name -> its `event.json`, for the match (`VerseController` reads the folders; the default has none).
+    func sessionSidecars() -> [String: EventSidecar]
+    /// The session he picked by hand that still holds, if any: a prompt for a meeting without a session uses it instead of an
+    /// unprepared call (the default has none).
+    func manualSessionForStart() -> String?
+}
+
+public extension MeetingHost {
+    func sessionSidecars() -> [String: EventSidecar] { [:] }
+    func manualSessionForStart() -> String? { nil }
 }
 
 /// A flag the detector's lookup closure (Sendable, off the main actor) can read.
@@ -46,23 +58,23 @@ public struct FinishedRun: Sendable {
 }
 
 /// Wires the VerseMeet library into the app: offers "Meeting detected · Start Verse?" when a known meeting app starts
-/// using the microphone (and, with the calendar on, a few minutes before a meeting with a video link), starts the
-/// session only on the click, and after a meeting offers "Save summary to vault?" (off by default; writes only on the
-/// click).
+/// using the microphone (and, with the calendar on, a few minutes before a real meeting: someone else on the invite or a call
+/// link), starts the session only on the click, and after a meeting offers "Save summary to vault?" (off by default; writes
+/// only on the click). Start never waits for a prep: a meeting without a prepared session starts as an unprepared call.
 @MainActor
 public final class MeetingCoordinator: ObservableObject {
     public let settings: MeetingSettings
     @Published public private(set) var calendarStatus: String
 
-    /// Called with the event and the new session's folder name once a session was prepared from an invite (the prompt's Start from
-    /// invite). The People model records the attendees from it (memory spec 2.5). Nothing else runs here: the call is starting.
+    /// Called with the event and the new session's folder name once a session was prepared from an invite (the controller's
+    /// background prep tells it when the home window has not set its own hook). The People model records the attendees from it
+    /// (memory spec 2.5).
     public var onPreparedFromEvent: (@MainActor (MeetingEvent, String) -> Void)?
 
     private weak var host: (any MeetingHost)?
     private let detector: MeetingDetector
     private let calendar: CalendarSource
     private let gate: CalendarGate
-    private let prepare: @Sendable (MeetingEvent, String) async throws -> URL
     private let upcomingLookup: @Sendable (Date) async -> [MeetingEvent]
     private let eventMap: EventSessionMap
     private let now: () -> Date
@@ -89,14 +101,11 @@ public final class MeetingCoordinator: ObservableObject {
     private var activeEventTitle: String?
     private var watchTask: Task<Void, Never>?
     private var upcomingTask: Task<Void, Never>?
-    private var prepTask: Task<Void, Never>?
-    private var prepToken = 0
     private var clearTask: Task<Void, Never>?
     private var settingsSub: AnyCancellable?
 
     public init(host: any MeetingHost, settings: MeetingSettings = MeetingSettings(),
                 calendar: CalendarSource = CalendarSource(), detector: MeetingDetector? = nil,
-                prepare: (@Sendable (MeetingEvent, String) async throws -> URL)? = nil,
                 upcoming: (@Sendable (Date) async -> [MeetingEvent])? = nil,
                 eventMap: EventSessionMap = EventSessionMap(), now: @escaping () -> Date = { Date() }) {
         let gate = CalendarGate()
@@ -105,9 +114,10 @@ public final class MeetingCoordinator: ObservableObject {
         self.settings = settings
         self.calendar = calendar
         self.gate = gate
-        self.detector = detector ?? MeetingDetector(eventLookup: { when in gate.isOn ? calendar.overlapping(now: when) : [] })
-        let brainDir = VerseController.brainDir()
-        self.prepare = prepare ?? EventPrep.prepare(brainDir: brainDir)
+        // A real meeting beats a focus block that overlaps the call (G13); with none, any event still names the call.
+        self.detector = detector ?? MeetingDetector(eventLookup: { when in
+            gate.isOn ? RealMeeting.preferReal(calendar.overlapping(now: when)) : []
+        })
         self.upcomingLookup = upcoming ?? { when in
             guard gate.isOn, calendar.authorization() == .fullAccess else { return [] }
             return (try? await calendar.upcoming(within: Self.upcomingWindow, now: when)) ?? []
@@ -140,7 +150,6 @@ public final class MeetingCoordinator: ObservableObject {
     public func end() {
         watchTask?.cancel(); watchTask = nil
         upcomingTask?.cancel(); upcomingTask = nil
-        cancelPrep()
         clearTask?.cancel(); clearTask = nil
         let d = detector
         Task { await d.stop() }
@@ -177,12 +186,11 @@ public final class MeetingCoordinator: ObservableObject {
             upcomingTask?.cancel(); upcomingTask = nil
             let d = detector
             Task { await d.stop() }
-            if let o = startOffer, isShowing(o) { cancelPrep(); withdraw() }
+            if let o = startOffer, isShowing(o) { withdraw() }
         }
     }
 
-    /// The offer's prompt is the one under the notch. Compared by kind: while the session is prepared from the invite the
-    /// island shows the offer's `preparing()` copy, which never equals `o.prompt` (V4).
+    /// The offer's prompt is the one under the notch. Compared by kind, so a prompt whose copy changed still counts (V4).
     private func isShowing(_ o: StartOffer) -> Bool {
         host?.overlay.state.meetingPrompt?.kind == o.prompt.kind
     }
@@ -200,7 +208,8 @@ public final class MeetingCoordinator: ObservableObject {
         switch signal {
         case .started(let info):
             guard settings.detectMeetings else { return }
-            let key = info.event?.id ?? "\(info.appName)@\(Int(info.since.timeIntervalSince1970))"
+            // One occurrence of a recurring meeting is not the next one: answers are kept per occurrence (G10).
+            let key = info.event?.occurrenceKey ?? "\(info.appName)@\(Int(info.since.timeIntervalSince1970))"
             guard !dismissed.contains(key) else { return }
             if info.event == nil, let last = answeredApps[info.appName], now().timeIntervalSince(last) <= Self.resumeWindow {
                 // The same call after a pause in its microphone input (muted for more than the detector's 10 s): its
@@ -214,16 +223,14 @@ public final class MeetingCoordinator: ObservableObject {
                 host.log("meeting detected in \(info.appName) while a session runs: no prompt")
                 return
             }
-            let plan = MeetingSessionResolver.plan(for: info.event, sessions: host.sessions, remembered: eventMap.load(),
-                                                   selected: host.settings.sessionName)
+            let plan = startPlan(for: info.event, host: host)
             offer(StartOffer(event: info.event, appName: info.appName, plan: plan, key: key,
                              prompt: .detected(appName: info.appName, eventTitle: info.event?.title, plan: plan)))
             host.log("meeting detected in \(info.appName) event=\(info.event?.title ?? "none") plan=\(plan)")
         case .ended(let info):
             if answeredApps[info.appName] != nil { answeredApps[info.appName] = now() }
-            // The call ended before anyone clicked, or while its session was being prepared: take the question back and
-            // stop the prep (nothing would use the session now).
-            if let o = startOffer, o.appName == info.appName, isShowing(o) { cancelPrep(); withdraw() }
+            // The call ended before anyone clicked: take the question back.
+            if let o = startOffer, o.appName == info.appName, isShowing(o) { withdraw() }
         }
     }
 
@@ -235,23 +242,32 @@ public final class MeetingCoordinator: ObservableObject {
         if o.event == nil, let app = o.appName { answeredApps[app] = now() }
     }
 
-    /// One look at the calendar: an event with a video link that starts within five minutes (or began less than ten
-    /// minutes ago) is offered once, so Verse can be ready before the call is joined.
+    /// One look at the calendar: a real meeting (someone else on the invite, or a call link of any provider; G13) that starts
+    /// within five minutes (or began less than ten minutes ago) is offered once, so Verse can be ready before the call is joined.
     public func pollUpcoming() async {
         guard let host, settings.detectMeetings, settings.useCalendar, !busy, host.overlay.state.meetingPrompt == nil else { return }
         let t = now()
         let events = await upcomingLookup(t)
         guard !busy, host.overlay.state.meetingPrompt == nil else { return }
         let hit = events.sorted { $0.start < $1.start }.first { e in
-            e.provider != .other && !dismissed.contains(e.id) && !offered.contains(e.id)
+            RealMeeting.isReal(e) && !dismissed.contains(e.occurrenceKey) && !offered.contains(e.occurrenceKey)
                 && e.start.timeIntervalSince(t) <= Self.upcomingWindow && t.timeIntervalSince(e.start) <= Self.upcomingGrace && e.end > t
         }
         guard let e = hit else { return }
-        offered.insert(e.id)
-        let plan = MeetingSessionResolver.plan(for: e, sessions: host.sessions, remembered: eventMap.load(), selected: host.settings.sessionName)
+        offered.insert(e.occurrenceKey)
+        let plan = startPlan(for: e, host: host)
         let minutes = max(0, Int((e.start.timeIntervalSince(t) / 60).rounded(.up)))
-        offer(StartOffer(event: e, appName: nil, plan: plan, key: e.id, prompt: .upcoming(eventTitle: e.title, minutes: minutes, plan: plan)))
+        offer(StartOffer(event: e, appName: nil, plan: plan, key: e.occurrenceKey, prompt: .upcoming(eventTitle: e.title, minutes: minutes, plan: plan)))
         host.log("upcoming meeting offered: \(e.title) in \(minutes) min plan=\(plan)")
+    }
+
+    /// What Start will use: the event's prepared session (`MeetingSessionResolver`); for a meeting without one, the session he
+    /// picked by hand while that pick holds, else an unprepared call; without an event, the selected session.
+    private func startPlan(for event: MeetingEvent?, host: any MeetingHost) -> MeetingPrompt.SessionPlan {
+        let plan = MeetingSessionResolver.plan(for: event, sessions: host.sessions, remembered: eventMap.load(),
+                                               selected: host.settings.sessionName, sidecars: host.sessionSidecars())
+        if plan == .unprepared, let manual = host.manualSessionForStart(), host.sessions.contains(manual) { return .selected(manual) }
+        return plan
     }
 
     private func offer(_ o: StartOffer) {
@@ -276,7 +292,7 @@ public final class MeetingCoordinator: ObservableObject {
         switch shown.kind {
         case .detected, .upcoming:
             guard let o = startOffer, o.prompt.kind == shown.kind else { return }
-            // While the session is prepared only "Not now" answers: it cancels the prep (V4).
+            // A busy prompt answers only "Not now" (V4).
             if shown.busy && action == .accept { return }
             action == .accept ? accept(o) : dismissStart(o)
         case .saveSummary:
@@ -290,16 +306,8 @@ public final class MeetingCoordinator: ObservableObject {
     private func dismissStart(_ o: StartOffer) {
         dismissed.insert(o.key)
         markAnswered(o)
-        cancelPrep()
         startOffer = nil
         closePrompt()
-    }
-
-    /// Stops a prep from the invite: the task is cancelled, which stops the brain's prep process too
-    /// (`ProcessCommandRunner`), and a late result is ignored through the token.
-    private func cancelPrep() {
-        prepToken += 1
-        prepTask?.cancel(); prepTask = nil
     }
 
     private func closePrompt() {
@@ -309,8 +317,8 @@ public final class MeetingCoordinator: ObservableObject {
         host?.hideOverlayPanel()
     }
 
-    /// The Start button: the session is prepared from the invite first when none exists for the event, then the same
-    /// path as the menu's Start runs, which shows the Ready panel.
+    /// The Start button: the event's prepared session (or the selected one) through the menu's Start, which shows the Ready
+    /// panel; a meeting without a prepared session starts as an unprepared call at once (owner decision 3: never a wait).
     private func accept(_ o: StartOffer) {
         guard let host else { return }
         dismissed.insert(o.key)
@@ -318,39 +326,14 @@ public final class MeetingCoordinator: ObservableObject {
         switch o.plan {
         case .prepared(let name):
             begin(session: name, offer: o)
-        case .selected:
-            begin(session: nil, offer: o)
-        case .fromInvite:
-            guard let event = o.event else { begin(session: nil, offer: o); return }
-            host.overlay.showPrompt(o.prompt.preparing())
-            prepToken += 1
-            let token = prepToken
-            let lang = host.settings.language
-            let prepare = self.prepare
-            prepTask = Task { [weak self] in
-                let result: Result<URL, any Error>
-                do { result = .success(try await prepare(event, lang)) } catch { result = .failure(error) }
-                guard let self, token == self.prepToken, !Task.isCancelled else { return }
-                self.prepTask = nil
-                switch result {
-                case .success(let dir):
-                    let name = dir.lastPathComponent
-                    self.eventMap.remember(eventID: event.id, session: name)
-                    self.onPreparedFromEvent?(event, name)
-                    self.begin(session: name, offer: o)
-                case .failure(let error):
-                    // Do not leave him with nothing: the session chosen in the menu is the fallback.
-                    host.log("prepare from the invite failed: \(error)")
-                    if host.sessions.isEmpty {
-                        self.startOffer = nil
-                        host.overlay.showPrompt(nil)
-                        host.overlay.showError(L10n.tr("Could not prepare a session from the invite (\(String(describing: error))). Prepare one for this meeting, then press Start."))
-                        host.showOverlayPanel()
-                    } else {
-                        self.begin(session: nil, offer: o)
-                    }
-                }
-            }
+        case .selected(let name):
+            begin(session: name, offer: o)
+        case .unprepared:
+            startOffer = nil
+            activeEventTitle = o.event?.title
+            host.overlay.showPrompt(nil)
+            host.log("start from the prompt: no prepared session for \(o.event?.title ?? "the call"), unprepared call")
+            host.startUnprepared()
         }
     }
 

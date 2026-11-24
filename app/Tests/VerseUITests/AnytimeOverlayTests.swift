@@ -223,13 +223,12 @@ final class AnytimeOverlayTests: XCTestCase {
         XCTAssertEqual(m.state.route, .meeting)
     }
 
-    func testTheChipsReachTheController() {
+    func testTheRouteChipReachesTheController() {
         let m = OverlayModel(config: OverlayConfig(), clock: { 1000 })
         var seen: [StartChipAction] = []
         m.startChipActions = { seen.append($0) }
         m.startChipAction(.cycleRoute)
-        m.startChipAction(.setLanguage("tr"))
-        XCTAssertEqual(seen, [.cycleRoute, .setLanguage("tr")])
+        XCTAssertEqual(seen, [.cycleRoute], "the route chip is the only start-card chip action")
     }
 
     func testTheRouteChipCyclesThroughWhatCanRun() {

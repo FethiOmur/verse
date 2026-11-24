@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import VerseMeet
 @testable import VerseUI
 import XCTest
 
@@ -154,16 +155,53 @@ final class SessionTrashTests: XCTestCase {
         XCTAssertTrue(m.eventMap.url.path.hasPrefix(root.path), m.eventMap.url.path)
     }
 
-    func testStartFallsBackTheWayARefreshDoesWhenItsSessionIsTrashed() throws {
+    /// `meta.json` with `created_at`, the way a prep writes it.
+    private func created(_ name: String, _ iso: String) throws {
+        try #"{"created_at":"\#(iso)"}"#.write(to: root.appendingPathComponent(name).appendingPathComponent("meta.json"),
+                                                atomically: true, encoding: .utf8)
+    }
+
+    func testStartFallsBackToTheNewestSessionWhenItsSessionIsTrashed() throws {
         for n in ["a-call", "b-call", "c-call"] { try FolderFixtures.session(n, in: root) }
+        try created("a-call", "2026-01-01T09:00:00Z")
+        try created("b-call", "2026-02-01T09:00:00Z")
+        try created("c-call", "2026-03-01T09:00:00Z")
         let r = rig(start: "b-call")
         defer { r.defaultsCleanup() }
         XCTAssertEqual(r.settings.sessionName, "b-call")
 
-        r.model.trash(["b-call"])
+        let outcome = r.model.trash(["b-call"])
 
         XCTAssertEqual(r.controller.sessions, ["a-call", "c-call"])
-        XCTAssertEqual(r.settings.sessionName, "a-call", "the first remaining session, like refreshSessions")
+        XCTAssertEqual(r.settings.sessionName, "c-call", "the newest remaining session, not the first A-Z (G7)")
+        XCTAssertEqual(outcome.batch?.startFallback, "c-call")
+    }
+
+    func testTrashingTheSelectedSessionPicksTheNextMeetingsSession() throws {
+        for n in ["a-call", "b-call", "lena-hart"] { try FolderFixtures.session(n, in: root) }
+        try created("b-call", "2026-03-01T09:00:00Z")
+        let r = rig(start: "b-call")
+        defer { r.defaultsCleanup() }
+        let now = Date(timeIntervalSince1970: 1_795_514_400)
+        let lena = MeetingEvent(id: "ev-lena", title: "Intro with Lena Hart", start: now.addingTimeInterval(1800),
+                                end: now.addingTimeInterval(3600), attendees: [Attendee(name: "Lena Hart", email: "lena@example.com")])
+        r.controller.clock = { now }
+        r.controller.selectionEvents = { _ in [lena] }
+        r.settings.sessionPickManual = ManualChoice(session: "b-call", targetKey: lena.occurrenceKey, at: now)
+        r.controller.selector.reevaluate()
+        XCTAssertEqual(r.settings.sessionName, "b-call", "his pick holds")
+        let um = undoManager()
+
+        r.model.trash(["b-call"], undoManager: um)
+
+        XCTAssertEqual(r.settings.sessionName, "lena-hart", "the next meeting's session, not A-Z first or the newest")
+        XCTAssertNil(r.settings.sessionPickManual, "the pick ended with its session")
+        um.undo()
+        XCTAssertEqual(r.settings.sessionName, "b-call", "the undo contract: Start uses it again")
+        XCTAssertEqual(r.settings.sessionPickManual?.session, "b-call", "his pick by hand comes back with it")
+        // The session list changed, so the app looks again (the $sessions sink): the undo must survive that look.
+        r.controller.selector.reevaluate()
+        XCTAssertEqual(r.settings.sessionName, "b-call", "the undo holds after the next auto-select")
     }
 
     func testTrashingAnotherSessionLeavesTheStartChoiceAlone() throws {
@@ -331,13 +369,16 @@ final class SessionTrashTests: XCTestCase {
 
     func testUndoKeepsALaterStartChoice() throws {
         for n in ["a-call", "b-call", "c-call"] { try FolderFixtures.session(n, in: root) }
+        try created("a-call", "2026-01-01T09:00:00Z")
+        try created("c-call", "2026-03-01T09:00:00Z")
         let r = rig(start: "b-call")
         defer { r.defaultsCleanup() }
         let um = undoManager()
         r.model.trash(["b-call"], undoManager: um)
-        r.settings.sessionName = "c-call"
+        XCTAssertEqual(r.settings.sessionName, "c-call", "the fallback: the newest")
+        r.controller.selector.choose("a-call")
         um.undo()
-        XCTAssertEqual(r.settings.sessionName, "c-call", "he picked another one meanwhile; undo does not take that back")
+        XCTAssertEqual(r.settings.sessionName, "a-call", "he picked another one meanwhile; undo does not take that back")
     }
 
     func testUndoDoesNotRestoreAnEventThatPointsElsewhereNow() throws {

@@ -242,6 +242,9 @@ public struct RunOptions: Sendable {
     public var shadowSlotSeconds = 12.0
     /// Called after AUTO switched the call to a language (never for a switch asked for with `switchListening`).
     public var onAutoLanguage: (@Sendable (String) -> Void)?
+    /// AUTO only: the language the brain's dominant (answer) language starts in before any speech is heard: the session's prepared
+    /// language. nil: `lang`.
+    public var answerLangHint: String?
 
     public static let defaultLiveSeconds = 60.0
 
@@ -674,6 +677,7 @@ public final class VerseRunner: @unchecked Sendable {
                     detector.revert(to: nowLang, lastSwitchAt: autoPrevSwitch)
                 }
                 if wantAuto != detector.auto {
+                    sendControl(.setLanguageAuto(wantAuto))      // the brain's cards follow the dominant language, or the pin
                     detector.setAuto(wantAuto)
                     detector.shadowActive = wantAuto && o.autoShadow
                     if o.autoShadow { await leg.session.setShadow(wantAuto ? shadowConfig(offset: leg.offset) : nil) }
@@ -921,16 +925,32 @@ public final class VerseRunner: @unchecked Sendable {
     /// The route and language are the call's current ones, not the options': a brain restarted after a crash in a call that was
     /// switched must start in the route the call is in now.
     func startCommand() -> BrainCommand {
-        let (route, lang) = state.withLock { ($0.route, $0.lang) }
+        let (route, lang, auto) = state.withLock { ($0.route, $0.lang, $0.autoLang) }
         let room = route == .room
+        // AUTO: the brain's dominant language starts at the session's prepared language (`answerLangHint`); a restarted brain
+        // rebuilds it from the `history` it is given.
         return .start(sessionDir: options.sessionDir.path, lang: lang, follow: options.follow,
                       mode: options.mode == .prepared ? nil : options.mode, route: route == .meeting ? nil : route,
-                      me: options.me, roomAuto: room ? options.roomAuto : nil)
+                      me: options.me, roomAuto: room ? options.roomAuto : nil, langAuto: auto, langHint: auto ? options.answerLangHint : nil)
     }
 
     /// ⌥⌘↩: the brain answers the latest remote/room turn now (the open partial, else the last final). Nothing happens
     /// when no brain is running.
     public func cardNow() { sendControl(.cardNow) }
+
+    /// The island's Regenerate: the brain answers turn `turn`'s question again (`BrainCommand.regenerate`). Returns false when no
+    /// brain is running to ask.
+    @discardableResult
+    public func regenerate(turn: String, question: String?, lang: String?, reset: Bool, avoid: String?) -> Bool {
+        sendControl(.regenerate(turn: turn, question: question, lang: lang, reset: reset, avoid: avoid))
+    }
+
+    /// The owner's mark on a card (`BrainCommand.cardMark`); the brain writes it to the session's events.jsonl. Returns false when
+    /// no brain is running (the mark is then lost: nothing else writes events.jsonl).
+    @discardableResult
+    public func markCard(card: String, mark: String, turn: String?, question: String?) -> Bool {
+        sendControl(.cardMark(card: card, mark: mark, turn: turn, question: question))
+    }
 
     /// Turns the interim AUTO language mode on or off while the call runs. Off pins the current language (the controller pins
     /// the one a chip names with `switchListening` right after).
@@ -940,10 +960,12 @@ public final class VerseRunner: @unchecked Sendable {
     /// brain which language the cards come in.
     public func setLanguage(_ lang: String) { sendControl(.setLanguage(lang)) }
 
-    private func sendControl(_ c: BrainCommand) {
+    @discardableResult
+    private func sendControl(_ c: BrainCommand) -> Bool {
         brainSendLock.withLock {
             let brain: BrainProcess? = state.withLock { s in s.phase == .running ? s.brain : nil }
             brain?.send(c.jsonLine())
+            return brain != nil
         }
     }
 

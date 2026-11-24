@@ -259,14 +259,28 @@ public enum BrainCommand: Sendable, Equatable {
     ///
     /// The anytime-calls fields (spec 3) are sent only when set; absent means today's behaviour (prepared, meeting,
     /// no me layer), so a session that sets none of them produces exactly the line it always did.
+    ///
+    /// `langAuto` (AUTO language, owner decisions 7 and 8): the cards follow the call's dominant language, which starts at
+    /// `langHint` (the session's prepared language) or else `lang`. Sent only when true (`"lang_auto": true`); `lang_hint` only
+    /// with it and when it differs from `lang`.
     case start(sessionDir: String, lang: String, follow: Bool = false, mode: SessionMode? = nil, route: AudioRoute? = nil,
-               me: MeProfilePaths? = nil, roomAuto: RoomAuto? = nil)
+               me: MeProfilePaths? = nil, roomAuto: RoomAuto? = nil, langAuto: Bool = false, langHint: String? = nil)
     case stop
     case summarize
     /// Answer the latest remote/room turn now: the open partial, else the last final.
     case cardNow
+    /// The island's Regenerate (⌥⌘R): answer the question of turn `turn` again at once (`control regenerate`). `lang` is the
+    /// language of the new answer, `reset` also resets the dominant language to it, `avoid` is the SAY line on screen (the new
+    /// answer is a fresh variant). `question` is used only when the brain has no text for the turn. Optional fields are sent only
+    /// when set (`reset` only when true).
+    case regenerate(turn: String, question: String? = nil, lang: String? = nil, reset: Bool = false, avoid: String? = nil)
+    /// The owner's BAD mark on the card on screen, or `cleared` (`card_mark`; older apps also sent `good`, which the brain still reads): the brain writes it to events.jsonl for the
+    /// after-call review (persona/rows.py `read_marks`). `card` is the call id of the card's lines.
+    case cardMark(card: String, mark: String, turn: String? = nil, question: String? = nil)
     /// The session language from now on (the speech engines restart on the Swift side).
     case setLanguage(String)
+    /// AUTO language on or off mid-call (`control lang_auto`): off pins the cards to the session language.
+    case setLanguageAuto(Bool)
     /// The audio route of the running call changed (the listen pipeline was swapped in place); the session goes on. `roomAuto`
     /// (room route only) and `follow` (the user's setting, not yet gated by the route) are sent when the brain cannot know
     /// them from `start`: a call that began in the meeting never got `room_auto`, one that began in the room got `follow:false`.
@@ -278,8 +292,12 @@ public enum BrainCommand: Sendable, Equatable {
     public func jsonLine() -> String {
         var obj: [String: Any]
         switch self {
-        case .start(let dir, let lang, let follow, let mode, let route, let me, let roomAuto):
+        case .start(let dir, let lang, let follow, let mode, let route, let me, let roomAuto, let langAuto, let langHint):
             obj = ["type": "start", "session_dir": dir, "lang": lang, "follow": follow]
+            if langAuto {
+                obj["lang_auto"] = true
+                if let langHint, langHint != lang { obj["lang_hint"] = langHint }
+            }
             if let mode { obj["mode"] = mode.rawValue }
             if let route { obj["route"] = route.rawValue }
             if let me { obj["me"] = ["core": me.core, "library": me.library, "facts": me.facts] }
@@ -287,7 +305,18 @@ public enum BrainCommand: Sendable, Equatable {
         case .stop: obj = ["type": "control", "action": "stop"]
         case .summarize: obj = ["type": "control", "action": "summarize"]
         case .cardNow: obj = ["type": "control", "action": "card_now"]
+        case .regenerate(let turn, let question, let lang, let reset, let avoid):
+            obj = ["type": "control", "action": "regenerate", "turn": turn]
+            if let question, !question.isEmpty { obj["question"] = question }
+            if let lang { obj["lang"] = lang }
+            if reset { obj["reset"] = true }
+            if let avoid, !avoid.isEmpty { obj["avoid"] = avoid }
+        case .cardMark(let card, let mark, let turn, let question):
+            obj = ["type": "card_mark", "card": card, "mark": mark]
+            if let turn, !turn.isEmpty { obj["turn"] = turn }
+            if let question, !question.isEmpty { obj["question"] = question }
         case .setLanguage(let lang): obj = ["type": "control", "action": "lang", "lang": lang]
+        case .setLanguageAuto(let on): obj = ["type": "control", "action": "lang_auto", "on": on]
         case .setRoute(let route, let roomAuto, let follow):
             obj = ["type": "control", "action": "route", "route": route.rawValue]
             if let roomAuto { obj["room_auto"] = roomAuto.rawValue }

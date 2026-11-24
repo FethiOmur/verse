@@ -348,6 +348,11 @@ final class MemoryService: ObservableObject {
     var labels: (String) -> [String] = { _ in [] }
     /// The session being recorded right now, if any: it joins the index after Stop.
     var recordingSession: () -> String? = { nil }
+    /// Called when a run of syncs ends (the last queued one included), whatever its outcome. `afterCall` is true when that run
+    /// covered the sync after a call ended or the launch sync: what the persona waits for (PersonaService).
+    var onSyncFinished: (@MainActor (_ afterCall: Bool) -> Void)?
+    /// A call-end or launch sync was asked for and no run has started on it yet.
+    private var afterCallRequested = false
 
     // Timing and limits, injectable for tests.
     var launchDelay: Duration = .seconds(15)
@@ -445,6 +450,7 @@ final class MemoryService: ObservableObject {
     /// Coalesced: one run at a time; a request during a run schedules exactly one more.
     func requestSync(_ reason: SyncReason) {
         guard enabled else { return }
+        if reason == .callEnded || reason == .launch { afterCallRequested = true }
         if syncing { rerun = true; return }
         syncing = true
         Task { @MainActor [weak self] in await self?.runLoop() }
@@ -469,8 +475,11 @@ final class MemoryService: ObservableObject {
 
     private func runLoop() async {
         var busyRetries = 0
+        var coveredAfterCall = false
         repeat {
             rerun = false
+            coveredAfterCall = coveredAfterCall || afterCallRequested
+            afterCallRequested = false
             runCount += 1
             switch await performRun() {
             case .done:
@@ -496,6 +505,7 @@ final class MemoryService: ObservableObject {
         let all = waiters
         waiters = [:]
         for (_, c) in all { c.resume(returning: ok) }
+        onSyncFinished?(coveredAfterCall)
     }
 
     private func performRun() async -> MemoryIndexer.Outcome {

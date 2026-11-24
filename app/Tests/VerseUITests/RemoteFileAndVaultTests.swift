@@ -61,7 +61,7 @@ final class VaultSummaryTests: XCTestCase {
 
     private func coordinator(_ host: FakeHost, vault v: URL, on: Bool = true) throws -> MeetingCoordinator {
         MeetingCoordinator(host: host, settings: meetingSettings(vault: on, vaultPath: v.path), calendar: CalendarSource(backend: NoCalendar()),
-                           detector: MeetingDetector(table: MicTable()), prepare: neverPrepare, upcoming: { _ in [] },
+                           detector: MeetingDetector(table: MicTable()), upcoming: { _ in [] },
                            eventMap: EventSessionMap(url: try tempDir().appendingPathComponent("m.json")), now: { self.started })
     }
 

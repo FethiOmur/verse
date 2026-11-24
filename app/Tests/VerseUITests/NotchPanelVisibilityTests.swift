@@ -57,7 +57,7 @@ struct NotchPanelVisibilityTests {
         let panel = NotchPanelController(model: model, settings: AppSettings(defaults: scratchDefaults()), onOpenSettings: { _ in })
         defer { panel.close() }
 
-        model.showPrompt(MeetingPrompt.detected(appName: "Comet", eventTitle: nil, plan: .fromInvite))
+        model.showPrompt(MeetingPrompt.detected(appName: "Comet", eventTitle: nil, plan: .unprepared))
         panel.show()
         try await Task.sleep(for: .milliseconds(50))
         model.showPrompt(nil)

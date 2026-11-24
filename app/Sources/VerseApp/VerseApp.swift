@@ -52,6 +52,12 @@ struct MenuBarLabel: View {
     }
 }
 
+/// The menu-bar menu (owner decisions, 24 Nov 2026): three states. Idle with a next meeting: the meeting and its session state,
+/// Start (a preview of ⌥⌘V), Start unprepared (⌥⇧⌘V), Prepare, the Session and Audio source submenus. Idle with no meeting: the
+/// same without the info rows. Running: Listening, Stop, Previous answer, Answer the last question, New answer to this question,
+/// Mark the answer bad, Audio source, and the
+/// teleprompter's controls while it is open. Language never appears: every start runs in Settings' call language (Auto).
+/// Native menu rows are plain text: no colours, no badges.
 struct VerseMenu: View {
     @ObservedObject var controller: VerseController
     @ObservedObject var settings: AppSettings
@@ -59,24 +65,107 @@ struct VerseMenu: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Text(controller.statusLine)
+        if controller.running || controller.stopping {
+            RunningMenuSection(controller: controller, prompter: controller.prompter)
+        } else {
+            IdleMenuSection(controller: controller, selector: controller.selector, autoPrep: controller.autoPrep,
+                            watcher: controller.calendarWatcher, meetingSettings: controller.meeting.settings, sim: sim)
+        }
         Divider()
         Button { HomeRouter.shared.show(HomeRouter.shared.page, openWindow: openWindow) } label: { Text("Open Verse", bundle: L10n.bundle) }
-        Divider()
-        if controller.running {
-            Button { Task { await controller.stop() } } label: { Text("Stop", bundle: L10n.bundle) }
-                .keyboardShortcut("s")
-                .disabled(controller.stopping)
-        } else {
-            // Start at once, with or without a prepared session (anytime calls). ⌥⌘V does the same from anywhere.
-            Button { controller.startNow() } label: { Text("Start now", bundle: L10n.bundle) }
-                .keyboardShortcut("v", modifiers: [.option, .command])
-                .disabled(sim.running || controller.stopping)
-            Button { controller.start() } label: { Text("Start prepared session", bundle: L10n.bundle) }
-                .keyboardShortcut("s")
-                .disabled(controller.sessions.isEmpty || sim.running)
+        Button {
+            HomeRouter.shared.show(.settings, openWindow: openWindow)
+        } label: { Text("Settings…", bundle: L10n.bundle) }
+        .keyboardShortcut(",")
+        Button { NSApp.terminate(nil) } label: { Text("Quit Verse", bundle: L10n.bundle) }
+            .keyboardShortcut("q")
+    }
+}
+
+/// Idle: what Start will do, and the session and audio choices behind it.
+struct IdleMenuSection: View {
+    @ObservedObject var controller: VerseController
+    @ObservedObject var selector: SessionSelector
+    @ObservedObject var autoPrep: MeetingAutoPrep
+    @ObservedObject var watcher: CalendarWatcher
+    @ObservedObject var meetingSettings: MeetingSettings
+    @ObservedObject var sim: SimController
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        let picker = controller.pickerModel()
+        let next = NextMeetingRows.make(target: selector.target, picker: picker, now: controller.clock(), calendar: controller.calendar)
+        let preview = controller.startPreview()
+        if let next {
+            Text(verbatim: next.meeting)
+            Text(verbatim: next.stateText)
+            Divider()
         }
-        // Where Verse listens and in which language: before a Start they are the choice for it; during a call they switch it.
+        // The label is what ⌥⌘V does right now (the same decision `startNow` makes).
+        Button { controller.startNow() } label: { Text(verbatim: preview.title) }
+            .keyboardShortcut("v", modifiers: [.option, .command])
+            .disabled(sim.running || controller.stopping)
+        if preview.showsUnpreparedRow {
+            // A sudden call while a meeting's session is up next (owner decision 5): the selection and the manual pick stay.
+            Button { controller.startUnprepared() } label: { Text("Start unprepared", bundle: L10n.bundle) }
+                .keyboardShortcut("v", modifiers: [.option, .shift, .command])
+                .disabled(sim.running || controller.stopping)
+        }
+        if next?.offersPrepare == true {
+            Button { controller.prepareNextMeeting() } label: { Text("Prepare for this meeting", bundle: L10n.bundle) }
+                .disabled(sim.running)
+        }
+        Divider()
+        SessionSubmenu(controller: controller, selector: selector, picker: picker.capped(selected: controller.settings.sessionName))
+        AudioSourceSubmenu(controller: controller)
+        switch controller.calendarNudge {
+        case .turnOn?:
+            Button { controller.turnOnCalendar() } label: { Text("Connect calendar…", bundle: L10n.bundle) }
+        case .permissionMissing?:
+            Button { SystemSettingsLink.open(permission: "calendar") } label: {
+                Text("Calendar permission missing · Open System Settings", bundle: L10n.bundle)
+            }
+        case nil:
+            EmptyView()
+        }
+    }
+}
+
+/// The Session submenu (G5): the newest `SessionPickerModel.menuLimit` rows, Next meetings first, then "All sessions…".
+struct SessionSubmenu: View {
+    @ObservedObject var controller: VerseController
+    @ObservedObject var selector: SessionSelector
+    let picker: SessionPickerModel
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Menu {
+            Picker(selection: selector.manualBinding) {
+                if !picker.nextMeetings.isEmpty {
+                    Section {
+                        ForEach(picker.nextMeetings) { Text(verbatim: $0.display).tag($0.session) }
+                    } header: { Text("Next meetings", bundle: L10n.bundle) }
+                    if !picker.others.isEmpty {
+                        Section {
+                            ForEach(picker.others) { Text(verbatim: $0.display).tag($0.session) }
+                        } header: { Text("Other sessions", bundle: L10n.bundle) }
+                    }
+                } else {
+                    ForEach(picker.others) { Text(verbatim: $0.display).tag($0.session) }
+                }
+            } label: { Text("Session", bundle: L10n.bundle) }
+            .pickerStyle(.inline)
+            Divider()
+            Button { HomeRouter.shared.show(.sessions, openWindow: openWindow) } label: { Text("All sessions…", bundle: L10n.bundle) }
+        } label: { Text("Session", bundle: L10n.bundle) }
+    }
+}
+
+/// Where Verse listens: before a Start the choice for it (Automatic included); during a call it switches the call.
+struct AudioSourceSubmenu: View {
+    @ObservedObject var controller: VerseController
+
+    var body: some View {
         Menu {
             Picker(selection: Binding<AudioRoute?>(
                 get: { controller.running ? controller.route : controller.routeChoice },
@@ -88,59 +177,36 @@ struct VerseMenu: View {
             .pickerStyle(.inline)
         } label: { Text("Route", bundle: L10n.bundle) }
         .disabled(controller.stopping)
-        Menu {
-            Picker(selection: Binding(
-                get: { controller.running ? (controller.autoLanguage ? AppSettings.autoLanguage : controller.callLanguage) : settings.defaultCallLanguage },
-                set: { controller.chooseLanguage($0) })) {
-                if controller.running && controller.autoLanguage {
-                    Text("Auto · \(controller.callLanguage.uppercased())", bundle: L10n.bundle).tag(AppSettings.autoLanguage)
-                } else {
-                    Text("Auto", bundle: L10n.bundle).tag(AppSettings.autoLanguage)
-                }
-                Text("English", bundle: L10n.bundle).tag("en")
-                Text("Italian", bundle: L10n.bundle).tag("it")
-                Text("Turkish", bundle: L10n.bundle).tag("tr")
-            } label: { Text("Language", bundle: L10n.bundle) }
-            .pickerStyle(.inline)
-        } label: { Text("Language", bundle: L10n.bundle) }
-        .disabled(controller.stopping)
-        Picker(selection: $settings.sessionName) {
-            ForEach(controller.sessions, id: \.self) { Text(verbatim: $0).tag($0) }
-        } label: { Text("Session", bundle: L10n.bundle) }
-        .disabled(controller.running)
-        Picker(selection: $settings.language) {
-            Text("English", bundle: L10n.bundle).tag("en")
-            Text("Italian", bundle: L10n.bundle).tag("it")
-            Text("Turkish", bundle: L10n.bundle).tag("tr")
-        } label: { Text("Meeting language", bundle: L10n.bundle) }
-        .disabled(controller.running)
+    }
+}
+
+/// Running: the call and what can be done to it. The answer keys are written in the labels (they are global hot keys, not
+/// menu shortcuts: a menu shortcut would only work while the menu is open).
+struct RunningMenuSection: View {
+    @ObservedObject var controller: VerseController
+    @ObservedObject var prompter: PrompterModel
+
+    var body: some View {
+        Text(controller.statusLine)
         Divider()
-        // W2: self-test without a meeting app: the file is the remote side, the microphone stays "me".
-        Button {
-            if let url = RemoteFilePicker.choose() { controller.start(remoteFile: url) }
-        } label: { Text("Play test file as remote…", bundle: L10n.bundle) }
-        .disabled(controller.running || controller.stopping || controller.sessions.isEmpty || sim.running)
+        Button { Task { await controller.stop() } } label: { Text("Stop", bundle: L10n.bundle) }
+            .disabled(controller.stopping)
+        Button { controller.showEarlierAnswer() } label: { Text("Previous answer \("⌥⌘←")", bundle: L10n.bundle) }
+            .disabled(controller.stopping)
+        Button { controller.cardNow() } label: { Text("Answer the last question \("⌥⌘↩")", bundle: L10n.bundle) }
+            .disabled(controller.stopping)
+        Button { controller.regenerate() } label: { Text("New answer to this question \("⌥⌘R")", bundle: L10n.bundle) }
+            .disabled(controller.stopping)
+        Button { controller.markAnswer(.bad) } label: { Text("Mark the answer bad \("⌥⌘↓")", bundle: L10n.bundle) }
+            .disabled(controller.stopping)
         Divider()
-        if sim.running {
-            Button { sim.endInterview() } label: { Text("End practice interview", bundle: L10n.bundle) }
-        } else {
-            Button {
-                HomeRouter.shared.show(.practice, openWindow: openWindow)
-            } label: { Text("Practice interview…", bundle: L10n.bundle) }
-            .disabled(controller.running)
+        AudioSourceSubmenu(controller: controller)
+        if prompter.isOpen {
+            Button { prompter.send(.toggle) } label: {
+                if prompter.state.isPaused { Text("Start prompter", bundle: L10n.bundle) } else { Text("Pause prompter", bundle: L10n.bundle) }
+            }
+            Button { prompter.send(.close) } label: { Text("Close prompter", bundle: L10n.bundle) }
         }
-        if sim.lastReport != nil {
-            Button { sim.openLastReport() } label: { Text("Last practice report", bundle: L10n.bundle) }
-        }
-        PrompterMenuBlock(controller: controller)
-        ConversationMenuBlock()
-        Divider()
-        Button {
-            HomeRouter.shared.show(.settings, openWindow: openWindow)
-        } label: { Text("Settings…", bundle: L10n.bundle) }
-        .keyboardShortcut(",")
-        Button { NSApp.terminate(nil) } label: { Text("Quit Verse", bundle: L10n.bundle) }
-            .keyboardShortcut("q")
     }
 }
 
@@ -244,6 +310,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             return
         }
+        // The next meeting's session is picked before detection starts, then on every calendar change (G1, G11).
+        controller.beginSessionSelection()
         if launch.autostart { controller.start() }
         controller.meeting.begin()
         // Dictation (⌃⌥⌘D): off by default; while it is off no hot key is registered.

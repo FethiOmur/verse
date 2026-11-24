@@ -281,6 +281,14 @@ public struct SettingsView: View {
                     HomeSecondaryButton("Choose…", action: chooseFile)
                     if !settings.testAudioPath.isEmpty { HomeSecondaryButton("Clear") { settings.testAudioPath = "" } }
                 }
+                HomeRowDivider()
+                // Moved here from the menu: the file plays as the other side of the call, the microphone stays you.
+                HomeRow("Test file as the other side") {
+                    HomeSecondaryButton("Play as remote…") {
+                        if let url = RemoteFilePicker.choose() { controller.start(remoteFile: url) }
+                    }
+                    .disabled(controller.running || controller.stopping || controller.sessions.isEmpty || controller.startBlocked())
+                }
             }
     }
 

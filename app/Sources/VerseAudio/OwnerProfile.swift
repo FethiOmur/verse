@@ -10,6 +10,8 @@ import Foundation
 ///     display_name   how the app and the prompts name the user. Default: "the user".
 ///     vault_path     a notes vault the app can write summaries to. Default: none (the vault features stay off).
 ///     api_key_note   one sentence shown above the Keychain note on the Settings page. Default: none.
+///     persona_dir    the folder of the master persona, absolute or relative to vault_path. Default: none (learning from calls
+///                    and the compiled persona stay off). A relative value without an absolute vault_path is off too.
 ///
 /// A missing, unreadable or malformed file gives the generic profile; nothing here throws.
 public struct OwnerProfile: Sendable, Equatable {
@@ -22,13 +24,26 @@ public struct OwnerProfile: Sendable, Equatable {
     /// As written in the file (a leading `~` is not expanded). nil: no vault.
     public var vaultPath: String?
     public var apiKeyNote: String?
+    /// `persona_dir` as written in the file. nil: the persona is off.
+    public var personaDir: String?
 
     public init(displayName: String = OwnerProfile.genericName, named: Bool = false, vaultPath: String? = nil,
-                apiKeyNote: String? = nil) {
+                apiKeyNote: String? = nil, personaDir: String? = nil) {
         self.displayName = displayName
         self.named = named
         self.vaultPath = vaultPath
         self.apiKeyNote = apiKeyNote
+        self.personaDir = personaDir
+    }
+
+    /// The persona folder as an absolute URL, the rule of `brain/verse_brain/owner.py`: an absolute (or `~`) value as is, a
+    /// relative one under an absolute `vault_path`, otherwise nil (the feature is off). Nothing is checked on disk.
+    public var personaURL: URL? {
+        guard let raw = personaDir else { return nil }
+        let p = (raw as NSString).expandingTildeInPath
+        if p.hasPrefix("/") { return URL(fileURLWithPath: p, isDirectory: true).standardizedFileURL }
+        guard let v = vaultPath.map({ ($0 as NSString).expandingTildeInPath }), v.hasPrefix("/") else { return nil }
+        return URL(fileURLWithPath: v, isDirectory: true).appendingPathComponent(p, isDirectory: true).standardizedFileURL
     }
 
     /// The name the turn logic matches against what the other side says: empty without a profile name, so that a generic
@@ -73,7 +88,7 @@ public struct OwnerProfile: Sendable, Equatable {
         }
         let name = str("display_name")
         return OwnerProfile(displayName: name ?? genericName, named: name != nil, vaultPath: str("vault_path"),
-                            apiKeyNote: str("api_key_note"))
+                            apiKeyNote: str("api_key_note"), personaDir: str("persona_dir"))
     }
 
     /// The profile of this process, read once (the first use).

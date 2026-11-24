@@ -613,7 +613,7 @@ struct StartupPanelView: View {
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("verse.startup")
             if let route = panel.route {
-                StartCardChips(route: route, lang: panel.lang, auto: panel.autoLang, onAction: onAction).padding(.top, 8)
+                StartCardChips(route: route, onAction: onAction).padding(.top, 8)
             }
         }
         .padding(.horizontal, VT.islandCardInset)
@@ -651,18 +651,11 @@ struct StartChip: View {
     }
 }
 
-/// Route and language of an anytime session: a click on the route chip changes the route, the language chips offer AUTO, EN,
-/// IT and TR (an in-place engine swap; the controller does it). A click on EN, IT or TR pins that language and turns AUTO off.
+/// The route of an anytime session: a click on the route chip changes the route. Language has no chip (owner, 24 Nov 2026): it is
+/// always automatic, and a manual override lives only in Settings.
 struct StartCardChips: View {
     var route: AudioRoute
-    /// The language the recognizers run in now (with `auto`: the one AUTO picked).
-    var lang: String
-    /// AUTO is on: the chip reads "AUTO · EN" and the language chips are not selected.
-    var auto = false
     var onAction: (StartChipAction) -> Void
-
-    /// The AUTO chip's text: "AUTO · EN" while on (the detected language), "AUTO" while off.
-    static func autoLabel(auto: Bool, lang: String) -> String { auto ? L10n.tr("AUTO · \(lang.uppercased())") : L10n.tr("AUTO") }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -671,15 +664,6 @@ struct StartCardChips: View {
             }
             .accessibilityLabel(Text("Route: \(StartRoutes.label(route))", bundle: .module))
             .accessibilityHint(Text("Changes where Verse listens", bundle: .module))
-            Rectangle().fill(Color.white.opacity(0.16)).frame(width: 0.5, height: 14).padding(.horizontal, 2)
-            StartChip(label: Self.autoLabel(auto: auto, lang: lang), selected: auto) { onAction(.setLanguage(AppSettings.autoLanguage)) }
-                .accessibilityLabel(auto ? Text("Auto, \(StartRoutes.languageName(lang))", bundle: .module) : Text("Auto", bundle: .module))
-                .accessibilityAddTraits(auto ? .isSelected : [])
-            ForEach(AppSettings.pinnableLanguages, id: \.self) { code in
-                StartChip(label: code.uppercased(), selected: !auto && code == lang) { onAction(.setLanguage(code)) }
-                    .accessibilityLabel(StartRoutes.languageName(code))
-                    .accessibilityAddTraits(!auto && code == lang ? .isSelected : [])
-            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("verse.startcard.chips")
@@ -772,6 +756,36 @@ struct FlowLayout: Layout {
     }
 }
 
+/// The arithmetic of the answer card's control row (the buttons at the bottom right, `OverlayView.stopRow`) against the resize grip
+/// at the bottom centre. Each button is 32 pt wide (a 12 pt glyph with 10 pt on both sides), 6 pt apart, in a pill with 6 pt of
+/// padding at both ends, 24 pt from the card's right edge (`HoverControls`). Buttons: Back, Forward (only on an earlier answer),
+/// Regenerate and Bad (only under an answer), Stop. At the smallest card width (420 pt) the row takes 158 pt (4 buttons) or 196 pt
+/// (5), and the grip's 120 pt hit area, centred, starts at 150 pt: the row would sit on it.
+enum CardControlRow {
+    static let buttonWidth: CGFloat = 32
+    static let buttonSpacing: CGFloat = 6
+    static let pillPadding: CGFloat = 6
+    /// Distance from the card's right edge to the pill (`HoverControls(horizontalInset:)`).
+    static let trailingInset: CGFloat = VT.islandCardInset - 12
+    /// The grip's hit area (`ResizeGrip`).
+    static let gripWidth: CGFloat = 120
+
+    static func buttons(canGoForward: Bool, hasAnswer: Bool) -> Int {
+        1 + (canGoForward ? 1 : 0) + (hasAnswer ? 2 : 0) + 1
+    }
+
+    static func width(buttons: Int) -> CGFloat {
+        CGFloat(buttons) * buttonWidth + CGFloat(max(buttons - 1, 0)) * buttonSpacing + 2 * pillPadding
+    }
+
+    /// How far left of the card's centre the grip moves so that its hit area ends where the row begins: 0 while the card is wide
+    /// enough (484 pt with 4 buttons, 560 pt with 5), else the shortfall. The buttons keep their size.
+    static func gripShift(cardWidth: CGFloat, buttons: Int) -> CGFloat {
+        let rowLeft = cardWidth - trailingInset - width(buttons: buttons)
+        return min(0, rowLeft - gripWidth / 2 - cardWidth / 2)
+    }
+}
+
 /// The resize grip at the bottom of the card. Drawn only while the pointer is over it: the card stays clean.
 struct ResizeGrip: View {
     var onDrag: (CGSize) -> Void
@@ -782,7 +796,7 @@ struct ResizeGrip: View {
         Capsule()
             .fill(.white.opacity(hovering ? 0.5 : 0))
             .frame(width: 36, height: 4)
-            .frame(width: 120, height: 14)
+            .frame(width: CardControlRow.gripWidth, height: 14)
             .contentShape(Rectangle())
             .onHover { h in
                 hovering = h

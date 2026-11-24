@@ -123,4 +123,27 @@ final class AnytimeWireTests: XCTestCase {
         XCTAssertEqual(VerseRunner(options: o).startCommand(),
                        .start(sessionDir: "/tmp/s", lang: "it", follow: true, me: MeProfilePaths(core: "a", library: "b", facts: "c")))
     }
+
+    // MARK: AUTO language (owner decisions 7 and 8)
+
+    func testAutoLanguageFieldsGoOnlyWithAuto() {
+        XCTAssertEqual(BrainCommand.start(sessionDir: "/s", lang: "en", langAuto: true, langHint: "it").jsonLine(),
+                       #"{"follow":false,"lang":"en","lang_auto":true,"lang_hint":"it","session_dir":"/s","type":"start"}"#)
+        XCTAssertEqual(BrainCommand.start(sessionDir: "/s", lang: "it", langAuto: true, langHint: "it").jsonLine(),
+                       #"{"follow":false,"lang":"it","lang_auto":true,"session_dir":"/s","type":"start"}"#, "a hint equal to lang is left out")
+        XCTAssertEqual(BrainCommand.start(sessionDir: "/s", lang: "en", langHint: "it").jsonLine(),
+                       #"{"follow":false,"lang":"en","session_dir":"/s","type":"start"}"#, "no hint without AUTO")
+        XCTAssertEqual(BrainCommand.setLanguageAuto(false).jsonLine(), #"{"action":"lang_auto","on":false,"type":"control"}"#)
+        XCTAssertEqual(BrainCommand.setLanguageAuto(true).jsonLine(), #"{"action":"lang_auto","on":true,"type":"control"}"#)
+    }
+
+    func testRunnerStartsTheBrainInAutoWithThePreparedLanguageAsTheHint() {
+        var o = RunOptions(sessionDir: URL(fileURLWithPath: "/tmp/s"))
+        o.lang = "en"
+        o.autoLanguage = true
+        o.answerLangHint = "it"
+        XCTAssertEqual(VerseRunner(options: o).startCommand(), .start(sessionDir: "/tmp/s", lang: "en", langAuto: true, langHint: "it"))
+        o.autoLanguage = false
+        XCTAssertEqual(VerseRunner(options: o).startCommand(), .start(sessionDir: "/tmp/s", lang: "en"), "a pinned call sends neither")
+    }
 }

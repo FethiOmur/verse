@@ -54,6 +54,13 @@ public struct OverlayCard: Equatable, Sendable {
     public var followCardID: String?
     /// Indices into `bullets` that the owner has already said (the brain's `covered`); the view strikes them through.
     public var struck: Set<Int> = []
+    /// AUTO language: the language this card's answer is written in (the brain's `answer_lang` for its turn); nil when the brain
+    /// did not say (AUTO off, or before its first call for the turn). Compare with `OverlayState.dominantLang`.
+    public var answerLang: String?
+    /// The id of the brain call whose SAY line the card shows: the follow card's call while `following`, D's when its correction
+    /// replaced the opener (OPENER_WRONG), else the selected S or the F, else D. nil while the SAY line is the bank's opener (even
+    /// with F's points under it). The id a BAD mark names (`CardMarks.cardID`): the after-call review banks that call's text.
+    public var cardID: String?
 
     public init(turnID: String, question: String) {
         self.turnID = turnID
@@ -216,6 +223,15 @@ public struct OverlayState: Equatable, Sendable {
     public var unprepared = false
     /// The call's time cue (`call.json`, `CallCue`): "1 min left" in the last minute, "wrap up" at the end. nil otherwise.
     public var timeCue: TimeCue?
+    /// AUTO language: the call's dominant language as the brain last reported it (`lang_dominant`), the language new answers are
+    /// written in. nil when AUTO is off or before the brain said.
+    public var dominantLang: String?
+    /// AUTO language: the language of most of the other side's speech so far (`lang_majority`, and `majority` on `lang_dominant`).
+    /// It differs from `dominantLang` after a short run in another language flipped the cards; Regenerate targets it. nil when AUTO
+    /// is off or before the brain said.
+    public var majorityLang: String?
+    /// A regenerate (the island's button, ⌥⌘R) is on its way and its answer has not finished: another press is ignored.
+    public var regenerating = false
 
     public init() {}
 
@@ -242,10 +258,10 @@ public struct StartupPanel: Equatable, Sendable {
     public var app: String?
     /// The recognizer has produced text from the meeting's audio (separate from `.listening`, which follows the sound).
     public var transcribing = false
-    /// Anytime calls: the route this session listens on. Non-nil makes the panel the start card, with the route and
-    /// language chips (spec 2.1).
+    /// Anytime calls: the route this session listens on. Non-nil makes the panel the start card, with the route
+    /// chip (spec 2.1).
     public var route: AudioRoute?
-    /// The session language, for the start card's language chips.
+    /// The session language (no longer drawn on the start card: language has no chip).
     public var lang = "en"
     /// The interim AUTO language mode is on: `lang` is then the language it picked.
     public var autoLang = false
@@ -263,7 +279,7 @@ public struct StartupPanel: Equatable, Sendable {
         self.autoLang = autoLang
     }
 
-    /// The start card of an anytime session (route and language chips) rather than the plain start-up panel.
+    /// The start card of an anytime session (route chip) rather than the plain start-up panel.
     public var isStartCard: Bool { route != nil }
 
     private var isStarting: Bool { if case .starting = phase { return true } else { return false } }
@@ -391,6 +407,8 @@ public struct OverlayReducer: Sendable {
     private struct Lines: Sendable {
         var tier: String
         var turnID: String
+        /// The brain call these lines came from (the delta's `id`).
+        var callID = ""
         var done: [String] = []
         var current = ""
         var all: [String] { current.isEmpty ? done : done + [current] }
@@ -429,11 +447,20 @@ public struct OverlayReducer: Sendable {
 
     private var lines: [String: Lines] = [:]
     private var turns: [String: TurnInfo] = [:]
+    /// AUTO language: the language the brain wrote each turn's answer in (`answer_lang`), by turn id.
+    private var answerLangs: [String: String] = [:]
+    /// Regenerate: the question each regenerated card-now turn answers again (the brain's `regenerate` metric), by turn id.
+    private var regenQuestions: [String: String] = [:]
+    /// When the regenerate in flight was pressed (or last confirmed busy); `RegenerateRule.inFlightTimeout` after it, it no longer blocks.
+    private var regenSince: TimeInterval = 0
     /// Remote `statement` turns not addressed to someone else, by turn id: (text, addressee). The brain may still
     /// answer one as a question; its first S/F SAY line then opens the card.
     private var statements: [String: (text: String, addressee: String)] = [:]
     /// The newest remote turn: only that one may open a card late.
     private var lastRemoteTurnID: String?
+    /// Cards a regenerated card took the island from, by turn id: they keep streaming off screen (the history records them),
+    /// so the answer to a newer question is neither frozen nor lost while the regenerated one is shown.
+    private(set) var backgroundCards: [String: OverlayCard] = [:]
     /// What the other side said last (the open partial, else the last final): the question a card-now answer is for.
     private var lastHeard = ""
     private var lastContent: TimeInterval = 0
@@ -451,13 +478,28 @@ public struct OverlayReducer: Sendable {
         self.bank = bank
     }
 
+    /// The island's Regenerate was pressed: no other press counts until the brain says it is done (or the timeout passes).
+    public mutating func beginRegenerate(now: TimeInterval) {
+        state.regenerating = true
+        regenSince = now
+    }
+
+    /// The brain could not be asked (no brain running): the press did not happen.
+    public mutating func cancelRegenerate() {
+        state.regenerating = false
+    }
+
     public mutating func reset(lang: String) {
         state = OverlayState()
         state.lang = lang
         lines = [:]
         turns = [:]
+        answerLangs = [:]
+        regenQuestions = [:]
+        regenSince = 0
         statements = [:]
         lastRemoteTurnID = nil
+        backgroundCards = [:]
         lastHeard = ""
         topicSeen = [:]
         topicTurn = [:]
@@ -479,9 +521,15 @@ public struct OverlayReducer: Sendable {
 
     public mutating func apply(_ e: RunnerEvent, now: TimeInterval) {
         switch e {
-        case .brain(let o): applyBrain(o, now: now)
-        case .chip(let o): applyChip(o, now: now)
-        case .outbound(let o): applyOutbound(o, now: now)
+        case .brain(let o):
+            applyBrain(o, now: now)
+            refreshBackground(o[string: "turn_id"])
+        case .chip(let o):
+            applyChip(o, now: now)
+            refreshBackground(o[string: "turn_id"])
+        case .outbound(let o):
+            applyOutbound(o, now: now)
+            refreshBackground(o[string: "turn_id"])
         case .status(let st, let m): applyStatus(st, message: m)
         case .issue(let code, let m, let channel):
             applyIssue(code, message: m, channel: channel, now: now)
@@ -494,6 +542,7 @@ public struct OverlayReducer: Sendable {
             }
         case .ended(let code):
             state.running = false
+            state.regenerating = false
             state.activity = .idle
             state.card = nil
             state.topics = []
@@ -511,6 +560,7 @@ public struct OverlayReducer: Sendable {
 
     /// Collapses a card that has had no new content for `cardTimeout`.
     public mutating func tick(now: TimeInterval) {
+        if state.regenerating, now - regenSince >= RegenerateRule.inFlightTimeout { state.regenerating = false }
         if callCue != nil || state.timeCue != nil { state.timeCue = callCue?.phase(now: now) }
         if let until = noticeUntil, now >= until {
             noticeUntil = nil
@@ -775,6 +825,7 @@ public struct OverlayReducer: Sendable {
 
     private mutating func openCard(turnID tid: String, question: String, addressee who: String, now: TimeInterval) {
         statements[tid] = nil
+        backgroundCards[tid] = nil
         // A new remote question ends follow mode for the card it replaces.
         if let previous = state.card?.turnID, previous != tid { turns[previous]?.endFollow() }
         state.addresseeTag = who == "me" ? L10n.tr("for you") : nil
@@ -853,7 +904,7 @@ public struct OverlayReducer: Sendable {
             guard let id = o[string: "id"], let tid = o[string: "turn_id"], let tier = o[string: "tier"] else { return }
             // A C line belongs to a follow card: it is kept by that card's id, apart from the original card's lines.
             let key = tier == "C" ? Self.followKey(o[string: "card_id"] ?? id) : id
-            var l = lines[key] ?? Lines(tier: tier, turnID: tid)
+            var l = lines[key] ?? Lines(tier: tier, turnID: tid, callID: id)
             l.current += o[string: "text"] ?? ""
             if o[bool: "line_done"] == true {
                 let s = l.current.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -869,8 +920,17 @@ public struct OverlayReducer: Sendable {
             if tier == "D", info.dID == nil { info.dID = id }
             turns[tid] = info
             if opensNowCard {
-                lastRemoteTurnID = tid
-                openCard(turnID: tid, question: lastHeard, addressee: "me", now: now)
+                if let q = regenQuestions[tid] {
+                    // A regenerated card asks the question of the card it answers again. It answers an earlier card while the call
+                    // goes on, so it is not the newest remote turn (a waiting statement or a late bank hit of that one still opens
+                    // its card), and the card it takes the island from keeps streaming off screen into the history.
+                    if let shown = state.card, shown.turnID != tid { backgroundCards[shown.turnID] = shown }
+                    openCard(turnID: tid, question: q, addressee: "me", now: now)
+                } else {
+                    // A plain card-now card answers what was said last: it is the newest turn.
+                    lastRemoteTurnID = tid
+                    openCard(turnID: tid, question: lastHeard, addressee: "me", now: now)
+                }
             }
             openReclassifiedStatement(turnID: tid, tier: tier, lines: l, now: now)
             if state.card?.turnID == tid { refreshCard(now: now) }
@@ -904,6 +964,35 @@ public struct OverlayReducer: Sendable {
             refreshCard(now: now)
         case "status":
             applyStatus(o[string: "state"] ?? "", message: o[string: "message"] ?? "", reason: o[string: "reason"])
+        case "metric":
+            // AUTO language (brain runtime/lang.py): the call's dominant language and the language each turn's answer is in.
+            switch o[string: "stage"] {
+            case "lang_dominant"?:
+                if let l = o[string: "lang"], Self.answerLanguages.contains(l) { state.dominantLang = l }
+                if let l = o[string: "majority"], Self.answerLanguages.contains(l) { state.majorityLang = l }
+            case "lang_majority"?:
+                if let l = o[string: "lang"], Self.answerLanguages.contains(l) { state.majorityLang = l }
+            case "lang_auto"?:
+                if o[bool: "on"] == false {
+                    state.dominantLang = nil
+                    state.majorityLang = nil
+                }
+            case "regenerate"?:
+                // Sent before the new turn's first delta: that delta opens the card with this question.
+                if let tid = o[string: "turn_id"], !tid.isEmpty, let q = o[string: "question"], !q.isEmpty { regenQuestions[tid] = q }
+            case "regenerate_done"?, "regenerate_empty"?:
+                state.regenerating = false
+            case "regenerate_busy"?:
+                // The brain still streams the previous one: wait for its `regenerate_done`.
+                if state.regenerating { regenSince = now }
+            case "answer_lang"?:
+                guard let tid = o[string: "turn_id"], !tid.isEmpty, let l = o[string: "lang"], Self.answerLanguages.contains(l) else { return }
+                // Kept apart from `turns`: a card-now turn opens its card on its first delta only while `turns` does not know it.
+                answerLangs[tid] = l
+                if state.card?.turnID == tid { refreshCard(now: now) }
+            default:
+                break
+            }
         case "notice":
             // `me_missing`: the profile files named in `start` do not exist. A status that never covers a card (openCard
             // takes it down). The other notice (`me_conflicts`) is for the Me page, not the island.
@@ -914,6 +1003,9 @@ public struct OverlayReducer: Sendable {
     }
 
     private static func followKey(_ cardID: String) -> String { "C|" + cardID }
+
+    /// The languages an answer can be in.
+    static let answerLanguages: Set<String> = ["en", "it", "tr"]
 
     // MARK: card assembly
 
@@ -958,15 +1050,34 @@ public struct OverlayReducer: Sendable {
         return (say, items)
     }
 
+    /// A card off screen (`backgroundCards`) is rebuilt like the one on screen when its turn changes.
+    private mutating func refreshBackground(_ tid: String?) {
+        guard let tid, state.card?.turnID != tid, let card = backgroundCards[tid], let built = assemble(card) else { return }
+        backgroundCards[tid] = built
+    }
+
     /// Rebuilds the card from what is known about its turn. Text is replaced in place (never animated).
     private mutating func refreshCard(now: TimeInterval) {
-        guard var card = state.card, let info = turns[card.turnID] else { return }
-        let before = card
+        guard let before = state.card, let card = assemble(before) else { return }
+        if card != before {
+            touch(now)
+            if card.say != nil || !card.bullets.isEmpty, state.activity == .thinking { state.activity = .listening }
+            if card.say != nil || !card.bullets.isEmpty || !card.deepPoints.isEmpty { clearPerCallStatus() }
+        }
+        state.card = card
+    }
+
+    /// `card` rebuilt from what is known about its turn; nil when nothing is known of it yet.
+    private mutating func assemble(_ shown: OverlayCard) -> OverlayCard? {
+        var card = shown
+        guard let info = turns[card.turnID] else { return nil }
 
         // Fast tier: the selected S; F only when no S was selected.
         var say: String?, sayTier: String?, bullets: [Item] = []
+        var cardID: String?
         let fastID = info.selectedS ?? info.fID
         if let fid = fastID, let l = lines[fid] {
+            cardID = fid
             let parsed = Self.parseLines(l)
             say = parsed.say
             if say != nil { sayTier = l.tier }
@@ -976,6 +1087,7 @@ public struct OverlayReducer: Sendable {
         if say == nil, let bid = info.bankHit, !info.rejectedBankIDs.contains(bid), let p = bank[bid] {
             say = p.opener
             sayTier = "P"
+            cardID = nil            // the opener on screen is the bank's: a mark names it by its turn (`P-<turn>`)
             if bullets.isEmpty { bullets = p.points.enumerated().map { Item(text: $1, point: $0) } }
         }
         // D: points under the divider; on OPENER_WRONG its first line replaces the SAY line.
@@ -995,8 +1107,10 @@ public struct OverlayReducer: Sendable {
                 sayTier = "D"
                 corrected = true
                 points.removeFirst()
+                cardID = did        // the SAY line on screen is D's, not the opener it replaced
             }
             deep = points
+            if cardID == nil, sayTier != "P" { cardID = did }
         }
         // Follow my answer: once the newest follow card has a SAY line, its text replaces the question's answer (SAY and
         // points; the D points belong to the original answer and go). Until then the card keeps what it shows.
@@ -1009,6 +1123,7 @@ public struct OverlayReducer: Sendable {
             if let csay = c.say {
                 say = csay
                 sayTier = "C"
+                cardID = lines[Self.followKey(shown)]?.callID ?? cardID
                 bullets = c.items
                 deep = []
                 corrected = false
@@ -1031,14 +1146,11 @@ public struct OverlayReducer: Sendable {
         card.deepPoints = Array(deep.prefix(config.maxDeepPoints))
         card.following = following
         card.followCardID = following ? fi.shownFollowID : nil
+        card.answerLang = answerLangs[card.turnID]
+        card.cardID = cardID
         // `covered` counts the brain's numbered points; the card strikes the displayed line that has that number.
         card.struck = Set(shownItems.enumerated().compactMap { i, item in item.point.flatMap { coveredNow.contains($0) ? i : nil } })
-        if card != before {
-            touch(now)
-            if card.say != nil || !card.bullets.isEmpty, state.activity == .thinking { state.activity = .listening }
-            if card.say != nil || !card.bullets.isEmpty || !card.deepPoints.isEmpty { clearPerCallStatus() }
-        }
-        state.card = card
+        return card
     }
 }
 

@@ -23,6 +23,8 @@ public final class OverlayModel: ObservableObject {
     /// Recorded from `state.card` after every change; `state` itself stays the live state (the controller and the prompter
     /// read it), and only the view draws `displayState`.
     @Published public private(set) var history = AnswerHistory()
+    /// The BAD marks of this session, by card (the island's button shows them; ⌥⌘↓ sets them too).
+    @Published public private(set) var marks = CardMarks()
     private var reducer: OverlayReducer
     private let clock: () -> TimeInterval
     private var timer: Timer?
@@ -64,6 +66,7 @@ public final class OverlayModel: ObservableObject {
                                 auto: Bool = false) {
         reducer.sessionStarting(lang: lang, session: session, app: app, route: route, unprepared: unprepared, auto: auto)
         history.clear()
+        marks = CardMarks()
         publish()
     }
 
@@ -138,6 +141,54 @@ public final class OverlayModel: ObservableObject {
 
     public func showLiveAnswer() {
         history.returnToLive()
+    }
+
+    // MARK: live controls on the answer card
+
+    /// What Regenerate asks of the brain; the controller sets it. False: no brain to ask (the press is undone).
+    public var regenerateActions: ((RegenerateRequest) -> Bool)?
+    /// Where a mark change goes (the brain's events.jsonl); the controller sets it.
+    public var markActions: ((CardMarkEvent) -> Void)?
+
+    /// The answer card on screen (the live one, or the earlier one shown with Back) while a meeting session runs.
+    public var answerOnScreen: OverlayCard? {
+        guard state.running, state.sim == nil, let c = displayState.card, AnswerHistory.isAnswer(c) else { return nil }
+        return c
+    }
+
+    /// Regenerate is offered: an answer is on screen, the session is not stopping and no regenerate is in flight.
+    public var canRegenerate: Bool { answerOnScreen != nil && !stopping && !state.regenerating }
+
+    /// Regenerate (the island's button, ⌥⌘R): the question of the card on screen is answered again at once, in the language of
+    /// most of the other side's speech when the card is not in it (`RegenerateRule`; the brain's majority language, else its
+    /// dominant one from an older brain). The island goes back to live, where the new answer arrives; the
+    /// card it replaces stays in the history (Back). Ignored while one is in flight. Returns what was asked, nil when ignored.
+    @discardableResult
+    public func regenerate() -> RegenerateRequest? {
+        guard canRegenerate, let card = answerOnScreen else { return nil }
+        let req = RegenerateRule.request(for: card, dominant: state.majorityLang ?? state.dominantLang)
+        reducer.beginRegenerate(now: clock())
+        history.returnToLive()
+        if regenerateActions?(req) == false {
+            reducer.cancelRegenerate()
+            publish()
+            return nil
+        }
+        publish()
+        return req
+    }
+
+    /// The mark on the card on screen, for the island's button.
+    public var markOnScreen: CardMark? { answerOnScreen.flatMap { marks.mark(for: $0) } }
+
+    /// BAD (the island's button, ⌥⌘↓) on the card on screen; the same mark again clears it. Nothing else moves: listening and the
+    /// cards go on. Every change goes to `markActions` (a `cleared` names the id the card's mark was sent under). Returns the last change, nil when no answer is on screen.
+    @discardableResult
+    public func mark(_ m: CardMark) -> CardMarkEvent? {
+        guard !stopping, let card = answerOnScreen else { return nil }
+        let events = marks.press(m, on: card)
+        for e in events { markActions?(e) }
+        return events.last
     }
 
     /// Shows an error message (with Retry) for a run that ended without saying why.
@@ -223,8 +274,10 @@ public final class OverlayModel: ObservableObject {
         var h = history
         if !state.running || state.sim != nil {
             h.clear()
+            if !marks.marks.isEmpty { marks = CardMarks() }
         } else {
             h.observe(state.card)
+            for card in reducer.backgroundCards.values.sorted(by: { $0.turnID < $1.turnID }) { h.record(card) }
         }
         if h != history { history = h }
     }
@@ -259,10 +312,9 @@ extension OverlayState {
     }
 }
 
-/// The start card's chips (anytime calls, spec 2.1): the route chip changes the route, the language chips the language.
+/// The start card's chips (anytime calls, spec 2.1): the route chip changes the route. There is no language chip.
 public enum StartChipAction: Equatable, Sendable {
     case cycleRoute
-    case setLanguage(String)
 }
 
 /// The sim panel's controls.

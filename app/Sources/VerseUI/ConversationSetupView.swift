@@ -201,11 +201,16 @@ final class UpNextMemoryWatch: ObservableObject {
     }
 }
 
-/// "Up next": the calendar's next meetings, then the session the menu's Start uses.
+/// "Up next": the calendar's next meetings, then the session the menu's Start uses (the same picker model as the menu, G5), the
+/// next meeting's "not prepared" line with Use for this meeting and Prepare, and the calendar's Turn on / permission row (G2).
 struct HomeUpNextGroup: View {
     @ObservedObject var upNext: HomeUpNextModel
     @ObservedObject var meeting: VerseController
     @ObservedObject var settings: AppSettings
+    @ObservedObject private var selector: SessionSelector
+    @ObservedObject private var autoPrep: MeetingAutoPrep
+    @ObservedObject private var watcher: CalendarWatcher
+    @ObservedObject private var meetingSettings: MeetingSettings
     @StateObject private var watch: UpNextMemoryWatch
     @Environment(\.homeInk) private var ink
 
@@ -213,18 +218,18 @@ struct HomeUpNextGroup: View {
         self.upNext = upNext
         self.meeting = meeting
         self.settings = settings
+        selector = meeting.selector
+        autoPrep = meeting.autoPrep
+        watcher = meeting.calendarWatcher
+        meetingSettings = meeting.meeting.settings
         _watch = StateObject(wrappedValue: UpNextMemoryWatch(env: memory))
     }
 
     var body: some View {
+        let picker = meeting.pickerModel()
         HomeGroup {
             if upNext.items.isEmpty {
-                HomeRow(upNext.calendarOn ? "No meetings in the next day" : "Calendar is off",
-                        detail: upNext.calendarOn ? nil : "Turn on “Use my calendar” in Settings to see your next meetings here.") {
-                    if !upNext.calendarOn {
-                        HomeSecondaryButton("Settings") { HomeRouter.shared.page = .settings }
-                    }
-                }
+                emptyRow
                 HomeRowDivider()
             }
             ForEach(upNext.items) { item in
@@ -232,8 +237,13 @@ struct HomeUpNextGroup: View {
                 HomeRowDivider(inset: 54)
             }
             HomeRow("Session for Start", detail: meeting.sessions.isEmpty ? "No session prepared yet" : nil) {
-                HomePopup(selection: $settings.sessionName, options: meeting.sessions.map { HomeOption(verbatim: $0, $0) }, fallback: "None")
+                HomePopup(selection: meeting.selector.manualBinding, sections: Self.sections(picker),
+                          current: picker.label(of: settings.sessionName), fallback: "None")
                 .disabled(meeting.running || meeting.sessions.isEmpty)
+            }
+            if let next = picker.notPrepared {
+                HomeRowDivider()
+                notPreparedRow(next, picker: picker)
             }
             if let m = upNext.message {
                 HomeRowDivider()
@@ -241,6 +251,62 @@ struct HomeUpNextGroup: View {
             }
         }
         .task { await upNext.refresh() }
+    }
+
+    /// The popup's groups: Next meetings, then Other sessions (no header when there is no next meeting).
+    static func sections(_ m: SessionPickerModel) -> [HomeOptionSection<String>] {
+        var out: [HomeOptionSection<String>] = []
+        if !m.nextMeetings.isEmpty {
+            out.append(HomeOptionSection("Next meetings", id: 0, options: m.nextMeetings.map { HomeOption(verbatim: $0.display, $0.session) }))
+        }
+        if !m.others.isEmpty {
+            out.append(HomeOptionSection(m.nextMeetings.isEmpty ? nil : "Other sessions", id: 1,
+                                         options: m.others.map { HomeOption(verbatim: $0.display, $0.session) }))
+        }
+        return out
+    }
+
+    /// No meeting to list: the one-time Turn on, a missing permission, an empty calendar or the calendar being off.
+    @ViewBuilder private var emptyRow: some View {
+        // A fixed list (renders) says the calendar is on whatever the setting: no calendar row then.
+        let nudge = upNext.calendarOn && !meetingSettings.useCalendar ? nil : meeting.calendarNudge
+        switch nudge {
+        case .turnOn?:
+            HomeRow("Pick the session from your calendar",
+                    detail: "Verse reads your next meetings and selects the session prepared for each one.") {
+                HomeSecondaryButton("Not now") { meetingSettings.calendarNudgeDone = true }
+                HomeSecondaryButton("Turn on") { meeting.turnOnCalendar() }
+            }
+        case .permissionMissing?:
+            HomeRow("Calendar permission missing", detail: "Allow Verse in System Settings > Privacy & Security > Calendars.") {
+                HomeSecondaryButton("Open System Settings") { SystemSettingsLink.open(permission: "calendar") }
+            }
+        case nil:
+            HomeRow(upNext.calendarOn ? "No meetings in the next 36 hours" : "Calendar is off",
+                    detail: upNext.calendarOn ? nil : "Turn on “Use my calendar” in Settings to see your next meetings here.") {
+                if !upNext.calendarOn {
+                    HomeSecondaryButton("Settings") { HomeRouter.shared.page = .settings }
+                }
+            }
+        }
+    }
+
+    /// "Next: <title> Today 14:00 — not prepared": link a session to it by hand, or prepare one now (in the background).
+    private func notPreparedRow(_ next: SessionPickerModel.NotPrepared, picker: SessionPickerModel) -> some View {
+        HomeRow(verbatim: next.label) {
+            if next.preparing {
+                ProgressView().controlSize(.small)
+            } else {
+                HomeMenuButton("Use for this meeting") {
+                    ForEach(picker.rows) { row in
+                        Button { meeting.useForNextMeeting(row.session) } label: { Text(verbatim: row.label) }
+                    }
+                }
+                .disabled(meeting.running || meeting.sessions.isEmpty)
+                HomeSecondaryButton("Prepare") { meeting.prepareNextMeeting() }
+                    .disabled(meeting.running)
+            }
+        }
     }
 
     private func meetingRow(_ item: HomeUpNextItem) -> some View {
@@ -270,11 +336,11 @@ struct HomeUpNextGroup: View {
                 HomeSecondaryButton("Practise") { HomeRouter.shared.showPractice(session: session) }
                     .disabled(meeting.running)
                 HomeSecondaryButton("Open") {
-                    if meeting.sessions.contains(session), !meeting.running { settings.sessionName = session }
+                    if meeting.sessions.contains(session), !meeting.running { meeting.selector.choose(session) }
                     HomeRouter.shared.selectedSession = session
                     HomeRouter.shared.page = .sessions
                 }
-            } else if upNext.preparing.contains(item.id) {
+            } else if upNext.preparing.contains(item.id) || item.event.map({ autoPrep.inFlight.contains($0.occurrenceKey) }) == true {
                 ProgressView().controlSize(.small)
                 Text("Preparing…", bundle: .module).font(VT.Font.callout).foregroundStyle(ink.secondary)
             } else {
@@ -432,19 +498,6 @@ struct UpNextBriefButton: View {
         .frame(maxHeight: 520)
         .background(ink.floating)
         .accessibilityIdentifier("verse.home.prepare.briefPopover")
-    }
-}
-
-/// The menu-bar block: opens the home window on Prepare.
-public struct ConversationMenuBlock: View {
-    @Environment(\.openWindow) private var openWindow
-
-    public init() {}
-
-    public var body: some View {
-        Button {
-            HomeRouter.shared.show(.prepare, openWindow: openWindow)
-        } label: { Text("New session from a conversation…", bundle: .module) }
     }
 }
 

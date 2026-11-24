@@ -12,13 +12,15 @@ public struct AutoLangConfig: Sendable, Equatable {
     public var minDwell = 10.0
     /// Text-language probability times the engine's confidence a final needs before it counts for a language.
     public var minScore = 0.6
+    /// A final with fewer words abstains: a greeting or a few words never moves the recognizers. The same floor as the brain's
+    /// dominant language (brain runtime/lang.py `SUBSTANTIVE_WORDS`), so the recognizers never switch on less evidence than
+    /// the answer language needs (owner decision 8): a recognizer in the wrong language tags the other side's words wrongly.
+    public var minVoteWords = 6
     /// A shadow recognizer's text must beat the main recognizer's own text by this much to outvote it.
     public var margin = 0.1
     /// How long a main final waits for the shadow's final of the same speech before it is judged: past the Apple recognizers'
     /// final lag (p90 1.3 s, bench/stt-local), so a shadow text is rarely judged before the main text it competes with.
     public var pairGrace = 1.5
-    /// The `me` channel votes only when the remote channel has been silent this long (the remote has priority).
-    public var meQuietSeconds = 20.0
     /// Shadow finals older than this are forgotten.
     public var keepSeconds = 30.0
 
@@ -70,7 +72,9 @@ public struct AutoLangDecision: Sendable, Equatable {
 /// - the text of the main final is identified (`LanguageID`, probability times engine confidence);
 /// - the shadow text counts for its language only when it beats the main text by `margin` (a clean candidate-language text
 ///   against a garbled current-language one);
-/// - a vote for the current language ends any run of votes for another one.
+/// - a vote for the current language ends any run of votes for another one;
+/// - a final of fewer than `minVoteWords` words abstains, and the owner's own microphone (`me`) never votes (owner decision 8: his
+///   own speech never changes the call's language; the recognizers follow the other side).
 /// The language switches when the run of votes for one other language reaches `minConsecutive` finals or `minSpeechSeconds`,
 /// not within `minDwell` of the last switch, and only while `auto` is on.
 public struct AutoLanguageDetector: Sendable {
@@ -90,7 +94,6 @@ public struct AutoLanguageDetector: Sendable {
     /// Remote main finals already judged, with their text's best language and score: a shadow final of the same speech
     /// that arrives after its main final was judged is weighed against it instead of voting alone (S3).
     private var judged: [(start: TimeInterval, end: TimeInterval, lang: String?, score: Double)] = []
-    private var lastRemoteEnd: TimeInterval?
     private var recentVotes: [String] = []
 
     public init(current: String, auto: Bool, config: AutoLangConfig = AutoLangConfig()) {
@@ -148,6 +151,8 @@ public struct AutoLanguageDetector: Sendable {
     @discardableResult
     public mutating func note(_ f: LangFinal) -> String? {
         guard auto else { return nil }
+        // His own microphone never votes (owner decision 8): only the other side's speech moves the recognizers.
+        guard f.channel == .remote else { return nil }
         if f.shadow {
             guard f.channel == .remote, f.lang != current else { return nil }
             shadows.append((f, false))
@@ -200,7 +205,9 @@ public struct AutoLanguageDetector: Sendable {
 
     // MARK: judging
 
-    private func score(_ text: String, lang: String, confidence: Double?) -> Double {
+    /// A shadow text's score for its language; 0 for a text under `minVoteWords` words (too short to vote or to outvote).
+    private func voteScore(_ text: String, lang: String, confidence: Double?) -> Double {
+        guard LanguageID.wordCount(text) >= config.minVoteWords else { return 0 }
         let p = LanguageID.hypotheses(text, allowed: config.allowed).first { $0.lang == lang }?.confidence ?? 0
         return p * (confidence ?? 1)
     }
@@ -215,11 +222,11 @@ public struct AutoLanguageDetector: Sendable {
                 let overlap = min(u.end, s.end) - max(u.start, s.start)
                 guard overlap > 0.2 else { continue }
                 shadows[i].used = true
-                let sc = score(s.text, lang: s.lang, confidence: s.confidence)
+                let sc = voteScore(s.text, lang: s.lang, confidence: s.confidence)
                 if sc > (shadowBest?.score ?? 0) { shadowBest = (s.lang, sc) }
             }
         } else if let s = lone {
-            shadowBest = (s.lang, score(s.text, lang: s.lang, confidence: s.confidence))
+            shadowBest = (s.lang, voteScore(s.text, lang: s.lang, confidence: s.confidence))
         }
         let channel = main?.channel ?? .remote
         let start = main?.start ?? lone!.start
@@ -227,7 +234,7 @@ public struct AutoLanguageDetector: Sendable {
 
         // Main text: its best language and score.
         var primary: (lang: String, score: Double)?
-        if let u = main {
+        if let u = main, LanguageID.wordCount(u.text) >= config.minVoteWords {
             for h in LanguageID.hypotheses(u.text, allowed: config.allowed) {
                 let sc = h.confidence * (u.confidence ?? 1)
                 if sc > (primary?.score ?? 0) { primary = (h.lang, sc) }
@@ -244,10 +251,7 @@ public struct AutoLanguageDetector: Sendable {
             voted = s.lang
         }
 
-        if channel == .remote { lastRemoteEnd = max(lastRemoteEnd ?? end, end) }
         guard let lang = voted else { return }     // abstained: neither starts nor ends a run
-        // The remote has priority: the microphone votes only after the remote has been quiet for a while.
-        if channel == .me, let r = lastRemoteEnd, end - r < config.meQuietSeconds { return }
         recentVotes.append(lang)
         if recentVotes.count > 4 { recentVotes.removeFirst() }
         if lang == current {

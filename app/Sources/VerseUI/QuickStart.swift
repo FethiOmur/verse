@@ -1,8 +1,9 @@
 import Foundation
+import VerseAudio
 import VerseMeet
 import VerseTurns
 
-/// Start anytime (anytime-calls spec 2.1): what ⌥⌘V, the menu's "Start now" and the island's idle state decide. Pure
+/// Start anytime (anytime-calls spec 2.1): what ⌥⌘V, the menu's Start row and the island's idle state decide. Pure
 /// functions and small value types, so the choices are tested without audio, a calendar or a window.
 public enum QuickStart {
     // MARK: route
@@ -41,32 +42,42 @@ public enum QuickStart {
     // MARK: session
 
     public enum SessionChoice: Sendable, Equatable {
-        /// A prepared session linked to a calendar event around now.
+        /// A prepared session: the one of a calendar event around now, or the session he picked by hand.
         case prepared(String)
         /// Nothing prepared for now: an unprepared (adhoc) session is created.
         case adhoc
     }
 
-    /// A prepared session is used when it is linked (`EventSessionMap`) to an event within this long of now.
-    public static let eventWindow: TimeInterval = 15 * 60
+    /// A meeting's prepared session is used from this long before the meeting starts (owner decision 2, 24 Nov 2026; was 15 min) ...
+    public static let leadTime: TimeInterval = 60 * 60
+    /// ... until this long after it ended.
+    public static let afterEnd: TimeInterval = 15 * 60
+    /// How far around now the calendar is read for a Start.
+    public static var eventMargin: TimeInterval { max(leadTime, afterEnd) }
 
-    /// An event counts when it overlaps `[now - 15 min, now + 15 min]` (so a call that is already running counts too). The
-    /// one running now wins, else the one starting nearest to now; the first of those with a remembered session that still
-    /// exists decides. No such event: adhoc.
-    public static func pickSession(now: Date, events: [MeetingEvent], remembered: [String: String], sessions: [String]) -> SessionChoice {
+    /// Which session Start runs (G4), first that holds:
+    /// 1. an event that starts within `leadTime` (60 min) or is running, or ended less than `afterEnd` (15 min) ago, has a session
+    ///    (`MeetingSessionResolver.match`); events ranked by `MeetingRanking` (the running one, else the nearest start; the next one
+    ///    at a back-to-back handover), the first with a session decides;
+    /// 2. `manualSession`: the session he picked by hand while that pick still holds;
+    /// 3. adhoc. An automatic selection for a meeting hours away never takes an impromptu call.
+    ///
+    /// The menu's Start row is labelled from this same function with the same inputs (`VerseController.startChoice`), so the
+    /// label says exactly what ⌥⌘V will do.
+    public static func pickSession(now: Date, events: [MeetingEvent], matcher: SessionMatcher, manualSession: String? = nil) -> SessionChoice {
         let near = events.filter {
-            $0.start <= now.addingTimeInterval(eventWindow) && $0.end >= now.addingTimeInterval(-eventWindow)
+            $0.start <= now.addingTimeInterval(leadTime) && $0.end >= now.addingTimeInterval(-afterEnd)
         }
-        let ordered = near.sorted { a, b in
-            let ra = a.start <= now && a.end > now, rb = b.start <= now && b.end > now
-            if ra != rb { return ra }
-            let da = abs(a.start.timeIntervalSince(now)), db = abs(b.start.timeIntervalSince(now))
-            return da != db ? da < db : a.id < b.id
+        for e in MeetingRanking.ordered(near, now: now) {
+            if let m = matcher.match(e) { return .prepared(m.session) }
         }
-        for e in ordered {
-            if let name = remembered[e.id], sessions.contains(name) { return .prepared(name) }
-        }
+        if let manualSession, matcher.sessions.contains(manualSession) { return .prepared(manualSession) }
         return .adhoc
+    }
+
+    /// The same with only the links of `event-sessions.json` (no folder `event.json` files, no manual pick).
+    public static func pickSession(now: Date, events: [MeetingEvent], remembered: [String: String], sessions: [String]) -> SessionChoice {
+        pickSession(now: now, events: events, matcher: SessionMatcher(sessions: sessions, links: remembered))
     }
 
     // MARK: plan
@@ -85,9 +96,24 @@ public enum QuickStart {
                             sessions: [String], lang: String, root: URL = SessionCatalog.root,
                             timeZone: TimeZone = .current, routeOverride: AudioRoute? = nil,
                             useGeneralPrep: Bool = false) throws -> Plan {
-        // A route picked by hand (the menu's Route submenu) beats the automatic pick.
+        try plan(now: now, facts: facts, events: events, matcher: SessionMatcher(sessions: sessions, links: remembered), lang: lang,
+                 root: root, timeZone: timeZone, routeOverride: routeOverride, useGeneralPrep: useGeneralPrep)
+    }
+
+    public static func plan(now: Date, facts: RouteFacts, events: [MeetingEvent], matcher: SessionMatcher, manualSession: String? = nil,
+                            lang: String, root: URL = SessionCatalog.root, timeZone: TimeZone = .current,
+                            routeOverride: AudioRoute? = nil, useGeneralPrep: Bool = false) throws -> Plan {
+        try plan(choice: pickSession(now: now, events: events, matcher: matcher, manualSession: manualSession), now: now, facts: facts,
+                 lang: lang, root: root, timeZone: timeZone, routeOverride: routeOverride, useGeneralPrep: useGeneralPrep)
+    }
+
+    /// The plan for a session choice made already (`pickSession`, or `.adhoc` for Start unprepared): the route, and for an
+    /// unprepared call its new folder.
+    public static func plan(choice: SessionChoice, now: Date, facts: RouteFacts, lang: String, root: URL = SessionCatalog.root,
+                            timeZone: TimeZone = .current, routeOverride: AudioRoute? = nil, useGeneralPrep: Bool = false) throws -> Plan {
+        // A route picked by hand (the menu's Audio source submenu) beats the automatic pick.
         let route = runnableRoute(routeOverride ?? pickRoute(facts))
-        switch pickSession(now: now, events: events, remembered: remembered, sessions: sessions) {
+        switch choice {
         case .prepared(let name):
             return Plan(route: route, mode: .prepared, session: name, lang: lang)
         case .adhoc:
@@ -106,7 +132,7 @@ public struct AdhocMeta: Codable, Sendable, Equatable {
     public var mode = "unprepared"
     public var route: String
     public var lang: String
-    /// The standing prep this folder was seeded from (`general-core`), or nil for an empty pack.
+    /// The standing prep this folder was seeded from (`persona-core` or `general-core`), or nil for an empty pack.
     public var base: String?
 
     public init(route: AudioRoute, lang: String, base: String? = nil) {
@@ -135,12 +161,14 @@ public extension SessionCatalog {
 
     static func isAdhoc(_ name: String) -> Bool { name.hasPrefix("adhoc-") }
 
-    /// Creates `sessions/adhoc-YYYYMMDD-HHMM-<route>/` with `meta.json` and an empty `pack.md`, or the general prep's files when `useGeneralPrep` (the brain and the runner
-    /// need a pack file; an unprepared call has no content for it). A second call in the same minute gets `-2`, `-3`.
-    /// Returns the folder name.
+    /// Creates `sessions/adhoc-YYYYMMDD-HHMM-<route>/` with `meta.json` and an empty `pack.md`, or, when `useGeneralPrep`, the
+    /// files of the standing prep (`GeneralPrep.source`: the compiled persona when `personaOn` and compiled, else the general
+    /// prep). The brain and the runner need a pack file; an unprepared call has no content for it. A second call in the same
+    /// minute gets `-2`, `-3`. Returns the folder name.
     @discardableResult
     static func createAdhoc(now: Date, route: AudioRoute, lang: String, root: URL = SessionCatalog.root,
-                            timeZone: TimeZone = .current, useGeneralPrep: Bool = false) throws -> String {
+                            timeZone: TimeZone = .current, useGeneralPrep: Bool = false,
+                            personaOn: Bool = OwnerProfile.current.personaURL != nil) throws -> String {
         let fm = FileManager.default
         try fm.createDirectory(at: root, withIntermediateDirectories: true)
         let base = adhocName(now: now, route: route, timeZone: timeZone)
@@ -153,11 +181,11 @@ public extension SessionCatalog {
         try fm.createDirectory(at: dir, withIntermediateDirectories: false)
         let enc = JSONEncoder()
         enc.outputFormatting = [.sortedKeys, .prettyPrinted]
-        // The standing general prep, when wanted and built: its files are copied in and the meta records the base.
-        let seeded = useGeneralPrep && GeneralPrep.seed(into: dir, root: root)
-        try enc.encode(AdhocMeta(route: route, lang: lang, base: seeded ? GeneralPrep.name : nil))
+        // The standing prep, when wanted and built: its files are copied in and the meta records which folder was the base.
+        let source = useGeneralPrep ? GeneralPrep.seed(into: dir, root: root, personaOn: personaOn) : .none
+        try enc.encode(AdhocMeta(route: route, lang: lang, base: source.folder))
             .write(to: dir.appendingPathComponent("meta.json"), options: .atomic)
-        if !seeded { try Data().write(to: dir.appendingPathComponent("pack.md"), options: .atomic) }
+        if source == .none { try Data().write(to: dir.appendingPathComponent("pack.md"), options: .atomic) }
         return name
     }
 }

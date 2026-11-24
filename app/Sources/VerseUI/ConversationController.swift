@@ -70,8 +70,8 @@ public final class ConversationController: ObservableObject {
                 meeting.refreshSessions()
                 // A running meeting keeps its session; the new one is picked from the menu afterwards.
                 guard !meeting.running, meeting.sessions.contains(name) else { return false }
-                settings.sessionName = name
-                return true
+                // Selected only when no meeting is ahead or it is the next meeting's session (G6).
+                return meeting.selector.didPrepare(name, byHand: true)
             })
     }
 

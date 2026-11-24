@@ -48,6 +48,8 @@ struct HomeSessionDetailView: View {
     /// Verse's memory (memory spec 5.3): the people row, the brief before a prepared meeting and the brief a past meeting had. nil in
     /// tests and renders that do not need it.
     var memory: SessionMemoryEnvironment?
+    /// The master persona: "Learn from this call" and the state of its last update. nil in tests and renders.
+    var persona: PersonaService?
     /// Where the page asks this detail to be (a citation to the Summary, or to a transcript line that is gone), and the note then.
     var place: SessionDetailPlace?
     var note: String?
@@ -93,6 +95,7 @@ struct HomeSessionDetailView: View {
             header
             if let message { HomeNote(verbatim: message, isError: messageIsError).padding(.top, 8) }
             if let note { HomeNote(verbatim: note).padding(.top, 8).accessibilityIdentifier("verse.home.sessions.revealNote") }
+            if let persona, session.kind != .practice { PersonaSessionNote(persona: persona, session: session) }
             if showsTabs {
                 HomeSegmented(Self.tabItems,
                               selection: Binding(get: { render?.tab ?? tab }, set: { tab = $0; SessionsDetailTabStore().tab = $0 }))
@@ -139,7 +142,7 @@ struct HomeSessionDetailView: View {
             if settings.sessionName == session.name {
                 Label { Text("Used for Start", bundle: .module) } icon: { Image(systemName: "checkmark") }.font(VT.Font.callout).foregroundStyle(ink.secondary)
             } else {
-                HomeSecondaryButton("Use for Start") { settings.sessionName = session.name }.disabled(controller.running)
+                HomeSecondaryButton("Use for Start") { controller.selector.choose(session.name) }.disabled(controller.running)
             }
         }
         if askAvailability != .hidden {
@@ -168,10 +171,25 @@ struct HomeSessionDetailView: View {
                     Label { Text("Practise this meeting", bundle: .module) } icon: { Image(systemName: PracticeFromSession.symbol) }
                 }
             }
+            if let persona, session.kind != .practice {
+                Button { learn(persona) } label: { Text("Learn from this call", bundle: .module) }
+                    .disabled(!persona.canLearn(session: session.name))
+            }
             Button { NSWorkspace.shared.activateFileViewerSelecting([session.dir]) } label: { Text("Show in Finder", bundle: .module) }
             Divider()
             Button(role: .destructive) { trash.action() } label: { Text("Move to Trash", bundle: .module) }
                 .disabled(!trash.enabled)
+        }
+    }
+
+    /// "Learn from this call": the result shows under the title (PersonaSessionNote); a refusal says why here.
+    private func learn(_ persona: PersonaService) {
+        guard let why = persona.learn(session: session.name) else { message = nil; return }
+        messageIsError = false
+        switch why {
+        case .noOwnerSpeech, .noTranscript: message = L10n.tr("Nothing you said was recorded in this session.")
+        case .notConfigured: message = L10n.tr("Learning from calls needs a persona folder in the owner profile.")
+        default: message = L10n.tr("Verse does not learn from this session.")
         }
     }
 
@@ -705,5 +723,28 @@ struct SessionBriefDisclosure: View {
         }
         .padding(.top, brief == nil ? 0 : 6)
         .task(id: session.name) { brief = BriefStore.load(sessionDir: session.dir) }
+    }
+}
+
+// MARK: - Persona
+
+/// Under a session's title: the persona is learning from it, will after the call, or what its last update did.
+struct PersonaSessionNote: View {
+    @ObservedObject var persona: PersonaService
+    var session: HomeSession
+
+    var body: some View {
+        if let text {
+            HomeNote(verbatim: text, isError: persona.last?.session == session.name && persona.last?.state == .failed && persona.active != session.name)
+                .padding(.top, 8)
+                .accessibilityIdentifier("verse.home.sessions.persona")
+        }
+    }
+
+    private var text: String? {
+        if persona.active == session.name { return L10n.tr("Learning from this call…") }
+        if persona.pending.contains(where: { $0.session == session.name }) { return L10n.tr("Verse learns from this call when nothing else runs.") }
+        if let last = persona.last, last.session == session.name { return last.text(title: session.title) }
+        return nil
     }
 }

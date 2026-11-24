@@ -11,31 +11,3 @@ extension VerseController {
         await prompter.open(script: script, source: .script, autostart: true)
     }
 }
-
-/// The menu-bar block for the teleprompter: the editor, pause and close while it is open, and the meeting-card toggle.
-public struct PrompterMenuBlock: View {
-    @ObservedObject var controller: VerseController
-    @ObservedObject var prompter: PrompterModel
-    @ObservedObject var settings: PrompterSettings
-    @Environment(\.openWindow) private var openWindow
-
-    public init(controller: VerseController) {
-        self.controller = controller
-        prompter = controller.prompter
-        settings = controller.prompter.settings
-    }
-
-    public var body: some View {
-        Divider()
-        Button {
-            HomeRouter.shared.show(.scripts, openWindow: openWindow)
-        } label: { Text("Teleprompter scripts…", bundle: .module) }
-        if prompter.isOpen {
-            Button { prompter.send(.toggle) } label: {
-                if prompter.state.isPaused { Text("Start prompter", bundle: .module) } else { Text("Pause prompter", bundle: .module) }
-            }
-            Button { prompter.send(.close) } label: { Text("Close prompter", bundle: .module) }
-        }
-        Toggle(isOn: $settings.followMeetingCards) { Text("Prompter on meeting cards", bundle: .module) }
-    }
-}

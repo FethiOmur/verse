@@ -21,6 +21,20 @@ public final class MeetingSettings: ObservableObject {
     /// (a "following you" card, covered points struck through). Sent to the brain in `start`; takes effect at the next Start.
     @Published public var followMyAnswer: Bool { didSet { defaults.set(followMyAnswer, forKey: "followMyAnswer") } }
     @Published public var vaultPath: String { didSet { defaults.set(vaultPath, forKey: "vaultPath") } }
+    /// Prepare a session in the background for an upcoming real meeting that has none (owner decision 3): once per occurrence,
+    /// never while a call or practice runs. On by default; it only acts while "Use my calendar" is on.
+    @Published public var autoPrepare: Bool { didSet { defaults.set(autoPrepare, forKey: "meetingAutoPrepare") } }
+    /// The one-time "Turn on" row (menu and Home) was used or put away: it is not shown again.
+    @Published public var calendarNudgeDone: Bool { didSet { defaults.set(calendarNudgeDone, forKey: "calendarNudgeDone") } }
+    /// Occurrence key -> when the background prep was tried for it (success or not), so a relaunch never pays for it twice.
+    /// Not published: writing it must not re-run the watchers.
+    public var autoPrepAttempted: [String: Date] {
+        get {
+            (defaults.dictionary(forKey: "meetingAutoPrepAttempted") as? [String: Double] ?? [:])
+                .mapValues { Date(timeIntervalSince1970: $0) }
+        }
+        set { defaults.set(newValue.mapValues(\.timeIntervalSince1970), forKey: "meetingAutoPrepAttempted") }
+    }
 
     public init(defaults: UserDefaults? = nil) {
         let d = defaults ?? (Bundle.main.bundleIdentifier == AppSettings.suiteName ? .standard
@@ -31,6 +45,8 @@ public final class MeetingSettings: ObservableObject {
         offerSummaryToVault = d.bool(forKey: "summaryToVault")
         followMyAnswer = d.object(forKey: "followMyAnswer") as? Bool ?? true
         vaultPath = d.string(forKey: "vaultPath") ?? Self.defaultVaultPath
+        autoPrepare = d.object(forKey: "meetingAutoPrepare") as? Bool ?? true
+        calendarNudgeDone = d.bool(forKey: "calendarNudgeDone")
     }
 
     public var vaultURL: URL {

@@ -236,6 +236,8 @@ struct HomeSessionsPage: View {
     var memory: MemoryService?
     var people: EntityStore?
     var briefs: AutoBriefCenter?
+    /// "Learn from this call" in a session's More menu; nil in tests and renders that build the page without one.
+    var persona: PersonaService?
 
     @StateObject private var scopes: AskScopeController
     @StateObject private var jump = TranscriptJump()
@@ -254,7 +256,7 @@ struct HomeSessionsPage: View {
     @Environment(\.sessionsTrashRender) private var trashRender
 
     init(model: HomeSessionsModel, router: HomeRouter, controller: VerseController, settings: AppSettings,
-         memory: MemoryService? = nil, people: EntityStore? = nil, briefs: AutoBriefCenter? = nil) {
+         memory: MemoryService? = nil, people: EntityStore? = nil, briefs: AutoBriefCenter? = nil, persona: PersonaService? = nil) {
         self.model = model
         self.router = router
         self.controller = controller
@@ -262,6 +264,7 @@ struct HomeSessionsPage: View {
         self.memory = memory
         self.people = people
         self.briefs = briefs
+        self.persona = persona
         let fake = { controller.fakeBrain }
         let ask = AskSession(model: settings.askModel, makeBrain: { try AskSession.makeBrainProcess(fake: fake()) })
         _scopes = StateObject(wrappedValue: AskScopeController(ask: ask, memory: memory, people: people))
@@ -293,7 +296,7 @@ struct HomeSessionsPage: View {
                 HomeSessionDetailView(session: s, controller: controller, settings: settings, jump: jump,
                                       askAvailability: availability, askOpen: askOpen, onAsk: askButton,
                                       onPractice: { router.showPractice(session: s.name) }, trash: trashControl(for: s),
-                                      memory: memoryEnvironment, place: place, note: revealNote)
+                                      memory: memoryEnvironment, persona: persona, place: place, note: revealNote)
                     .id(s.name)
                     .transaction(value: askOpen) { if reduceMotion { $0.animation = nil } }
                 if askOpen {

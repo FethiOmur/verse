@@ -48,9 +48,13 @@ final class QuickStartTests: XCTestCase {
 
     // MARK: session
 
+    /// Owner decision 2: the next meeting's session is used from 60 minutes before it starts until 15 minutes after it ended.
     func testPreparedSessionWhenAnEventWithAMappedSessionIsNear() {
         let e = event("e1", start: now.addingTimeInterval(10 * 60))
         XCTAssertEqual(QuickStart.pickSession(now: now, events: [e], remembered: ["e1": "mara"], sessions: ["mara", "other"]), .prepared("mara"))
+        // It starts in 59 minutes: inside the lead time.
+        let soon = event("e4", start: now.addingTimeInterval(59 * 60))
+        XCTAssertEqual(QuickStart.pickSession(now: now, events: [soon], remembered: ["e4": "next"], sessions: ["next"]), .prepared("next"))
         // It started 40 minutes ago and is still running: it counts.
         let running = event("e2", start: now.addingTimeInterval(-40 * 60), minutes: 90)
         XCTAssertEqual(QuickStart.pickSession(now: now, events: [running], remembered: ["e2": "ongoing"], sessions: ["ongoing"]), .prepared("ongoing"))
@@ -60,8 +64,10 @@ final class QuickStartTests: XCTestCase {
     }
 
     func testAdhocWhenNothingFits() {
-        let far = event("e1", start: now.addingTimeInterval(20 * 60))
-        XCTAssertEqual(QuickStart.pickSession(now: now, events: [far], remembered: ["e1": "mara"], sessions: ["mara"]), .adhoc, "20 min away")
+        XCTAssertEqual(QuickStart.leadTime, 3600)
+        XCTAssertEqual(QuickStart.afterEnd, 900)
+        let far = event("e1", start: now.addingTimeInterval(61 * 60))
+        XCTAssertEqual(QuickStart.pickSession(now: now, events: [far], remembered: ["e1": "mara"], sessions: ["mara"]), .adhoc, "61 min away")
         let over = event("e2", start: now.addingTimeInterval(-90 * 60), minutes: 30)
         XCTAssertEqual(QuickStart.pickSession(now: now, events: [over], remembered: ["e2": "old"], sessions: ["old"]), .adhoc, "ended an hour ago")
         let near = event("e3", start: now)
@@ -234,9 +240,10 @@ final class QuickStartTests: XCTestCase {
         XCTAssertTrue(keys.cardNowRegistered)
         XCTAssertEqual(Set(reg.live.values.map(\.id)), [GlobalHotKeys.startStopID, GlobalHotKeys.cardNowID,
                                                        GlobalHotKeys.earlierAnswerID, GlobalHotKeys.newerAnswerID,
-                                                       GlobalHotKeys.earlierAnswerShiftID])
+                                                       GlobalHotKeys.earlierAnswerShiftID, GlobalHotKeys.regenerateID,
+                                                       GlobalHotKeys.markBadID])
         keys.setSessionRunning(true)
-        XCTAssertEqual(reg.live.count, 5, "registering twice does not duplicate")
+        XCTAssertEqual(reg.live.count, 7, "registering twice does not duplicate")
         reg.press(GlobalHotKeys.startStopID)
         reg.press(GlobalHotKeys.cardNowID)
         XCTAssertEqual(presses, ["start", "card"])

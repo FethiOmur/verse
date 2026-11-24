@@ -3,7 +3,7 @@ import VerseTurns
 @testable import VerseUI
 import XCTest
 
-/// Interim AUTO language (spec 2.1, 2.5): the setting value, the island and menu chips, and how the labels follow a switch.
+/// Interim AUTO language (spec 2.1, 2.5): the setting value, and how the start card's state follows a switch.
 @MainActor
 final class AutoLanguageUITests: XCTestCase {
     private func defaults() -> UserDefaults { UserDefaults(suiteName: "verse.tests.\(UUID().uuidString)")! }
@@ -35,18 +35,6 @@ final class AutoLanguageUITests: XCTestCase {
         XCTAssertEqual(AppSettings(defaults: defaults()).defaultCallLanguage, "auto")
     }
 
-    func testTheChipsAndTheMenuSetTheDefaultBeforeACall() {
-        let c = VerseController(settings: AppSettings(defaults: defaults()), launch: LaunchOptions(arguments: []))
-        XCTAssertEqual(c.settings.defaultCallLanguage, "auto")
-        c.chooseLanguage("it")
-        XCTAssertEqual(c.settings.defaultCallLanguage, "it", "a click on IT pins it for the next call")
-        c.chooseLanguage("auto")
-        XCTAssertEqual(c.settings.defaultCallLanguage, "auto", "a click on AUTO turns it back on")
-        c.chooseLanguage("fr")
-        XCTAssertEqual(c.settings.defaultCallLanguage, "auto", "only auto, en, it and tr")
-        XCTAssertFalse(c.autoLanguage, "no call is running")
-    }
-
     func testAnAutoStartPlanIsWrittenToTheSessionFolder() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("verse-auto-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -57,14 +45,7 @@ final class AutoLanguageUITests: XCTestCase {
         XCTAssertTrue(meta.contains("\"auto\""), meta)
     }
 
-    // MARK: chips
-
-    func testTheAutoChipShowsTheDetectedLanguage() {
-        XCTAssertEqual(StartCardChips.autoLabel(auto: true, lang: "en"), "AUTO · EN")
-        XCTAssertEqual(StartCardChips.autoLabel(auto: true, lang: "it"), "AUTO · IT")
-        XCTAssertEqual(StartCardChips.autoLabel(auto: true, lang: "tr"), "AUTO · TR")
-        XCTAssertEqual(StartCardChips.autoLabel(auto: false, lang: "it"), "AUTO", "pinned: the plain AUTO chip, unselected")
-    }
+    // MARK: start card state
 
     private func started(auto: Bool) -> OverlayModel {
         let m = OverlayModel(config: OverlayConfig(), clock: { 1000 })
@@ -86,7 +67,7 @@ final class AutoLanguageUITests: XCTestCase {
         XCTAssertEqual(m.state.lang, "it")
     }
 
-    func testAClickOnALanguagePinsAndAClickOnAutoTurnsItBackOn() {
+    func testAPinAndAReturnToAutoMoveTheStartCardState() {
         let m = started(auto: true)
         m.listeningChanged(route: .room, lang: "en", app: nil, auto: false)
         XCTAssertEqual(m.state.startup?.autoLang, false)
@@ -102,14 +83,5 @@ final class AutoLanguageUITests: XCTestCase {
         let pinned = started(auto: false)
         pinned.listeningChanged(route: .meeting, lang: "en", app: "Comet")
         XCTAssertEqual(pinned.state.startup?.autoLang, false)
-    }
-
-    func testTheAutoChipReachesTheController() {
-        let m = OverlayModel(config: OverlayConfig(), clock: { 1000 })
-        var seen: [StartChipAction] = []
-        m.startChipActions = { seen.append($0) }
-        m.startChipAction(.setLanguage("auto"))
-        m.startChipAction(.setLanguage("it"))
-        XCTAssertEqual(seen, [.setLanguage("auto"), .setLanguage("it")])
     }
 }

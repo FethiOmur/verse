@@ -13,12 +13,18 @@ public struct HotKeySpec: Sendable, Equatable {
 
     /// ⌥⌘V: start Verse now, or (twice) stop it.
     public static let startStop = HotKeySpec(keyCode: UInt32(kVK_ANSI_V), modifiers: UInt32(optionKey | cmdKey))
+    /// ⌥⇧⌘V: start an unprepared call now, whatever session the next meeting has (owner decision 5).
+    public static let startUnprepared = HotKeySpec(keyCode: UInt32(kVK_ANSI_V), modifiers: UInt32(optionKey | shiftKey | cmdKey))
     /// ⌥⌘↩: answer the latest thing the other person said, now.
     public static let cardNow = HotKeySpec(keyCode: UInt32(kVK_Return), modifiers: UInt32(optionKey | cmdKey))
     /// ⌥⌘←: show the earlier answer in the notch.
     public static let earlierAnswer = HotKeySpec(keyCode: UInt32(kVK_LeftArrow), modifiers: UInt32(optionKey | cmdKey))
     /// ⌥⌘→: show the newer answer, then the live one again.
     public static let newerAnswer = HotKeySpec(keyCode: UInt32(kVK_RightArrow), modifiers: UInt32(optionKey | cmdKey))
+    /// ⌥⌘R: a new answer to the question on screen (the island's Regenerate).
+    public static let regenerate = HotKeySpec(keyCode: UInt32(kVK_ANSI_R), modifiers: UInt32(optionKey | cmdKey))
+    /// ⌥⌘↓: mark the answer on screen BAD (again: clear it).
+    public static let markBad = HotKeySpec(keyCode: UInt32(kVK_DownArrow), modifiers: UInt32(optionKey | cmdKey))
     /// ⇧ and the key that types `<`: show the earlier answer too. The key differs per keyboard layout, so its code comes
     /// from `LessThanKey` when the session keys are registered.
     public static func shiftLessThan(keyCode: UInt32) -> HotKeySpec { HotKeySpec(keyCode: keyCode, modifiers: UInt32(shiftKey)) }
@@ -79,8 +85,8 @@ public protocol HotKeyRegistrar: AnyObject {
     func unregister(_ token: Int)
 }
 
-/// The global hot keys of anytime calls. ⌥⌘V is registered at launch and stays on; ⌥⌘↩ (card now), ⌥⌘← / ⇧< (earlier
-/// answer) and ⌥⌘→ (newer answer) only while a session runs, so they belong to other apps the rest of the time (the same
+/// The global hot keys of anytime calls. ⌥⌘V and ⌥⇧⌘V are registered at launch and stay on; ⌥⌘↩ (card now), ⌥⌘← / ⇧< (earlier
+/// answer), ⌥⌘→ (newer answer), ⌥⌘R (regenerate) and ⌥⌘↓ (mark the answer bad) only while a session runs, so they belong to other apps the rest of the time (the same
 /// rule `SimHotKey` follows for ⌥Space). Carbon hot keys work whichever app is in front and need no Accessibility or Input
 /// Monitoring permission.
 @MainActor
@@ -90,11 +96,17 @@ public final class GlobalHotKeys {
     public static let earlierAnswerID: UInt32 = 3
     public static let newerAnswerID: UInt32 = 4
     public static let earlierAnswerShiftID: UInt32 = 5
+    public static let startUnpreparedID: UInt32 = 6
+    public static let regenerateID: UInt32 = 7
+    public static let markBadID: UInt32 = 9
 
     private let registrar: any HotKeyRegistrar
     private let startSpec: HotKeySpec
     private let cardSpec: HotKeySpec
     private var startToken: Int?
+    private let unpreparedSpec: HotKeySpec
+    private var unpreparedToken: Int?
+    private let onStartUnprepared: @MainActor () -> Void
     private var cardToken: Int?
     private let onStartStop: @MainActor () -> Void
     private let onCardNow: @MainActor () -> Void
@@ -104,6 +116,10 @@ public final class GlobalHotKeys {
     private var newerToken: Int?
     private let onEarlierAnswer: @MainActor () -> Void
     private let onNewerAnswer: @MainActor () -> Void
+    /// ⌥⌘R and ⌥⌘↓: the live controls of the answer card.
+    private let liveSpecs: [(spec: HotKeySpec, id: UInt32)]
+    private let liveActions: [UInt32: @MainActor () -> Void]
+    private var liveTokens: [UInt32: Int] = [:]
     /// The key codes to try for ⇧<, read when a session starts (`LessThanKey.current` in the app).
     private let lessThanKeyCodes: @MainActor () -> [UInt32]
     private var shiftToken: Int?
@@ -112,10 +128,14 @@ public final class GlobalHotKeys {
 
     /// False when ⌥⌘V is taken by another app: the menu and the island still start Verse.
     public private(set) var startStopRegistered = false
+    /// False when ⌥⇧⌘V is taken by another app: the menu's Start unprepared row still works.
+    public var startUnpreparedRegistered: Bool { unpreparedToken != nil }
     public var cardNowRegistered: Bool { cardToken != nil }
     public var earlierAnswerRegistered: Bool { earlierToken != nil }
     public var newerAnswerRegistered: Bool { newerToken != nil }
     public var earlierAnswerShiftRegistered: Bool { shiftToken != nil }
+    public var regenerateRegistered: Bool { liveTokens[Self.regenerateID] != nil }
+    public var markBadRegistered: Bool { liveTokens[Self.markBadID] != nil }
     /// The answer keys of the session that runs now that another app holds (empty when none, or when no session runs).
     public private(set) var unavailableAnswerKeys: [HotKeySpec] = []
 
@@ -123,6 +143,9 @@ public final class GlobalHotKeys {
                 earlierAnswer: HotKeySpec = .earlierAnswer, newerAnswer: HotKeySpec = .newerAnswer,
                 onStartStop: @escaping @MainActor () -> Void, onCardNow: @escaping @MainActor () -> Void,
                 onEarlierAnswer: @escaping @MainActor () -> Void = {}, onNewerAnswer: @escaping @MainActor () -> Void = {},
+                startUnprepared: HotKeySpec = .startUnprepared, onStartUnprepared: @escaping @MainActor () -> Void = {},
+                regenerate: HotKeySpec = .regenerate, onRegenerate: @escaping @MainActor () -> Void = {},
+                markBad: HotKeySpec = .markBad, onMarkBad: @escaping @MainActor () -> Void = {},
                 lessThanKeyCodes: @escaping @MainActor () -> [UInt32] = { LessThanKey.current() }) {
         self.registrar = registrar ?? CarbonRegistrar()
         self.startSpec = startStop
@@ -134,6 +157,19 @@ public final class GlobalHotKeys {
         self.onEarlierAnswer = onEarlierAnswer
         self.onNewerAnswer = onNewerAnswer
         self.lessThanKeyCodes = lessThanKeyCodes
+        self.unpreparedSpec = startUnprepared
+        self.onStartUnprepared = onStartUnprepared
+        self.liveSpecs = [(regenerate, Self.regenerateID), (markBad, Self.markBadID)]
+        self.liveActions = [Self.regenerateID: onRegenerate, Self.markBadID: onMarkBad]
+    }
+
+    /// Registers ⌥⇧⌘V (launch), like ⌥⌘V. Returns whether the system accepted it.
+    @discardableResult
+    public func registerStartUnprepared() -> Bool {
+        if unpreparedToken == nil {
+            unpreparedToken = registrar.register(unpreparedSpec, id: Self.startUnpreparedID, action: onStartUnprepared)
+        }
+        return unpreparedToken != nil
     }
 
     /// Registers ⌥⌘V (launch). Returns whether the system accepted it.
@@ -146,7 +182,7 @@ public final class GlobalHotKeys {
         return startStopRegistered
     }
 
-    /// ⌥⌘↩, ⌥⌘←, ⌥⌘→ and ⇧< exist only while a session runs. A key another app holds is left out and listed in
+    /// ⌥⌘↩, ⌥⌘←, ⌥⌘→, ⇧<, ⌥⌘R, ⌥⌘↑ and ⌥⌘↓ exist only while a session runs. A key another app holds is left out and listed in
     /// `unavailableAnswerKeys` (⌥⌘↩ stays as it was: `cardNowRegistered`). ⇧< is looked up in the keyboard layout of that
     /// moment; its fallback key codes are tried in order.
     public func setSessionRunning(_ running: Bool) {
@@ -155,8 +191,12 @@ public final class GlobalHotKeys {
             if earlierToken == nil { earlierToken = registrar.register(earlierSpec, id: Self.earlierAnswerID, action: onEarlierAnswer) }
             if newerToken == nil { newerToken = registrar.register(newerSpec, id: Self.newerAnswerID, action: onNewerAnswer) }
             if shiftToken == nil { registerShiftLessThan() }
+            for (spec, id) in liveSpecs where liveTokens[id] == nil {
+                if let t = registrar.register(spec, id: id, action: liveActions[id] ?? {}) { liveTokens[id] = t }
+            }
             unavailableAnswerKeys = (earlierToken == nil ? [earlierSpec] : []) + (newerToken == nil ? [newerSpec] : [])
                 + (shiftToken == nil ? [earlierAnswerShiftSpec].compactMap { $0 } : [])
+                + liveSpecs.filter { liveTokens[$0.id] == nil }.map(\.spec)
         } else {
             releaseSessionKeys()
         }
@@ -175,7 +215,8 @@ public final class GlobalHotKeys {
     }
 
     private func releaseSessionKeys() {
-        for t in [cardToken, earlierToken, newerToken, shiftToken].compactMap({ $0 }) { registrar.unregister(t) }
+        for t in [cardToken, earlierToken, newerToken, shiftToken].compactMap({ $0 }) + Array(liveTokens.values) { registrar.unregister(t) }
+        liveTokens = [:]
         cardToken = nil
         earlierToken = nil
         newerToken = nil
@@ -187,6 +228,8 @@ public final class GlobalHotKeys {
     public func unregisterAll() {
         if let t = startToken { registrar.unregister(t) }
         startToken = nil
+        if let t = unpreparedToken { registrar.unregister(t) }
+        unpreparedToken = nil
         releaseSessionKeys()
         startStopRegistered = false
     }

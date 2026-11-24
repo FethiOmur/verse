@@ -37,9 +37,13 @@ public struct MeetingEvent: Sendable, Codable, Equatable, Identifiable {
     /// decodes as nil), and absent when the owner is not on the invite. The brain's `prep/event.py` reads the event with `.get`
     /// and ignores this key.
     public var currentUser: Attendee?
+    /// The event repeats (EventKit's `hasRecurrenceRules`): every occurrence shares `id`, so a link to one occurrence says nothing
+    /// about the others. nil when not known (JSON written before this field); the session matcher then treats it as repeating.
+    public var isRecurring: Bool?
 
     public init(id: String, title: String, start: Date, end: Date, attendees: [Attendee] = [],
-                notes: String? = nil, url: URL? = nil, provider: MeetingProvider = .other, currentUser: Attendee? = nil) {
+                notes: String? = nil, url: URL? = nil, provider: MeetingProvider = .other, currentUser: Attendee? = nil,
+                isRecurring: Bool? = nil) {
         self.id = id
         self.title = title
         self.start = start
@@ -49,6 +53,24 @@ public struct MeetingEvent: Sendable, Codable, Equatable, Identifiable {
         self.url = url
         self.provider = provider
         self.currentUser = currentUser
+        self.isRecurring = isRecurring
+    }
+
+    /// One occurrence of the event: `<id>@<start, whole seconds since 1970>`. EventKit gives every occurrence of a recurring
+    /// event the same `eventIdentifier`, so links, "offered" and "dismissed" are keyed on this instead. A moved event gets a new key.
+    public var occurrenceKey: String { Self.occurrenceKey(id: id, start: start) }
+
+    public static func occurrenceKey(id: String, start: Date) -> String {
+        "\(id)@\(Int(start.timeIntervalSince1970.rounded(.down)))"
+    }
+
+    /// The event id inside a link key: `id@1792000000` -> `id`; a bare (legacy, series) id comes back as it is.
+    public static func eventID(fromLinkKey key: String) -> String {
+        guard let at = key.lastIndex(of: "@") else { return key }
+        let tail = key[key.index(after: at)...]
+        guard !tail.isEmpty, tail.allSatisfy(\.isNumber) || (tail.first == "-" && tail.dropFirst().allSatisfy(\.isNumber) && tail.count > 1)
+        else { return key }
+        return String(key[..<at])
     }
 
     /// The JSON the brain reads with `--from-event`: ISO 8601 dates with the local UTC offset.

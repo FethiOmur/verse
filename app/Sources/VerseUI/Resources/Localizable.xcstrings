@@ -72,6 +72,38 @@
         }
       }
     },
+    "%@ (chosen)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (scelta a mano)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (elle seçildi)"
+          }
+        }
+      }
+    },
+    "%@ (next meeting)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (prossima riunione)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (sıradaki toplantı)"
+          }
+        }
+      }
+    },
     "%@ API key": {
       "localizations": {
         "it": {
@@ -363,6 +395,58 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "%lld yanıt"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld contradictions": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld contradiction"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld contradictions"
+                }
+              }
+            }
+          }
+        },
+        "it": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld contraddizione"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld contraddizioni"
+                }
+              }
+            }
+          }
+        },
+        "tr": {
+          "variations": {
+            "plural": {
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld çelişki"
                 }
               }
             }
@@ -666,6 +750,22 @@
         }
       }
     },
+    "%lld new": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld nuove"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld yeni"
+          }
+        }
+      }
+    },
     "%lld of %lld": {
       "localizations": {
         "en": {
@@ -864,6 +964,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "%lld sn"
+          }
+        }
+      }
+    },
+    "%lld said again": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld ripetute"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld tekrar söylendi"
           }
         }
       }
@@ -1490,38 +1606,6 @@
         }
       }
     },
-    "AUTO": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "AUTO"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OTO"
-          }
-        }
-      }
-    },
-    "AUTO · %@": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "AUTO · %@"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OTO · %@"
-          }
-        }
-      }
-    },
     "About $0.05 on your Anthropic key": {
       "localizations": {
         "it": {
@@ -1714,6 +1798,38 @@
         }
       }
     },
+    "After each call Verse keeps what you said in your own words, with the quote and the minute. Edit or delete any line in the note; Verse keeps your changes.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dopo ogni chiamata Verse conserva ciò che hai detto con parole tue, con la citazione e il minuto. Modifica o elimina qualsiasi riga nella nota: Verse mantiene le tue modifiche."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her görüşmeden sonra Verse kendi sözlerinizle söylediklerinizi alıntısı ve dakikasıyla saklar. Nottaki herhangi bir satırı düzenleyin ya da silin; Verse değişikliklerinizi korur."
+          }
+        }
+      }
+    },
+    "After each call, Verse adds what you said in your own words to your persona, and unprepared calls answer from it. One request per call with your Anthropic key, usually $0.05–0.20. Never during a call.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dopo ogni chiamata, Verse aggiunge alla tua persona ciò che hai detto con parole tue, e le chiamate non preparate rispondono da lì. Una richiesta per chiamata con la tua chiave Anthropic, di solito 0,05–0,20 $. Mai durante una chiamata."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her görüşmeden sonra Verse kendi sözlerinizle söylediklerinizi personanıza ekler; hazırlıksız görüşmeler oradan yanıt verir. Görüşme başına Anthropic anahtarınızla tek istek, genellikle 0,05–0,20 $. Görüşme sırasında asla."
+          }
+        }
+      }
+    },
     "All meetings": {
       "localizations": {
         "it": {
@@ -1726,6 +1842,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tüm toplantılar"
+          }
+        }
+      }
+    },
+    "All sessions…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tutte le sessioni…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tüm oturumlar…"
+          }
+        }
+      }
+    },
+    "Allow Verse in System Settings > Privacy & Security > Calendars.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consenti Verse in Impostazioni di Sistema > Privacy e sicurezza > Calendari."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistem Ayarları > Gizlilik ve Güvenlik > Takvimler’de Verse’e izin ver."
           }
         }
       }
@@ -1778,6 +1926,22 @@
         }
       }
     },
+    "Answer keys": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tasti delle risposte"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yanıt tuşları"
+          }
+        }
+      }
+    },
     "Answer out loud. Your answer ends after 2 seconds of silence, or ⌥Space.": {
       "localizations": {
         "it": {
@@ -1806,6 +1970,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yanıt hazır"
+          }
+        }
+      }
+    },
+    "Answer the last question %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rispondi all’ultima domanda %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son soruya yanıt %@"
           }
         }
       }
@@ -2194,38 +2374,6 @@
         }
       }
     },
-    "Auto · %@": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Auto · %@"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otomatik · %@"
-          }
-        }
-      }
-    },
-    "Auto, %@": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Auto, %@"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otomatik, %@"
-          }
-        }
-      }
-    },
     "Automatic": {
       "localizations": {
         "it": {
@@ -2302,6 +2450,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sayfanın başına dön"
+          }
+        }
+      }
+    },
+    "Bad answer (⌥⌘↓)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta cattiva (⌥⌘↓)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kötü yanıt (⌥⌘↓)"
           }
         }
       }
@@ -2530,6 +2694,38 @@
         }
       }
     },
+    "Calendar permission missing": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manca il permesso del calendario"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takvim izni yok"
+          }
+        }
+      }
+    },
+    "Calendar permission missing · Open System Settings": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manca il permesso del calendario · Apri Impostazioni di Sistema"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takvim izni yok · Sistem Ayarları’nı Aç"
+          }
+        }
+      }
+    },
     "Cannot import .%@ files. Use .md, .txt or .pptx.": {
       "localizations": {
         "it": {
@@ -2626,6 +2822,22 @@
         }
       }
     },
+    "Connect calendar…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collega il calendario…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takvimi bağla…"
+          }
+        }
+      }
+    },
     "Could not import the file.": {
       "localizations": {
         "it": {
@@ -2638,6 +2850,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dosya içe aktarılamadı."
+          }
+        }
+      }
+    },
+    "Could not learn from %@: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile imparare da %@: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ görüşmesinden öğrenilemedi: %@"
           }
         }
       }
@@ -3621,22 +3849,6 @@
         }
       }
     },
-    "Could not prepare a session from the invite (%@). Prepare one for this meeting, then press Start.": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Impossibile preparare una sessione dall’invito (%@). Prepara una sessione per questa riunione, poi premi Avvia."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Davetten oturum hazırlanamadı (%@). Bu toplantı için bir oturum hazırla, sonra Başlat’a bas."
-          }
-        }
-      }
-    },
     "Could not prepare “%@” from its invite: %@": {
       "localizations": {
         "en": {
@@ -3719,6 +3931,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kaydedilemedi: %@"
+          }
+        }
+      }
+    },
+    "Could not settle it: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile risolverla: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çözülemedi: %@"
           }
         }
       }
@@ -4059,34 +4287,18 @@
         }
       }
     },
-    "During a call: ⌥⌘← or ⇧< earlier answer, ⌥⌘→ newer answer, or the arrows beside Stop on the island. While a call runs, these keys go to Verse instead of other apps.": {
+    "During a call: ⌥⌘← or ⇧< earlier answer, ⌥⌘→ newer answer, ⌥⌘R new answer to the same question, ⌥⌘↓ bad answer (again: clears the mark), or the buttons beside Stop on the island. While a call runs, these keys go to Verse instead of other apps.": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Durante una chiamata: ⌥⌘← o ⇧< risposta precedente, ⌥⌘→ risposta successiva, oppure le frecce accanto a Interrompi sull’isola. Durante una chiamata questi tasti vanno a Verse invece che alle altre app."
+            "value": "Durante una chiamata: ⌥⌘← o ⇧< risposta precedente, ⌥⌘→ risposta successiva, ⌥⌘R nuova risposta alla stessa domanda, ⌥⌘↓ risposta cattiva (di nuovo: toglie il segno), oppure i pulsanti accanto a Interrompi sull’isola. Durante una chiamata questi tasti vanno a Verse invece che alle altre app."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Görüşme sırasında: ⌥⌘← veya ⇧< önceki yanıt, ⌥⌘→ sonraki yanıt ya da adadaki Durdur düğmesinin yanındaki oklar. Görüşme sürerken bu tuşlar diğer uygulamalara değil Verse’e gider."
-          }
-        }
-      }
-    },
-    "Earlier and newer answer": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Risposta precedente e successiva"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Önceki ve sonraki yanıt"
+            "value": "Görüşme sırasında: ⌥⌘← veya ⇧< önceki yanıt, ⌥⌘→ sonraki yanıt, ⌥⌘R aynı soruya yeni yanıt, ⌥⌘↓ kötü yanıt (yeniden basınca işaret kalkar) ya da adadaki Durdur düğmesinin yanındaki düğmeler. Görüşme sürerken bu tuşlar diğer uygulamalara değil Verse’e gider."
           }
         }
       }
@@ -4267,22 +4479,6 @@
         }
       }
     },
-    "End practice interview": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Termina il colloquio di prova"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deneme mülakatını bitir"
-          }
-        }
-      }
-    },
     "English": {
       "localizations": {
         "it": {
@@ -4311,6 +4507,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hata"
+          }
+        }
+      }
+    },
+    "Every Start listens and answers in it. Auto follows the language the call is in; pick one only when Auto gets it wrong.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ogni avvio ascolta e risponde in questa lingua. Auto segue la lingua della chiamata; scegline una solo se Auto sbaglia."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her başlatma bu dilde dinler ve yanıt verir. Otomatik, görüşmenin dilini izler; yalnızca Otomatik yanlış seçtiğinde bir dil seçin."
           }
         }
       }
@@ -4619,6 +4831,22 @@
         }
       }
     },
+    "For each upcoming meeting without a session, Verse prepares one from the invite in the background, once, never during a call. Uses your Anthropic key.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per ogni prossima riunione senza sessione, Verse ne prepara una dall’invito in background, una sola volta e mai durante una chiamata. Usa la tua chiave Anthropic."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumu olmayan her yaklaşan toplantı için Verse davetten arka planda bir kez oturum hazırlar, görüşme sırasında asla. Anthropic anahtarını kullanır."
+          }
+        }
+      }
+    },
     "Friendly": {
       "localizations": {
         "it": {
@@ -4673,6 +4901,22 @@
         }
       }
     },
+    "From the general prep": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dalla preparazione generale"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genel hazırlıktan"
+          }
+        }
+      }
+    },
     "From the last session. Nothing is rewritten on its own: fix the line here if the pack is the one that is wrong.": {
       "localizations": {
         "it": {
@@ -4685,6 +4929,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Son oturumdan. Hiçbir şey kendiliğinden yeniden yazılmaz: yanlış olan paketse satırı burada düzelt."
+          }
+        }
+      }
+    },
+    "From your persona": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dalla tua persona"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personanızdan"
           }
         }
       }
@@ -5175,6 +5435,38 @@
         }
       }
     },
+    "Keep first": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tieni la prima"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İlkini tut"
+          }
+        }
+      }
+    },
+    "Keep second": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tieni la seconda"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İkincisini tut"
+          }
+        }
+      }
+    },
     "Kept only in the login Keychain; the brain reads it there.": {
       "localizations": {
         "it": {
@@ -5207,22 +5499,6 @@
         }
       }
     },
-    "Last practice report": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ultimo report di esercitazione"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Son pratik raporu"
-          }
-        }
-      }
-    },
     "Latest": {
       "localizations": {
         "it": {
@@ -5235,6 +5511,102 @@
           "stringUnit": {
             "state": "translated",
             "value": "En yeni"
+          }
+        }
+      }
+    },
+    "Learn from my calls": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impara dalle mie chiamate"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görüşmelerimden öğren"
+          }
+        }
+      }
+    },
+    "Learn from this call": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impara da questa chiamata"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu görüşmeden öğren"
+          }
+        }
+      }
+    },
+    "Learned from your calls": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imparato dalle tue chiamate"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görüşmelerinizden öğrenilenler"
+          }
+        }
+      }
+    },
+    "Learning from %@…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sto imparando da %@…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ görüşmesinden öğreniliyor…"
+          }
+        }
+      }
+    },
+    "Learning from calls needs a persona folder in the owner profile.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Per imparare dalle chiamate serve una cartella della persona nel profilo del proprietario."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görüşmelerden öğrenmek için sahip profilinde bir persona klasörü gerekir."
+          }
+        }
+      }
+    },
+    "Learning from this call…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sto imparando da questa chiamata…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu görüşmeden öğreniliyor…"
           }
         }
       }
@@ -5575,6 +5947,38 @@
         }
       }
     },
+    "Mark the answer bad": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segna la risposta come cattiva"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yanıtı kötü olarak işaretle"
+          }
+        }
+      }
+    },
+    "Mark the answer bad %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segna la risposta come cattiva %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yanıtı kötü olarak işaretle %@"
+          }
+        }
+      }
+    },
     "Markdown (.md)": {
       "localizations": {
         "it": {
@@ -5587,6 +5991,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Markdown (.md)"
+          }
+        }
+      }
+    },
+    "Marked": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segnata"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İşaretli"
+          }
+        }
+      }
+    },
+    "Marked bad. Press again to clear (⌥⌘↓)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Segnata come cattiva. Premi di nuovo per togliere il segno (⌥⌘↓)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kötü olarak işaretlendi. Kaldırmak için yeniden bas (⌥⌘↓)"
           }
         }
       }
@@ -6195,6 +6631,54 @@
         }
       }
     },
+    "New answer to this question": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuova risposta a questa domanda"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu soruya yeni yanıt"
+          }
+        }
+      }
+    },
+    "New answer to this question %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuova risposta a questa domanda %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu soruya yeni yanıt %@"
+          }
+        }
+      }
+    },
+    "New answer to this question (⌥⌘R)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nuova risposta a questa domanda (⌥⌘R)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu soruya yeni yanıt (⌥⌘R)"
+          }
+        }
+      }
+    },
     "New folder": {
       "localizations": {
         "it": {
@@ -6275,22 +6759,6 @@
         }
       }
     },
-    "New session from a conversation…": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nuova sessione da una conversazione…"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Konuşmadan yeni oturum…"
-          }
-        }
-      }
-    },
     "Newer answer (⌥⌘→)": {
       "localizations": {
         "it": {
@@ -6339,6 +6807,38 @@
         }
       }
     },
+    "Next meeting: %@ · %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prossima riunione: %@ · %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıradaki toplantı: %@ · %@"
+          }
+        }
+      }
+    },
+    "Next meetings": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prossime riunioni"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıradaki toplantılar"
+          }
+        }
+      }
+    },
     "Next page": {
       "localizations": {
         "it": {
@@ -6367,6 +6867,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sonraki sayfa  %@"
+          }
+        }
+      }
+    },
+    "Next: %@ %@ — not prepared": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prossima: %@ %@ — non preparata"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıradaki: %@ %@ — hazırlanmadı"
+          }
+        }
+      }
+    },
+    "Next: %@ %@ — preparing…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prossima: %@ %@ — in preparazione…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sıradaki: %@ %@ — hazırlanıyor…"
           }
         }
       }
@@ -6585,18 +7117,18 @@
         }
       }
     },
-    "No meetings in the next day": {
+    "No meetings in the next 36 hours": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nessuna riunione nelle prossime 24 ore"
+            "value": "Nessuna riunione nelle prossime 36 ore"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Önümüzdeki gün toplantı yok"
+            "value": "Önümüzdeki 36 saatte toplantı yok"
           }
         }
       }
@@ -7081,6 +7613,38 @@
         }
       }
     },
+    "Nothing learned yet": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ancora niente di imparato"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz bir şey öğrenilmedi"
+          }
+        }
+      }
+    },
+    "Nothing new in %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niente di nuovo in %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ görüşmesinde yeni bir şey yok"
+          }
+        }
+      }
+    },
     "Nothing to merge into.": {
       "localizations": {
         "it": {
@@ -7109,6 +7673,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bu oturum için hiçbir şey yazılmadı."
+          }
+        }
+      }
+    },
+    "Nothing you said was recorded in this session.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In questa sessione non è stato registrato nulla di ciò che hai detto."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu oturumda söylediklerinizden hiçbiri kaydedilmedi."
           }
         }
       }
@@ -7157,6 +7737,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ayarlar’da kapalı"
+          }
+        }
+      }
+    },
+    "Off until a persona folder is set in the owner profile.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disattivato finché nel profilo del proprietario non c'è una cartella della persona."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sahip profilinde bir persona klasörü ayarlanana kadar kapalı."
           }
         }
       }
@@ -7337,6 +7933,22 @@
         }
       }
     },
+    "Open folder": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri cartella"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klasörü aç"
+          }
+        }
+      }
+    },
     "Open last report": {
       "localizations": {
         "it": {
@@ -7461,6 +8073,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Diğer katılımcılar"
+          }
+        }
+      }
+    },
+    "Other sessions": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altre sessioni"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diğer oturumlar"
           }
         }
       }
@@ -7625,6 +8253,22 @@
         }
       }
     },
+    "Persona": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Persona"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Persona"
+          }
+        }
+      }
+    },
     "Phone": {
       "localizations": {
         "it": {
@@ -7637,6 +8281,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Telefon"
+          }
+        }
+      }
+    },
+    "Pick the session from your calendar": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scegli la sessione dal calendario"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturumu takviminden seç"
           }
         }
       }
@@ -7673,6 +8333,22 @@
         }
       }
     },
+    "Play as remote…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Riproduci come interlocutore…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karşı taraf olarak çal…"
+          }
+        }
+      }
+    },
     "Play test file as remote": {
       "localizations": {
         "it": {
@@ -7685,22 +8361,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Test dosyasını karşı taraf olarak çal"
-          }
-        }
-      }
-    },
-    "Play test file as remote…": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Riproduci un file di prova come remoto…"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Test dosyasını karşı taraf olarak çal…"
           }
         }
       }
@@ -7781,22 +8441,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Deneme mülakatları, anahtar yeniden kaydedilene kadar Apple sesine döner."
-          }
-        }
-      }
-    },
-    "Practice interview…": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Colloquio di prova…"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Deneme mülakatı…"
           }
         }
       }
@@ -7929,6 +8573,22 @@
         }
       }
     },
+    "Prepare for this meeting": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepara per questa riunione"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu toplantı için hazırla"
+          }
+        }
+      }
+    },
     "Prepare interview": {
       "localizations": {
         "it": {
@@ -7957,6 +8617,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Başlamak için birini hazırla"
+          }
+        }
+      }
+    },
+    "Prepare upcoming meetings automatically": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prepara automaticamente le prossime riunioni"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yaklaşan toplantıları otomatik hazırla"
           }
         }
       }
@@ -8067,38 +8743,6 @@
         }
       }
     },
-    "Prepares a session from the invite": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Prepara una sessione dall’invito"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Davetten oturum hazırlar"
-          }
-        }
-      }
-    },
-    "Preparing a session from the invite…": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Preparo una sessione dall’invito…"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Davetten oturum hazırlanıyor…"
-          }
-        }
-      }
-    },
     "Preparing · %@": {
       "localizations": {
         "it": {
@@ -8159,6 +8803,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Durdurmak için ⌥⌘V’ye tekrar bas"
+          }
+        }
+      }
+    },
+    "Previous answer %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Risposta precedente %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önceki yanıt %@"
           }
         }
       }
@@ -8255,22 +8915,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Projeler"
-          }
-        }
-      }
-    },
-    "Prompter on meeting cards": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Teleprompter sulle schede della riunione"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Toplantı kartlarında teleprompter"
           }
         }
       }
@@ -9337,6 +9981,54 @@
         }
       }
     },
+    "Session: not prepared": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessione: non preparata"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum: hazırlanmadı"
+          }
+        }
+      }
+    },
+    "Session: preparing…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessione: in preparazione…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum: hazırlanıyor…"
+          }
+        }
+      }
+    },
+    "Session: ready": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessione: pronta"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum: hazır"
+          }
+        }
+      }
+    },
     "Sessions": {
       "localizations": {
         "it": {
@@ -9909,22 +10601,6 @@
         }
       }
     },
-    "Start now": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avvia ora"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Şimdi başlat"
-          }
-        }
-      }
-    },
     "Start practice": {
       "localizations": {
         "it": {
@@ -9941,22 +10617,6 @@
         }
       }
     },
-    "Start prepared session": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Avvia la sessione preparata"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hazırlanmış oturumu başlat"
-          }
-        }
-      }
-    },
     "Start prompter": {
       "localizations": {
         "it": {
@@ -9969,6 +10629,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Teleprompter’ı başlat"
+          }
+        }
+      }
+    },
+    "Start unprepared": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia senza preparazione"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hazırlıksız başlat"
+          }
+        }
+      }
+    },
+    "Start · %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia · %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlat · %@"
+          }
+        }
+      }
+    },
+    "Start · unprepared": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avvia · non preparata"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlat · hazırlıksız"
           }
         }
       }
@@ -10341,18 +11049,18 @@
         }
       }
     },
-    "Teleprompter scripts…": {
+    "Test file as the other side": {
       "localizations": {
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copioni per il teleprompter…"
+            "value": "File di prova come interlocutore"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Teleprompter metinleri…"
+            "value": "Karşı taraf olarak test dosyası"
           }
         }
       }
@@ -11333,6 +12041,22 @@
         }
       }
     },
+    "Turn on": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attiva"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aç"
+          }
+        }
+      }
+    },
     "Turn on “Use my calendar” in Settings to add the people you meet.": {
       "localizations": {
         "it": {
@@ -11361,6 +12085,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sonraki toplantılarını burada görmek için Ayarlar’da “Takvimimi kullan”ı aç."
+          }
+        }
+      }
+    },
+    "Two different answers": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Due risposte diverse"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İki farklı yanıt"
           }
         }
       }
@@ -11409,6 +12149,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hazırlıksız"
+          }
+        }
+      }
+    },
+    "Unprepared call": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiamata non preparata"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hazırlıksız görüşme"
           }
         }
       }
@@ -11477,6 +12233,22 @@
         }
       }
     },
+    "Until you keep one, neither answer reaches a call. The other stays in the note as history.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finché non ne tieni una, nessuna delle due risposte arriva in una chiamata. L'altra resta nella nota come cronologia."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birini seçene kadar iki yanıt da görüşmeye girmez. Diğeri notta geçmiş olarak kalır."
+          }
+        }
+      }
+    },
     "Untitled event": {
       "localizations": {
         "it": {
@@ -11541,6 +12313,22 @@
         }
       }
     },
+    "Updated from %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aggiornata da %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ görüşmesinden güncellendi"
+          }
+        }
+      }
+    },
     "Updating memory · %lld of %lld": {
       "localizations": {
         "en": {
@@ -11575,6 +12363,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Başlat için kullan"
+          }
+        }
+      }
+    },
+    "Use for this meeting": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa per questa riunione"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu toplantı için kullan"
           }
         }
       }
@@ -11905,6 +12709,22 @@
         }
       }
     },
+    "Verse does not learn from this session.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse non impara da questa sessione."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse bu oturumdan öğrenmez."
+          }
+        }
+      }
+    },
     "Verse has no past meetings to search yet.": {
       "localizations": {
         "it": {
@@ -11953,6 +12773,22 @@
         }
       }
     },
+    "Verse learns from this call when nothing else runs.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse imparerà da questa chiamata quando non c'è altro in corso."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse, başka bir şey çalışmadığında bu görüşmeden öğrenecek."
+          }
+        }
+      }
+    },
     "Verse needs System Audio Recording to hear the meeting app. Allow it in System Settings, then press Start again.": {
       "localizations": {
         "it": {
@@ -11997,6 +12833,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verse özgeçmişini, proje notlarını ve önceki toplantı bilgilerini bir kez okur ve senin hakkında kısa bir profil tutar: yaklaşık 3.500 token, yaklaşık $0,07. Hiçbir şey hazırlanmamış olsa da görüşmeler bunu kullanır."
+          }
+        }
+      }
+    },
+    "Verse reads your next meetings and selects the session prepared for each one.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse legge le tue prossime riunioni e seleziona la sessione preparata per ciascuna."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse sıradaki toplantılarını okur ve her biri için hazırlanan oturumu seçer."
           }
         }
       }
@@ -12243,22 +13095,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Neler hâlâ açık?"
-          }
-        }
-      }
-    },
-    "What ⌥⌘V and Start now listen in. Change it during a call from the island or the menu.": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La lingua in cui ascoltano ⌥⌘V e Avvia ora. Cambiala durante una chiamata dall’island o dal menu."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "⌥⌘V ve Şimdi başlat’ın dinlediği dil. Görüşme sırasında island’dan veya menüden değiştir."
           }
         }
       }
@@ -12843,6 +13679,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "transkriptte %lld tane daha"
+          }
+        }
+      }
+    },
+    "another persona update was running.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "era in corso un altro aggiornamento della persona."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "başka bir persona güncellemesi çalışıyordu."
           }
         }
       }
@@ -13465,6 +14317,22 @@
         }
       }
     },
+    "no internet connection.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nessuna connessione a internet."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "internet bağlantısı yok."
+          }
+        }
+      }
+    },
     "no meeting is selected": {
       "localizations": {
         "it": {
@@ -13679,22 +14547,6 @@
         }
       }
     },
-    "prepares a session from the invite": {
-      "localizations": {
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "prepara una sessione dall’invito"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "davetten oturum hazırlar"
-          }
-        }
-      }
-    },
     "read from the posting": {
       "localizations": {
         "it": {
@@ -13807,6 +14659,22 @@
         }
       }
     },
+    "the API key is missing or was rejected.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "la chiave API manca o è stata rifiutata."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API anahtarı eksik ya da reddedildi."
+          }
+        }
+      }
+    },
     "the Keychain did not accept the key (%@)": {
       "localizations": {
         "it": {
@@ -13871,6 +14739,70 @@
         }
       }
     },
+    "the answer could not be used; nothing was changed.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "la risposta non era utilizzabile; non è cambiato nulla."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "yanıt kullanılamadı; hiçbir şey değişmedi."
+          }
+        }
+      }
+    },
+    "the call is too long for the budget.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "la chiamata è troppo lunga per il budget."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "görüşme bütçe için fazla uzun."
+          }
+        }
+      }
+    },
+    "the model was busy.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "il modello era occupato."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "model meşguldü."
+          }
+        }
+      }
+    },
+    "the persona folder is not one Verse can write.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse non può scrivere nella cartella della persona."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse persona klasörüne yazamıyor."
+          }
+        }
+      }
+    },
     "thinking": {
       "localizations": {
         "it": {
@@ -13915,6 +14847,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "transkript"
+          }
+        }
+      }
+    },
+    "unprepared call": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "chiamata non preparata"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hazırlıksız görüşme"
           }
         }
       }
@@ -14011,6 +14959,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Profilin yazılıyor…"
+          }
+        }
+      }
+    },
+    "your Anthropic credit has run out.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "il credito Anthropic è esaurito."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anthropic krediniz bitti."
           }
         }
       }

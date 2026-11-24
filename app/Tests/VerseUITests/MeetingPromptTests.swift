@@ -35,6 +35,10 @@ final class FakeHost: MeetingHost {
     var sessions: [String]
     var startCount = 0
     var startedWith: [String] = []
+    /// Unprepared starts (the prompt's Start for a meeting without a prepared session).
+    var unpreparedStarts = 0
+    /// The live manual pick the coordinator may use (`manualSessionForStart`).
+    var manual: String?
     var panelShown = 0
     var panelHidden = 0
     var logs: [String] = []
@@ -53,6 +57,12 @@ final class FakeHost: MeetingHost {
         overlay.sessionStarting(lang: settings.language, session: settings.sessionName, app: nil)
         running = true
     }
+    func startUnprepared() {
+        unpreparedStarts += 1
+        overlay.sessionStarting(lang: settings.language, session: "adhoc", app: nil, unprepared: true)
+        running = true
+    }
+    func manualSessionForStart() -> String? { manual }
     func showOverlayPanel() { panelShown += 1 }
     func hideOverlayPanel() { panelHidden += 1 }
     func log(_ line: String) { logs.append(line) }
@@ -88,12 +98,11 @@ final class MeetingPromptTests: XCTestCase {
                      url: URL(string: "https://meet.google.com/abc-defg-hij"), provider: .meet)
     }
 
-    private func make(_ host: FakeHost, detect: Bool = true, prepare: (@Sendable (MeetingEvent, String) async throws -> URL)? = nil,
-                      map: URL? = nil) throws -> MeetingCoordinator {
+    private func make(_ host: FakeHost, detect: Bool = true, map: URL? = nil) throws -> MeetingCoordinator {
         let url: URL
         if let map { url = map } else { url = try tempDir().appendingPathComponent("map.json") }
         return MeetingCoordinator(host: host, settings: meetingSettings(detect: detect), calendar: CalendarSource(backend: NoCalendar()),
-                                  detector: MeetingDetector(table: MicTable()), prepare: prepare ?? neverPrepare, upcoming: { _ in [] },
+                                  detector: MeetingDetector(table: MicTable()), upcoming: { _ in [] },
                                   eventMap: EventSessionMap(url: url), now: { self.t0 })
     }
 
@@ -239,58 +248,44 @@ final class MeetingPromptTests: XCTestCase {
         XCTAssertEqual(active.count, 1, "the detector did see the second call")
     }
 
-    func testStartWithoutAPreparedSessionPreparesFromTheInviteFirst() async throws {
-        let host = FakeHost(sessions: ["sample-interview"])
-        let prepared = expectation(description: "prepared")
-        let root = try tempDir()
-        let map = root.appendingPathComponent("map.json")
-        let c = try make(host, prepare: { ev, lang in
-            XCTAssertEqual(ev.title, "Quarterly review")
-            XCTAssertEqual(lang, "en")
-            prepared.fulfill()
-            return root.appendingPathComponent("20261015-120000-abc123")
-        }, map: map)
-        let table = MicTable()
-        table.set([cometMic])
-        await detect(c, table: table, event: event("Quarterly review", id: "ev9"), seconds: 0...5)
-        XCTAssertTrue(host.overlay.state.meetingPrompt?.subtitle.contains("prepares a session from the invite") ?? false)
-        host.sessions.append("20261015-120000-abc123")   // the folder now exists
-        host.overlay.promptAction(.accept)
-        XCTAssertTrue(host.overlay.state.meetingPrompt?.busy ?? false, "preparing…")
-        XCTAssertEqual(host.startCount, 0, "not started before the session exists")
-        await fulfillment(of: [prepared], timeout: 5)
-        for _ in 0..<100 where host.startCount == 0 { try await Task.sleep(for: .milliseconds(20)) }
-        XCTAssertEqual(host.startedWith, ["20261015-120000-abc123"])
-        XCTAssertEqual(EventSessionMap(url: map).load()["ev9"], "20261015-120000-abc123", "remembered for the next time")
-    }
-
-    func testAFailedPrepFallsBackToTheMenuSession() async throws {
+    func testStartWithoutAPreparedSessionStartsAnUnpreparedCallAtOnce() async throws {
         let host = FakeHost(sessions: ["sample-interview"], selected: "sample-interview")
-        struct Boom: Error {}
-        let c = try make(host, prepare: { _, _ in throw Boom() })
+        let c = try make(host)
         let table = MicTable()
         table.set([cometMic])
         await detect(c, table: table, event: event("Quarterly review", id: "ev9"), seconds: 0...5)
+        let p = try XCTUnwrap(host.overlay.state.meetingPrompt)
+        XCTAssertTrue(p.subtitle.contains("unprepared call"), p.subtitle)
+        XCTAssertEqual(p.detailLine, "Unprepared call")
         host.overlay.promptAction(.accept)
-        for _ in 0..<100 where host.startCount == 0 { try await Task.sleep(for: .milliseconds(20)) }
-        XCTAssertEqual(host.startedWith, ["sample-interview"])
+        XCTAssertEqual(host.unpreparedStarts, 1, "started in the same turn: nothing waits for a prep")
+        XCTAssertEqual(host.startCount, 0, "not the selected session of another meeting")
+        XCTAssertNil(host.overlay.state.meetingPrompt)
+        XCTAssertFalse(host.logs.contains { $0.contains("prepare from the invite") })
     }
 
-    func testDismissWhilePreparingCancelsTheStart() async throws {
-        let host = FakeHost(sessions: ["sample-interview"])
-        let c = try make(host, prepare: { _, _ in
-            try await Task.sleep(for: .milliseconds(300))
-            return URL(fileURLWithPath: "/tmp/never")
-        })
+    func testAManualPickIsUsedForAMeetingWithoutASession() async throws {
+        let host = FakeHost(sessions: ["mara-northwindlabs", "sample-interview"], selected: "sample-interview")
+        host.manual = "sample-interview"
+        let c = try make(host)
         let table = MicTable()
         table.set([cometMic])
         await detect(c, table: table, event: event("Quarterly review", id: "ev9"), seconds: 0...5)
+        XCTAssertTrue(host.overlay.state.meetingPrompt?.subtitle.contains("session sample-interview") ?? false)
         host.overlay.promptAction(.accept)
-        XCTAssertTrue(host.overlay.state.meetingPrompt?.busy ?? false)
-        host.overlay.promptAction(.dismiss)
-        try await Task.sleep(for: .milliseconds(500))
-        XCTAssertEqual(host.startCount, 0)
-        XCTAssertNil(host.overlay.state.meetingPrompt)
+        XCTAssertEqual(host.startedWith, ["sample-interview"])
+        XCTAssertEqual(host.unpreparedStarts, 0)
+    }
+
+    func testAnUpcomingRealMeetingWithoutAKnownProviderIsOffered() async throws {
+        let host = FakeHost()
+        let webex = MeetingEvent(id: "w1", title: "Budget check", start: at(120), end: at(1800),
+                                 attendees: [Attendee(name: "Ines Varga", email: "ines@example.com")], provider: .other)
+        let c = MeetingCoordinator(host: host, settings: meetingSettings(calendar: true), calendar: CalendarSource(backend: NoCalendar()),
+                                   detector: MeetingDetector(table: MicTable()), upcoming: { _ in [webex] },
+                                   eventMap: EventSessionMap(url: try tempDir().appendingPathComponent("m.json")), now: { self.t0 })
+        await c.pollUpcoming()
+        XCTAssertEqual(host.overlay.state.meetingPrompt?.kind, .upcoming, "someone else is on the invite: a real meeting (G13)")
     }
 
     // MARK: resolver
@@ -302,9 +297,9 @@ final class MeetingPromptTests: XCTestCase {
         }
         XCTAssertEqual(plan("Mara / Northwind Labs call"), .prepared("mara-northwindlabs"))
         XCTAssertEqual(plan("Sample Interview"), .prepared("sample-interview"))
-        XCTAssertEqual(plan("Quarterly review"), .fromInvite)
+        XCTAssertEqual(plan("Quarterly review"), .unprepared)
         XCTAssertEqual(plan("Quarterly review", remembered: ["ev1": "mara-northwindlabs"]), .prepared("mara-northwindlabs"))
-        XCTAssertEqual(plan("Quarterly review", remembered: ["ev1": "gone"]), .fromInvite, "a remembered folder that is gone")
+        XCTAssertEqual(plan("Quarterly review", remembered: ["ev1": "gone"]), .unprepared, "a remembered folder that is gone")
         XCTAssertEqual(plan(nil), .selected("sample-interview"))
         XCTAssertEqual(MeetingSessionResolver.plan(for: nil, sessions: [], remembered: [:], selected: nil), .selected(nil))
     }
@@ -317,7 +312,7 @@ final class MeetingPromptTests: XCTestCase {
                                 url: URL(string: "https://zoom.us/j/123"), provider: .zoom)
         let noLink = MeetingEvent(id: "u2", title: "Lunch", start: at(60), end: at(900), provider: .other)
         let c = MeetingCoordinator(host: host, settings: meetingSettings(calendar: true), calendar: CalendarSource(backend: NoCalendar()),
-                                   detector: MeetingDetector(table: MicTable()), prepare: neverPrepare, upcoming: { _ in [noLink, soon] },
+                                   detector: MeetingDetector(table: MicTable()), upcoming: { _ in [noLink, soon] },
                                    eventMap: EventSessionMap(url: try tempDir().appendingPathComponent("m.json")), now: { self.t0 })
         await c.pollUpcoming()
         let p = try XCTUnwrap(host.overlay.state.meetingPrompt)
@@ -334,7 +329,7 @@ final class MeetingPromptTests: XCTestCase {
         let host = FakeHost()
         let soon = MeetingEvent(id: "u1", title: "Call", start: at(60), end: at(900), url: nil, provider: .meet)
         let c = MeetingCoordinator(host: host, settings: meetingSettings(calendar: false), calendar: CalendarSource(backend: NoCalendar()),
-                                   detector: MeetingDetector(table: MicTable()), prepare: neverPrepare, upcoming: { _ in [soon] },
+                                   detector: MeetingDetector(table: MicTable()), upcoming: { _ in [soon] },
                                    eventMap: EventSessionMap(url: try tempDir().appendingPathComponent("m.json")), now: { self.t0 })
         await c.pollUpcoming()
         XCTAssertNil(host.overlay.state.meetingPrompt)
