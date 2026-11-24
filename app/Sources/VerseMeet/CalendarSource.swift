@@ -38,10 +38,12 @@ public struct CalendarEntry: Sendable, Equatable {
     public var currentUser: Attendee?
     /// The event repeats (EventKit's `hasRecurrenceRules`; every occurrence shares `id`).
     public var isRecurring: Bool
+    /// His part in the event (`EventKitBackend.participation`).
+    public var participation: Participation
 
     public init(id: String, title: String, start: Date, end: Date, isAllDay: Bool = false, attendees: [Attendee] = [],
                 notes: String? = nil, location: String? = nil, url: URL? = nil, currentUser: Attendee? = nil,
-                isRecurring: Bool = false) {
+                isRecurring: Bool = false, participation: Participation = .unknown) {
         self.id = id
         self.title = title
         self.start = start
@@ -53,6 +55,7 @@ public struct CalendarEntry: Sendable, Equatable {
         self.url = url
         self.currentUser = currentUser
         self.isRecurring = isRecurring
+        self.participation = participation
     }
 }
 
@@ -135,7 +138,8 @@ public struct CalendarSource: Sendable {
                 // real meeting once the location is gone (G13).
                 return MeetingEvent(id: e.id, title: e.title, start: e.start, end: e.end, attendees: e.attendees,
                                     notes: e.notes, url: link.url ?? RealMeeting.callLink(in: e.location), provider: link.provider,
-                                    currentUser: e.currentUser, isRecurring: e.isRecurring)
+                                    currentUser: e.currentUser, isRecurring: e.isRecurring,
+                                    participation: e.participation)
             }
     }
 }

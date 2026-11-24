@@ -20,7 +20,7 @@ final class SessionPickerTests: XCTestCase {
     private let guest = Attendee(name: "Dana Quill", email: "Dana@Example.com")
 
     private func meeting(_ id: String, _ title: String, start: Double, minutes: Double = 30) -> MeetingEvent {
-        MeetingEvent(id: id, title: title, start: at(start), end: at(start + minutes), attendees: [guest])
+        MeetingEvent(id: id, title: title, start: at(start), end: at(start + minutes), attendees: [guest], participation: .accepted)
     }
 
     private func build(sessions: [String], upcoming: [MeetingEvent] = [], matches: [String: String] = [:], target: MeetingEvent? = nil,

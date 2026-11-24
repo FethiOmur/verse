@@ -66,8 +66,31 @@ public final class EventKitBackend: CalendarBackend, @unchecked Sendable {
                 start: e.startDate, end: e.endDate, isAllDay: e.isAllDay,
                 attendees: (e.attendees ?? []).map(Self.attendee),
                 notes: e.notes, location: e.location, url: e.url, currentUser: me.map(Self.attendee),
-                isRecurring: e.hasRecurrenceRules)
+                isRecurring: e.hasRecurrenceRules,
+                participation: Self.participation(
+                    organizerIsMe: e.organizer?.isCurrentUser == true, hasOrganizer: e.organizer != nil,
+                    hasAttendees: !(e.attendees ?? []).isEmpty, myStatus: me?.participantStatus,
+                    ownCalendar: e.calendar.map(Self.isOwnCalendar) ?? false))
         }
+    }
+
+    /// His part in an event from what EventKit reports. Organiser: the organiser is him, or the entry has neither an organiser
+    /// nor invitees and sits on a calendar he can edit (his own entry; a subscribed, birthday or read-only calendar is not).
+    /// Otherwise his own attendee status: accepted, tentative, pending (not answered); anything else, or not on the list, unknown.
+    static func participation(organizerIsMe: Bool, hasOrganizer: Bool, hasAttendees: Bool, myStatus: EKParticipantStatus?,
+                              ownCalendar: Bool) -> Participation {
+        if organizerIsMe { return .organizer }
+        if !hasOrganizer, !hasAttendees { return ownCalendar ? .organizer : .unknown }
+        switch myStatus {
+        case .accepted: return .accepted
+        case .tentative: return .tentative
+        case .pending: return .pending
+        default: return .unknown
+        }
+    }
+
+    private static func isOwnCalendar(_ c: EKCalendar) -> Bool {
+        c.allowsContentModifications && c.type != .subscription && c.type != .birthday
     }
 
     private static func attendee(_ p: EKParticipant) -> Attendee {

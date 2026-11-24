@@ -35,6 +35,12 @@ public final class MeetingSettings: ObservableObject {
         }
         set { defaults.set(newValue.mapValues(\.timeIntervalSince1970), forKey: "meetingAutoPrepAttempted") }
     }
+    /// When each background prep started (not the ones started by hand), for the daily cap (`AutoPrepGate.dailyCap`); kept
+    /// across relaunches so a relaunch does not reset the count. Not published, like `autoPrepAttempted`.
+    public var autoPrepBackgroundRuns: [Date] {
+        get { (defaults.array(forKey: "meetingAutoPrepRuns") as? [Double] ?? []).map { Date(timeIntervalSince1970: $0) } }
+        set { defaults.set(newValue.map(\.timeIntervalSince1970), forKey: "meetingAutoPrepRuns") }
+    }
 
     public init(defaults: UserDefaults? = nil) {
         let d = defaults ?? (Bundle.main.bundleIdentifier == AppSettings.suiteName ? .standard

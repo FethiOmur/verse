@@ -23,6 +23,25 @@ public struct Attendee: Sendable, Codable, Equatable {
     }
 }
 
+/// The calendar owner's own part in an event, as the calendar reports it. Anyone can put an invite in his calendar (it shows
+/// there before he answers it), and its title, attendee names and notes are written by whoever sent it: only an event he organises
+/// or has accepted is trusted to start paid work by itself (the background prep) or to pick a session by its name.
+public enum Participation: String, Sendable, Codable, Equatable, CaseIterable {
+    /// He organises it, or it is his own entry on a calendar he can edit (no invitees, no organiser).
+    case organizer
+    /// He accepted the invite.
+    case accepted
+    /// He answered "maybe".
+    case tentative
+    /// He has not answered yet (EventKit's `.pending`: needs action).
+    case pending
+    /// Anything else: he is not on the invite, a delegated or unknown status, a subscribed or read-only calendar.
+    case unknown
+
+    /// He organises it or accepted it.
+    public var isConfirmed: Bool { self == .organizer || self == .accepted }
+}
+
 /// One calendar event as Verse sees it. Notes and attendee emails are personal: print titles and counts only.
 public struct MeetingEvent: Sendable, Codable, Equatable, Identifiable {
     public var id: String
@@ -40,10 +59,12 @@ public struct MeetingEvent: Sendable, Codable, Equatable, Identifiable {
     /// The event repeats (EventKit's `hasRecurrenceRules`): every occurrence shares `id`, so a link to one occurrence says nothing
     /// about the others. nil when not known (JSON written before this field); the session matcher then treats it as repeating.
     public var isRecurring: Bool?
+    /// His part in it (see `Participation`). nil when not known (JSON written before this field): treated as not confirmed.
+    public var participation: Participation?
 
     public init(id: String, title: String, start: Date, end: Date, attendees: [Attendee] = [],
                 notes: String? = nil, url: URL? = nil, provider: MeetingProvider = .other, currentUser: Attendee? = nil,
-                isRecurring: Bool? = nil) {
+                isRecurring: Bool? = nil, participation: Participation? = nil) {
         self.id = id
         self.title = title
         self.start = start
@@ -54,7 +75,12 @@ public struct MeetingEvent: Sendable, Codable, Equatable, Identifiable {
         self.provider = provider
         self.currentUser = currentUser
         self.isRecurring = isRecurring
+        self.participation = participation
     }
+
+    /// He organises this event or accepted it: the only events whose own words (title, attendee names) Verse acts on without
+    /// asking. An invite he has not answered, a "maybe", or an unknown status is not.
+    public var ownerConfirmed: Bool { participation?.isConfirmed == true }
 
     /// One occurrence of the event: `<id>@<start, whole seconds since 1970>`. EventKit gives every occurrence of a recurring
     /// event the same `eventIdentifier`, so links, "offered" and "dismissed" are keyed on this instead. A moved event gets a new key.

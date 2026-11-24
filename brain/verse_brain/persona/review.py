@@ -69,7 +69,7 @@ from ..runtime.own import content_stems
 from ..runtime.settings import SONNET
 from .extract import CardFacts, Confirmed, json_object, months_in, name_tokens, names_not_in_row
 from .rows import CardRec, Mark, PRow, SessionRows, _wkey, final_marks, is_backchannel, merge_rows
-from .store import BETTER_KINDS, LEARNED_KINDS, SEED_KINDS, TOPIC_OVERLAP, _differs, one_line
+from .store import BETTER_KINDS, LEARNED_KINDS, NOTE_ANSWER_INDENT, SEED_KINDS, TOPIC_OVERLAP, _differs, one_line
 
 log = logging.getLogger("verse.persona.review")
 
@@ -930,6 +930,30 @@ REASON_TEXT = {"not_answered": "missed the question", "vague": "nothing specific
                "partly_answered": "partly answered", "rambling": "rambling", "cut_short": "cut short"}
 
 
+_NOTE_ID = re.compile(r"\[\s*([pgcimakon]\d{3,})\s*\]", re.I)    # an entry or source id in brackets: `[i006]`, `[p001]`
+_NOTE_MARKER = re.compile(r"\b(Q|SAY|MORE|FACT|TERM|SNIPPET)\s*:", re.I)   # the answer-line field markers
+_NOTE_LIST = re.compile(r"^(?:[-*+>#]+|\d+[.)])(?:\s+|$)")         # a Markdown list marker, quote or heading at the start
+_NOTE_REJECT = re.compile(r"^(reject(?:ed)?|rifiut\w*|reddet\w*)\b|\b(reject(?:ed)?|rifiut\w*|reddet\w*)(\W*)$", re.I)
+
+
+def note_text(s: object) -> str:
+    """Text that came from the call or from the model, made safe to stand in the Review note: nothing of it can be read back as
+    structure by `PersonaStore._sync_notes` (or by an eye skimming the note). One line (every line break folded), no leading list
+    marker, quote or heading, no bracketed entry id (`[i006]` -> `(i006)`), no ` | ` field separator, no `Q:` / `SAY:` / `MORE:`
+    marker (`Q -`), and a `reject` at either end quoted. Plain text passes unchanged."""
+    t = one_line(s)
+    while True:
+        m = _NOTE_LIST.match(t)
+        if not m or not m.group(0):
+            break
+        t = t[m.end():].lstrip()
+    t = _NOTE_ID.sub(lambda m: f"({m.group(1)})", t)
+    t = t.replace("|", "/")
+    t = _NOTE_MARKER.sub(lambda m: f"{m.group(1)} -", t)
+    t = _NOTE_REJECT.sub(lambda m: f"'{m.group(1)}'" if m.group(1) else f"'{m.group(2)}'{m.group(3)}", t)
+    return t
+
+
 def _clock(t: float) -> str:
     from datetime import datetime
 
@@ -955,9 +979,10 @@ def render_note(store, session: str, skey: str, day: str, open_list: list[dict])
         e = ents.get(iid)
         if not e:
             return ""
-        ln = e["edited"] if e.get("edited") else store.render_line(e)
-        answer_lines[iid] = "  " + ln
-        return "  " + ln
+        # The owner's own edit stands as he wrote it; Verse's line has its model-made fields cleaned (`note_text`).
+        ln = e["edited"].strip() if e.get("edited") else store.render_line(e, clean=note_text)
+        answer_lines[iid] = NOTE_ANSWER_INDENT + ln
+        return NOTE_ANSWER_INDENT + ln
 
     out = [f"---\ntitle: Verse review {day} {skey}\ncreated: {day}\ntype: persona-review\ntags:\n  - verse\n  - persona\n---",
            f"# Review {day} `{skey}`", "",
@@ -967,23 +992,23 @@ def render_note(store, session: str, skey: str, day: str, open_list: list[dict])
     if recurring:
         for r in recurring:
             here = " (this call too)" if session in r["sessions"] else ""
-            out.append(f"- {one_line(r['topic'])}: weak in {len(r['sessions'])} calls ({', '.join(r['dates'])}){here}")
+            out.append(f"- {note_text(r['topic'])}: weak in {len(r['sessions'])} calls ({', '.join(r['dates'])}){here}")
     else:
         out.append("- none")
     out += ["", "## Went well"]
     good = [r for r in recs if not r.get("needs_rewrite") and (r.get("spoken") == "strong" or r.get("mark") == "good")]
     for r in good:
-        bits = [one_line(r.get("question", ""))]
+        bits = [note_text(r.get("question", ""))]
         if r.get("q_stamp"):
             bits.append(f"[{skey} {r['q_stamp']}]")
         tags = []
         if r.get("mark") == "good":
             tags.append("card marked GOOD")
         if r.get("action") in ("not_banked", "none") and r.get("why"):
-            tags.append(f"not banked: {r.get('why', '')}")
+            tags.append(f"not banked: {note_text(r.get('why', ''))}")
         out.append("- " + " ".join(bits) + (f" ({'; '.join(tags)})" if tags else ""))
         if r.get("note"):
-            out.append(f"  - why: {one_line(r['note'])}")
+            out.append(f"  - why: {note_text(r['note'])}")
         if r.get("better"):
             out.append(better_line(r["better"]))
     if not good:
@@ -992,44 +1017,44 @@ def render_note(store, session: str, skey: str, day: str, open_list: list[dict])
     fine = [r for r in recs if not r.get("needs_rewrite") and r.get("spoken") == "ok" and r.get("mark") != "good"]
     for r in fine:
         at = f" [{skey} {r['q_stamp']}]" if r.get("q_stamp") else ""
-        out.append(f"- {one_line(r.get('question', ''))}{at}")
+        out.append(f"- {note_text(r.get('question', ''))}{at}")
     if not fine:
         out.append("- none")
     out += ["", "## Weak answers"]
     weak = sorted((r for r in recs if r.get("needs_rewrite")), key=lambda r: (not recurring_here(r), r.get("q_stamp", "")))
     for r in weak:
-        reasons = [REASON_TEXT.get(x, x) for x in r.get("reasons", [])]
+        reasons = [REASON_TEXT.get(x) or note_text(x) for x in r.get("reasons", [])]
         if r.get("mark") == "bad":
             reasons.append(REASON_TEXT["bad_mark"])
         at = f" [{skey} {r['q_stamp']}]" if r.get("q_stamp") else ""
         again = " (weak before too)" if recurring_here(r) else ""
-        out.append(f"- {one_line(r.get('question', ''))}{at}: {', '.join(reasons) or 'needs a rewrite'}{again}")
+        out.append(f"- {note_text(r.get('question', ''))}{at}: {', '.join(reasons) or 'needs a rewrite'}{again}")
         if r.get("note"):
-            out.append(f"  - why: {one_line(r['note'])}")
+            out.append(f"  - why: {note_text(r['note'])}")
         if r.get("better"):
             out.append(better_line(r["better"]))
         elif r.get("why"):
-            out.append(f"  - no better answer: {r['why']}")
+            out.append(f"  - no better answer: {note_text(r['why'])}")
     if not weak:
         out.append("- none")
     out += ["", "## Marks"]
     marks = sorted((r for r in recs if r.get("mark")), key=lambda r: r.get("mark_t", 0.0))
     for r in marks:
-        out.append(f"- {_clock(r.get('mark_t', 0.0))} card {r.get('card') or '?'}: {r['mark'].upper()} | "
-                   f"{one_line(r.get('question', ''))}")
+        out.append(f"- {_clock(r.get('mark_t', 0.0))} card {note_text(r.get('card')) or '?'}: {note_text(r['mark']).upper()} | "
+                   f"{note_text(r.get('question', ''))}")
     if not marks:
         out.append("- none")
     out += ["", "## Open contradictions"]
     n = 0
     for c in open_list:
         n += 1
-        out.append(f"- [{c['id']}] {one_line(c['topic'])}: \"{_q(c['a'].get('quote', ''))}\" ({c['a'].get('date', '')}) vs "
-                   f"\"{_q(c['b'].get('quote', ''))}\" ({c['b'].get('date', '')})")
+        out.append(f"- [{c['id']}] {note_text(c['topic'])}: \"{_q(note_text(c['a'].get('quote', '')))}\" ({c['a'].get('date', '')}) vs "
+                   f"\"{_q(note_text(c['b'].get('quote', '')))}\" ({c['b'].get('date', '')})")
     for r in recs:
         if r.get("contradicts"):
             n += 1
-            out.append(f"- {one_line(r.get('question', ''))} [{skey} {r.get('a_stamps', [''])[0] if r.get('a_stamps') else ''}]: "
-                       f"your answer disagrees with [{r['contradicts']}]")
+            out.append(f"- {note_text(r.get('question', ''))} [{skey} {r.get('a_stamps', [''])[0] if r.get('a_stamps') else ''}]: "
+                       f"your answer disagrees with [{note_text(r['contradicts']).strip('()')}]")
     if not n:
         out.append("- none")
     return "\n".join(out).rstrip("\n") + "\n", answer_lines

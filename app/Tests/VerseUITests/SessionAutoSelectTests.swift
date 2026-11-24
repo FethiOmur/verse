@@ -14,10 +14,11 @@ final class SessionAutoSelectTests: XCTestCase {
 
     private let guest = Attendee(name: "Dana Quill", email: "dana@example.com")
 
-    /// A real meeting (someone else is on the invite), `minutes` long from `start` minutes after 10:00.
+    /// A real meeting (someone else is on the invite) he accepted, `minutes` long from `start` minutes after 10:00.
     private func meeting(_ id: String, _ title: String = "Weekly sync", start: Double, minutes: Double = 30,
                          attendees: [Attendee]? = nil) -> MeetingEvent {
-        MeetingEvent(id: id, title: title, start: at(start), end: at(start + minutes), attendees: attendees ?? [guest])
+        MeetingEvent(id: id, title: title, start: at(start), end: at(start + minutes), attendees: attendees ?? [guest],
+                     participation: .accepted)
     }
 
     // MARK: occurrence keys (G10)
@@ -132,7 +133,7 @@ final class SessionAutoSelectTests: XCTestCase {
             ("Custom report", [], ["tom"], nil, "a token is a whole word, not part of one"),
         ]
         for row in table {
-            let e = MeetingEvent(id: "x", title: row.title, start: at(0), end: at(30), attendees: row.attendees)
+            let e = MeetingEvent(id: "x", title: row.title, start: at(0), end: at(30), attendees: row.attendees, participation: .accepted)
             XCTAssertEqual(MeetingSessionResolver.match(e, sessions: row.sessions, links: [:])?.session, row.want, row.why)
         }
     }

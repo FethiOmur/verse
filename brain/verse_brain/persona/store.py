@@ -241,6 +241,10 @@ def atomic_write(path: Path, text: str) -> None:
 
 # ---------------------------------------------------------------- Persona.md parse / render
 _ENTRY = re.compile(r"^\s*-\s*\[([pgci]\d{3,})\]\s?(.*)$")
+# A better-answer line in a Review note, exactly as Verse writes it: indented under its question, `- [i###] `. Only such a line,
+# with an id the note was written with (`note_lines`), is read back as the owner's (`_sync_notes`).
+NOTE_ANSWER_INDENT = "  "
+_NOTE_ANSWER = re.compile(r"^" + NOTE_ANSWER_INDENT + r"- \[(i\d{3,})\] ")
 _FRONT = re.compile(r"\A(---\n.*?\n---\n)", re.S)
 
 
@@ -490,7 +494,12 @@ class PersonaStore:
     def _sync_notes(self) -> None:
         """Fold in the owner's edits of better-answer lines in the Review notes: a line whose text is not what Verse wrote there is
         his. `reject` as its last field rejects the answer; any other change is his wording (it then wins in Persona.md too).
-        Each edit is folded once (its new hash is kept), so a later edit in Persona.md is not overridden by the note."""
+        Each edit is folded once (its new hash is kept), so a later edit in Persona.md is not overridden by the note.
+
+        Only the answer lines Verse itself wrote count, found by what was recorded at write time: the ids this note was written
+        with (`note_lines`) at the place and in the form Verse wrote them (`NOTE_ANSWER_INDENT` + `- [i###] `). The note also
+        holds text from the call and from the model (questions, reasons, answers); a top-level bullet, any other indentation, or
+        an id the note was not written with is never read as an edit, so such text cannot pose as one."""
         ents = self.state["entries"]
         for rel, hashes in self.state.setdefault("note_lines", {}).items():
             p = self.dir / rel
@@ -498,7 +507,7 @@ class PersonaStore:
                 continue
             found: dict[str, str] = {}
             for ln in p.read_text(encoding="utf-8", errors="replace").splitlines():
-                m = _ENTRY.match(ln)
+                m = _NOTE_ANSWER.match(ln)
                 if m and m.group(1) in hashes and m.group(1) not in found:
                     found[m.group(1)] = ln.rstrip()
             for iid, h in hashes.items():
@@ -802,12 +811,15 @@ class PersonaStore:
             return f"his words {e.get('date', '')} {at}"
         return f"kept card {e.get('card', '')} (GOOD mark) {e.get('date', '')} {at}"
 
-    def render_line(self, e: dict) -> str:
+    def render_line(self, e: dict, clean=None) -> str:
+        """The line Verse writes for `e`. `clean` (a better answer's question, opener and points) defaults to `_clean`; the
+        Review note passes its stricter `review.note_text`."""
         k = e["kind"]
         if k in BETTER_KINDS:
-            ln = f"- [{e['id']}] Q: {_clean(e.get('question'))} | SAY: {_clean(e.get('opener'))}"
+            cl = clean or _clean
+            ln = f"- [{e['id']}] Q: {cl(e.get('question'))} | SAY: {cl(e.get('opener'))}"
             if e.get("points"):
-                ln += " | MORE: " + " / ".join(_clean(p) for p in e["points"])
+                ln += " | MORE: " + " / ".join(cl(p) for p in e["points"])
             ln += " | " + self._better_origin(e)
             if e.get("superseded"):
                 ln += f" | superseded {e['superseded'].get('on', '')}"

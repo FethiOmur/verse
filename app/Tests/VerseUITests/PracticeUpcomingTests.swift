@@ -47,7 +47,7 @@ private func at(_ day: Int, _ hour: Int, _ minute: Int = 0, month: Int = 10) -> 
 private let noon = at(20, 12)
 
 private func event(_ id: String, _ title: String, start: Date, minutes: Double = 30) -> MeetingEvent {
-    MeetingEvent(id: id, title: title, start: start, end: start.addingTimeInterval(minutes * 60))
+    MeetingEvent(id: id, title: title, start: start, end: start.addingTimeInterval(minutes * 60), participation: .accepted)
 }
 
 /// A real meeting by the Upcoming rule (it has a Meet link), so the lists keep it.
@@ -534,7 +534,8 @@ final class PracticeUpcomingTestsFlow: XCTestCase {
         XCTAssertTrue(dir.lastPathComponent.hasPrefix("sim-") && dir.lastPathComponent.hasSuffix("-20261020-100000-abcd1234"), dir.lastPathComponent)
         XCTAssertEqual(rig.sim.summary?.sourceSession, "20261020-100000-abcd1234", "built from the session step 1 made")
         // Step 1 left the event mapped to its session, and the popup now lists it under Prepared.
-        XCTAssertEqual(rig.eventMap.load()["e1"], "20261020-100000-abcd1234")
+        // The link is per occurrence ("<id>@<start>"), not the bare event id.
+        XCTAssertEqual(rig.eventMap.load().first { $0.key.hasPrefix("e1@") }?.value, "20261020-100000-abcd1234")
         XCTAssertEqual(rig.prepared.names, ["20261020-100000-abcd1234"])
         XCTAssertEqual(rig.sim.meetingName, "20261020-100000-abcd1234")
         XCTAssertNil(rig.sim.upcomingEventID)

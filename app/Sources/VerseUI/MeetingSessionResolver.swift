@@ -10,8 +10,13 @@ import VerseMeet
 /// 3. a session folder whose `event.json` (`EventSidecar`) names this occurrence, else (only for an event known not to repeat) this
 ///    event id; exactly one folder;
 /// 4. the folder name: every token of 3+ letters or digits in the folder name is a word of the title or of an attendee's name (two
-///    neighbouring words count as one token: `northwindlabs` in "Northwind Labs"), in any order; exactly one folder.
-/// Otherwise there is none ("not prepared"). Never a guess, an alphabetical pick or a recency pick.
+///    neighbouring words count as one token: `northwindlabs` in "Northwind Labs"), in any order; exactly one folder. Only for an
+///    event he organises or accepted (`MeetingEvent.ownerConfirmed`): the title and attendee names of an invite are written by
+///    whoever sent it, and an unanswered invite would otherwise pick a prepared session for the auto-select, Start and the meeting
+///    prompt. For any other event the name match is only a `suggestion`, which the UI may offer through "Use for this meeting"
+///    (that writes a link, rule 1).
+/// Otherwise there is none ("not prepared"). Never a guess, an alphabetical pick or a recency pick. Rules 1-3 read only what
+/// Verse itself wrote (links and `event.json`), so they hold for every event.
 public enum MeetingSessionResolver {
     public static func plan(for event: MeetingEvent?, sessions: [String], remembered: [String: String],
                             selected: String?, sidecars: [String: EventSidecar] = [:]) -> MeetingPrompt.SessionPlan {
@@ -44,11 +49,26 @@ public enum MeetingSessionResolver {
             let byID = carried.filter { $0.1.eventID == event.id }
             if byID.count == 1 { return SessionMatch(session: byID[0].0, source: .sidecar) }
         }
-        // 4. the folder name
+        // 4. the folder name, only for an event he organises or accepted
+        guard event.ownerConfirmed, let named = nameMatch(event, sessions: sessions) else { return nil }
+        return SessionMatch(session: named, source: .name)
+    }
+
+    /// The one session whose folder name matches `event` (rule 4) when the event is not one he organises or accepted, so the name
+    /// rule did not match it: a suggestion the UI may offer ("Use for this meeting"), never a match. nil when `match` already
+    /// finds a session, or when no single folder name matches.
+    public static func suggestion(_ event: MeetingEvent, sessions: [String], links: [String: String],
+                                  sidecars: [String: EventSidecar] = [:]) -> String? {
+        guard !event.ownerConfirmed, match(event, sessions: sessions, links: links, sidecars: sidecars) == nil else { return nil }
+        return nameMatch(event, sessions: sessions)
+    }
+
+    /// Rule 4 alone, whoever wrote the event: the one folder whose name tokens are all words of the title or an attendee's name.
+    static func nameMatch(_ event: MeetingEvent, sessions: [String]) -> String? {
         let words = tokens(event.title) + event.attendees.flatMap { tokens($0.name ?? "") }
         guard !words.isEmpty else { return nil }
         let named = sessions.filter { nameMatches(folder: $0, words: words) }
-        return named.count == 1 ? SessionMatch(session: named[0], source: .name) : nil
+        return named.count == 1 ? named[0] : nil
     }
 
     /// Lower-case words of letters and digits, accents folded: "Mara / Northwind-Labs" -> ["mara", "northwind", "labs"].
@@ -117,6 +137,11 @@ public struct SessionMatcher: Sendable, Equatable {
 
     public func match(_ event: MeetingEvent) -> SessionMatch? {
         MeetingSessionResolver.match(event, sessions: sessions, links: links, sidecars: sidecars)
+    }
+
+    /// `MeetingSessionResolver.suggestion`: a name match for an event he has not confirmed, to offer, never to select.
+    public func suggestion(_ event: MeetingEvent) -> String? {
+        MeetingSessionResolver.suggestion(event, sessions: sessions, links: links, sidecars: sidecars)
     }
 }
 

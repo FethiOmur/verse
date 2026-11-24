@@ -95,7 +95,7 @@ final class MeetingPromptTests: XCTestCase {
 
     private func event(_ title: String = "Mara / Northwind Labs call", id: String = "ev1") -> MeetingEvent {
         MeetingEvent(id: id, title: title, start: at(-60), end: at(1800), attendees: [], notes: nil,
-                     url: URL(string: "https://meet.google.com/abc-defg-hij"), provider: .meet)
+                     url: URL(string: "https://meet.google.com/abc-defg-hij"), provider: .meet, participation: .accepted)
     }
 
     private func make(_ host: FakeHost, detect: Bool = true, map: URL? = nil) throws -> MeetingCoordinator {
@@ -309,7 +309,7 @@ final class MeetingPromptTests: XCTestCase {
     func testAnUpcomingMeetingWithAVideoLinkIsOfferedOnce() async throws {
         let host = FakeHost()
         let soon = MeetingEvent(id: "u1", title: "Mara / Northwind Labs call", start: at(240), end: at(2400), attendees: [], notes: nil,
-                                url: URL(string: "https://zoom.us/j/123"), provider: .zoom)
+                                url: URL(string: "https://zoom.us/j/123"), provider: .zoom, participation: .accepted)
         let noLink = MeetingEvent(id: "u2", title: "Lunch", start: at(60), end: at(900), provider: .other)
         let c = MeetingCoordinator(host: host, settings: meetingSettings(calendar: true), calendar: CalendarSource(backend: NoCalendar()),
                                    detector: MeetingDetector(table: MicTable()), upcoming: { _ in [noLink, soon] },
