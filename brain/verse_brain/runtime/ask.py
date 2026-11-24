@@ -36,6 +36,7 @@ from pathlib import Path
 from typing import AsyncIterator, Callable, Protocol
 
 from .. import extensions
+from ..apiroute import CONTENT
 from ..owner import OWNER
 from ..prep.keychain import read_api_key
 from ..prep.model import PRICES, PREP_MODEL, Usage, spend_usd
@@ -43,7 +44,7 @@ from ..prep.voice import strip_voice
 from .me import load_me, priorities_first
 from .protocol import ASK_MODELS, Emitter
 from .settings import ASK_CONTEXT_MAX_TOKENS, ASK_EXCERPT_TOKENS, ASK_HISTORY_PAIRS, ask_input_budget, ask_params
-from .transport import TransportError, map_sdk_error
+from .transport import StreamTap, TransportError, map_sdk_error
 
 log = logging.getLogger("verse.runtime.ask")
 
@@ -318,7 +319,7 @@ def load_history(path: Path, limit: int = ASK_HISTORY_PAIRS) -> list[tuple[str, 
 # ---------------------------------------------------------------- model client
 @dataclass
 class AskEv:
-    kind: str                     # start | text | stop
+    kind: str                     # start | text | stop (and apiroute.CONTENT, a marker only routed streams yield, never a caller)
     text: str = ""
     stop_reason: str | None = None
     usage: dict = field(default_factory=dict)
@@ -346,8 +347,9 @@ class AnthropicAskClient:
 
     `api_key` is the Anthropic key or an `apiroute.Credentials` (a bare key follows the configured route). With an API base URL a
     request goes to the proxy first (no SDK retries, short connect timeout) and to the direct API, with the Anthropic key, when the
-    proxy fails;
-    a stream is restarted there only while no text has reached the panel (apiroute.RoutedStream)."""
+    proxy fails; a stream is restarted there only while no text has reached the panel (apiroute.RoutedStream). A proxy that goes
+    quiet is caught by the stall guards: no first content after `apiroute.HEDGE_S` races the direct API, no event for
+    `apiroute.IDLE_S` outside thinking is a stall; `count_tokens` races after `apiroute.CALL_HEDGE_S`."""
 
     def __init__(self, api_key) -> None:
         import anthropic
@@ -382,22 +384,26 @@ class AnthropicAskClient:
             return
 
         async def open_route(target: str):
-            return self._stream_on(self._clients[target], request)
+            return _RouteStream(self, self._clients[target], request)
 
-        routed = RoutedStream(self._router, open_route)
+        routed = RoutedStream(self._router, open_route, key=request.get("model"))
         try:
             async for ev in routed:
                 yield ev
         finally:
             await routed.aclose()
 
-    async def _stream_on(self, client, request: dict) -> AsyncIterator[AskEv]:
+    async def _stream_on(self, client, request: dict, tap: StreamTap | None = None) -> AsyncIterator[AskEv]:
         ns = client.beta.messages if request.get("betas") else client.messages
         usage: dict = {}
         stop_reason = None
         try:
             async with ns.stream(**request) as s:
+                if tap is not None:
+                    tap.attach(getattr(s, "_raw_stream", None))
                 async for ev in s:
+                    if tap is not None and tap.saw(ev):   # tapped = read by apiroute.RoutedStream: mark the race's milestone
+                        yield AskEv(CONTENT)
                     et = ev.type
                     if et == "message_start":
                         usage = _int_usage(ev.message.usage)
@@ -425,7 +431,7 @@ class AnthropicAskClient:
                 raise map_sdk_error(e) from None
             return int(r.input_tokens)
 
-        return await call_routed(self._router, on)
+        return await call_routed(self._router, on, hedge_s=self._router.call_hedge_s, key=model)
 
     async def aclose(self) -> None:
         for c in self._clients.values():
@@ -433,6 +439,29 @@ class AnthropicAskClient:
                 await c.close()
             except Exception:  # noqa: BLE001
                 pass
+
+
+class _RouteStream:
+    """One route's stream for apiroute.RoutedStream: the events of `_stream_on`, plus the activity signals its idle limit reads
+    (`activity`, `quiet_ok`: transport.StreamTap)."""
+
+    def __init__(self, owner: AnthropicAskClient, client, request: dict) -> None:
+        self._tap = StreamTap()
+        self._gen = owner._stream_on(client, request, self._tap)
+
+    @property
+    def activity(self) -> int:
+        return self._tap.activity
+
+    @property
+    def quiet_ok(self) -> bool:
+        return self._tap.quiet_ok
+
+    def __aiter__(self):
+        return self._gen
+
+    async def aclose(self) -> None:
+        await self._gen.aclose()
 
 
 def make_client(fake: bool = False) -> AskClient:

@@ -820,7 +820,7 @@ def test_ask_client_restarts_before_text_and_counts_usage_once(monkeypatch):
 
     c = AnthropicAskClient(Credentials(DIRECT_KEY, URL, PROXY_KEY))
 
-    async def fake_on(client, request):
+    async def fake_on(client, request, tap=None):
         if client is c._clients[PROXY]:
             yield AskEv("start", usage={"input_tokens": 9}, model="claude-sonnet-5-5")
             raise Overloaded("529 overloaded_error", status=529)

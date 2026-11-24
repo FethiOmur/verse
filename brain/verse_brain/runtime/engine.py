@@ -1297,6 +1297,23 @@ class Brain:
             return None
         return self.config.hedge_after_s_d if call.route == "D" else self.config.hedge_after_s
 
+    def _route_racing(self, call: Call) -> bool:
+        racing = getattr(self.transport, "route_racing", None)
+        try:
+            return bool(racing(call.request)) if racing is not None else False
+        except Exception:  # noqa: BLE001 - a diagnosis hook must never fail a call
+            return False
+
+    @staticmethod
+    def _route_metrics(stream) -> dict:
+        """With a base URL the stream is an apiroute.RoutedStream: which route answered (`api_route`) and whether its route race
+        started the paid direct duplicate (`route_hedged`). Nothing for a direct stream, so the metric stays as it was."""
+        hedged = getattr(stream, "hedged", None)
+        route = getattr(stream, "route", None)
+        if not isinstance(hedged, bool) or not isinstance(route, str):
+            return {}
+        return {"api_route": route, "route_hedged": hedged}
+
     async def hedged_stream(self, call: Call) -> None:
         """Run the call on lane 0; if no first byte after `hedge_after_s`, start a duplicate on lane 1.
         The first lane to deliver an event wins; the other is cancelled and its stream closed."""
@@ -1313,7 +1330,7 @@ class Brain:
                         call.winner_lane = lane
                         call.new_connection = getattr(stream, "new_connection", None)
                         self.limiters[call.model].update_from_headers(getattr(stream, "headers", {}) or {})
-                        call._stage("first_byte", lane=lane, new_connection=call.new_connection)
+                        call._stage("first_byte", lane=lane, new_connection=call.new_connection, **self._route_metrics(stream))
                         first.set()
                         for other, t in tasks.items():
                             if other != lane and not t.done():
@@ -1335,9 +1352,14 @@ class Brain:
             finally:
                 waiter.cancel()
             if hedge_after is not None and not first.is_set() and not tasks[lane0].done():
-                call.hedged = True
-                call._stage("hedge", after_s=hedge_after)
-                tasks[1 - lane0] = loop.create_task(attempt(1 - lane0))
+                if self._route_racing(call):
+                    # The transport is racing this request's proxy stream against the direct API (apiroute.RoutedStream): its
+                    # duplicate already goes to another host over another connection, a lane-1 one would go to the same proxy.
+                    call._stage("hedge_route", after_s=hedge_after)
+                else:
+                    call.hedged = True
+                    call._stage("hedge", after_s=hedge_after)
+                    tasks[1 - lane0] = loop.create_task(attempt(1 - lane0))
             results = await asyncio.gather(*tasks.values(), return_exceptions=True)
         finally:
             for t in tasks.values():

@@ -16,6 +16,7 @@ import time
 from dataclasses import dataclass, field
 from typing import AsyncIterator, Protocol
 
+from ..apiroute import CONTENT
 from .settings import HAIKU, SONNET
 
 
@@ -44,6 +45,11 @@ class StreamBroken(Offline):
     """A proxy stream that ended before the message was complete (apiroute.RoutedStream). To a caller it is a lost connection."""
 
 
+class StreamStalled(StreamBroken):
+    """A proxy that went quiet: no event for the idle limit mid-stream, or no response within prep's first-byte deadline
+    (apiroute.py). The failover reason is `stalled`."""
+
+
 class CreditExhausted(TransportError):
     kind = "credit_exhausted"
 
@@ -58,7 +64,7 @@ class BadRequest(TransportError):
 
 @dataclass
 class Ev:
-    kind: str                     # start | text | stop
+    kind: str                     # start | text | stop (and apiroute.CONTENT, a marker only routed streams yield, never a caller)
     text: str = ""
     stop_reason: str | None = None
     usage: dict = field(default_factory=dict)
@@ -149,19 +155,88 @@ def map_sdk_error(e: BaseException) -> TransportError:
     return TransportError(type(e).__name__)
 
 
+THINKING_BLOCKS = ("thinking", "redacted_thinking")
+
+
+class StreamTap:
+    """What apiroute.RoutedStream's idle limit reads from one SDK stream: `activity` counts every event the server sent (the
+    SDK drops `ping` events before its iterator yields them, so `attach` taps its raw event iterator, best effort, to count
+    those too) and `quiet_ok` is True inside a thinking block, where long silent gaps are normal. `saw` also tells the stream
+    when an event is its first content (the route race's milestone: apiroute.CONTENT)."""
+
+    def __init__(self) -> None:
+        self.activity = 0
+        self.quiet_ok = False
+        self.content_seen = False
+
+    def attach(self, sdk_stream) -> None:
+        """Count the raw server-sent events of an SDK `AsyncStream` that has not been iterated yet (pings included)."""
+        orig = getattr(sdk_stream, "_iter_events", None)
+        if orig is None:
+            return
+        tap = self
+
+        async def tapped():
+            it = orig()
+            try:
+                async for sse in it:
+                    tap.activity += 1
+                    yield sse
+            finally:
+                close = getattr(it, "aclose", None)
+                if close is not None:
+                    await close()
+
+        try:
+            sdk_stream._iter_events = tapped
+        except Exception:  # noqa: BLE001 - an SDK without that hook: only the parsed events count
+            pass
+
+    def saw(self, ev) -> bool:
+        """A parsed SDK event. True when it is the stream's first content event (a content_block_start or content_block_delta of
+        any kind, thinking included)."""
+        self.activity += 1
+        et = getattr(ev, "type", None)
+        if et == "content_block_start":
+            self.quiet_ok = getattr(getattr(ev, "content_block", None), "type", None) in THINKING_BLOCKS
+        elif et == "content_block_stop":
+            self.quiet_ok = False
+        if et in ("content_block_start", "content_block_delta") and not self.content_seen:
+            self.content_seen = True
+            return True
+        return False
+
+
 class _SdkStream:
-    def __init__(self, raw, sdk_stream, new_connection: bool | None):
+    """One SDK stream as normalized events. `marks`: also yield the apiroute.CONTENT marker at the first content event (only for
+    streams that apiroute.RoutedStream reads; it drops the marker)."""
+
+    def __init__(self, raw, sdk_stream, new_connection: bool | None, tap: bool = False, marks: bool = False):
         self.headers = pick_headers(raw.headers)
         self.request_id = raw.headers.get("request-id")
         self.new_connection = new_connection
         self._stream = sdk_stream
         self._closed = False
+        self._marks = marks
+        self._tap = StreamTap()
+        if tap:
+            self._tap.attach(sdk_stream)
+
+    @property
+    def activity(self) -> int:
+        return self._tap.activity
+
+    @property
+    def quiet_ok(self) -> bool:
+        return self._tap.quiet_ok
 
     async def __aiter__(self):
         usage: dict = {}
         stop_reason = None
         try:
             async for ev in self._stream:
+                if self._tap.saw(ev) and self._marks:
+                    yield Ev(CONTENT)
                 et = ev.type
                 if et == "message_start":
                     usage = _int_usage(ev.message.usage)
@@ -193,8 +268,14 @@ class AnthropicTransport:
 
     `api_key` is a key or an `apiroute.Credentials`; a bare key follows the configured route (apiroute.credentials_for). With a
     base URL there is one set of lanes per route (proxy, fallback) and `apiroute.Router` picks the route per request; with a
-    fallback the proxy's clients connect with a short timeout so a refused or dead local port fails over at once (a proxy that
-    accepts the connection and then stalls costs the read timeout, once per cool-off). Without one this is the single direct set."""
+    fallback the proxy's clients connect with a short timeout so a refused or dead local port fails over at once, and a proxy
+    that accepts the connection and then stalls is caught by the stall guards (apiroute.py: a stream races the fallback after
+    `HEDGE_S` without its first content, a started stream stalls after `IDLE_S` without an event; pre-warm, keep-alive and ping race
+    after `CALL_HEDGE_S`). Without one this is the single direct set.
+
+    Lane hedge and route race (engine.Brain.hedged_stream): while a stream's open is racing the proxy against the fallback
+    (`route_racing`), the engine does not start its lane-1 duplicate, which would go to the same proxy; the race already sends
+    the duplicate to a different host over a different connection."""
 
     def __init__(self, api_key, lanes: int = 2) -> None:
         import anthropic
@@ -204,6 +285,7 @@ class AnthropicTransport:
 
         creds = credentials_for(api_key)
         self.router = creds.router()
+        self._racing: dict[int, set] = {}      # id(request) -> its RoutedStreams whose open is under way
         self._anthropic = anthropic
         self._http: dict[tuple[str, str, int], object] = {}
         self._clients: dict[tuple[str, str, int], object] = {}
@@ -238,6 +320,8 @@ class AnthropicTransport:
         return c.beta.messages if route == "D" else c.messages
 
     async def _open(self, target: str, route: str, request: dict, lane: int) -> CallStream:
+        from ..apiroute import PROXY
+
         model = request["model"]
         before = self._conn_ids(target, model, lane)
         try:
@@ -249,14 +333,31 @@ class AnthropicTransport:
             raise
         except Exception as e:  # noqa: BLE001
             raise map_sdk_error(e) from None
-        return _SdkStream(raw, sdk_stream, new)
+        # With a base URL every stream is read by apiroute.RoutedStream, which races on the first content: mark it.
+        return _SdkStream(raw, sdk_stream, new, tap=target == PROXY, marks=bool(self.router.base_url))
 
     async def open_stream(self, route: str, request: dict, lane: int) -> CallStream:
         from ..apiroute import RoutedStream
 
         if not self.router.base_url:
             return await self._open(self.router.primary, route, request, lane)   # no base URL: the direct path, unwrapped
-        return await RoutedStream(self.router, lambda target: self._open(target, route, request, lane)).open()
+        rs = RoutedStream(self.router, lambda target: self._open(target, route, request, lane), key=request.get("model"))
+        # Keyed by id(request): the engine passes the very same `call.request` object to both lanes, which is what lets
+        # `route_racing` see lane 0's race from lane 1's decision. A copy of the request per lane would silently disable the
+        # stand-down (the lane hedge would then go to the proxy too).
+        opening = self._racing.setdefault(id(request), set())
+        opening.add(rs)
+        try:
+            return await rs.open()
+        finally:
+            opening.discard(rs)
+            if not opening and self._racing.get(id(request)) is opening:
+                del self._racing[id(request)]
+
+    def route_racing(self, request: dict) -> bool:
+        """True while an `open_stream` of this very request (the same object) races the proxy against the fallback and the
+        proxy attempt is still pending (apiroute.RoutedStream.racing)."""
+        return any(rs.racing for rs in self._racing.get(id(request), ()))
 
     async def _create(self, target: str, route: str, request: dict, lane: int) -> tuple[dict, dict, str | None]:
         model = request["model"]
@@ -270,7 +371,8 @@ class AnthropicTransport:
     async def create(self, route: str, request: dict, lane: int) -> tuple[dict, dict, str | None]:
         from ..apiroute import call_routed
 
-        return await call_routed(self.router, lambda target: self._create(target, route, request, lane))
+        return await call_routed(self.router, lambda target: self._create(target, route, request, lane),
+                                 hedge_s=self.router.call_hedge_s, key=request.get("model"))
 
     async def _ping(self, target: str, model: str, lane: int) -> dict:
         t0 = time.perf_counter()
@@ -284,7 +386,8 @@ class AnthropicTransport:
     async def ping(self, model: str, lane: int) -> dict:
         from ..apiroute import call_routed
 
-        return await call_routed(self.router, lambda target: self._ping(target, model, lane))
+        return await call_routed(self.router, lambda target: self._ping(target, model, lane), hedge_s=self.router.call_hedge_s,
+                                 key=model)
 
     async def aclose(self) -> None:
         for c in self._clients.values():

@@ -99,11 +99,19 @@ class AnthropicPrepModel:
         self._progress = progress
 
     async def _routed(self, fn):
-        """`await fn(client)` on the route the router picks; a proxy failure is retried from scratch on the fallback."""
-        from ..apiroute import call_routed
+        """`await fn(client)` on the route the router picks; a proxy failure is retried from scratch on the fallback. With a
+        fallback the proxy's client carries a first-byte deadline (`_FirstByteClient`), so a stalled proxy costs that deadline
+        instead of the 600 s read timeout."""
+        from ..apiroute import PROXY, call_routed
 
         primary = self._router.primary
-        return await call_routed(self._router, lambda t: fn(self._client if t == primary else self._clients[t]))
+        deadline = self._router.first_byte_s if self._router.has_fallback else None
+
+        def client_for(t: str):
+            c = self._client if t == primary else self._clients[t]
+            return _FirstByteClient(c, deadline, self._router.sleep) if t == PROXY and deadline is not None else c
+
+        return await call_routed(self._router, lambda t: fn(client_for(t)))
 
     async def generate(self, system: str, user: str, max_tokens: int, effort: str = "high") -> ModelOutput:
         return await self._routed(lambda c: self._generate_on(c, system, user, max_tokens, effort))
@@ -156,3 +164,51 @@ class AnthropicPrepModel:
     async def aclose(self) -> None:
         for c in {id(c): c for c in (self._client, *self._clients.values())}.values():
             await c.close()
+
+
+class _FirstByteClient:
+    """A prep model's proxy client with a first-byte deadline (apiroute.PREP_FIRST_BYTE_S): `messages.stream(...)` must deliver
+    its response headers, and `messages.count_tokens(...)` its answer, within `seconds`, else transport.StreamStalled, which
+    `call_routed` turns into a restart on the fallback (reason `stalled`). Only the start is bounded: a long thinking phase
+    after the headers is normal and is left to the read timeout. Everything else passes through to the SDK client."""
+
+    def __init__(self, client, seconds: float, sleep) -> None:
+        self._client = client
+        self.messages = _FirstByteMessages(client.messages, seconds, sleep)
+
+    def __getattr__(self, name: str):
+        return getattr(self._client, name)
+
+
+class _FirstByteMessages:
+    def __init__(self, messages, seconds: float, sleep) -> None:
+        self._messages, self._seconds, self._sleep = messages, seconds, sleep
+
+    def stream(self, **kw):
+        return _FirstByteStream(self._messages.stream(**kw), self._seconds, self._sleep)
+
+    async def count_tokens(self, **kw):
+        from ..apiroute import within
+
+        return await within(self._messages.count_tokens(**kw), self._seconds, self._sleep)
+
+    def __getattr__(self, name: str):
+        return getattr(self._messages, name)
+
+
+class _FirstByteStream:
+    """`async with` around an SDK stream manager whose entry (the request up to the response headers) is bounded."""
+
+    def __init__(self, manager, seconds: float, sleep) -> None:
+        self._manager, self._seconds, self._sleep = manager, seconds, sleep
+
+    async def __aenter__(self):
+        from ..apiroute import within
+
+        async def close_unused(_stream) -> None:      # headers arrived just as the deadline cancelled the entry
+            await self._manager.__aexit__(None, None, None)
+
+        return await within(self._manager.__aenter__(), self._seconds, self._sleep, "response headers", discard=close_unused)
+
+    async def __aexit__(self, *exc):
+        return await self._manager.__aexit__(*exc)
