@@ -15570,6 +15570,134 @@
           }
         }
       }
+    },
+    "Not inserted. It is on the clipboard: press ⌘V": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non inserito. È negli appunti: premi ⌘V"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eklenmedi. Panoda duruyor: ⌘V’ye basın"
+          }
+        }
+      }
+    },
+    "Preparing microphone…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparazione del microfono…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofon hazırlanıyor…"
+          }
+        }
+      }
+    },
+    "Finishing…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sto finendo…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bitiriliyor…"
+          }
+        }
+      }
+    },
+    "Listening…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In ascolto…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dinleniyor…"
+          }
+        }
+      }
+    },
+    "Show indicator while dictating": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra l’indicatore durante la dettatura"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikte sırasında göstergeyi göster"
+          }
+        }
+      }
+    },
+    "A small capsule at the top of the screen with the level and the time while you dictate.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Una piccola capsula in cima allo schermo con il livello e il tempo mentre detti."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikte ederken ekranın üstünde ses seviyesini ve süreyi gösteren küçük bir kapsül."
+          }
+        }
+      }
+    },
+    "Show live text": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra il testo dal vivo"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canlı metni göster"
+          }
+        }
+      }
+    },
+    "The indicator shows the last words recognised so far.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’indicatore mostra le ultime parole riconosciute finora."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gösterge şu ana kadar tanınan son kelimeleri gösterir."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

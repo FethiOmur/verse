@@ -3,7 +3,7 @@ import ApplicationServices
 import SwiftUI
 
 /// Settings > Dictation: the on/off switch, the two keys (Fn + Space and ⌃⌥⌘D) and Esc, the dictation language, the
-/// start/stop sounds, the vocabulary, and the Accessibility permission (granted, or missing with the way to System Settings: Fn + Space and typing both need it),
+/// start/stop sounds, the recording indicator (and its live text), the vocabulary, and the Accessibility permission (granted, or missing with the way to System Settings: Fn + Space and typing both need it),
 /// plus ⌃⌥⌘D held by another app.
 struct SettingsDictationSection: View {
     @ObservedObject var dictation: DictationController
@@ -82,6 +82,16 @@ struct SettingsDictationSection: View {
             HomeToggleRow("Dictation sounds", detail: "A short drum when listening starts, a softer one when it stops.",
                           isOn: $settings.sounds)
                 .disabled(!settings.enabled)
+            HomeRowDivider()
+            HomeToggleRow("Show indicator while dictating",
+                          detail: "A small capsule at the top of the screen with the level and the time while you dictate.",
+                          isOn: $settings.showIndicator)
+                .disabled(!settings.enabled)
+            HomeRowDivider()
+            HomeToggleRow("Show live text", detail: "The indicator shows the last words recognised so far.",
+                          isOn: $settings.indicatorLiveText)
+                .padding(.leading, 16)
+                .disabled(!settings.enabled || !settings.showIndicator)
             HomeRowDivider()
             VStack(alignment: .leading, spacing: 6) {
                 Text("Vocabulary", bundle: .module).font(VT.Font.body).foregroundStyle(ink.primary)

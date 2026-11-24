@@ -1,4 +1,5 @@
 import Foundation
+import os
 import VerseSpeech
 
 /// What dictation records and transcribes with. One instance per dictation: `begin`, then `finish` (or `cancel`).
@@ -22,6 +23,23 @@ public protocol DictationTranscribing: AnyObject {
     func finish(onCaptureClosed: @escaping @MainActor @Sendable () -> Void) async throws -> String
     /// Stops the microphone at once and drops everything. Safe at any time, also while `begin` is still under way.
     func cancel() async
+    /// What has been recognised so far (finals plus the volatile tail): the recording indicator's live text (gap G5).
+    var liveText: String { get }
+    /// The microphone's RMS since the previous call (nil: no audio arrived): the recording indicator's level (gap G5).
+    func takeMeterLevel() -> Float?
+}
+
+public extension DictationTranscribing {
+    var liveText: String { "" }
+    func takeMeterLevel() -> Float? { nil }
+}
+
+/// The live transcript, written by the event collector off the main actor and read by the indicator.
+final class DictationLiveText: @unchecked Sendable {
+    private let lock = OSAllocatedUnfairLock()
+    private var text = ""
+    var value: String { lock.lock(); defer { lock.unlock() }; return text }
+    func set(_ s: String) { lock.lock(); text = s; lock.unlock() }
 }
 
 /// Builds the transcript of one dictation from the engine's events: settled (final) text in order, plus a volatile tail that
@@ -75,6 +93,7 @@ struct DictationTranscript: Sendable, Equatable {
 @MainActor
 final class AppleDictationTranscriber: DictationTranscribing {
     private let meter = DictationInputMeter()
+    private let live = DictationLiveText()
     private var session: ListenSession?
     private var collector: Task<String, Never>?
     private var issueWatch: Task<Void, Never>?
@@ -118,6 +137,10 @@ final class AppleDictationTranscriber: DictationTranscribing {
 
     var inputLevel: DictationInputLevel { meter.level }
 
+    var liveText: String { live.value }
+
+    func takeMeterLevel() -> Float? { meter.takeMeterRMS() }
+
     func takeFrameRMS() -> Float? { meter.takeFrameRMS() }
 
     func begin(lang: String, vocabulary: [String], onFailure: @escaping @MainActor (String) -> Void) async throws {
@@ -129,9 +152,13 @@ final class AppleDictationTranscriber: DictationTranscribing {
             await s.stop()
             throw CancellationError()
         }
+        let live = self.live
         collector = Task.detached {
             var t = DictationTranscript()
-            for await e in stream { t.add(e) }
+            for await e in stream {
+                t.add(e)
+                live.set(t.text)
+            }
             return t.text
         }
         issueWatch = Task {

@@ -11,6 +11,12 @@ public enum DictationInsertOutcome: String, Sendable, Equatable {
     case copiedToClipboard
     /// Nothing to insert.
     case nothing
+    /// The paste went nowhere (gap G2: nothing editable had the focus, or the field did not change): the text was left on
+    /// the clipboard for the owner to paste, and the previous contents were not put back.
+    case notInserted
+    /// The paste went nowhere, and something else was copied meanwhile: that newer copy stays on the clipboard, so there is no
+    /// "press ⌘V" notice (the text is still in the recent list).
+    case notInsertedClipboardChanged
 }
 
 /// Puts dictated text where the keyboard focus is.
@@ -59,6 +65,11 @@ public protocol PasteKeystroke: AnyObject {
 /// the message in chat apps); the speed does not depend on the text's length; and it does not depend on the keyboard layout.
 /// What it costs is the pasteboard, so the previous contents are saved with every type and restored after the target app had
 /// time to read the paste, unless something else was copied in between.
+///
+/// Paste check (gap G2): the focused element is read before the paste (a few milliseconds for a healthy app, at most
+/// `SystemFocusProbe.budget` plus one message timeout for a slow one) and polled after it (`DictationPasteCheck`, at most 10 × 50 ms, inside the restore delay, so
+/// the restore keeps its timing). A miss leaves the text on the clipboard (no longer marked transient: the owner needs it),
+/// skips the restore and returns `.notInserted`; delivered and unverifiable behave as before.
 @MainActor
 public final class PasteboardTextInserter: DictationTextInserting {
     /// How long the target app gets to read the pasteboard before the previous contents come back.
@@ -67,17 +78,23 @@ public final class PasteboardTextInserter: DictationTextInserting {
     private let accessibility: any AccessibilityTrust
     private let pasteboard: any DictationPasteboard
     private let keystroke: any PasteKeystroke
+    private let focus: any DictationFocusProbing
     private let restoreDelay: Duration
     private let sleep: @Sendable (Duration) async -> Void
+    private let log: (String) -> Void
 
     public init(accessibility: (any AccessibilityTrust)? = nil, pasteboard: (any DictationPasteboard)? = nil,
-                keystroke: (any PasteKeystroke)? = nil, restoreDelay: Duration = PasteboardTextInserter.defaultRestoreDelay,
-                sleep: @escaping @Sendable (Duration) async -> Void = { try? await Task.sleep(for: $0) }) {
+                keystroke: (any PasteKeystroke)? = nil, focus: (any DictationFocusProbing)? = nil,
+                restoreDelay: Duration = PasteboardTextInserter.defaultRestoreDelay,
+                sleep: @escaping @Sendable (Duration) async -> Void = { try? await Task.sleep(for: $0) },
+                log: @escaping (String) -> Void = { FileLog.shared.write($0) }) {
         self.accessibility = accessibility ?? SystemAccessibilityTrust()
         self.pasteboard = pasteboard ?? SystemDictationPasteboard()
         self.keystroke = keystroke ?? CGPasteKeystroke()
+        self.focus = focus ?? SystemFocusProbe()
         self.restoreDelay = restoreDelay
         self.sleep = sleep
+        self.log = log
     }
 
     public func insert(_ text: String, mayPromptForPermission: Bool) async -> DictationInsertOutcome {
@@ -89,9 +106,37 @@ public final class PasteboardTextInserter: DictationTextInserting {
         }
         let saved = pasteboard.snapshot()
         let ours = pasteboard.write(text, transient: true)
+        let before = focus.snapshot()
         await keystroke.waitForModifierRelease()
         keystroke.postPaste()
-        await sleep(restoreDelay)
+
+        let verdict: DictationPasteCheck.Verdict
+        var waited: Duration = .zero
+        switch DictationPasteCheck.precheck(before) {
+        case .decided(let v):
+            verdict = v
+        case .poll:
+            var after: [DictationFocusSnapshot] = []
+            for _ in 0..<DictationPasteCheck.attempts {
+                await sleep(DictationPasteCheck.interval)
+                waited += DictationPasteCheck.interval
+                let a = focus.snapshot()
+                after.append(a)
+                // Stop at the first change, and at the first failure (a hung app would time out at every poll).
+                if a.kind == .unreadable || DictationPasteCheck.changed(from: before, to: a) { break }
+            }
+            verdict = DictationPasteCheck.verdict(before: before, after: after)
+        }
+        log("dictation: paste check \(verdict.label)")
+
+        if verdict.isMissed {
+            // Nothing read the paste: leave the text where the owner can paste it, kept by clipboard managers. Something
+            // copied meanwhile is newer and stays; the text is still in the recent list then.
+            guard pasteboard.changeCount == ours else { return .notInsertedClipboardChanged }
+            pasteboard.write(text, transient: false)
+            return .notInserted
+        }
+        if waited < restoreDelay { await sleep(restoreDelay - waited) }
         // Something copied meanwhile (by the owner or another app) is newer than what was saved: it stays.
         if pasteboard.changeCount == ours { pasteboard.restore(saved) }
         return .pasted

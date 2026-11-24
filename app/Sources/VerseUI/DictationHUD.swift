@@ -10,21 +10,22 @@ import SwiftUI
 @MainActor
 final class DictationHUD: DictationNotifying {
     static let duration: Duration = .milliseconds(2600)
+    /// Below the top of the visible frame when the recording indicator is not on screen.
+    static let topGap: CGFloat = 24
+    /// Between the recording indicator and a notice under it.
+    static let indicatorGap: CGFloat = 8
 
     private var panel: NSPanel?
     private var hideTask: Task<Void, Never>?
+    /// The recording indicator's frame while it is on screen (gap G5): a notice goes below it, never on top of it.
+    var avoid: (() -> NSRect?)?
 
     func show(_ notice: DictationNotice) {
         let panel = self.panel ?? makePanel()
         self.panel = panel
         let host = NSHostingView(rootView: DictationNoticeView(text: notice.text))
-        let size = host.fittingSize
         panel.contentView = host
-        if let screen = NSScreen.main {
-            let f = screen.visibleFrame
-            panel.setFrame(NSRect(x: f.midX - size.width / 2, y: f.maxY - size.height - 24, width: size.width, height: size.height),
-                           display: true)
-        }
+        place(panel, size: host.fittingSize)
         panel.orderFrontRegardless()
         hideTask?.cancel()
         hideTask = Task { [weak self] in
@@ -32,6 +33,30 @@ final class DictationHUD: DictationNotifying {
             guard !Task.isCancelled else { return }
             self?.panel?.orderOut(nil)
         }
+    }
+
+    /// The indicator appeared or grew: a notice on screen it would cover moves below it. One it does not cover stays put
+    /// (also when the indicator goes, so a notice never jumps while it is read).
+    func reposition() {
+        guard let panel, panel.isVisible, let r = avoid?(), panel.frame.maxY > r.minY - Self.indicatorGap else { return }
+        place(panel, size: panel.frame.size)
+    }
+
+    private func place(_ panel: NSPanel, size: CGSize) {
+        guard let main = NSScreen.main else { return }
+        let screens = NSScreen.screens.map { (frame: $0.frame, visible: $0.visibleFrame) }
+        panel.setFrame(Self.frame(size: size, screens: screens, mainVisible: main.visibleFrame, avoid: avoid?()), display: true)
+        panel.invalidateShadow()
+    }
+
+    /// The notice's frame: top centre of the main screen, or, while the recording indicator is on screen, under it on the
+    /// screen the indicator is on (the main screen may have changed since the indicator appeared).
+    static func frame(size: CGSize, screens: [(frame: NSRect, visible: NSRect)], mainVisible: NSRect, avoid: NSRect?) -> NSRect {
+        var f = mainVisible
+        if let r = avoid, let s = screens.first(where: { $0.frame.intersects(r) }) { f = s.visible }
+        var y = f.maxY - size.height - topGap
+        if let r = avoid { y = min(y, r.minY - indicatorGap - size.height) }
+        return NSRect(x: f.midX - size.width / 2, y: y, width: size.width, height: size.height)
     }
 
     private func makePanel() -> NSPanel {

@@ -33,6 +33,8 @@ public enum DictationNotice: Sendable, Equatable {
     case microphoneSilent
     /// The whole recording was exact silence and nothing was heard: nothing was inserted.
     case microphoneSilentNothingInserted
+    /// The paste went nowhere (gap G2): the text is on the clipboard.
+    case notInserted
 
     public var text: String {
         switch self {
@@ -44,6 +46,7 @@ public enum DictationNotice: Sendable, Equatable {
         case .cancelled: return L10n.tr("Dictation cancelled")
         case .microphoneSilent: return L10n.tr("No sound from the microphone. Is it muted?")
         case .microphoneSilentNothingInserted: return L10n.tr("No sound from the microphone: nothing was inserted. Is it muted?")
+        case .notInserted: return L10n.tr("Not inserted. It is on the clipboard: press ⌘V")
         }
     }
 }
@@ -90,6 +93,12 @@ public protocol DictationNotifying: AnyObject {
 ///   nowhere is still there), with the name of the app in front. The menu offers "Paste last dictation", "Copy last
 ///   dictation" and "Clear recent dictations" while dictation is on, no run is active and there is one. A cancelled, failed or
 ///   empty dictation is not added.
+/// - Paste check (G2): the inserter reads the focused element before the paste and polls it after (`DictationPasteCheck`).
+///   A paste that went nowhere returns `.notInserted`: the text stays on the clipboard and the notice says to press ⌘V. The
+///   same for "Paste last dictation".
+/// - Recording indicator (G5): `indicator` follows the phase (preparing until the first audio, recording, finishing) and a
+///   panel shows it top centre while a dictation is under way, never during a run, and only with the setting on. Notices go
+///   below it (`DictationHUD.avoid`).
 /// - Vocabulary (G3): `settings.vocabularyTerms` goes to the transcriber at every start; the Apple transcriber passes it on
 ///   only where the engine honours it (`AppleDictationTranscriber.config`).
 @MainActor
@@ -120,6 +129,7 @@ public final class DictationController: ObservableObject {
                 cancelArmed = armed
                 keyTap.setCancelArmed(armed)
             }
+            indicator.update(phase: phase, source: transcriber, runActive: runBlocks)
         }
     }
     /// The hot key is registered (the feature is on and the system accepted it).
@@ -134,6 +144,10 @@ public final class DictationController: ObservableObject {
     public let settings: DictationSettings
     /// The last dictations (gap G1).
     public let history: DictationHistory
+    /// The recording indicator's state (gap G5).
+    public let indicator: DictationIndicatorModel
+    /// Its window; nil in tests.
+    private let indicatorPanel: DictationIndicatorPanel?
     /// A meeting, a practice interview or another run holds (or is about to hold) the microphone. The app wires it
     /// (`VerseController.bindDictation`).
     public var isRunActive: () -> Bool = { false }
@@ -187,19 +201,30 @@ public final class DictationController: ObservableObject {
                 sounds: (any DictationSoundPlaying)? = nil, accessibility: (any AccessibilityTrust)? = nil,
                 ticker: Ticker? = nil, history: DictationHistory? = nil, pasteboard: (any DictationPasteboard)? = nil,
                 frontAppName: (@MainActor () -> String?)? = nil, now: (@MainActor () -> TimeInterval)? = nil,
-                sleep: (@Sendable (Duration) async -> Void)? = nil,
+                sleep: (@Sendable (Duration) async -> Void)? = nil, indicatorTicker: Ticker? = nil,
+                presentsIndicator: Bool = true,
                 log: @escaping (String) -> Void = { FileLog.shared.write($0) }) {
         self.settings = settings
+        let clock = now ?? { ProcessInfo.processInfo.systemUptime }
+        let indicator = DictationIndicatorModel(settings: settings, ticker: indicatorTicker ?? Self.timerTicker, now: clock)
+        self.indicator = indicator
+        let panel = presentsIndicator ? DictationIndicatorPanel(model: indicator) : nil
+        self.indicatorPanel = panel
         self.history = history ?? DictationHistory(log: log)
         self.pasteboard = pasteboard ?? SystemDictationPasteboard()
         self.frontAppName = frontAppName ?? { NSWorkspace.shared.frontmostApplication?.localizedName }
-        self.now = now ?? { ProcessInfo.processInfo.systemUptime }
+        self.now = clock
         self.sleep = sleep ?? { try? await Task.sleep(for: $0) }
         self.registrar = registrar ?? CarbonRegistrar()
         self.keyTap = keyTap ?? FnSpaceEventTap()
         self.makeTranscriber = makeTranscriber ?? { AppleDictationTranscriber() }
         self.inserter = inserter ?? PasteboardTextInserter()
-        self.notifier = notifier ?? DictationHUD()
+        let notifier = notifier ?? DictationHUD()
+        self.notifier = notifier
+        if let hud = notifier as? DictationHUD, let panel {
+            hud.avoid = { [weak panel] in panel?.visibleFrame }
+            panel.onFrameChange = { [weak hud] in hud?.reposition() }
+        }
         self.sounds = sounds ?? SynthDictationSoundPlayer()
         self.accessibility = accessibility ?? SystemAccessibilityTrust()
         self.ticker = ticker ?? Self.timerTicker
@@ -330,8 +355,10 @@ public final class DictationController: ObservableObject {
     public func observeRuns<P: Publisher>(_ active: P) where P.Output == Bool, P.Failure == Never {
         runSub = active.removeDuplicates().sink { [weak self] on in
             MainActor.assumeIsolated {
-                self?.runActive = on
-                if on { self?.runBecameActive() }
+                guard let self else { return }
+                self.runActive = on
+                self.indicator.update(phase: self.phase, source: self.transcriber, runActive: self.runBlocks)
+                if on { self.runBecameActive() }
             }
         }
     }
@@ -388,6 +415,7 @@ public final class DictationController: ObservableObject {
         let outcome = await inserter.insert(text, mayPromptForPermission: false)
         log("dictation: last dictation \(outcome.rawValue) chars=\(text.count)")
         if outcome == .copiedToClipboard { notifier.show(.copiedToClipboard) }
+        if outcome == .notInserted { notifier.show(.notInserted) }
         phase = .idle
     }
 
@@ -574,6 +602,7 @@ public final class DictationController: ObservableObject {
             if mayPrompt { settings.accessibilityPrompted = true }
             notifier.show(.copiedToClipboard)
         }
+        if outcome == .notInserted { notifier.show(.notInserted) }
         phase = .idle
     }
 

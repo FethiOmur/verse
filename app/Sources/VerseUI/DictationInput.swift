@@ -30,6 +30,8 @@ public final class DictationInputMeter: @unchecked Sendable {
     private var audioSeconds_: TimeInterval = 0
     private var frameSumSq = 0.0
     private var frameCount = 0
+    private var meterSumSq = 0.0
+    private var meterCount = 0
     private var onCaptureClosed: (@Sendable () -> Void)?
     private var captureClosed = false
 
@@ -50,6 +52,8 @@ public final class DictationInputMeter: @unchecked Sendable {
         if sampleRate > 0 { audioSeconds_ += Double(samples.count) / sampleRate }
         frameSumSq += s
         frameCount += samples.count
+        meterSumSq += s
+        meterCount += samples.count
     }
 
     /// Highest absolute sample since the dictation began; 0 when no audio arrived at all or every sample was exactly zero.
@@ -68,6 +72,15 @@ public final class DictationInputMeter: @unchecked Sendable {
         defer { frameSumSq = 0; frameCount = 0 }
         guard frameCount > 0 else { return nil }
         return Float((frameSumSq / Double(frameCount)).squareRoot())
+    }
+
+    /// RMS of the samples since the previous call (nil: none arrived): the recording indicator's level (gap G5). Its own
+    /// frame, so reading it never disturbs the release tail's `takeFrameRMS`.
+    public func takeMeterRMS() -> Float? {
+        lock.lock(); defer { lock.unlock() }
+        defer { meterSumSq = 0; meterCount = 0 }
+        guard meterCount > 0 else { return nil }
+        return Float((meterSumSq / Double(meterCount)).squareRoot())
     }
 
     /// Called once, right after the microphone's capture has stopped (`MeteredCaptureSource.stop`). Set before the stop;

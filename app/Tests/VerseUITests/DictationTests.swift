@@ -104,6 +104,10 @@ final class DictationTests: XCTestCase {
             return finishText
         }
         func cancel() async { cancelCalls += 1 }
+        /// The recording indicator's live text and level (gap G5).
+        var liveText = ""
+        var meterLevel: Float?
+        func takeMeterLevel() -> Float? { meterLevel }
         func releaseBegin() { beginGate?.resume(); beginGate = nil }
         func releaseFinish() { finishGate?.resume(); finishGate = nil }
         func failNow(_ why: String) { onFailure?(why) }
@@ -222,6 +226,7 @@ final class DictationTests: XCTestCase {
         let history: DictationHistory
         let pasteboard: FakePasteboard
         let frontApp: Box<String?>
+        let indicatorTicker: FakeTicker
         var last: FakeTranscriber? { made.value.last }
     }
 
@@ -237,6 +242,7 @@ final class DictationTests: XCTestCase {
         let sounds = FakeSounds(), ax = FakeAccessibility(trusted: false), ticker = FakeTicker(), logs = Box<[String]>([])
         let clock = FakeClock(), store = history ?? DictationHistory(fileURL: nil), pb = FakePasteboard()
         let frontApp = Box<String?>("Notes")
+        let indicatorTicker = FakeTicker()
         let c = DictationController(settings: settings, registrar: reg, keyTap: tap, makeTranscriber: {
             let t = FakeTranscriber()
             t.now = { clock.t }
@@ -245,10 +251,11 @@ final class DictationTests: XCTestCase {
             return t
         }, inserter: inserter ?? fakeInserter, notifier: notifier, sounds: sounds, accessibility: ax,
            ticker: { ticker.make($0, $1) }, history: store, pasteboard: pb, frontAppName: { frontApp.value },
-           now: { clock.t }, sleep: { d in await clock.sleep(d) }, log: { logs.value.append($0) })
+           now: { clock.t }, sleep: { d in await clock.sleep(d) }, indicatorTicker: { indicatorTicker.make($0, $1) },
+           presentsIndicator: false, log: { logs.value.append($0) })
         return Rig(controller: c, settings: settings, registrar: reg, keyTap: tap, inserter: fakeInserter, notifier: notifier,
                    made: made, sounds: sounds, ax: ax, ticker: ticker, logs: logs, clock: clock, history: store, pasteboard: pb,
-                   frontApp: frontApp)
+                   frontApp: frontApp, indicatorTicker: indicatorTicker)
     }
 
     private func waitUntil(_ what: String = "condition", _ cond: () -> Bool) async {
@@ -478,7 +485,7 @@ final class DictationTests: XCTestCase {
     func testMissingAccessibilityPutsTheTextOnTheClipboardAndPromptsOnce() async {
         let ax = FakeAccessibility(trusted: false), pb = FakePasteboard(), keys = FakeKeystroke()
         pb.externalCopy("what was there")
-        let inserter = PasteboardTextInserter(accessibility: ax, pasteboard: pb, keystroke: keys, sleep: { _ in })
+        let inserter = PasteboardTextInserter(accessibility: ax, pasteboard: pb, keystroke: keys, focus: FakeFocus(.unverifiableWeb), sleep: { _ in })
         let r = rig(inserter: inserter) { $0.finishText = "Şu an çalışmıyor" }
 
         await r.controller.press()
@@ -504,7 +511,7 @@ final class DictationTests: XCTestCase {
         pb.items = original
         let atPost = Box<String?>(nil)
         keys.onPost = { atPost.value = pb.string }
-        let inserter = PasteboardTextInserter(accessibility: ax, pasteboard: pb, keystroke: keys, sleep: { _ in })
+        let inserter = PasteboardTextInserter(accessibility: ax, pasteboard: pb, keystroke: keys, focus: FakeFocus(.unverifiableWeb), sleep: { _ in })
 
         let outcome = await inserter.insert("Ciao, com'è? 🇮🇹\nRiga due", mayPromptForPermission: true)
         XCTAssertEqual(outcome, .pasted)
@@ -519,7 +526,7 @@ final class DictationTests: XCTestCase {
     func testSomethingCopiedDuringThePasteIsNotOverwritten() async {
         let ax = FakeAccessibility(trusted: true), pb = FakePasteboard(), keys = FakeKeystroke()
         pb.externalCopy("old")
-        let inserter = PasteboardTextInserter(accessibility: ax, pasteboard: pb, keystroke: keys, sleep: { _ in
+        let inserter = PasteboardTextInserter(accessibility: ax, pasteboard: pb, keystroke: keys, focus: FakeFocus(.unverifiableWeb), sleep: { _ in
             await MainActor.run { pb.externalCopy("newer") }
         })
         _ = await inserter.insert("dictated", mayPromptForPermission: false)
@@ -528,7 +535,7 @@ final class DictationTests: XCTestCase {
 
     func testAnEmptyTextInsertsNothing() async {
         let ax = FakeAccessibility(trusted: true), pb = FakePasteboard(), keys = FakeKeystroke()
-        let inserter = PasteboardTextInserter(accessibility: ax, pasteboard: pb, keystroke: keys, sleep: { _ in })
+        let inserter = PasteboardTextInserter(accessibility: ax, pasteboard: pb, keystroke: keys, focus: FakeFocus(.unverifiableWeb), sleep: { _ in })
         let outcome = await inserter.insert("", mayPromptForPermission: true)
         XCTAssertEqual(outcome, .nothing)
         XCTAssertEqual(pb.changeCount, 0)
