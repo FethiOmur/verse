@@ -1,11 +1,13 @@
 import Combine
+import CoreGraphics
 import Foundation
 import VerseSpeech
 @testable import VerseUI
 import XCTest
 
-/// Dictation (⌃⌥⌘D): the controller's state machine, the run gate, the hot key's registration, the insertion paths and the
-/// transcript assembly. Everything is faked: no microphone, no key events, no pasteboard, no recognizer.
+/// Dictation (Fn + Space, ⌃⌥⌘D): the controller's state machine, the run gate, the keys' registration, the Fn + Space decision,
+/// the insertion paths and the transcript assembly. Everything is faked: no microphone, no key events, no event tap, no
+/// pasteboard, no recognizer.
 @MainActor
 final class DictationTests: XCTestCase {
 
@@ -23,6 +25,21 @@ final class DictationTests: XCTestCase {
         }
         func unregister(_ token: Int) { live[token] = nil }
         func press(_ id: UInt32) { live.values.first { $0.id == id }?.action() }
+    }
+
+    final class FakeKeyTap: DictationKeyTap {
+        var permitted = true
+        private(set) var installs = 0
+        private(set) var removes = 0
+        private(set) var onToggle: (@MainActor @Sendable () -> Void)?
+        var isInstalled: Bool { onToggle != nil }
+        func install(onToggle: @escaping @MainActor @Sendable () -> Void) -> Bool {
+            installs += 1
+            guard permitted else { return false }
+            self.onToggle = onToggle
+            return true
+        }
+        func remove() { removes += 1; onToggle = nil }
     }
 
     struct Boom: Error, CustomStringConvertible { var description: String }
@@ -125,6 +142,7 @@ final class DictationTests: XCTestCase {
         let controller: DictationController
         let settings: DictationSettings
         let registrar: FakeRegistrar
+        let keyTap: FakeKeyTap
         let inserter: FakeInserter
         let notifier: FakeNotifier
         let made: Box<[FakeTranscriber]>
@@ -137,15 +155,16 @@ final class DictationTests: XCTestCase {
         let settings = DictationSettings(defaults: defaults())
         settings.enabled = enabled
         settings.language = lang
-        let reg = FakeRegistrar(), fakeInserter = FakeInserter(), notifier = FakeNotifier()
+        let reg = FakeRegistrar(), tap = FakeKeyTap(), fakeInserter = FakeInserter(), notifier = FakeNotifier()
         let made = Box<[FakeTranscriber]>([])
-        let c = DictationController(settings: settings, registrar: reg, makeTranscriber: {
+        let c = DictationController(settings: settings, registrar: reg, keyTap: tap, makeTranscriber: {
             let t = FakeTranscriber()
             prepare(t)
             made.value.append(t)
             return t
         }, inserter: inserter ?? fakeInserter, notifier: notifier, log: { _ in })
-        return Rig(controller: c, settings: settings, registrar: reg, inserter: fakeInserter, notifier: notifier, made: made)
+        return Rig(controller: c, settings: settings, registrar: reg, keyTap: tap, inserter: fakeInserter, notifier: notifier,
+                   made: made)
     }
 
     private func waitUntil(_ what: String = "condition", _ cond: () -> Bool) async {
@@ -522,18 +541,199 @@ final class DictationTests: XCTestCase {
 
     func testSettingsAreOffByDefaultAndPersist() {
         let d = defaults()
-        let s = DictationSettings(defaults: d)
+        let s = DictationSettings(defaults: d, preferredLanguages: ["en-US"])
         XCTAssertFalse(s.enabled)
         XCTAssertEqual(s.language, "en")
         XCTAssertFalse(s.accessibilityPrompted)
         s.enabled = true
         s.language = "tr"
         s.accessibilityPrompted = true
-        let again = DictationSettings(defaults: d)
+        let again = DictationSettings(defaults: d, preferredLanguages: ["it-IT"])
         XCTAssertTrue(again.enabled)
-        XCTAssertEqual(again.language, "tr")
+        XCTAssertEqual(again.language, "tr", "a chosen language wins over the system's")
         XCTAssertTrue(again.accessibilityPrompted)
         d.set("de", forKey: "dictationLanguage")
-        XCTAssertEqual(DictationSettings(defaults: d).language, "en", "an unknown language falls back")
+        XCTAssertEqual(DictationSettings(defaults: d, preferredLanguages: ["en-US"]).language, "en", "an unknown language falls back")
+        XCTAssertEqual(DictationSettings(defaults: d, preferredLanguages: ["tr-TR"]).language, "tr",
+                       "to the system's language, not always English")
+    }
+
+    func testTheDefaultLanguageIsTheFirstSupportedPreferredLanguage() {
+        let table: [([String], String)] = [
+            (["tr-TR", "en-US"], "tr"),
+            (["en-GB", "tr-TR"], "en"),
+            (["it_IT"], "it"),
+            (["de-DE", "tr-TR"], "tr"),
+            (["de-DE", "fr-FR"], "en"),
+            (["tr"], "tr"),
+            ([], "en"),
+        ]
+        for (preferred, want) in table {
+            XCTAssertEqual(DictationSettings.defaultLanguage(preferred: preferred), want, "\(preferred)")
+        }
+        let d = defaults()
+        XCTAssertEqual(DictationSettings(defaults: d, preferredLanguages: ["tr-TR", "en-US"]).language, "tr",
+                       "a first dictation on a Turkish Mac listens in Turkish")
+        XCTAssertNil(d.string(forKey: "dictationLanguage"), "the default is not stored: it follows the system until chosen")
+    }
+
+    // MARK: Fn + Space
+
+    private static let fn = CGEventFlags.maskSecondaryFn
+    private static let space = FnSpaceFilter.spaceKeyCode
+
+    func testFnSpaceDecisionTable() {
+        struct Row { let type: CGEventType; let key: Int64; let flags: CGEventFlags; let isRepeat: Bool; let want: FnSpaceDecision; let why: String }
+        let rows: [Row] = [
+            Row(type: .keyDown, key: Self.space, flags: Self.fn, isRepeat: false, want: .toggle, why: "Fn + Space"),
+            Row(type: .keyDown, key: Self.space, flags: [Self.fn, .maskAlphaShift], isRepeat: false, want: .toggle, why: "Caps Lock does not count"),
+            Row(type: .keyDown, key: Self.space, flags: [Self.fn, .maskNumericPad], isRepeat: false, want: .toggle, why: "the numeric-pad flag does not count"),
+            Row(type: .keyDown, key: Self.space, flags: [], isRepeat: false, want: .pass, why: "a plain space is typed"),
+            Row(type: .keyDown, key: Self.space, flags: [Self.fn, .maskShift], isRepeat: false, want: .pass, why: "Fn ⇧ Space is another combination"),
+            Row(type: .keyDown, key: Self.space, flags: [Self.fn, .maskControl], isRepeat: false, want: .pass, why: "Fn ⌃ Space"),
+            Row(type: .keyDown, key: Self.space, flags: [Self.fn, .maskAlternate], isRepeat: false, want: .pass, why: "Fn ⌥ Space"),
+            Row(type: .keyDown, key: Self.space, flags: [Self.fn, .maskCommand], isRepeat: false, want: .pass, why: "Fn ⌘ Space"),
+            Row(type: .keyDown, key: Self.space, flags: .maskCommand, isRepeat: false, want: .pass, why: "⌘ Space (Spotlight)"),
+            Row(type: .keyDown, key: Self.space, flags: Self.fn, isRepeat: true, want: .pass, why: "a repeat never toggles"),
+            Row(type: .keyDown, key: 2, flags: Self.fn, isRepeat: false, want: .pass, why: "Fn + D is not ours"),
+            Row(type: .keyDown, key: 123, flags: Self.fn, isRepeat: false, want: .pass, why: "arrow keys carry the Fn flag by themselves"),
+            Row(type: .keyUp, key: Self.space, flags: Self.fn, isRepeat: false, want: .pass, why: "a key-up alone is not ours"),
+            Row(type: .flagsChanged, key: 63, flags: Self.fn, isRepeat: false, want: .pass, why: "the Fn key itself"),
+        ]
+        for r in rows {
+            var f = FnSpaceFilter()
+            XCTAssertEqual(f.decide(type: r.type, keyCode: r.key, flags: r.flags, isRepeat: r.isRepeat), r.want, r.why)
+        }
+    }
+
+    func testAHeldFnSpaceTogglesOnceAndSwallowsItsRepeatsAndKeyUp() {
+        var f = FnSpaceFilter()
+        XCTAssertEqual(f.decide(type: .keyDown, keyCode: Self.space, flags: Self.fn, isRepeat: false), .toggle)
+        XCTAssertEqual(f.decide(type: .keyDown, keyCode: Self.space, flags: Self.fn, isRepeat: true), .swallow)
+        XCTAssertEqual(f.decide(type: .keyDown, keyCode: Self.space, flags: [], isRepeat: true), .swallow,
+                       "Fn let go first: the held space still types nothing")
+        XCTAssertEqual(f.decide(type: .keyDown, keyCode: 0, flags: [], isRepeat: false), .pass, "other keys meanwhile are untouched")
+        XCTAssertEqual(f.decide(type: .keyUp, keyCode: Self.space, flags: [], isRepeat: false), .swallow)
+        XCTAssertFalse(f.swallowing)
+        XCTAssertEqual(f.decide(type: .keyUp, keyCode: Self.space, flags: [], isRepeat: false), .pass, "only the one key-up")
+        // A plain space afterwards is typed, repeats included.
+        XCTAssertEqual(f.decide(type: .keyDown, keyCode: Self.space, flags: [], isRepeat: false), .pass)
+        XCTAssertEqual(f.decide(type: .keyDown, keyCode: Self.space, flags: [], isRepeat: true), .pass)
+        XCTAssertEqual(f.decide(type: .keyUp, keyCode: Self.space, flags: [], isRepeat: false), .pass)
+        // The second press stops.
+        XCTAssertEqual(f.decide(type: .keyDown, keyCode: Self.space, flags: Self.fn, isRepeat: false), .toggle)
+    }
+
+    func testFnSpaceIsInstalledOnlyWhileDictationIsOnAndToggles() async {
+        let r = rig(enabled: false)
+        r.controller.refreshFnSpace()
+        XCTAssertEqual(r.keyTap.installs, 0, "nothing before activation")
+        r.controller.activate()
+        XCTAssertEqual(r.keyTap.installs, 0, "off: no tap")
+        XCTAssertFalse(r.controller.fnSpaceActive)
+
+        r.settings.enabled = true
+        XCTAssertTrue(r.keyTap.isInstalled)
+        XCTAssertTrue(r.controller.fnSpaceActive)
+        XCTAssertFalse(r.controller.fnSpaceUnavailable)
+        r.controller.refreshFnSpace()
+        XCTAssertEqual(r.keyTap.installs, 1, "no second tap")
+
+        r.keyTap.onToggle?()
+        await waitUntil("recording") { r.controller.phase == .recording }
+        r.keyTap.onToggle?()
+        await waitUntil("inserted") { r.inserter.calls.count == 1 }
+        XCTAssertEqual(r.controller.phase, .idle)
+
+        r.settings.enabled = false
+        XCTAssertFalse(r.keyTap.isInstalled, "removed when dictation is turned off")
+        XCTAssertEqual(r.keyTap.removes, 1)
+        XCTAssertFalse(r.controller.fnSpaceActive)
+        r.settings.enabled = true
+        XCTAssertTrue(r.keyTap.isInstalled)
+        r.controller.deactivate()
+        XCTAssertFalse(r.keyTap.isInstalled)
+    }
+
+    func testWithoutThePermissionOnlyTheHotKeyWorksUntilItIsGranted() async {
+        let r = rig(enabled: true)
+        r.keyTap.permitted = false
+        r.controller.activate()
+        XCTAssertFalse(r.controller.fnSpaceActive)
+        XCTAssertTrue(r.controller.fnSpaceUnavailable, "Settings says what to grant")
+        XCTAssertTrue(r.controller.hotKeyRegistered, "⌃⌥⌘D does not need it")
+
+        r.registrar.press(DictationController.hotKeyID)
+        await waitUntil("recording") { r.controller.phase == .recording }
+        XCTAssertFalse(r.controller.fnSpaceActive)
+
+        // Granted in System Settings: the next press (or the Settings page) installs the tap.
+        r.keyTap.permitted = true
+        r.registrar.press(DictationController.hotKeyID)
+        await waitUntil("inserted") { r.inserter.calls.count == 1 }
+        XCTAssertTrue(r.controller.fnSpaceActive)
+        XCTAssertFalse(r.controller.fnSpaceUnavailable)
+    }
+
+    func testFnSpaceWhileVerseListensDoesNothingButANotice() async {
+        let r = rig(enabled: true)
+        r.controller.isRunActive = { true }
+        r.controller.activate()
+        r.keyTap.onToggle?()
+        await waitUntil("notice") { !r.notifier.notices.isEmpty }
+        XCTAssertEqual(r.notifier.notices, [.busy])
+        XCTAssertTrue(r.made.value.isEmpty)
+    }
+
+    func testTheSettingsTextsNameBothKeys() {
+        for s in [SettingsDictationSection.status(hotKeyRefused: false, fnSpaceActive: true),
+                  SettingsDictationSection.status(hotKeyRefused: false, fnSpaceActive: false),
+                  SettingsDictationSection.shortcutsDetail, SettingsDictationSection.accessibilityDetail] {
+            XCTAssertTrue(s.contains("Fn + Space"), s)
+            XCTAssertTrue(s.contains("⌃⌥⌘D"), s)
+        }
+        XCTAssertTrue(SettingsDictationSection.status(hotKeyRefused: true, fnSpaceActive: true).contains("Fn + Space"),
+                      "⌃⌥⌘D taken: Fn + Space still works")
+    }
+
+    // MARK: hot key ids
+
+    /// Every key the app registers through `CarbonRegistrar` shares the signature 'VRHQ' and one action table keyed by id, so
+    /// two features on one id would run each other's action (dictation and the earlier-answer key both had 3).
+    func testEveryHotKeyIdUnderTheSharedSignatureIsDistinct() async {
+        let reg = FakeRegistrar()
+        let fired = Box<[String]>([])
+        let keys = GlobalHotKeys(registrar: reg, onStartStop: { fired.value.append("startStop") }, onCardNow: {},
+                                 onEarlierAnswer: { fired.value.append("earlier") }, lessThanKeyCodes: { [50] })
+        keys.registerStartStop()
+        keys.registerStartUnprepared()
+        keys.setSessionRunning(true)
+        let settings = DictationSettings(defaults: defaults(), preferredLanguages: ["en"])
+        settings.enabled = true
+        let made = Box<[FakeTranscriber]>([])
+        let dictation = DictationController(settings: settings, registrar: reg, keyTap: FakeKeyTap(), makeTranscriber: {
+            let t = FakeTranscriber()
+            made.value.append(t)
+            return t
+        }, inserter: FakeInserter(), notifier: FakeNotifier(), log: { _ in })
+        dictation.activate()
+
+        let ids = reg.live.values.map(\.id)
+        XCTAssertEqual(ids.count, 9, "⌥⌘V, ⌥⇧⌘V, the six session keys and ⌃⌥⌘D")
+        XCTAssertEqual(Set(ids).count, ids.count, "ids \(ids.sorted()) repeat")
+        let declared: [UInt32] = [GlobalHotKeys.startStopID, GlobalHotKeys.cardNowID, GlobalHotKeys.earlierAnswerID,
+                                  GlobalHotKeys.newerAnswerID, GlobalHotKeys.earlierAnswerShiftID, GlobalHotKeys.startUnpreparedID,
+                                  GlobalHotKeys.regenerateID, GlobalHotKeys.markBadID, DictationController.hotKeyID]
+        XCTAssertEqual(Set(declared).count, declared.count)
+
+        // ⌃⌥⌘D during a session presses dictation (its gate then decides), never the earlier answer.
+        reg.press(DictationController.hotKeyID)
+        await waitUntil("recording") { dictation.phase == .recording }
+        XCTAssertEqual(fired.value, [])
+        // The session ends: ⌃⌥⌘D keeps its action.
+        keys.setSessionRunning(false)
+        XCTAssertTrue(reg.live.values.contains { $0.id == DictationController.hotKeyID })
+        dictation.deactivate()
+        keys.unregisterAll()
     }
 }

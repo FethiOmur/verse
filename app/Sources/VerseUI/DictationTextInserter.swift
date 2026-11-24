@@ -146,7 +146,8 @@ final class SystemDictationPasteboard: DictationPasteboard {
 /// ⌘V as two HID-level key events. kVK_ANSI_V is a physical key position: V on the US, Italian and Turkish Q layouts.
 final class CGPasteKeystroke: PasteKeystroke {
     func waitForModifierRelease() async {
-        let held: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift]
+        // Fn too: the second press of Fn + Space may still be held when the paste goes out.
+        let held: CGEventFlags = [.maskCommand, .maskAlternate, .maskControl, .maskShift, .maskSecondaryFn]
         for _ in 0..<50 {   // at most a second
             if CGEventSource.flagsState(.combinedSessionState).intersection(held).isEmpty { return }
             try? await Task.sleep(for: .milliseconds(20))

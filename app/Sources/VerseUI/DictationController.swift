@@ -45,23 +45,32 @@ public protocol DictationNotifying: AnyObject {
     func show(_ notice: DictationNotice)
 }
 
-/// Dictation: ⌃⌥⌘D starts recording the microphone, ⌃⌥⌘D again stops, and the transcript is inserted where the keyboard
-/// focus is. Toggle only. It never runs while a meeting or another run is active and never starts one; a run that starts
-/// while it records cancels it (`observeRuns`). The hot key is registered only while the feature is on.
+/// Dictation: Fn + Space (or ⌃⌥⌘D) starts recording the microphone, the same key again stops, and the transcript is inserted
+/// where the keyboard focus is. Toggle only. It never runs while a meeting or another run is active and never starts one; a run
+/// that starts while it records cancels it (`observeRuns`). Both keys exist only while the feature is on: ⌃⌥⌘D is a Carbon hot
+/// key (no permission), Fn + Space an event tap (`FnSpaceEventTap`, needs Accessibility; without it only ⌃⌥⌘D works).
 @MainActor
 public final class DictationController: ObservableObject {
-    /// The hot key's id in the shared Carbon handler (`GlobalHotKeys` uses 1 and 2).
-    public static let hotKeyID: UInt32 = 3
+    /// The hot key's id in the shared Carbon handler (`CarbonRegistrar`, signature 'VRHQ'). `GlobalHotKeys` uses 1...7 and 9 under
+    /// the same signature, and the registrar's action table is keyed by id alone, so the id must be none of theirs (it was 3,
+    /// the earlier-answer key's id: a call's ⌥⌘← took over ⌃⌥⌘D's action and removed it when the call ended).
+    public static let hotKeyID: UInt32 = 10
     /// ⌃⌥⌘D. Verse holds ⌥⌘V, ⌥⌘↩, ⌥Space and ⌃⌥ plus a letter (the prompter); macOS holds ⌥⌘D (Dock) and ⌃⌘D (look up),
     /// and window managers use ⌃⌥ plus a letter. Three modifiers keep it clear of all of them.
     public static let hotKey = HotKeySpec(keyCode: UInt32(kVK_ANSI_D), modifiers: UInt32(controlKey | optionKey | cmdKey))
     public static let hotKeyLabel = "⌃⌥⌘D"
+    /// The main key, the one TypeWhisper-style dictation apps use.
+    public static let fnSpaceLabel = "Fn + Space"
 
     @Published public private(set) var phase: DictationPhase = .idle
     /// The hot key is registered (the feature is on and the system accepted it).
     @Published public private(set) var hotKeyRegistered = false
     /// The feature is on but the system refused the hot key (another app holds it). Settings says so.
     @Published public private(set) var hotKeyRefused = false
+    /// Fn + Space is live (the feature is on and the tap is installed).
+    @Published public private(set) var fnSpaceActive = false
+    /// The feature is on but Fn + Space could not be installed (the Accessibility permission is missing). Settings says so.
+    @Published public private(set) var fnSpaceUnavailable = false
 
     public let settings: DictationSettings
     /// A meeting, a practice interview or another run holds (or is about to hold) the microphone. The app wires it
@@ -69,6 +78,7 @@ public final class DictationController: ObservableObject {
     public var isRunActive: () -> Bool = { false }
 
     private let registrar: any HotKeyRegistrar
+    private let keyTap: any DictationKeyTap
     private let makeTranscriber: @MainActor () -> any DictationTranscribing
     private let inserter: any DictationTextInserting
     private let notifier: any DictationNotifying
@@ -86,11 +96,13 @@ public final class DictationController: ObservableObject {
     private(set) var pendingRelease: Task<Void, Never>?
 
     public init(settings: DictationSettings = DictationSettings(), registrar: (any HotKeyRegistrar)? = nil,
+                keyTap: (any DictationKeyTap)? = nil,
                 makeTranscriber: (@MainActor () -> any DictationTranscribing)? = nil,
                 inserter: (any DictationTextInserting)? = nil, notifier: (any DictationNotifying)? = nil,
                 log: @escaping (String) -> Void = { FileLog.shared.write($0) }) {
         self.settings = settings
         self.registrar = registrar ?? CarbonRegistrar()
+        self.keyTap = keyTap ?? FnSpaceEventTap()
         self.makeTranscriber = makeTranscriber ?? { AppleDictationTranscriber() }
         self.inserter = inserter ?? PasteboardTextInserter()
         self.notifier = notifier ?? DictationHUD()
@@ -129,6 +141,8 @@ public final class DictationController: ObservableObject {
             hotKeyRegistered = token != nil
             hotKeyRefused = token == nil
             log(token == nil ? "dictation: \(Self.hotKeyLabel) is taken by another app" : "dictation: \(Self.hotKeyLabel) registered")
+            // `$enabled` sends the new value before the property changes: pass it on.
+            installFnSpace(enabled: true)
         } else {
             if let t = token {
                 registrar.unregister(t)
@@ -137,8 +151,33 @@ public final class DictationController: ObservableObject {
             token = nil
             hotKeyRegistered = false
             hotKeyRefused = false
+            if fnSpaceActive {
+                keyTap.remove()
+                log("dictation: \(Self.fnSpaceLabel) removed")
+            }
+            fnSpaceActive = false
+            fnSpaceUnavailable = false
             cancelCurrent(notice: nil)
         }
+    }
+
+    /// Installs Fn + Space when the feature is on and it is not live yet (the permission may have been granted since the last
+    /// try). Called when the feature turns on, when Settings shows the dictation section, and at every press of a dictation key.
+    /// Never shows a permission prompt, so it is safe at any time, also during a call.
+    public func refreshFnSpace() { installFnSpace(enabled: settings.enabled) }
+
+    private func installFnSpace(enabled: Bool) {
+        guard activated, enabled, !fnSpaceActive else { return }
+        let ok = keyTap.install { [weak self] in
+            Task { await self?.press() }
+        }
+        fnSpaceActive = ok
+        if ok {
+            log("dictation: \(Self.fnSpaceLabel) installed")
+        } else if !fnSpaceUnavailable {
+            log("dictation: \(Self.fnSpaceLabel) unavailable (no Accessibility permission); \(Self.hotKeyLabel) only")
+        }
+        fnSpaceUnavailable = !ok
     }
 
     // MARK: runs
@@ -161,8 +200,9 @@ public final class DictationController: ObservableObject {
 
     // MARK: the key
 
-    /// One press of the hot key: idle starts, recording stops and inserts. Presses while finalising or inserting are ignored.
+    /// One press of a dictation key (Fn + Space or ⌃⌥⌘D): idle starts, recording stops and inserts. Presses while finalising or inserting are ignored.
     public func press() async {
+        refreshFnSpace()
         switch phase {
         case .idle: await startRecording()
         case .recording: await finishRecording()

@@ -168,6 +168,38 @@
         }
       }
     },
+    "%@ is used by another app, so dictation cannot start. Free it there and turn dictation off and on.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ è usato da un’altra app, quindi la dettatura non può partire. Liberalo lì e spegni e riaccendi la dettatura."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ başka bir uygulama tarafından kullanılıyor, bu yüzden dikte başlayamıyor. Orada serbest bırak, sonra dikteyi kapatıp yeniden aç."
+          }
+        }
+      }
+    },
+    "%@ is used by another app; %@ still works.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ è usato da un’altra app; %@ funziona comunque."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ başka bir uygulama tarafından kullanılıyor; %@ yine de çalışır."
+          }
+        }
+      }
+    },
     "%@ is using the microphone": {
       "localizations": {
         "it": {
@@ -196,6 +228,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ anahtarı"
+          }
+        }
+      }
+    },
+    "%@ or %@. If the 🌐 key also switches the input source or opens emoji, set System Settings › Keyboard › “Press 🌐 key to” to “Do Nothing”.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ o %@. Se il tasto 🌐 cambia anche la sorgente di input o apre le emoji, imposta Impostazioni di Sistema › Tastiera › “Premi il tasto 🌐 per” su “Non fare nulla”."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ veya %@. 🌐 tuşu giriş kaynağını da değiştiriyor ya da emojileri açıyorsa Sistem Ayarları › Klavye › “🌐 tuşuna basıldığında” seçeneğini “Hiçbir Şey Yapma” yap."
           }
         }
       }
@@ -1586,6 +1634,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hazırladığın bir toplantıdan veya bir iş ilanından oluşturulan sesli deneme mülakatı."
+          }
+        }
+      }
+    },
+    "Accessibility permission": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permesso Accessibilità"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erişilebilirlik izni"
           }
         }
       }
@@ -4175,6 +4239,118 @@
         }
       }
     },
+    "Dictation": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dettatura"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikte"
+          }
+        }
+      }
+    },
+    "Dictation failed: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dettatura non riuscita: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikte başarısız oldu: %@"
+          }
+        }
+      }
+    },
+    "Dictation heard nothing": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dettatura non ha sentito nulla"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikte hiçbir şey duymadı"
+          }
+        }
+      }
+    },
+    "Dictation is off while Verse is listening": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dettatura è spenta mentre Verse ascolta"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verse dinlerken dikte kapalı"
+          }
+        }
+      }
+    },
+    "Dictation language": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lingua della dettatura"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikte dili"
+          }
+        }
+      }
+    },
+    "Dictation shortcuts": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scorciatoie della dettatura"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikte kısayolları"
+          }
+        }
+      }
+    },
+    "Dictation stopped: Verse started listening": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dettatura interrotta: Verse ha iniziato ad ascoltare"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikte durdu: Verse dinlemeye başladı"
+          }
+        }
+      }
+    },
     "Difficulty": {
       "localizations": {
         "it": {
@@ -5483,6 +5659,22 @@
         }
       }
     },
+    "Keyboard Settings…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impostazioni Tastiera…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Klavye Ayarları…"
+          }
+        }
+      }
+    },
     "Language": {
       "localizations": {
         "it": {
@@ -6391,6 +6583,22 @@
         }
       }
     },
+    "Missing: dictated text goes to the clipboard instead of being typed, and %@ does not work (%@ does).": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manca: il testo dettato va negli appunti invece di essere scritto, e %@ non funziona (%@ sì)."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eksik: dikte edilen metin yazılmak yerine panoya gider ve %@ çalışmaz (%@ çalışır)."
+          }
+        }
+      }
+    },
     "Mixed": {
       "localizations": {
         "it": {
@@ -6899,6 +7107,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sıradaki: %@ %@ — hazırlanıyor…"
+          }
+        }
+      }
+    },
+    "No Accessibility permission: the text is on the clipboard. Paste it with ⌘V.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun permesso Accessibilità: il testo è negli appunti. Incollalo con ⌘V."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erişilebilirlik izni yok: metin panoda. ⌘V ile yapıştır."
           }
         }
       }
@@ -7917,6 +8141,22 @@
         }
       }
     },
+    "Open System Settings…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apri Impostazioni di Sistema…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistem Ayarları’nı Aç…"
+          }
+        }
+      }
+    },
     "Open Verse": {
       "localizations": {
         "it": {
@@ -8787,6 +9027,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sun"
+          }
+        }
+      }
+    },
+    "Press %@ or %@, speak, press it again: the text goes where the cursor is. On-device; never while Verse is listening.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premi %@ o %@, parla, premilo di nuovo: il testo va dove si trova il cursore. Sul dispositivo; mai mentre Verse ascolta."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ veya %@ tuşuna bas, konuş, tekrar bas: metin imlecin olduğu yere gider. Cihaz üzerinde; Verse dinlerken asla."
           }
         }
       }
