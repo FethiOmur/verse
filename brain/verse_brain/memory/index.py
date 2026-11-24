@@ -18,7 +18,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Collection, Iterable, Iterator
 from urllib.parse import quote
 
 from ..prep.voice import strip_voice
@@ -472,12 +472,21 @@ class MemoryIndex:
     def count_pending(self, model_sha: str) -> int:
         return self.con.execute(f"SELECT count(*) FROM chunks c {self._pending_where()}", (model_sha,)).fetchone()[0]
 
-    def pending_vectors(self, model_sha: str, limit: int) -> list[tuple[int, str]]:
-        """(chunk id, text to embed) of chunks without a vector for this model, newest session first."""
+    def pending_vectors(self, model_sha: str, limit: int, skip: Collection[int] = ()) -> list[tuple[int, str]]:
+        """(chunk id, text to embed) of chunks without a vector for this model, newest session first. `skip`: chunk ids this
+        run has given up on (they stay pending for the next run, but must not come back in this one)."""
         cur = self.con.execute(
             f"SELECT c.id, c.label, c.text FROM chunks c JOIN sessions s ON s.name = c.session {self._pending_where()} "
-            "ORDER BY s.date DESC, c.id LIMIT ?", (model_sha, limit))
-        return [(i, index_text(lab, text)) for i, lab, text in cur]
+            "ORDER BY s.date DESC, c.id LIMIT ?", (model_sha, limit + len(skip)))
+        return [(i, index_text(lab, text)) for i, lab, text in cur if i not in skip][:limit]
+
+    def chunk_sessions(self, ids: list[int]) -> dict[int, str]:
+        """chunk id -> session name (for log lines: names and ids only, never text)."""
+        out: dict[int, str] = {}
+        for i in range(0, len(ids), 500):
+            part = ids[i:i + 500]
+            out.update(self.con.execute(f"SELECT id, session FROM chunks WHERE id IN ({_marks(len(part))})", part))
+        return out
 
     def store_vectors(self, model_sha: str, items: list[tuple[int, list[float]]]) -> None:
         with self._tx():

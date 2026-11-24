@@ -4,7 +4,9 @@ of the memory index while it runs.
 Swift sends `memory_index_start`, one `sync` (the complete manifest), a `put` for every session in `sync_plan.need`, then `end`.
 Phase 1 is the `put`s (rows, chunks and FTS in one transaction each); phase 2, on `end`, embeds every chunk that has no vector for
 the current model, newest session first, in batches, with `embed_progress`. A killed process loses nothing: the fingerprint is
-written by phase 1's transaction and phase 2 resumes on the next run. One writer: `flock` on `index.lock`; a second indexer
+written by phase 1's transaction and phase 2 resumes on the next run (it embeds whatever chunk has no vector, whether or not the
+sync plan asks for the session again). A chunk longer than the model's input is embedded in pieces whose vectors are averaged;
+one chunk that cannot be embedded is skipped and counted, a dead engine stops the run. One writer: `flock` on `index.lock`; a second indexer
 answers `status busy` and exits. Logs carry names, counts and timings, never meeting text.
 """
 
@@ -21,11 +23,103 @@ from pathlib import Path
 
 from ..runtime.ask import parse_rows
 from ..runtime.protocol import Emitter, INDEX_ERROR_KINDS
-from ..runtime.settings import MEMORY_EMBED_BATCH
+from ..runtime.settings import MEMORY_EMBED_BATCH, MEMORY_EMBED_MIN_PIECE_CHARS, MEMORY_EMBED_PIECE_CHARS
 from .index import KINDS, MemoryIndex, SourceUnreadable
 from .search import QueryEmbedder
 
 log = logging.getLogger("verse.memory.indexer")
+
+
+# ---------------------------------------------------------------- embedding a chunk of any length
+class EngineFailed(Exception):
+    """The embedder fails even on a tiny text: the engine is gone, not the chunk."""
+
+
+class ChunkFailed(Exception):
+    """This chunk cannot be embedded (the engine is alive). The run skips it."""
+
+
+def _cut_point(text: str, limit: int) -> int:
+    """Where to cut `text[:limit]`: after the last blank line, line break, sentence end or space in its second half; else at `limit`."""
+    floor = limit // 2
+    for seps in (("\n\n",), ("\n",), (". ", "? ", "! ", "; "), (" ",)):
+        cut = max((text.rfind(sep, 0, limit) + len(sep) for sep in seps if sep in text[:limit]), default=-1)
+        if cut > floor:
+            return cut
+    return limit
+
+
+def split_text(text: str, limit: int) -> list[str]:
+    """`text` cut into pieces of at most `limit` characters on paragraph, line, sentence or word boundaries (a hard cut only when a
+    stretch has none). Nothing is dropped except the whitespace at the cuts; a text within the limit comes back whole."""
+    if len(text) <= limit:
+        return [text]
+    out: list[str] = []
+    rest = text
+    while len(rest) > limit:
+        cut = _cut_point(rest, limit)
+        piece, rest = rest[:cut].strip(), rest[cut:]
+        if piece:
+            out.append(piece)
+    if rest.strip():
+        out.append(rest.strip())
+    return out or [text[:limit]]
+
+
+def mean_unit(vecs: list[list[float]], weights: list[int]) -> list[float]:
+    """Length-weighted mean of unit vectors, scaled back to unit length (what the engine's own chunk-and-average does)."""
+    dim = len(vecs[0])
+    acc = [0.0] * dim
+    for v, w in zip(vecs, weights):
+        for i in range(dim):
+            acc[i] += v[i] * w
+    n = sum(x * x for x in acc) ** 0.5
+    return [x / n for x in acc] if n > 0 else acc
+
+
+class DocumentEmbedder:
+    """Embeds a chunk of any length with `QueryEmbedder.document`. The model takes at most 1,024 tokens; the tokenizer is not
+    reachable from here and the engine's error says nothing ("Failed to compute embedding."), so the size is handled like this:
+    a text within MEMORY_EMBED_PIECE_CHARS goes in as one piece (every ordinary chunk, so its vector is what it always was), a longer
+    one is cut on natural boundaries into pieces of that size; a piece the engine refuses is halved and tried again, down to
+    MEMORY_EMBED_MIN_PIECE_CHARS. A refusal is told from a dead engine by a probe: a tiny text that must embed. The vectors of the
+    pieces are averaged. Runs on the embedding thread."""
+
+    PROBE = "ok"
+
+    def __init__(self, embedder: QueryEmbedder, *, piece_chars: int = MEMORY_EMBED_PIECE_CHARS,
+                 min_chars: int = MEMORY_EMBED_MIN_PIECE_CHARS) -> None:
+        self._e = embedder
+        self.piece_chars = piece_chars
+        self.min_chars = min_chars
+        self.split = 0                      # chunks that went through in more than one piece
+
+    def document(self, text: str) -> list[float]:
+        pieces = split_text(text, self.piece_chars)
+        if len(pieces) > 1:
+            self.split += 1
+        return self._pieces(pieces)
+
+    def _pieces(self, pieces: list[str]) -> list[float]:
+        vecs = [self._piece(p) for p in pieces]
+        return vecs[0] if len(vecs) == 1 else mean_unit(vecs, [len(p) for p in pieces])
+
+    def _piece(self, text: str) -> list[float]:
+        try:
+            return self._e.document(text)
+        except Exception as e:  # noqa: BLE001 - the engine raises a bare RuntimeError for every kind of refusal
+            if not self._alive():
+                raise EngineFailed(type(e).__name__) from e
+            if len(text) <= self.min_chars:
+                raise ChunkFailed(type(e).__name__) from e
+        return self._pieces(split_text(text, -(-len(text) // 2)))
+
+    def _alive(self) -> bool:
+        try:
+            self._e.document(self.PROBE)
+        except Exception:  # noqa: BLE001
+            return False
+        return True
 
 
 class IndexRuntime:
@@ -231,24 +325,51 @@ class IndexRuntime:
         self._status("done", context=self._context())
         self.stopped.set()
 
+    def _embed_batch(self, doc: DocumentEmbedder, batch: list[tuple[int, str]]) -> tuple[list[tuple[int, list[float]]], list[int], bool]:
+        """On the pool thread: (vectors, ids of chunks that could not be embedded, engine dead). A dead engine ends the batch."""
+        ok: list[tuple[int, list[float]]] = []
+        bad: list[int] = []
+        for cid, text in batch:
+            try:
+                ok.append((cid, doc.document(text)))
+            except ChunkFailed:
+                bad.append(cid)
+            except EngineFailed:
+                return ok, bad, True
+        return ok, bad, False
+
     async def _embed_all(self) -> None:
         assert self.index is not None and self.embedder is not None and self.sha
         loop = asyncio.get_running_loop()
-        emb, sha = self.embedder, self.sha
+        doc = DocumentEmbedder(self.embedder)
+        sha = self.sha
         total = self.index.count_pending(sha)
         done = 0
+        skipped: set[int] = set()
         t0 = time.perf_counter()
-        while done < total:
-            batch = self.index.pending_vectors(sha, MEMORY_EMBED_BATCH)
+        while done + len(skipped) < total:
+            batch = self.index.pending_vectors(sha, MEMORY_EMBED_BATCH, skipped)
             if not batch:
                 break
             try:
-                vecs = await loop.run_in_executor(self._pool, lambda b=batch: [emb.document(text) for _, text in b])
-            except Exception as e:  # noqa: BLE001 - an engine failure turns the vector path off; FTS keeps working
+                ok, bad, dead = await loop.run_in_executor(self._pool, self._embed_batch, doc, batch)
+            except Exception as e:  # noqa: BLE001 - not an embedder failure (those come back in `dead`): the vector path stops
                 log.warning("embedding stopped: %s", type(e).__name__)
                 self.embedder = None
                 return
-            self.index.store_vectors(sha, [(cid, v) for (cid, _), v in zip(batch, vecs)])
-            done += len(batch)
-            self.emitter.emit({"type": "embed_progress", "done": min(done, total), "total": total})
-        log.info("embedded %d chunks in %d ms", done, round((time.perf_counter() - t0) * 1000))
+            if ok:
+                self.index.store_vectors(sha, ok)
+                done += len(ok)
+            if bad:
+                skipped.update(bad)
+                sessions = self.index.chunk_sessions(bad)
+                for cid in bad:
+                    log.warning("embedding skipped chunk %d of session %s", cid, sessions.get(cid, "?"))
+            if dead:
+                log.warning("embedding stopped: engine failed (%d embedded, %d skipped so far)", done, len(skipped))
+                self.embedder = None
+                return
+            self.emitter.emit({"type": "embed_progress", "done": min(done + len(skipped), total), "total": total})
+        if skipped:
+            log.warning("embedding skipped %d chunks that could not be embedded; they stay pending", len(skipped))
+        log.info("embedded %d chunks (%d in pieces) in %d ms", done, doc.split, round((time.perf_counter() - t0) * 1000))

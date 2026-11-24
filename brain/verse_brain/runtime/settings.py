@@ -282,6 +282,8 @@ MEMORY_SOURCE_WEIGHTS = {"turn": 1.0, "summary": 1.2, "prep": 0.6, "chat": 0.5}
 MEMORY_EXCERPT_TOKENS = 16_000      # the excerpts of one question, estimated with ask.est_tokens
 MEMORY_SESSION_EXCERPT_TOKENS = 6_000   # ...of which one session may take this much
 MEMORY_EMBED_BATCH = 32             # chunks embedded per batch in phase 2 of the index run
+MEMORY_EMBED_PIECE_CHARS = 2_400    # a text longer than this is embedded in pieces (EmbeddingGemma takes 1,024 tokens, 1 to 5.8 chars each)
+MEMORY_EMBED_MIN_PIECE_CHARS = 64   # a failing piece is halved down to this size; below it the chunk is skipped
 
 
 # Memory Ask and the pre-meeting brief (spec 2.3, 2.4; runtime/memory_ask.py, memory/brief.py).
