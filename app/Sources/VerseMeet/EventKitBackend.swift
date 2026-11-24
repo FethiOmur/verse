@@ -74,13 +74,14 @@ public final class EventKitBackend: CalendarBackend, @unchecked Sendable {
         }
     }
 
-    /// His part in an event from what EventKit reports. Organiser: the organiser is him, or the entry has neither an organiser
-    /// nor invitees and sits on a calendar he can edit (his own entry; a subscribed, birthday or read-only calendar is not).
+    /// His part in an event from what EventKit reports. Organiser: only when the organiser is him. An entry with neither an
+    /// organiser nor invitees is unknown even on a calendar he can edit: mail services add such entries from messages, and a
+    /// shared or delegated calendar is writable too, so EventKit cannot show the entry is his (fail closed).
     /// Otherwise his own attendee status: accepted, tentative, pending (not answered); anything else, or not on the list, unknown.
     static func participation(organizerIsMe: Bool, hasOrganizer: Bool, hasAttendees: Bool, myStatus: EKParticipantStatus?,
                               ownCalendar: Bool) -> Participation {
         if organizerIsMe { return .organizer }
-        if !hasOrganizer, !hasAttendees { return ownCalendar ? .organizer : .unknown }
+        if !hasOrganizer, !hasAttendees { return .unknown }
         switch myStatus {
         case .accepted: return .accepted
         case .tentative: return .tentative

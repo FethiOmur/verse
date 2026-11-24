@@ -18,7 +18,7 @@ final class ParticipationTests: XCTestCase {
             (false, true, true, .unknown, true, .unknown, "an unknown status"),
             (false, true, true, .delegated, true, .unknown, "delegated"),
             (false, true, true, nil, true, .unknown, "he is not on the invite"),
-            (false, false, false, nil, true, .organizer, "his own entry on his own calendar"),
+            (false, false, false, nil, true, .unknown, "no organiser and no invitees: not provably his, even on his own calendar"),
             (false, false, false, nil, false, .unknown, "a subscribed or read-only calendar"),
             (false, false, true, .pending, true, .pending, "invitees without an organiser: his answer decides"),
         ]
