@@ -1,0 +1,4 @@
+{"turn_id": "h1", "speaker": "remote", "text": "What's your notice period?", "kind": "question", "addressee": "unknown", "t_audio_end": 4.0, "lang": "en", "run_start": 1796600000.0, "t_wall": 1796600004.0}
+{"turn_id": "h2", "speaker": "me", "text": "Not sure yet honestly.", "kind": "statement", "addressee": "unknown", "t_audio_end": 7.0, "lang": "en", "run_start": 1796600000.0, "t_wall": 1796600007.0}
+{"turn_id": "h3", "speaker": "remote", "text": "Do you mentor people?", "kind": "question", "addressee": "unknown", "t_audio_end": 12.0, "lang": "en", "run_start": 1796600000.0, "t_wall": 1796600012.0}
+{"turn_id": "h4", "speaker": "me", "text": "Yes, I mentor the juniors on my team every week and I enjoy it a lot.", "kind": "statement", "addressee": "unknown", "t_audio_end": 19.0, "lang": "en", "run_start": 1796600000.0, "t_wall": 1796600019.0}

@@ -154,6 +154,22 @@ PRIORITIES name; without a hint there, prefer the PROJECTS lines (his recent wor
 
 SYSTEMS_ME_PRIORITIES = {k: v + _PRIORITY_RULES for k, v in SYSTEMS_ME.items()}
 
+# The compiled persona (persona/compile.py) quotes what he said in earlier calls as snippets whose ref starts with this. A pack
+# that has one gets one more rule: an earlier conversation is mentioned only through such a quoted line. A pack without one
+# keeps every byte of the system text it always had.
+SAID_BEFORE_REF = "SAID BEFORE call:"
+
+_SAID_BEFORE_RULE = OWNER.fill("""
+
+Snippets of the MEETING PACK whose ref starts with "SAID BEFORE" quote, word for word, what {owner} said in an earlier call. \
+Refer to an earlier conversation ("as I said last time", "when we spoke before") only through such a snippet, repeating its \
+quoted words; without one, never say or suggest that something was said in an earlier conversation.""")
+
+
+def pack_has_said_before(pack: str) -> bool:
+    return SAID_BEFORE_REF in pack
+
+
 ABOUT_HEADER = OWNER.fill("ABOUT {OWNER} (his permanent profile; cite a line as me:<id>, for example me:m412. The MEETING PACK wins "
                           "when it disagrees with this)")
 
@@ -207,10 +223,13 @@ def pack_has_style_guide(pack: str) -> bool:
     return VOICE_HEADING in pack
 
 
-def system_blocks(route: str, about: str | None = None, unprepared: bool = False, directives: str | None = None) -> list[dict]:
+def system_blocks(route: str, about: str | None = None, unprepared: bool = False, directives: str | None = None,
+                  said_before: bool = False) -> list[dict]:
     """The frozen system prompt. With `about` (the me layer on) the text names ABOUT <OWNER> and a second block carries it,
     with breakpoint 0. Without it and with a real pack, the result is what it always was.
-    `directives` (runtime/call.py, a session's call.json) is appended to the first text block; None leaves every byte alone."""
+    `said_before` (the pack quotes earlier calls, `pack_has_said_before`) adds the SAID BEFORE rule to the first block; False
+    leaves every byte alone. `directives` (runtime/call.py, a session's call.json) is appended to the first text block; None
+    leaves every byte alone."""
     if about is not None:
         systems = SYSTEMS_ME_PRIORITIES if PRIORITIES_HEADING in about else SYSTEMS_ME
         blocks = [{"type": "text", "text": systems[route]},
@@ -219,6 +238,8 @@ def system_blocks(route: str, about: str | None = None, unprepared: bool = False
         blocks = [{"type": "text", "text": SYSTEMS_UNPREPARED[route]}]
     else:
         blocks = [{"type": "text", "text": SYSTEMS[route]}]
+    if said_before:
+        blocks[0]["text"] += _SAID_BEFORE_RULE
     if directives:
         blocks[0]["text"] += "\n\n" + directives
     return blocks
@@ -295,14 +316,18 @@ def fast_tail(question: str, lang: str, final: bool, files: str = "", bank: str 
 
 
 def card_now_tail(text: str, lang: str, final: bool, files: str = "", size: str | None = None,
-                  card_lines: int | None = None) -> str:
+                  card_lines: int | None = None, avoid: str = "") -> str:
     """F call for the card-now key: he asks for a card for what the other side said last, question or not. The gates (cue,
-    kind, addressee) are skipped, so the instruction says so; the answer format of the system prompt stays."""
+    kind, addressee) are skipped, so the instruction says so; the answer format of the system prompt stays. `avoid` (the
+    regenerate button): the SAY line of the card he had for these words; the new card is a fresh variant of it."""
     state = "finished" if final else "still being spoken, may be cut off"
+    again = (OWNER.fill("REGENERATE. {Owner} asked for a new answer to these words. The card he had said: \"") + " ".join(avoid.split())
+             + "\". Write a fresh answer: a different SAY line and different points, the same facts only where they are needed, "
+             "nothing invented.\n") if avoid.strip() else ""
     return (f"Language: {LANG_NAME.get(lang, lang)}\n{_files(files)}"
             + OWNER.fill("CARD NOW. {Owner} pressed the card key: he wants something to say to the words below at once, even when they "
                          "are not phrased as a question. If they are a remark or a request, give him what he can say next. The answer "
-                         "format above applies: SAY, two \"- \" lines, BANK.\n") + size_line(size, card_lines) +
+                         "format above applies: SAY, two \"- \" lines, BANK.\n") + again + size_line(size, card_lines) +
             f"CURRENT QUESTION ({state}): {' '.join(text.split())}")
 
 
@@ -463,6 +488,7 @@ WARMUP_TAIL = "warmup"
 def build_request(route: str, params: dict, pack: str, turns: list[Turn], tail: str, about: str | None = None,
                   directives: str | None = None) -> dict:
     req = dict(params)
-    req["system"] = system_blocks(route, about, unprepared=not pack.strip(), directives=directives)
+    req["system"] = system_blocks(route, about, unprepared=not pack.strip(), directives=directives,
+                                  said_before=pack_has_said_before(pack))
     req["messages"] = build_messages(pack, turns, tail)
     return req

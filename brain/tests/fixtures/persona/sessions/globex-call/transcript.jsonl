@@ -1,0 +1,4 @@
+{"turn_id": "q1", "speaker": "room", "text": "So what salary do you expect for this role?", "kind": "question", "addressee": "unknown", "t_audio_end": 8.0, "lang": "en", "run_start": 1795600000.0, "t_wall": 1795600008.0}
+{"turn_id": "q2", "speaker": "room", "text": "I expect around 110,000 euros base for this role.", "kind": "statement", "addressee": "unknown", "t_audio_end": 15.0, "lang": "en", "run_start": 1795600000.0, "t_wall": 1795600015.0}
+{"turn_id": "q3", "speaker": "room", "text": "I could start in March. Great, thanks for that answer.", "kind": "statement", "addressee": "unknown", "t_audio_end": 24.0, "lang": "en", "run_start": 1795600000.0, "t_wall": 1795600024.0}
+{"turn_id": "q4", "speaker": "room", "text": "I think I would bring a lot of calm to the team.", "kind": "statement", "addressee": "unknown", "t_audio_end": 33.0, "lang": "en", "run_start": 1795600000.0, "t_wall": 1795600033.0}

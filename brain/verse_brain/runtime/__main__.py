@@ -4,9 +4,10 @@ One process serves one session, and its first message decides which: `start` run
 `sim_start` the interview simulation (sim.SimRuntime, plan S2), `ask_start` the chat about one past session (ask.AskRuntime; its own
 Anthropic client, built from the Keychain key by ask.make_client), `memory_ask_start` the chat across meetings
 (memory_ask.MemoryAskRuntime, same client) and `brief_start` one pre-meeting brief (memory.brief.BriefRuntime, same client; it ends the
-process), `memory_index_start` the writer of the memory index
+process), `persona_start` one master-persona action after a call (persona.runtime.PersonaRuntime, same client; it ends the process),
+`memory_index_start` the writer of the memory index
 (memory.indexer.IndexRuntime: no model calls; `--fake` embeds with the hash stand-in, `--no-embed` skips phase 2, and
-`--no-api` serves only this mode without reading the Keychain). `--budget-usd` and the embedding matcher apply to
+`--no-api` serves only this mode and the persona's local actions, without reading the Keychain). `--budget-usd` and the embedding matcher apply to
 meetings only.
 
 Reads Swift -> brain JSON lines on stdin, writes brain -> Swift JSON lines on stdout (flushed per line), logs to
@@ -137,7 +138,8 @@ def _memory_runtime(kind, client, args, emitter, cfg):
 
 
 async def _amain_index_only(args, emitter) -> int:
-    """`--no-api`: a process that only writes the memory index. No Keychain read, no API client; any other first message is ignored."""
+    """`--no-api`: a process that writes the memory index, or runs one of the persona's local actions (status, resolve, compile,
+    import_general). No Keychain read, no API client; any other first message is ignored."""
     runtime = None
     try:
         async for raw in _stdin_lines():
@@ -149,9 +151,22 @@ async def _amain_index_only(args, emitter) -> int:
             if msg is None:
                 continue
             if runtime is None:
-                if msg.get("type") != "memory_index_start":
+                if msg.get("type") == "memory_index_start":
+                    runtime = _index_runtime(args, emitter)
+                elif msg.get("type") == "persona_start":
+                    # The persona's local actions (status, resolve, compile, import) never call the model; an update needs the
+                    # Keychain client and is refused here, before anything is read or written.
+                    from ..persona.runtime import PersonaRuntime, fake_persona_responder
+                    from .ask import FakeAskClient
+                    from .protocol import PERSONA_LOCAL_ACTIONS
+
+                    if (msg.get("action") or "update") not in PERSONA_LOCAL_ACTIONS:
+                        emitter.emit({"type": "persona_error", "kind": "bad_request",
+                                      "message": "this action needs the model: start the brain without --no-api"})
+                        return 2
+                    runtime = PersonaRuntime(FakeAskClient(fake_persona_responder), emitter)
+                else:
                     continue
-                runtime = _index_runtime(args, emitter)
             await runtime.handle(msg)
             if runtime.stopped.is_set():
                 break
@@ -227,6 +242,21 @@ async def amain(args) -> int:
                     except KeychainError as e:
                         emitter.status("error", str(e))
                         return 2
+                elif msg.get("type") == "persona_start":
+                    from ..persona.runtime import PersonaRuntime, fake_persona_responder
+                    from ..prep.keychain import KeychainError
+                    from .ask import FakeAskClient, make_client
+
+                    from .protocol import PERSONA_LOCAL_ACTIONS
+
+                    local = (msg.get("action") or "update") in PERSONA_LOCAL_ACTIONS
+                    try:
+                        # A local action never calls the model (the app starts those with --no-api, without a Keychain read).
+                        client = FakeAskClient(fake_persona_responder) if args.fake or local else make_client()
+                    except KeychainError as e:
+                        emitter.emit({"type": "persona_error", "kind": "auth", "message": str(e)})
+                        return 2
+                    runtime = PersonaRuntime(client, emitter)
                 elif msg.get("type") == "memory_index_start":
                     runtime = _index_runtime(args, emitter)
                 elif msg.get("type") in ("memory_ask_start", "brief_start"):
@@ -263,7 +293,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--embed", action="store_true", help="with --fake: load the embedding model anyway (replays)")
     ap.add_argument("--fake-bank", action="store_true", help="with --fake: S/F answer from the pack's answer bank (replays)")
     ap.add_argument("--no-api", action="store_true",
-                    help="serve only memory_index_start: no Keychain read, no API client (the memory index writer needs neither)")
+                    help="serve only memory_index_start and the persona's local actions: no Keychain read, no API client")
     ap.add_argument("--log-level", default="WARNING")
     args = ap.parse_args(argv)
     logging.basicConfig(stream=sys.stderr, level=args.log_level, format="%(asctime)s %(name)s %(levelname)s %(message)s")

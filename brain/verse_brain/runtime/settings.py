@@ -299,3 +299,29 @@ def brief_params() -> dict:
     p["max_tokens"] = BRIEF_MAX_TOKENS
     p["output_config"] = {"effort": "low"}       # the default (adaptive) thinking at medium used the whole cap before the text (live check)
     return p
+
+
+# The master persona (verse_brain/persona): ONE Sonnet request per finished session, after the call (never during one).
+PERSONA_BUDGET_USD = 0.40           # default spend cap of one session's request; it sizes max_tokens (input priced first)
+PERSONA_MAX_TOKENS = 16_000         # output cap, adaptive thinking included
+PERSONA_MIN_TOKENS = 2_000          # a budget that leaves less than this for the output is refused (error kind `budget`)
+PERSONA_ROWS_TOKENS = 40_000        # CALL ROWS in the request, cut at whole rows (owner rows measured 2.7-14k tokens per meeting)
+PERSONA_CONTEXT_TOKENS = 6_000      # CURRENT PERSONA in the request, cut at whole lines
+
+
+def persona_params(est_input_tokens: int, budget_usd: float | None = None) -> dict:
+    """The persona request tuple: Sonnet's Ask tuple (adaptive thinking, effort medium, server-side fallback) with max_tokens
+    sized so that the estimated input plus the whole output stays within `budget_usd` at Sonnet's prices. Raises ValueError
+    when the budget leaves less than PERSONA_MIN_TOKENS for the output."""
+    from ..prep.model import PRICES
+
+    budget = PERSONA_BUDGET_USD if budget_usd is None else budget_usd
+    pin, pout, _ = PRICES[SONNET]
+    left = budget - est_input_tokens * pin / 1e6
+    max_tokens = min(PERSONA_MAX_TOKENS, int(left * 1e6 / pout)) if left > 0 else 0
+    if max_tokens < PERSONA_MIN_TOKENS:
+        raise ValueError(f"a budget of ${budget:.2f} leaves {max(0, max_tokens)} output tokens (need {PERSONA_MIN_TOKENS})")
+    p = ask_params("sonnet")
+    p["max_tokens"] = max_tokens
+    p["output_config"] = {"effort": "medium"}
+    return p

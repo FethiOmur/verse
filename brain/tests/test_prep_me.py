@@ -121,6 +121,20 @@ def test_session_facts_skip_samples_and_fixture_preps(tmp_path):
     assert "BANK ANSWER" not in text            # bank answers are meeting-specific: never read
 
 
+def test_session_facts_skip_the_compiled_persona_and_calls_seeded_from_it(tmp_path):
+    root = tmp_path / "sessions"
+    for name, meta, fact in (("persona-core", {"kind": "persona-core"}, "from the persona"),
+                             ("adhoc-20261020-1000-room", {"kind": "adhoc", "base": "persona-core"}, "from a persona seed"),
+                             ("adhoc-20261020-1100-room", {"kind": "adhoc", "base": "general-core"}, "from a general seed")):
+        (root / name).mkdir(parents=True)
+        (root / name / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        (root / name / "facts.jsonl").write_text(json.dumps({"id": "f001", "kind": "number", "text": fact, "value": "1"}) + "\n",
+                                                  encoding="utf-8")
+    text = M.session_facts_text(root)
+    assert "from the persona" not in text and "from a persona seed" not in text
+    assert "from a general seed" in text        # unchanged: the general prep's copies are read as before
+
+
 def test_fake_cli_builds_offline_and_show_reports(tmp_path, capsys):
     prof, vault = setup(tmp_path)
     assert M.me_main(["build", "--fake", "--profile-dir", str(prof)]) == 0

@@ -1,0 +1,4 @@
+{"t": 1795000000.0, "ev": "start", "mode": "unprepared", "route": "meeting", "lang": "en", "room_auto": "questions"}
+{"t": 1795000006.0, "ev": "card", "turn": "r1", "tier": "F", "id": "F-r1", "kind": "say", "text": "Mention the platform migration and the on-call rotation."}
+{"t": 1795000021.0, "ev": "card", "turn": "r2", "tier": "F", "id": "F-r2", "kind": "say", "text": "I want a smaller company where I can own the product"}
+{"t": 1795000022.0, "ev": "card_done", "turn": "r2", "tier": "F", "id": "F-r2", "say": "I want a smaller company where I can own the product end to end.", "points": ["Ship every week with a team of about 40 people."]}

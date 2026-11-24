@@ -23,6 +23,22 @@ IN_TYPES = {"start", "partial", "turn", "bank_hit", "control"}
 # `card_now`, `lang` (with `lang`) and `route` (with `route`, optional `room_auto` and `follow`: the route of the running call
 # changed, the session goes on). Brain -> Swift: `notice{kind:"me_conflicts",items}` and `notice{kind:"me_missing"}`,
 # `status ready` gains `me:{tokens,built_at}|null`, metric stages `me_retrieval` and `card_now`.
+# AUTO language (owner decisions 7 and 8, runtime/lang.py), additive. Swift -> brain: `start.lang_auto` (bool; absent = off: each
+# card follows its turn's `lang`, as before), `start.lang_hint` (where the dominant language begins: the session's prepared
+# language; absent = `start.lang`) and `control{action:"lang_auto",on}`. In AUTO the cards follow the call's dominant language.
+# Brain -> Swift: metric stages `lang_dominant{lang,prev,reason:"start"|"auto_on"|"sustained"}` (turn_id "" or the turn that completed the switch),
+# `answer_lang{turn_id,lang,dominant}` (the language that turn's cards are written in, sent when it changes) and `lang_auto{on,lang}`.
+# Live controls on the answer card, additive. Swift -> brain: `control{action:"regenerate",turn,question?,lang?,reset?,avoid?}`
+# (answer the question of turn `turn` again at once, on a new `now-<n>` turn; `lang` the language to write it in, `reset` true
+# also resets the dominant language to `lang`, `avoid` the SAY line on screen that the new answer must not repeat) and
+# `card_mark{card,mark:"good"|"bad"|"cleared",turn?,question?}` (the owner's mark on the card on screen; the brain only writes it
+# to events.jsonl as `card_mark`, read by persona/rows.py `read_marks`). Brain -> Swift: metric stages
+# `regenerate{turn_id:<new>,of,lang,reset,question}`, `regenerate_done{turn_id,id}`, `regenerate_busy{of}` (one is already in
+# flight: ignored) and `regenerate_empty{of}`; `lang_dominant` gains reason "regenerate". Every `lang_dominant` also carries
+# `majority` (the language of most of the other side's substantive speech so far, runtime/lang.py), and `lang_majority{lang,prev}`
+# is sent when that changes on its own: regenerate targets the majority language, not the current answer language.
+IN_TYPES |= {"card_mark"}
+MARKS = {"good", "bad", "cleared"}
 LANGS = {"en", "it", "tr"}
 REMOTE_SPEAKERS = ("remote", "room")     # the room route's one mic is treated like the remote channel
 NOTICE_KINDS = {"me_conflicts", "me_missing"}
@@ -75,6 +91,18 @@ MEMORY_ASK_IN_TYPES = {"memory_ask_start", "brief_start"}
 BRIEF_OUT_TYPES = {"brief_done", "brief_error"}
 BRIEF_ERROR_KINDS = ASK_ERROR_KINDS | {"no_sessions"}
 IN_TYPES |= MEMORY_ASK_IN_TYPES
+# The master persona (verse_brain/persona/runtime.py), additive. A process whose first message is `persona_start{action,session_dir,
+# sessions_root,persona_dir,state,me,compile,compile_out,general_core,force,budget_usd,owner_name}` runs one persona action and
+# ends: `status` (warming; ready with `context` before the model request), then `persona_done{...}` or `persona_error{kind,message,
+# retry_after?,session?}`. Never sent during a call.
+PERSONA_IN_TYPES = {"persona_start"}
+PERSONA_OUT_TYPES = {"persona_done", "persona_error"}
+PERSONA_ACTIONS = {"update", "compile", "import_general", "status", "resolve"}
+# The actions that never call the model: the process starts them without reading the Keychain.
+PERSONA_LOCAL_ACTIONS = {"compile", "import_general", "status", "resolve"}
+PERSONA_ERROR_KINDS = ASK_ERROR_KINDS | {"off", "guard", "busy", "budget", "excluded", "no_session", "bad_output", "empty",
+                                         "already_imported"}
+IN_TYPES |= PERSONA_IN_TYPES
 # History replay (brain restart mid-call), additive. When Swift's supervisor (app/Sources/VerseTurns/VerseRunner.swift) restarts a
 # brain that crashed during a call, the new process starts with an empty transcript. Once it reports ready, Swift sends the call's
 # finalized turns so far in one line: `history{turns:[{turn_id,speaker,text,t_audio_end?,addressee?,kind?,lang?}, ...]}`, oldest

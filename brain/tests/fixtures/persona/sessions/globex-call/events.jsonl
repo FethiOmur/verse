@@ -1,0 +1,3 @@
+{"t": 1795600000.0, "ev": "start", "mode": "unprepared", "route": "room", "lang": "en", "room_auto": "questions"}
+{"t": 1795600015.2, "ev": "room_text", "turn": "q2", "final": true, "label": "me", "reason": "strict", "words": 9, "text": "I expect around"}
+{"t": 1795600024.1, "ev": "room_text", "turn": "q3", "final": true, "label": "split", "me_words": 5, "reason": "start", "words": 10, "text": "I could"}

@@ -215,6 +215,10 @@ def session_facts_text(sessions: Path) -> str:
             pass
         if "tests/fixtures" in str(meta.get("prep_note", "")):
             continue
+        # The compiled persona (verse_brain/persona/compile.py) and the unprepared calls seeded from it carry facts that came
+        # from the persona itself: reading them back here would let the persona confirm its own claims.
+        if meta.get("kind") == "persona-core" or meta.get("base") == "persona-core" or d.name == "persona-core":
+            continue
         f = d / "facts.jsonl"
         if not f.is_file():
             continue

@@ -78,7 +78,8 @@ from .repeat import embed_all, filter_card, his_chunks
 from .size import FOLLOW_POINTS, card_size, points_cap
 from .prompt import (STATEMENT_SAY_WORDS, WARMUP_TAIL, Turn, bank_check, build_request, card_now_tail, deep_tail, fast_tail,
                      files_block, final_tail, follow_tail, rolling_tail, statement_tail)
-from .protocol import LANGS, REMOTE_SPEAKERS, Emitter, Session, history_turns, load_session, msg_lang, turn_kind
+from .lang import DominantLanguage
+from .protocol import LANGS, MARKS, REMOTE_SPEAKERS, Emitter, Session, history_turns, load_session, msg_lang, turn_kind
 from .ratelimit import ModelLimiter
 from .settings import HAIKU, MODEL_ROUTE, SONNET, Config, route_params
 from .summary import Running, parse_lines, render_markdown
@@ -519,6 +520,10 @@ class TurnState:
     card_now_partial: bool = False      # card-now answered a partial that was still being spoken
     answered_by: str | None = None      # id of the card-now turn that already answered this (still open) turn
     answered_text: str = ""
+    answer_lang: str | None = None      # AUTO: the language its cards were last written in (the `answer_lang` metric)
+    regen_of: str | None = None         # regenerate: the turn whose question this card-now turn answers again
+    regen_lang: str | None = None       # regenerate: the language the new answer is written in (None: as any card of the turn)
+    regen_avoid: str = ""               # regenerate: the SAY line that was on screen (the new answer must differ from it)
 
 
 def _follow_safe(fn):
@@ -553,6 +558,10 @@ class Brain:
                                    lambda tid, stage, **kw: self.emitter.metric(tid, stage, **kw))
         self.session: Session | None = None
         self.lang = "en"
+        # AUTO language (runtime/lang.py): with `start.lang_auto` the cards follow the call's dominant language, not each turn's
+        # tag; `self.lang` stays the language the recognizers run in (bank matcher, follow mode).
+        self.lang_auto = False
+        self.dominant = DominantLanguage()
         # anytime calls
         self.mode = "prepared"                   # "unprepared": an empty pack, no bank
         self.route_kind = "meeting"              # "meeting" | "phone" | "room"
@@ -563,6 +572,10 @@ class Brain:
         self._bank_embed = False                 # the bank matcher is on for this session's language
         self._snippet_refs: set[str] = set()
         self._now_seq = count(1)
+        self._regen: str | None = None           # the card-now turn of the regenerate in flight (one at a time)
+        # The newest regenerate's turn and the newest remote turn when it was asked: its calls may retry until a newer remote
+        # turn starts. A regenerate never becomes `latest_remote_turn` itself (the newest question's calls keep their retries).
+        self._regen_turn: tuple[str, str | None] | None = None
         self._clock = time.monotonic             # tests move it: the reading session and the card hold run on it
         self._own = OwnSpeech(self.config.own, clock=lambda: self._clock())   # room route: the card on screen, to tell the owner's own reading of it from the room
         self._own_turns: dict[str, str] = {}     # room turn id -> its last label "me" | "split" | "room" (a turn keeps its label unless its text stops lining up)
@@ -654,6 +667,37 @@ class Brain:
     def _lang(self, st: TurnState) -> str:
         return st.lang or self.lang
 
+    def _call_lang(self) -> str:
+        """The language of what belongs to the whole call (follow cards, the summary): the dominant one in AUTO."""
+        return self.dominant.lang if self.lang_auto else self.lang
+
+    def _answer_lang(self, st: TurnState, open_text: str | None = None) -> str:
+        """The language a card for `st` is written in. Without AUTO: the turn's own tag (else the session's), as before. In AUTO:
+        the call's dominant language; `open_text` is the text of a turn still being spoken, counted as if it ended now, so the
+        question that completes a switch is answered in the new language. Reports `answer_lang` when it changes for the turn."""
+        if st.regen_lang:
+            lang = st.regen_lang       # regenerate names its language (in AUTO: the dominant one it just reset to)
+        elif not self.lang_auto:
+            return self._lang(st)
+        else:
+            lang = self.dominant.would_be(self._lang(st), open_text) if open_text is not None else self.dominant.lang
+        if st.answer_lang != lang:
+            st.answer_lang = lang
+            self.emitter.metric(st.turn_id, "answer_lang", lang=lang, dominant=self.dominant.lang)
+        return lang
+
+    def _note_dominant(self, lang: str | None, text: str, turn_id: str = "") -> None:
+        """One finished utterance of the other side for the dominant language (AUTO only)."""
+        if not self.lang_auto:
+            return
+        before, major = self.dominant.lang, self.dominant.majority
+        if self.dominant.note(lang, text) is not None:
+            self.emitter.metric(turn_id, "lang_dominant", lang=self.dominant.lang, prev=before, reason="sustained",
+                                majority=self.dominant.majority)
+            self._ev("lang_dominant", lang=self.dominant.lang, prev=before, turn=turn_id)
+        if self.dominant.majority != major:
+            self.emitter.metric(turn_id, "lang_majority", lang=self.dominant.majority, prev=major)
+
     def _ready_extra(self) -> dict:
         return {"me": self.me.info() if self.me is not None else None}
 
@@ -685,6 +729,8 @@ class Brain:
             self.on_bank_hit(msg)
         elif t == "history":
             self.on_history(msg)
+        elif t == "card_mark":
+            self._card_mark(msg)
         elif t == "control":
             a = msg.get("action")
             if a == "stop":
@@ -693,8 +739,12 @@ class Brain:
                 self._spawn(self.summarize())
             elif a == "card_now":
                 self._card_now()
+            elif a == "regenerate":
+                self._regenerate(msg)
             elif a == "lang":
                 self._set_lang(msg.get("lang"))
+            elif a == "lang_auto":
+                self._set_lang_auto(msg.get("on") is True)
             elif a == "route":
                 self._set_route(msg)
 
@@ -751,8 +801,18 @@ class Brain:
             self._status("error", f"cannot read session folder: {type(e).__name__}", reason=BAD_SESSION)
             return
         self.lang = msg.get("lang", "en")
-        if self.session.call is not None and self.session.call.language:    # call.json names the language of the cards
+        if self.lang not in LANGS:
+            self.lang = "en"
+        pinned = self.session.call is not None and bool(self.session.call.language)
+        if pinned:    # call.json names the language of the cards
             self.lang = self.session.call.language
+        # AUTO (owner decisions 7, 8): the cards follow the dominant language, which starts as the language the call started in
+        # (Swift sends the session's prepared language, else English). A call.json language is a pin: no AUTO.
+        self.lang_auto = msg.get("lang_auto") is True and not pinned
+        hint = msg.get("lang_hint")
+        self.dominant = DominantLanguage(hint if hint in LANGS else self.lang)
+        if self.lang_auto:
+            self.emitter.metric("", "lang_dominant", lang=self.dominant.lang, prev=None, reason="start", majority=self.dominant.majority)
         self.mode = "unprepared" if msg.get("mode") == "unprepared" else "prepared"
         self.route_kind = msg["route"] if msg.get("route") in ("meeting", "phone", "room") else "meeting"
         self.room_auto = "off" if msg.get("room_auto") == "off" else "questions"
@@ -938,6 +998,21 @@ class Brain:
                 self._bank_embed = False
         self._follow_resync()
 
+    def _set_lang_auto(self, on: bool) -> None:
+        """`control lang_auto`: AUTO on or off mid-call. Off pins the cards to the session language (the `control lang` that
+        follows names it); on starts the dominant language from the session language. A call.json language stays a pin."""
+        if self.session is not None and self.session.call is not None and self.session.call.language:
+            return
+        if on == self.lang_auto:
+            return
+        self.lang_auto = on
+        if on:
+            self.dominant = DominantLanguage(self.lang)
+        self.emitter.metric("", "lang_auto", on=on, lang=self.dominant.lang if on else self.lang)
+        if on:
+            self.emitter.metric("", "lang_dominant", lang=self.dominant.lang, prev=None, reason="auto_on",
+                                majority=self.dominant.majority)
+
     def _set_route(self, msg: dict) -> None:
         """`control route`: the audio route changed in the running call (Swift swapped its listen pipeline in place). The session,
         the transcript, the cached prefix and the open turns stay. Only what depends on the route changes: the room route's
@@ -1012,6 +1087,84 @@ class Brain:
                             source=src.turn_id if src is not None else None)
         self._lib_final(st)
         self._endpoint(st)
+
+    def _turn_text(self, turn_id: str) -> str:
+        """The words of turn `turn_id` as the brain heard them: its final text, else its open partial, else the transcript row."""
+        st = self.ts.get(turn_id)
+        if st is not None and (st.final_text.strip() or st.partial.strip()):
+            return st.final_text if st.final_text.strip() else st.partial
+        row = next((t for t in reversed(self.turns) if t.turn_id == turn_id), None)
+        return row.text if row is not None else ""
+
+    def _regen_in_flight(self) -> bool:
+        st = self.ts.get(self._regen) if self._regen else None
+        if st is None or st.fast is None:
+            return False
+        return not st.fast.done.is_set()
+
+    def _regenerate(self, msg: dict) -> None:
+        """`control regenerate`: answer the question of the card on screen again, at once (the island's button, ⌥⌘R). The card-now
+        path on a new `now-<n>` turn, for that turn's words rather than the latest ones; listening and the other turns' cards go
+        on untouched. `lang` names the language of the new answer; with `reset` (AUTO) the dominant language is reset to it first.
+        `avoid` is the SAY line on screen: the new answer is a fresh variant, not the same text. One at a time: a regenerate while
+        the previous one's fast card is still streaming is ignored (`regenerate_busy`)."""
+        t0 = time.time()
+        if self.session is None or self.halted or self.closing:
+            return
+        of = msg.get("turn") if isinstance(msg.get("turn"), str) else ""
+        if self._regen_in_flight():
+            self.emitter.metric("", "regenerate_busy", of=of or None, by=self._regen)
+            return
+        text = self._turn_text(of) if of else ""
+        if not text.strip() and isinstance(msg.get("question"), str):
+            text = msg["question"]
+        if not text.strip():
+            self.emitter.metric("", "regenerate_empty", of=of or None)
+            return
+        lang = msg.get("lang") if msg.get("lang") in LANGS else None
+        reset = msg.get("reset") is True and lang is not None and self.lang_auto
+        if reset:
+            before = self.dominant.lang
+            self.dominant.reset(lang)
+            self.emitter.metric("", "lang_dominant", lang=self.dominant.lang, prev=before, reason="regenerate",
+                                majority=self.dominant.majority)
+            self._ev("lang_dominant", lang=self.dominant.lang, prev=before, reason="regenerate")
+        src = self.ts.get(of) if of else None
+        nid = f"now-{next(self._now_seq)}"
+        st = self._ts(nid)
+        st.finished, st.finished_at, st.final_text = True, time.monotonic(), text
+        st.kind, st.addressee, st.card_now, st.card_now_t0 = "question", "me", True, t0
+        st.lang = lang or (src.lang if src is not None else None)
+        st.regen_of, st.regen_lang = of or None, lang
+        st.regen_avoid = clip(msg["avoid"], CARD_FULL_CHARS) if isinstance(msg.get("avoid"), str) and msg["avoid"].strip() else ""
+        st.turns_before = list(self.turns)
+        if src is not None:
+            st.me_hits = list(src.me_hits)
+        self._regen = nid
+        # Not `latest_remote_turn`: regenerate answers an earlier card while the call goes on, so the newest remote question keeps
+        # its retries (`retry_ok`) and its late bank hits; the regenerated turn's own calls may retry through `_regen_turn`.
+        self._regen_turn = (nid, self.latest_remote_turn)
+        self._ev("regenerate", turn=nid, of=of or None, lang=lang, reset=reset or None, words=len(tokens(text)))
+        self.emitter.metric(nid, "regenerate", of=of or None, lang=lang, reset=reset, question=clip(text, 200))
+        self._lib_final(st)
+        self._endpoint(st)
+        if st.fast is None:            # nothing was launched (no lane free, a halt): nothing is in flight
+            self._regen = None
+            self.emitter.metric(nid, "regenerate_done", id=None)
+
+    def _card_mark(self, msg: dict) -> None:
+        """`card_mark`: the owner marked the card on screen GOOD or BAD (or pressed the same mark again: `cleared`). Only written
+        to events.jsonl for the after-call review (persona/rows.py `read_marks`); the card pipeline is not touched. The turn and
+        question come from the card's own call when the brain knows it, else from the message."""
+        card, mark = msg.get("card"), msg.get("mark")
+        if not isinstance(card, str) or not card.strip() or mark not in MARKS:
+            return
+        call = next((c for c in reversed(self.calls) if c.id == card), None)
+        turn = call.turn_id if call is not None else (msg.get("turn") if isinstance(msg.get("turn"), str) and msg["turn"] else None)
+        question = self._turn_text(turn) if turn else ""
+        if not question.strip() and isinstance(msg.get("question"), str):
+            question = msg["question"]
+        self._ev("card_mark", card=card, mark=mark, turn=turn, question=clip(question) if question.strip() else None)
 
     def on_first_text(self, call: Call) -> None:
         if call.tier != "F" or not call.turn_id.startswith("now-"):
@@ -1207,8 +1360,13 @@ class Brain:
             return False
         if call.tier == "A":   # the final summary belongs to the whole meeting, not to one turn
             return True
-        # still relevant: the turn is the newest remote turn (or still being spoken)
-        return call.turn_id in (self.latest_remote_turn, self.active_remote)
+        # still relevant: the turn is the newest remote turn (or still being spoken), or the newest regenerate while no newer
+        # remote turn has started since it was asked
+        return call.turn_id in (self.latest_remote_turn, self.active_remote) or self._regen_current(call.turn_id)
+
+    def _regen_current(self, turn_id: str) -> bool:
+        """`turn_id` is the newest regenerate's turn and no remote turn has started since it was asked."""
+        return self._regen_turn is not None and self._regen_turn == (turn_id, self.latest_remote_turn)
 
     def on_call_error(self, call: Call, e: TransportError) -> None:
         log.warning("call %s (%s) failed: %s", call.id, call.tier, e)
@@ -1244,6 +1402,12 @@ class Brain:
         if call.stop_reason == "refusal" and call.tier in ("S", "F", "D") and not call.buffered and not call.discarded:
             self._status("refusal", f"{call.tier} declined this turn", turn_id=call.turn_id, id=call.id)
         self._log_card_done(call)
+        if call.tier == "F" and self._regen is not None and call.turn_id == self._regen:
+            st = self.ts.get(call.turn_id)
+            if st is None or st.fast is call or st.fast is None or st.fast.done.is_set():
+                self._regen = None
+                self.emitter.metric(call.turn_id, "regenerate_done", id=call.id,
+                                    error=call.error.kind if call.error is not None else None, discarded=call.discarded or None)
         if call.tier in ("S", "F", "V"):
             st = self.ts.get(call.turn_id)
             if st is not None and (st.fast is call or st.check_call is call):
@@ -1316,7 +1480,7 @@ class Brain:
             return
         size = self._size(st, st.partial)
         call = self._launch("S", st.turn_id, st.partial,
-                            fast_tail(st.partial, self._lang(st), final=False, files=self._files(st), bank=self._bank_hint(st),
+                            fast_tail(st.partial, self._answer_lang(st, st.partial), final=False, files=self._files(st), bank=self._bank_hint(st),
                                       size=size, card_lines=self._card_lines(), check=self._bank_check(st, final=False)),
                             list(self.turns), buffered=True, size=size)
         if call is not None:
@@ -1364,7 +1528,7 @@ class Brain:
             return None
         shown = opener if opener is not None else self._shown_opener_guess(st)
         rec = self._bank_rec(st)
-        tail = deep_tail(text, self._lang(st), final, shown, rec, self._files(st), size=size)
+        tail = deep_tail(text, self._answer_lang(st, None if st.finished else text), final, shown, rec, self._files(st), size=size)
         turns = st.turns_before if st.finished else list(self.turns)
         call = self._launch("D", st.turn_id, text, tail, turns, buffered=buffered, size=size)
         if call is not None and rec is not None:
@@ -1426,7 +1590,7 @@ class Brain:
         late = why is None                  # a statement/fragment just closed, nothing newer yet
         if why in ("window", "newer_turn") and not st.rescued:
             self.emitter.metric(st.turn_id, "late_hit_ignored", reason=why, kind=st.kind, via="embed")
-        if job.turn_id not in (self.active_remote, self.latest_remote_turn) and not late:   # a newer turn has started
+        if job.turn_id not in (self.active_remote, self.latest_remote_turn) and not late and not self._regen_current(job.turn_id):   # a newer turn has started
             return
         if st.finished and (st.addressee == "other" or (st.kind == "fragment" and not late)):
             return
@@ -1564,7 +1728,7 @@ class Brain:
         why = ("no_check" if fast.check_id is None else "other_entry" if fast.check_id != hit.bank_id else "text")
         size = self._size(st, st.final_text)
         call = self._launch("V", st.turn_id, st.final_text,
-                            fast_tail(st.final_text, self._lang(st), final=True, files=self._files(st), bank=self._bank_hint(st),
+                            fast_tail(st.final_text, self._answer_lang(st), final=True, files=self._files(st), bank=self._bank_hint(st),
                                       size=size, card_lines=self._card_lines(), check=self._bank_check(st)),
                             st.turns_before, buffered=True, size=size)
         st.check_call = call
@@ -1631,6 +1795,8 @@ class Brain:
                 continue
             known.add(tid)
             self.turns.append(Turn(tid, it["speaker"], it["text"]))
+            if it["speaker"] in REMOTE_SPEAKERS:
+                self._note_dominant(it.get("lang") if it.get("lang") in LANGS else self.lang, it["text"], tid)
             ta = it.get("t_audio_end")
             if isinstance(ta, (int, float)) and not isinstance(ta, bool):
                 self._last_audio_end = float(ta) if self._last_audio_end is None else max(self._last_audio_end, float(ta))
@@ -1680,6 +1846,7 @@ class Brain:
         st.final_text = text
         st.room = st.room or speaker == "room"
         st.lang = msg_lang(msg) or st.lang
+        self._note_dominant(self._lang(st), text, tid)     # the other side only: his own turns returned above
         st.addressee = "unknown" if st.room else msg.get("addressee", "unknown")
         st.kind = turn_kind(msg)
         if st.kind == "fragment" and st.bank_hit is not None:
@@ -1854,9 +2021,10 @@ class Brain:
             self._ensure_verdict_src(st)     # the S card shows now; its BANK line is the verdict only if it qualifies
             self._maybe_verdict(st)
         else:
-            tail = (card_now_tail(st.final_text, self._lang(st), not st.card_now_partial, self._files(st), size=size,
-                                  card_lines=self._card_lines()) if st.card_now
-                    else fast_tail(st.final_text, self._lang(st), final=True, files=self._files(st), bank=self._bank_hint(st),
+            lang = self._answer_lang(st, st.final_text if st.card_now and st.card_now_partial else None)
+            tail = (card_now_tail(st.final_text, lang, not st.card_now_partial, self._files(st), size=size,
+                                  card_lines=self._card_lines(), avoid=st.regen_avoid) if st.card_now
+                    else fast_tail(st.final_text, lang, final=True, files=self._files(st), bank=self._bank_hint(st),
                                    size=size, card_lines=self._card_lines(), check=self._bank_check(st)))
             st.fast = self._launch("F", st.turn_id, st.final_text, tail, st.turns_before, buffered=False, size=size)
             if st.fast is not None and not st.card_now:
@@ -1887,7 +2055,7 @@ class Brain:
             return
         size = self._size(st, st.final_text)
         st.fast = self._launch("F", st.turn_id, st.final_text,
-                               statement_tail(st.final_text, self._lang(st), self._files(st), room=st.room,
+                               statement_tail(st.final_text, self._answer_lang(st), self._files(st), room=st.room,
                                       card=self._own.visible_lines() if st.room else None, size=size,
                                       card_lines=self._card_lines()),
                                st.turns_before, buffered=False, probe=True, quiet=st.room, size=size)
@@ -2359,7 +2527,7 @@ class Brain:
         on_screen = {ln.text for ln in orig} | {ln.text for ln in cur}
         shown = list(dict.fromkeys(ln.text for cid in f.order for ln in f.cards[cid].lines
                                    if ln.tier in ("C", "D") and ln.text not in on_screen))[-12:]
-        tail = follow_tail(st.final_text, self.lang, his, card, said, now_card, reason, me_on=self.about is not None, shown=shown)
+        tail = follow_tail(st.final_text, self._call_lang(), his, card, said, now_card, reason, me_on=self.about is not None, shown=shown)
         call = self._launch("C", st.turn_id, his, tail, st.turns_before, buffered=False)
         if call is None:
             f.c_failed()
@@ -2458,7 +2626,7 @@ class Brain:
     # ------------------------------------------------------------------ offline recovery
     def _retry_pending(self) -> None:
         tid, self.pending_turn = self.pending_turn, None
-        if not tid or tid != self.latest_remote_turn:
+        if not tid or (tid != self.latest_remote_turn and not self._regen_current(tid)):
             return
         st = self.ts.get(tid)
         if st is None or st.retried_offline:
@@ -2516,7 +2684,7 @@ class Brain:
             return self._defer("budget")
         self._defer_reason = None
         n = len(self.turns)
-        call = self._launch("R", "", "", rolling_tail(self.lang, self.running.as_lines()), list(self.turns),
+        call = self._launch("R", "", "", rolling_tail(self._call_lang(), self.running.as_lines()), list(self.turns),
                             buffered=False)
         if call is not None:
             # this window is used up even if the pass fails: a failing call is not retried in a loop
@@ -2574,7 +2742,7 @@ class Brain:
         self._write_summary(draft, note="final merge pending", n=n)    # on disk even if the merge never finishes
         reason: str | None = None
         final = draft
-        call = self._launch("A", "", "", final_tail(self.lang, draft.as_lines()), list(self.turns), buffered=False)
+        call = self._launch("A", "", "", final_tail(self._call_lang(), draft.as_lines()), list(self.turns), buffered=False)
         if call is None:
             reason = "not started (halted, budget or rate limit)"
         else:

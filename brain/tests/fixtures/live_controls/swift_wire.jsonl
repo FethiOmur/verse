@@ -1,0 +1,4 @@
+{"card":"f0004","mark":"good","question":"How did the Lantern rollout go?","turn":"r2","type":"card_mark"}
+{"card":"f0004","mark":"cleared","question":"How did the Lantern rollout go?","turn":"r2","type":"card_mark"}
+{"card":"P-r3","mark":"bad","question":"What would you change next time?","turn":"r3","type":"card_mark"}
+{"action":"regenerate","avoid":"It went well.","lang":"en","question":"How did the Lantern rollout go?","reset":true,"turn":"r2","type":"control"}

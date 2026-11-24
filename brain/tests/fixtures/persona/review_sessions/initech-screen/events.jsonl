@@ -1,0 +1,16 @@
+{"t": 1796000000.0, "ev": "start", "mode": "unprepared", "route": "meeting", "lang": "en", "room_auto": "questions"}
+{"t": 1796000006.0, "ev": "card", "turn": "r1", "tier": "F", "id": "F-r1", "kind": "say", "text": "Open with the payments migration you shipped last spring."}
+{"t": 1796000007.0, "ev": "card_done", "turn": "r1", "tier": "F", "id": "F-r1", "say": "Open with the payments migration you shipped last spring.", "points": ["Mention the on-call rotation."]}
+{"t": 1796000009.0, "ev": "card_mark", "card": "F-r1", "mark": "bad", "turn": "r1", "question": "Tell me about yourself."}
+{"t": 1796000010.0, "ev": "card_mark", "card": "F-r1", "mark": "cleared", "turn": "r1", "question": "Tell me about yourself."}
+{"t": 1796000022.5, "ev": "bank_verdict", "turn": "r2", "bank": "b002", "said": "b002", "agree": true, "via": "lexical", "reason": "verdict"}
+{"t": 1796000023.0, "ev": "card_done", "turn": "r2", "tier": "F", "id": "F-r2", "say": "My notice period is 30 days.", "points": ["30 days, negotiable."]}
+{"t": 1796000024.0, "ev": "card_mark", "card": "F-r2", "mark": "bad", "turn": "r2", "question": "What is your notice period?"}
+{"t": 1796000032.0, "ev": "card_done", "turn": "r3", "tier": "F", "id": "F-r3", "say": "Talk about the people side of the platform work.", "points": []}
+{"t": 1796000049.0, "ev": "card_done", "turn": "r4", "tier": "F", "id": "F-r4", "say": "I want a smaller company where I can own the product.", "points": ["Ship every week."]}
+{"t": 1796000050.0, "ev": "card_mark", "card": "F-r4", "mark": "good", "turn": "r4", "question": "Why do you want to leave your current job?"}
+{"t": 1796000051.0, "ev": "card_mark", "card": "F-r4", "mark": "bad", "turn": "r4", "question": "Why do you want to leave your current job?"}
+{"t": 1796000052.0, "ev": "card_mark", "card": "F-r4", "mark": "good", "turn": "r4", "question": "Why do you want to leave your current job?"}
+{"t": 1796000065.0, "ev": "card_done", "turn": "r5", "tier": "F", "id": "F-r5", "say": "I led the platform team at Northwind.", "points": []}
+{"t": 1796000090.0, "ev": "card_done", "turn": "rx", "tier": "F", "id": "F-x9", "say": "In five years I want to lead a product engineering group.", "points": []}
+{"t": 1796000095.0, "ev": "card_mark", "card": "F-x9", "mark": "bad", "turn": "rx", "question": "Where do you see yourself in five years?"}

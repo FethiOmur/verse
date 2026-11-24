@@ -100,3 +100,25 @@ def test_settings_tuples_identical_for_prewarm_and_calls():
     # no connection opened at t = 0: both lanes of both models were opened at start (pre-warm lane 0, ping lane 1)
     assert {(c["request"]["model"], c["lane"]) for c in creates[:2]} == {(HAIKU, 0), (SONNET, 0)}
     assert set(t.pings) >= {(HAIKU, 1), (SONNET, 1)}
+
+
+def test_said_before_rule_only_with_a_pack_that_quotes_an_earlier_call():
+    from verse_brain.runtime.prompt import SYSTEMS, SYSTEMS_ME, SAID_BEFORE_REF, build_request, render_about_block
+
+    plain = "## FACTS\n[f001] number | Team size | 12 | prep:L3\n"
+    quoted = plain + f"\n## SNIPPETS\n[s001] {SAID_BEFORE_REF}s1a2b3c4 0:24 (2026-11-20) | \"I could start in March\" (start date)\n"
+    params = route_params("F")
+    for route in ("F", "D"):
+        base = build_request(route, params, plain, [], "tail")
+        assert [b["text"] for b in base["system"]] == [SYSTEMS[route]]          # every byte as before
+        req = build_request(route, params, quoted, [], "tail")
+        text = req["system"][0]["text"]
+        assert text.startswith(SYSTEMS[route]) and text != SYSTEMS[route]
+        assert "only through such a snippet" in text and 'starts with "SAID BEFORE"' in text
+        about = render_about_block("## WHO I AM\n- [m101] engineer | owner")
+        me = build_request(route, params, quoted, [], "tail", about=about)
+        assert me["system"][0]["text"].startswith(SYSTEMS_ME[route]) and "only through such a snippet" in me["system"][0]["text"]
+        marks = sum("cache_control" in b for b in me["system"]) + sum("cache_control" in b for b in me["messages"][0]["content"])
+        assert marks <= 4
+        # the rule is a pure function of the pack: two requests of one call share the system bytes
+        assert _bytes(build_request(route, params, quoted, [Turn("t1", "remote", "hi")], "tail2")["system"]) == _bytes(req["system"])

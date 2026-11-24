@@ -14,6 +14,10 @@ under a private project folder (`<projects_folder>/<name>`: `private_project_fol
 never returned. The private project list is read at use time, not at import. The `public` audience is safe by default: the
 built-in returns only notes marked `visibility: public` in their frontmatter, and a provider that cannot take an audience gets
 no vault at all.
+
+The master persona's folder (`persona_dir` in the owner profile, verse_brain/persona) is never returned either: its notes are
+written by Verse from the owner's calls, and reading them back as "vault evidence" would let the persona feed itself. The
+built-in skips the folder; a provider's records under it are dropped by the same last gate as the private folders.
 """
 
 from __future__ import annotations
@@ -83,6 +87,31 @@ def blocked_names() -> tuple[set[str], set[str]]:
     forbidden = {_norm(f) for f in OWNER.forbidden_vault_folders}
     private = {_norm(p) for p in (*OWNER.private_project_folders, *extra)}
     return forbidden, private
+
+
+def persona_rel_parts(vault: Path | str | None, persona: Path | str | None = None) -> list[str] | None:
+    """The normalised vault-relative parts of the persona folder (`OWNER.persona_dir` unless given), or None when there is
+    no persona folder or it does not lie inside `vault`. Read at use time, never at import."""
+    persona = OWNER.persona_dir if persona is None else persona
+    if persona is None or vault is None:
+        return None
+    pv, pp = Path(vault).expanduser(), Path(persona).expanduser()
+    for a, b in ((pv, pp), (pv.resolve(), pp.resolve())):
+        try:
+            rel = b.relative_to(a)
+        except ValueError:
+            continue
+        parts = _path_parts(rel.as_posix())
+        return parts or None             # the persona folder is the vault itself: nothing sensible to exclude by path
+    return None
+
+
+def under_persona(source: str, persona_parts: list[str] | None) -> bool:
+    """True when a vault-relative `source` (any reading of it) lies inside the persona folder."""
+    if not persona_parts:
+        return False
+    n = len(persona_parts)
+    return any(_path_parts(v)[:n] == persona_parts for v in _source_variants(source))
 
 
 def _source_variants(source: str) -> list[str]:
@@ -184,8 +213,9 @@ class MarkdownFolderVault:
     private project folders. With `public_only` it returns only notes whose frontmatter says `visibility: public`."""
 
     def __init__(self, folder: Path | str, forbidden: Iterable[str] | None = None, private: Iterable[str] | None = None,
-                 public_only: bool = False) -> None:
+                 public_only: bool = False, persona_dir: Path | str | None = None) -> None:
         self.folder = Path(folder).expanduser()
+        self._persona_arg = persona_dir
         self._private_arg = None if private is None else {_norm(p) for p in private}
         self.forbidden = {_norm(f) for f in (OWNER.forbidden_vault_folders if forbidden is None else forbidden)}
         self.public_only = public_only
@@ -194,14 +224,19 @@ class MarkdownFolderVault:
         """The private project folders, read now (an argument given to the constructor wins)."""
         return blocked_names()[1] if self._private_arg is None else self._private_arg
 
+    def _persona(self) -> list[str] | None:
+        """The persona folder's vault-relative parts (the constructor argument wins over the owner profile), read now."""
+        return persona_rel_parts(self.folder, self._persona_arg)
+
     def _notes(self, private: set[str] | None = None) -> list[Path]:
         private = self._private() if private is None else private
+        persona = self._persona()
         out: list[Path] = []
         for p in sorted(self.folder.rglob("*.md")):
             rel = p.relative_to(self.folder).parts
             if any(part.startswith(".") for part in rel[:-1]) or p.name.startswith("."):
                 continue
-            if blocked_source("/".join(rel), self.forbidden, private):
+            if blocked_source("/".join(rel), self.forbidden, private) or under_persona("/".join(rel), persona):
                 continue
             if p.is_file():
                 out.append(p)
@@ -243,7 +278,7 @@ class MarkdownFolderVault:
             snippet = _best_snippet(body, terms, per_record)
             if snippet:
                 out.append(VaultRecord("md-" + hashlib.sha256(f"{rel}\n{snippet}".encode()).hexdigest()[:24], rel, snippet))
-        return _without_blocked(out, self.forbidden, private)
+        return [r for r in _without_blocked(out, self.forbidden, private) if not under_persona(r.source, self._persona())]
 
 
 def _best_snippet(body: str, terms: list[str], cap: int) -> str:
@@ -293,8 +328,9 @@ class ProviderVault:
     """Wraps an extension's provider: passes only the arguments its `search` accepts, normalises the records and turns every
     failure into `VaultError` (what the prep stages already catch)."""
 
-    def __init__(self, provider: Any) -> None:
+    def __init__(self, provider: Any, vault_path: Path | str | None = None) -> None:
         self.provider = provider
+        self.vault_path = vault_path
         try:
             params = inspect.signature(provider.search).parameters
             wide = any(p.kind is p.VAR_KEYWORD for p in params.values())
@@ -314,7 +350,9 @@ class ProviderVault:
         except Exception as e:  # noqa: BLE001
             raise VaultError(f"the vault provider failed: {type(e).__name__}: {str(e)[:200]}") from None
         forbidden, private = blocked_names()
-        return _without_blocked(_records(raw), forbidden, private)[:max(0, limit)]
+        persona = persona_rel_parts(self.vault_path if self.vault_path is not None else OWNER.vault_path)
+        kept = [r for r in _without_blocked(_records(raw), forbidden, private) if not under_persona(r.source, persona)]
+        return kept[:max(0, limit)]
 
 
 def make_vault(path: Path | str | None, audience: str = "internal") -> Vault | None:
@@ -333,7 +371,7 @@ def make_vault(path: Path | str | None, audience: str = "internal") -> Vault | N
                 log.warning("the vault provider cannot enforce the %s audience (no bind); no vault is used", audience)
                 return None
             bound = bind(Path(path).expanduser() if path is not None else None, audience) if callable(bind) else provider
-            return None if bound is None else ProviderVault(bound)     # bind() -> None: this provider has nothing to search
+            return None if bound is None else ProviderVault(bound, path)     # bind() -> None: this provider has nothing to search
         except Exception as e:  # noqa: BLE001
             log.warning("the vault provider could not be set up (%s); using the built-in search", type(e).__name__)
     if path is None:

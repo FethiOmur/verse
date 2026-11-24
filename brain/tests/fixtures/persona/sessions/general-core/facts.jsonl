@@ -1,0 +1,2 @@
+{"id": "f001", "kind": "number", "text": "Notice period in days", "value": "30", "sources": [{"kind": "prep", "ref": "prep:L9", "quote": "notice period of 30 days"}]}
+{"id": "f002", "kind": "name", "text": "Current employer", "value": "Northwind", "sources": [{"kind": "prep", "ref": "prep:L2", "quote": "works at Northwind"}]}

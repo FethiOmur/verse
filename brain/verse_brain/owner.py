@@ -20,6 +20,8 @@ Keys (all optional; a missing file or key falls back to a generic default and sw
     api_key_note              one sentence the Settings page shows above the Keychain note. Default: none.
     extensions_path           a folder of owner-only extensions (docs/extensions.md). Loaded from here and from nowhere
                               else. Default: none.
+    persona_dir               the folder of the master persona (verse_brain/persona), absolute or relative to vault_path.
+                              Default: none (the persona feature is off). A relative value without a vault_path is off too.
 
 Any other key is kept in `Owner.raw` and handed to the extensions, so an extension can read its own settings from the same file.
 """
@@ -76,6 +78,7 @@ class Owner:
     forbidden_vault_folders: tuple[str, ...] = ()
     api_key_note: str | None = None
     extensions_path: Path | None = None
+    persona_dir: Path | None = None           # absolute, already joined to vault_path when the file gave a relative path
     raw: Mapping[str, Any] = field(default_factory=dict, compare=False, repr=False)   # the whole file, for extensions
 
     @property
@@ -101,6 +104,16 @@ class Owner:
                 .replace("{OWNER}", self.display_name.upper()).replace("{NOTES_HEADING}", self.notes_heading))
 
 
+def _persona_dir(v: object, vault: Path | None) -> Path | None:
+    """`persona_dir` as an absolute path: an absolute (or `~`) value as is, a relative one under `vault_path`, else None."""
+    p = _path(v)
+    if p is None:
+        return None
+    if p.is_absolute():
+        return p
+    return vault / p if vault is not None and vault.is_absolute() else None
+
+
 def load_owner(path: Path | str | None = None) -> Owner:
     """Read the profile. A missing, unreadable or malformed file gives the generic owner; nothing here raises."""
     p = Path(path).expanduser() if path else owner_file()
@@ -111,10 +124,11 @@ def load_owner(path: Path | str | None = None) -> Owner:
     if not isinstance(data, dict):
         return Owner()
     name = _str(data.get("display_name"))
+    vault = _path(data.get("vault_path"))
     return Owner(
         display_name=name or GENERIC_NAME,
         named=name is not None,
-        vault_path=_path(data.get("vault_path")),
+        vault_path=vault,
         profile_source=_path(data.get("profile_source")),
         projects_folder=_str(data.get("projects_folder")) or DEFAULT_PROJECTS_FOLDER,
         projects_index=_str(data.get("projects_index")) or DEFAULT_PROJECTS_INDEX,
@@ -122,6 +136,7 @@ def load_owner(path: Path | str | None = None) -> Owner:
         forbidden_vault_folders=_strs(data.get("forbidden_vault_folders")),
         api_key_note=_str(data.get("api_key_note")),
         extensions_path=_path(data.get("extensions_path")),
+        persona_dir=_persona_dir(data.get("persona_dir"), vault),
         raw=dict(data),
     )
 
