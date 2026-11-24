@@ -80,6 +80,10 @@ public final class VerseController: ObservableObject {
     public let prompter = PrompterModel()
     public let launch: LaunchOptions
     private var panel: NotchPanelController?
+    /// The meeting island's frame while it is on screen (the dictation island keeps clear of it).
+    var meetingIslandFrame: NSRect? { panel?.visibleFrame }
+    /// Called when the meeting island appears, moves, resizes or goes (set by `bindDictation`).
+    var onMeetingIslandChange: (() -> Void)?
     private var runner: VerseRunner?
     private var runTask: Task<Void, Never>?
     private var runStartedAt = Date()
@@ -980,6 +984,7 @@ public final class VerseController: ObservableObject {
             panel = NotchPanelController(model: overlay, settings: settings, prompter: prompter, onOpenSettings: { kind in
                 SystemSettingsLink.open(permission: kind)
             }, onRetry: { [weak self] in self?.retry() })
+            panel?.onFrameChange = { [weak self] in self?.onMeetingIslandChange?() }
         }
         panel?.show()
     }

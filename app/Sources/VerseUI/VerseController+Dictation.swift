@@ -23,6 +23,9 @@ extension VerseController {
         d.observeRuns(Publishers.CombineLatest4($running, $stopping, sim.$phase, prompter.$isOpen).map { r, s, p, o in
             Self.dictationBlocked(running: r, stopping: s, practiceRunning: p == .running, prompterOpen: o)
         })
+        // A meeting prompt or status keeps the meeting island up with no run: the dictation island hangs below it.
+        d.avoidMeetingIsland { [weak self] in self?.meetingIslandFrame }
+        onMeetingIslandChange = { [weak d] in d?.meetingIslandChanged() }
     }
 
     /// App launch: binds the gate and follows the setting (the hot key is registered only while dictation is on). A test copy

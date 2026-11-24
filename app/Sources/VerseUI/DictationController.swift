@@ -97,8 +97,9 @@ public protocol DictationNotifying: AnyObject {
 ///   A paste that went nowhere returns `.notInserted`: the text stays on the clipboard and the notice says to press ⌘V. The
 ///   same for "Paste last dictation".
 /// - Recording indicator (G5): `indicator` follows the phase (preparing until the first audio, recording, finishing) and a
-///   panel shows it top centre while a dictation is under way, never during a run, and only with the setting on. Notices go
-///   below it (`DictationHUD.avoid`).
+///   panel shows it as an island hanging from the notch, as the meeting island does (`DictationIslandView`), while a dictation
+///   is under way, never during a run, and only with the setting on. Notices show in that island too, except the two that
+///   come during a run, which go to a capsule below it (`DictationHUD`).
 /// - Vocabulary (G3): `settings.vocabularyTerms` goes to the transcriber at every start; the Apple transcriber passes it on
 ///   only where the engine honours it (`AppleDictationTranscriber.config`).
 /// - Hold to talk (G8, setting `holdToTalk`, on by default): the Fn + Space key-down starts as before; let go after at least
@@ -250,6 +251,7 @@ public final class DictationController: ObservableObject {
         self.notifier = notifier
         if let hud = notifier as? DictationHUD, let panel {
             hud.avoid = { [weak panel] in panel?.visibleFrame }
+            hud.island = panel
             panel.onFrameChange = { [weak hud] in hud?.reposition() }
         }
         self.sounds = sounds ?? SynthDictationSoundPlayer()
@@ -257,6 +259,8 @@ public final class DictationController: ObservableObject {
         self.accessibility = accessibility ?? SystemAccessibilityTrust()
         self.ticker = ticker ?? Self.timerTicker
         self.log = log
+        // The island is the notch's only while no run holds it: a run that starts drops a notice still up there.
+        panel?.observeRuns($runActive)
     }
 
     /// A repeating `Timer` on the main run loop (common modes, so it also fires while a menu is open).
@@ -377,6 +381,19 @@ public final class DictationController: ObservableObject {
             return
         }
         installFnSpace(enabled: true, mayPrompt: true)
+    }
+
+    // MARK: the meeting island
+
+    /// The meeting island's frame while it is on screen. It can be up with no run (a meeting prompt, an offline status):
+    /// the dictation island then hangs below it instead of covering it.
+    public func avoidMeetingIsland(_ frame: @escaping @MainActor () -> NSRect?) {
+        indicatorPanel?.meetingIsland = frame
+    }
+
+    /// The meeting island appeared, moved, grew or went.
+    public func meetingIslandChanged() {
+        indicatorPanel?.meetingIslandChanged()
     }
 
     // MARK: runs

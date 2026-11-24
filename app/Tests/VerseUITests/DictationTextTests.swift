@@ -357,12 +357,23 @@ extension DictationTests {
 
     // MARK: the indicator
 
+    /// The language code sits in the island's right wing beside the elapsed time; the compact island (live text off) is the
+    /// listening capsule, widened by the island's own rule when the wing's text needs it.
     func testTheIndicatorMakesRoomForTheLanguageCode() {
-        let plain = DictationIndicatorContent(stage: .recording)
+        let m = NotchMetrics.macBookPro
+        let plain = DictationIndicatorContent(stage: .recording, showsText: false)
         var withLanguage = plain
         withLanguage.language = "tr"
-        XCTAssertEqual(DictationIndicatorView.layoutWidth(plain), DictationIndicatorView.width)
-        XCTAssertEqual(DictationIndicatorView.layoutWidth(withLanguage),
-                       DictationIndicatorView.width + DictationIndicatorView.languageWidth + 10)
+        XCTAssertEqual(DictationIslandView.wingSample(plain), "00:00")
+        XCTAssertEqual(DictationIslandView.wingSample(withLanguage), "TR  00:00")
+        let w = DictationIslandView.width(content: withLanguage, notice: nil, metrics: m)
+        XCTAssertEqual(w, IslandWidth.listeningWidth(wingText: "TR  00:00", metrics: m))
+        XCTAssertGreaterThanOrEqual(w, DictationIslandView.width(content: plain, notice: nil, metrics: m))
+        let wing = (w - m.notchWidth) / 2 - VT.Radius.islandShoulder - IslandBand.wingInset(width: w)
+        XCTAssertLessThanOrEqual(IslandWidth.wingTextWidth("TR  00:00"), wing, "the code and the time fit the wing at full size")
+        var text = withLanguage
+        text.showsText = true
+        XCTAssertEqual(DictationIslandView.width(content: text, notice: nil, metrics: m), DictationIslandView.bodyWidth,
+                       "with live text: the island's panel width")
     }
 }

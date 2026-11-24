@@ -114,21 +114,22 @@ struct IslandVeilView: View {
     }
 }
 
-/// The outline the glass is cut to.
-enum NotchGlassShape: Equatable, Sendable {
-    /// The island's hanging silhouette, attached to the screen's top edge.
-    case hanging
-    /// Free-standing: a continuous rounded rectangle with the island's lower corners (a capsule when it is short). The
-    /// dictation indicator, which floats under the menu bar.
-    case rounded
+/// The island's whole surface, both halves: the live glass (left out under Reduce Transparency, where the veil turns solid)
+/// and the veil with its rim, in the hanging silhouette. The meeting island (`OverlayView`) and the dictation island
+/// (`DictationIslandView`) both wear it, so they are one material.
+struct IslandSurface: View {
+    var bandHeight: CGFloat
+    /// The user's Island opacity (Settings), before the accessibility rules (`IslandVeil.floor`).
+    var userOpacity: Double
+    var a11y: IslandA11y
 
-    static func roundedCornerRadius(height: CGFloat) -> CGFloat { min(HangingNotchMetrics.bottomCornerRadius, max(height, 0) / 2) }
-
-    func path(in rect: CGRect) -> CGPath {
-        switch self {
-        case .hanging: return HangingNotchGeometry.path(in: rect)
-        case .rounded:
-            return RoundedRectangle(cornerRadius: Self.roundedCornerRadius(height: rect.height), style: .continuous).path(in: rect).cgPath
+    var body: some View {
+        ZStack {
+            if !a11y.reduceTransparency { NotchGlassBackdrop() }
+            IslandVeilView(bandHeight: bandHeight,
+                           floor: IslandVeil.floor(userOpacity: userOpacity, reduceTransparency: a11y.reduceTransparency,
+                                                   increaseContrast: a11y.increaseContrast),
+                           reduceTransparency: a11y.reduceTransparency, increaseContrast: a11y.increaseContrast)
         }
     }
 }
@@ -136,14 +137,12 @@ enum NotchGlassShape: Equatable, Sendable {
 /// The live glass half: window-server Liquid Glass masked to the silhouette. It stays outside any SwiftUI layer
 /// effect (a rasterizing effect would render it blank).
 struct NotchGlassBackdrop: View {
-    var shape: NotchGlassShape = .hanging
-
     var body: some View {
         Group {
             if NotchCustomGlassView.isSupported {
-                CustomGlassBackdrop(shape: shape)
+                CustomGlassBackdrop()
             } else {
-                VisualEffectBackdrop(shape: shape)
+                VisualEffectBackdrop()
             }
         }
         .allowsHitTesting(false)
@@ -151,8 +150,7 @@ struct NotchGlassBackdrop: View {
 }
 
 private struct CustomGlassBackdrop: NSViewRepresentable {
-    var shape: NotchGlassShape
-    func makeNSView(context: Context) -> NotchCustomGlassView { NotchCustomGlassView(shape: shape) }
+    func makeNSView(context: Context) -> NotchCustomGlassView { NotchCustomGlassView() }
     func updateNSView(_ view: NotchCustomGlassView, context: Context) {}
 }
 
@@ -175,15 +173,13 @@ final class NotchCustomGlassView: NSView {
             && NSClassFromString("CASDFElementLayer") is CALayer.Type
             && NSClassFromString("CASDFOutputEffect") is NSObject.Type
 
-    private let shape: NotchGlassShape
     private let shapeMask = CAShapeLayer()
     private var backdrop: CALayer?
     private var sdfLayer: CALayer?
     private var sdfContainer: CALayer?
     private var sdfElement: CALayer?
 
-    init(shape: NotchGlassShape = .hanging) {
-        self.shape = shape
+    init() {
         super.init(frame: .zero)
         wantsLayer = true
     }
@@ -247,20 +243,12 @@ final class NotchCustomGlassView: NSView {
         CATransaction.setDisableActions(true)
         backdrop?.frame = bounds
         shapeMask.frame = bounds
-        shapeMask.path = shape.path(in: bounds)
+        shapeMask.path = HangingNotchGeometry.path(in: bounds)
         sdfLayer?.frame = bounds
         sdfContainer?.frame = bounds
-        switch shape {
-        case .hanging:
-            // The lens is the straight-sided body: inset by the shoulder radius, so its round bottom corners coincide
-            // with the silhouette's. Its top corners sit under the black band and never show.
-            sdfElement?.frame = bounds.insetBy(dx: HangingNotchMetrics.topShoulderRadius, dy: 0)
-            sdfElement?.cornerRadius = HangingNotchMetrics.bottomCornerRadius
-        case .rounded:
-            // The lens is the whole shape, its corners the shape's.
-            sdfElement?.frame = bounds
-            sdfElement?.cornerRadius = NotchGlassShape.roundedCornerRadius(height: bounds.height)
-        }
+        // The lens is the straight-sided body: inset by the shoulder radius, so its round bottom corners coincide
+        // with the silhouette's. Its top corners sit under the black band and never show.
+        sdfElement?.frame = bounds.insetBy(dx: HangingNotchMetrics.topShoulderRadius, dy: 0)
         CATransaction.commit()
     }
 
@@ -335,14 +323,12 @@ final class NotchCustomGlassView: NSView {
 /// mask lives on the `NSVisualEffectView`; every curve sits inside the cap insets, so resizing stretches only the
 /// flat middle.
 private struct VisualEffectBackdrop: NSViewRepresentable {
-    var shape: NotchGlassShape = .hanging
-
     func makeNSView(context: Context) -> NSVisualEffectView {
-        let v = shape == .rounded ? RoundedMaskEffectView() : NSVisualEffectView()
+        let v = NSVisualEffectView()
         v.blendingMode = .behindWindow
         v.material = .fullScreenUI
         v.state = .active   // the panel never becomes key
-        if shape == .hanging { v.maskImage = Self.mask }
+        v.maskImage = Self.mask
         return v
     }
 
@@ -363,23 +349,4 @@ private struct VisualEffectBackdrop: NSViewRepresentable {
         image.resizingMode = .stretch
         return image
     }()
-}
-
-/// The fallback for the free-standing shape: its corner radius follows the height, so the mask is drawn at the view's size.
-private final class RoundedMaskEffectView: NSVisualEffectView {
-    private var maskedSize: CGSize = .zero
-
-    override func layout() {
-        super.layout()
-        let size = bounds.size
-        guard size != maskedSize, size.width > 0, size.height > 0 else { return }
-        maskedSize = size
-        maskImage = NSImage(size: size, flipped: true) { rect in
-            guard let cg = NSGraphicsContext.current?.cgContext else { return false }
-            cg.addPath(NotchGlassShape.rounded.path(in: rect))
-            cg.setFillColor(.black)
-            cg.fillPath()
-            return true
-        }
-    }
 }

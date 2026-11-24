@@ -1,12 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// The brief on-screen notice of dictation: a small capsule near the top of the screen for a couple of seconds.
+/// The brief on-screen notice of dictation, for a couple of seconds.
 ///
-/// Its own panel, not the island: the island's state belongs to the meeting and the practice interview, and the "busy" notice
-/// shows while a meeting runs, so putting it there would change what the meeting shows. The panel never becomes key or
-/// active (the app in front keeps the keyboard focus the text is pasted into) and ignores the mouse. One panel, made on the
-/// first notice and reused.
+/// Most notices show in the dictation island under the notch (`island`, `DictationNotice.showsInIsland`), in the island's
+/// status type. The two that come while a meeting or another run holds the notch use a small capsule near the top of the
+/// screen instead: the meeting island's state belongs to the meeting and the practice interview, so putting them there would
+/// change what the meeting shows. That panel never becomes key or active (the app in front keeps the keyboard focus the text
+/// is pasted into) and ignores the mouse. One panel, made on the first such notice and reused.
 @MainActor
 final class DictationHUD: DictationNotifying {
     static let duration: Duration = .milliseconds(2600)
@@ -19,8 +20,14 @@ final class DictationHUD: DictationNotifying {
     private var hideTask: Task<Void, Never>?
     /// The recording indicator's frame while it is on screen (gap G5): a notice goes below it, never on top of it.
     var avoid: (() -> NSRect?)?
+    /// The dictation island; nil: every notice uses the capsule.
+    weak var island: DictationIndicatorPanel?
 
     func show(_ notice: DictationNotice) {
+        if notice.showsInIsland, let island {
+            island.show(notice, for: Self.duration)
+            return
+        }
         let panel = self.panel ?? makePanel()
         self.panel = panel
         let host = NSHostingView(rootView: DictationNoticeView(text: notice.text))

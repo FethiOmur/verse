@@ -124,10 +124,16 @@ public final class NotchPanelController {
 
     public var windowNumber: Int { panel.windowNumber }
     public var isVisible: Bool { panel.isVisible }
+    /// The panel's frame while it is on screen (the dictation island keeps clear of it).
+    var visibleFrame: NSRect? { panel.isVisible ? panel.frame : nil }
+    /// Called after the panel appears, moves, resizes or goes (the dictation island places itself again).
+    var onFrameChange: (() -> Void)?
 
     public func show() {
         layout()
+        let wasVisible = panel.isVisible
         panel.orderFrontRegardless()
+        if !wasVisible { onFrameChange?() }
     }
 
     /// Nothing running, no message and no meeting prompt: off screen. Judged on the model as it is now.
@@ -138,7 +144,9 @@ public final class NotchPanelController {
 
     public func hide() {
         guard !prompter.isOpen else { return }   // the teleprompter keeps the panel up
+        guard panel.isVisible else { return }
         panel.orderOut(nil)
+        onFrameChange?()
     }
 
     /// Closes the window for good (Quit).
@@ -212,11 +220,19 @@ public final class NotchPanelController {
         // Never wider than the screen, whatever the content reports.
         contentSize.width = min(contentSize.width, f.width)
         contentSize.height = min(contentSize.height, f.height * 0.8)
-        // Exactly the surface: no shadow, the glass rim lies inside the silhouette, and the top edge is the screen's.
-        let w = ceil(max(contentSize.width, metrics.capsuleWidth(wide: false)))
-        let h = ceil(max(contentSize.height, metrics.capsuleHeight))
-        let frame = NSRect(x: (Self.notchCenterX(on: screen) - w / 2).rounded(), y: f.maxY - h, width: w, height: h)
-        if panel.frame != frame { panel.setFrame(frame, display: true) }
+        let frame = Self.islandFrame(contentSize: contentSize, screenFrame: f, centerX: Self.notchCenterX(on: screen), metrics: metrics)
+        guard panel.frame != frame else { return }
+        panel.setFrame(frame, display: true)
+        if panel.isVisible { onFrameChange?() }
+    }
+
+    /// The window of an island whose surface is `contentSize`: exactly the surface (no shadow, the glass rim lies inside
+    /// the silhouette), at least the idle capsule, centred on the notch, its top edge the screen's. The dictation island
+    /// (`DictationIndicatorPanel`) hangs the same way.
+    nonisolated static func islandFrame(contentSize: CGSize, screenFrame f: NSRect, centerX: CGFloat, metrics: NotchMetrics) -> NSRect {
+        let w = ceil(max(min(contentSize.width, f.width), metrics.capsuleWidth(wide: false)))
+        let h = ceil(max(min(contentSize.height, f.height * 0.8), metrics.capsuleHeight))
+        return NSRect(x: (centerX - w / 2).rounded(), y: f.maxY - h, width: w, height: h)
     }
 
     /// The middle of the camera housing (between the two menu-bar areas beside it), else the screen's middle.

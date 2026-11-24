@@ -317,6 +317,8 @@ struct CardLead: View {
 
 /// Points under the SAY line. Points already said are struck through and dimmed (no animation, like all card text).
 struct PointList: View {
+    /// The points' line spacing (also the dictation island's live text, which wears the points' type).
+    static let lineSpacing: CGFloat = 2
     var points: [String]
     var scale: CGFloat
     /// The deep (Sonnet) points are a step quieter than the fast ones.
@@ -337,7 +339,7 @@ struct PointList: View {
                         .font(VT.Font.point(scale))
                         .strikethrough(done, color: .white.opacity(0.55))
                         .foregroundStyle(color(done: done))
-                        .lineSpacing(2)
+                        .lineSpacing(Self.lineSpacing)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityLabel(done ? Text("\(p), said", bundle: .module) : Text(verbatim: p))
                 }
@@ -474,11 +476,7 @@ struct CardView: View {
                 }
             } else {
                 // Hearing: Verse has the question and the answer is on its way.
-                Text(verbatim: card.question.isEmpty ? L10n.tr("Listening to the question…") : "“\(card.question)”")
-                    .font(.system(size: (15 * scale).rounded(), weight: .medium))
-                    .foregroundStyle(VT.Island.tertiary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                CardHearingLine(text: card.question.isEmpty ? L10n.tr("Listening to the question…") : "“\(card.question)”", scale: scale)
                 if !card.bullets.isEmpty {
                     PointList(points: card.bullets, scale: scale, struck: card.struck).padding(.top, 12)
                 }
@@ -491,11 +489,65 @@ struct CardView: View {
                 }
             }
         }
-        .padding(.horizontal, VT.islandCardInset)
-        .padding(.top, 12)
-        .padding(.bottom, 20)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .islandBody(.card)
         .transaction { $0.animation = nil }
+    }
+}
+
+/// The card's hearing line ("Listening to the question…"): 15 medium (scaled), tertiary, at most two lines. The dictation
+/// island's "Listening…" wears it too.
+struct CardHearingLine: View {
+    var text: String
+    var scale: CGFloat = 1
+
+    var body: some View {
+        Text(verbatim: text)
+            .font(.system(size: (15 * scale).rounded(), weight: .medium))
+            .foregroundStyle(VT.Island.tertiary)
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// The insets of a body under the band: the card's (12 pt from the band) and the panels' (status, start-up: 10 pt), both
+/// `VT.islandCardInset` at the sides and 20 pt above the lower edge.
+enum IslandBodyInsets {
+    case card, panel
+
+    var top: CGFloat { self == .card ? 12 : 10 }
+    static let bottom: CGFloat = 20
+}
+
+extension View {
+    /// Lays a body out under the band, full width, with the island's insets.
+    func islandBody(_ insets: IslandBodyInsets) -> some View {
+        padding(.horizontal, VT.islandCardInset)
+            .padding(.top, insets.top)
+            .padding(.bottom, IslandBodyInsets.bottom)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// A status in the island's panel type: one sentence in 15 semibold, primary, and an optional line of what still works or
+/// what to do, in the meta type, tertiary. The status panel's text, the start-up panel's and the dictation island's
+/// preparing, finishing and notice lines.
+struct IslandStatusLines: View {
+    var headline: String
+    var line: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(verbatim: headline)
+                .font(VT.Font.title)
+                .foregroundStyle(VT.Island.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let line {
+                Text(verbatim: line)
+                    .font(VT.Font.meta)
+                    .foregroundStyle(VT.Island.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
 
@@ -561,16 +613,7 @@ struct StatusPanelView: View {
     var body: some View {
         let p = parts
         VStack(alignment: .leading, spacing: 4) {
-            Text(p.headline)
-                .font(VT.Font.title)
-                .foregroundStyle(VT.Island.primary)
-                .fixedSize(horizontal: false, vertical: true)
-            if let line = p.line {
-                Text(line)
-                    .font(VT.Font.meta)
-                    .foregroundStyle(VT.Island.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            IslandStatusLines(headline: p.headline, line: p.line)
             // "Press ⌥⌘V again to stop" is a two-second question the key answers, and "Microphone reconnected" goes by
             // itself: no buttons.
             if status != .stopConfirm && !status.isTransientNotice {
@@ -589,10 +632,7 @@ struct StatusPanelView: View {
                 .padding(.top, 8)
             }
         }
-        .padding(.horizontal, VT.islandCardInset)
-        .padding(.top, 10)
-        .padding(.bottom, 20)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .islandBody(.panel)
         .transaction { $0.animation = nil }
     }
 }
@@ -616,10 +656,7 @@ struct StartupPanelView: View {
                 StartCardChips(route: route, onAction: onAction).padding(.top, 8)
             }
         }
-        .padding(.horizontal, VT.islandCardInset)
-        .padding(.top, 10)
-        .padding(.bottom, 20)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .islandBody(.panel)
     }
 }
 

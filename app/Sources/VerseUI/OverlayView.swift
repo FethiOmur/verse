@@ -275,15 +275,9 @@ public struct OverlayView: View {
         let shown = surface == .zero ? compactSize : surface
         let a = a11y
         ZStack(alignment: .top) {
-            ZStack {
-                if !a.reduceTransparency { NotchGlassBackdrop() }
-                IslandVeilView(bandHeight: metrics.capsuleHeight,
-                               floor: IslandVeil.floor(userOpacity: settings.islandOpacity, reduceTransparency: a.reduceTransparency,
-                                                       increaseContrast: a.increaseContrast),
-                               reduceTransparency: a.reduceTransparency, increaseContrast: a.increaseContrast)
-            }
-            .frame(width: shown.width, height: shown.height)
-            .opacity(a.reduceMotion ? fade : 1)
+            IslandSurface(bandHeight: metrics.capsuleHeight, userOpacity: settings.islandOpacity, a11y: a)
+                .frame(width: shown.width, height: shown.height)
+                .opacity(a.reduceMotion ? fade : 1)
 
             content
                 .fixedSize(horizontal: false, vertical: true)
