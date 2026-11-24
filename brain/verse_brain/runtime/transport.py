@@ -11,6 +11,7 @@ to the exception classes below; no message text that could contain request data 
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass, field
 from typing import AsyncIterator, Protocol
@@ -37,6 +38,10 @@ class Overloaded(TransportError):
 
 class Offline(TransportError):
     kind = "offline"
+
+
+class StreamBroken(Offline):
+    """A proxy stream that ended before the message was complete (apiroute.RoutedStream). To a caller it is a lost connection."""
 
 
 class CreditExhausted(TransportError):
@@ -107,6 +112,17 @@ def _retry_after(headers) -> float | None:
         return None
 
 
+_TOKENISH = re.compile(r"(?i)\bbearer\s+\S+|\bsk-[A-Za-z0-9_\-]{8,}")
+
+
+def _safe_message(msg: str) -> str:
+    """An API (or proxy) error message cut for the log: every key read in this process and anything shaped like a key or a
+    bearer token is removed (a proxy's error text is not the API's and may echo credentials)."""
+    from ..prep.keychain import redact
+
+    return _TOKENISH.sub("[redacted-key]", redact(msg[:400]))[:200]
+
+
 def map_sdk_error(e: BaseException) -> TransportError:
     import anthropic
     import httpx2
@@ -123,7 +139,7 @@ def map_sdk_error(e: BaseException) -> TransportError:
         if e.status_code >= 500 or etype == "overloaded_error":
             return Overloaded(f"{e.status_code} {etype}", status=e.status_code)
         # 400s: the message is the API's validation text (no key material); keep it short for the log.
-        return BadRequest(f"{e.status_code} {etype}: {(getattr(e, 'message', '') or '')[:200]}", status=e.status_code)
+        return BadRequest(f"{e.status_code} {etype}: {_safe_message(getattr(e, 'message', '') or '')}", status=e.status_code)
     if isinstance(e, (anthropic.APIConnectionError, anthropic.APITimeoutError)):
         return Offline(type(e).__name__)
     # Errors raised while iterating the SSE stream are not wrapped by the SDK: they arrive as raw httpx2 exceptions.
@@ -173,44 +189,60 @@ class _SdkStream:
 
 
 class AnthropicTransport:
-    """Real transport. The API key is handed to the SDK clients and kept nowhere else."""
+    """Real transport. The API keys are handed to the SDK clients and kept nowhere else.
 
-    def __init__(self, api_key: str, lanes: int = 2) -> None:
+    `api_key` is a key or an `apiroute.Credentials`; a bare key follows the configured route (apiroute.credentials_for). With a
+    base URL there is one set of lanes per route (proxy, fallback) and `apiroute.Router` picks the route per request; with a
+    fallback the proxy's clients connect with a short timeout so a refused or dead local port fails over at once (a proxy that
+    accepts the connection and then stalls costs the read timeout, once per cool-off). Without one this is the single direct set."""
+
+    def __init__(self, api_key, lanes: int = 2) -> None:
         import anthropic
         import httpx2
 
+        from ..apiroute import PROXY, PROXY_CONNECT_TIMEOUT_S, credentials_for
+
+        creds = credentials_for(api_key)
+        self.router = creds.router()
         self._anthropic = anthropic
-        self._http: dict[tuple[str, int], object] = {}
-        self._clients: dict[tuple[str, int], object] = {}
-        for model in (HAIKU, SONNET):
-            for lane in range(lanes):
-                http = anthropic.DefaultAsyncHttpxClient(
-                    http2=True,
-                    limits=httpx2.Limits(max_connections=4, max_keepalive_connections=4, keepalive_expiry=300),
-                )
-                timeout = anthropic.Timeout(60.0, connect=10.0) if model == SONNET else anthropic.Timeout(30.0, connect=10.0)
-                self._http[(model, lane)] = http
-                self._clients[(model, lane)] = anthropic.AsyncAnthropic(
-                    api_key=api_key, http_client=http, max_retries=0, timeout=timeout)
+        self._http: dict[tuple[str, str, int], object] = {}
+        self._clients: dict[tuple[str, str, int], object] = {}
+        for target, (key, url) in creds.targets().items():
+            connect = PROXY_CONNECT_TIMEOUT_S if target == PROXY and creds.has_fallback else 10.0
+            for model in (HAIKU, SONNET):
+                for lane in range(lanes):
+                    http = anthropic.DefaultAsyncHttpxClient(
+                        http2=True,
+                        limits=httpx2.Limits(max_connections=4, max_keepalive_connections=4, keepalive_expiry=300),
+                    )
+                    timeout = anthropic.Timeout(60.0 if model == SONNET else 30.0, connect=connect)
+                    self._http[(target, model, lane)] = http
+                    self._clients[(target, model, lane)] = anthropic.AsyncAnthropic(
+                        api_key=key, base_url=url, http_client=http, max_retries=0, timeout=timeout)
+        del creds
+
+    def set_event_sink(self, sink) -> None:
+        """Route changes go to `sink(ev, **fields)` (the live runtime's events.jsonl)."""
+        self.router.sink = sink
 
     # -- connection tracking: lets the metrics prove that no connection is opened at t = 0
-    def _conn_ids(self, model: str, lane: int) -> set[int]:
+    def _conn_ids(self, target: str, model: str, lane: int) -> set[int]:
         try:
-            pool = self._http[(model, lane)]._transport._pool  # httpx2 internals; best effort
+            pool = self._http[(target, model, lane)]._transport._pool  # httpx2 internals; best effort
             return {id(c) for c in pool.connections}
         except Exception:  # noqa: BLE001
             return set()
 
-    def _messages(self, route: str, model: str, lane: int):
-        c = self._clients[(model, lane)]
+    def _messages(self, target: str, route: str, model: str, lane: int):
+        c = self._clients[(target, model, lane)]
         return c.beta.messages if route == "D" else c.messages
 
-    async def open_stream(self, route: str, request: dict, lane: int) -> CallStream:
+    async def _open(self, target: str, route: str, request: dict, lane: int) -> CallStream:
         model = request["model"]
-        before = self._conn_ids(model, lane)
+        before = self._conn_ids(target, model, lane)
         try:
-            raw = await self._messages(route, model, lane).with_raw_response.create(**request, stream=True)
-            after = self._conn_ids(model, lane)
+            raw = await self._messages(target, route, model, lane).with_raw_response.create(**request, stream=True)
+            after = self._conn_ids(target, model, lane)
             new = bool(after - before) if (before or after) else None
             sdk_stream = await raw.parse()
         except TransportError:
@@ -219,23 +251,40 @@ class AnthropicTransport:
             raise map_sdk_error(e) from None
         return _SdkStream(raw, sdk_stream, new)
 
-    async def create(self, route: str, request: dict, lane: int) -> tuple[dict, dict, str | None]:
+    async def open_stream(self, route: str, request: dict, lane: int) -> CallStream:
+        from ..apiroute import RoutedStream
+
+        if not self.router.base_url:
+            return await self._open(self.router.primary, route, request, lane)   # no base URL: the direct path, unwrapped
+        return await RoutedStream(self.router, lambda target: self._open(target, route, request, lane)).open()
+
+    async def _create(self, target: str, route: str, request: dict, lane: int) -> tuple[dict, dict, str | None]:
         model = request["model"]
         try:
-            raw = await self._messages(route, model, lane).with_raw_response.create(**request)
+            raw = await self._messages(target, route, model, lane).with_raw_response.create(**request)
             msg = await raw.parse()
         except Exception as e:  # noqa: BLE001
             raise map_sdk_error(e) from None
         return _int_usage(msg.usage), pick_headers(raw.headers), msg.stop_reason
 
-    async def ping(self, model: str, lane: int) -> dict:
+    async def create(self, route: str, request: dict, lane: int) -> tuple[dict, dict, str | None]:
+        from ..apiroute import call_routed
+
+        return await call_routed(self.router, lambda target: self._create(target, route, request, lane))
+
+    async def _ping(self, target: str, model: str, lane: int) -> dict:
         t0 = time.perf_counter()
         try:
-            raw = await self._clients[(model, lane)].messages.with_raw_response.count_tokens(
+            raw = await self._clients[(target, model, lane)].messages.with_raw_response.count_tokens(
                 model=model, messages=[{"role": "user", "content": "ping"}])
         except Exception as e:  # noqa: BLE001
             raise map_sdk_error(e) from None
         return {"ms": round((time.perf_counter() - t0) * 1000, 1), "headers": pick_headers(raw.headers)}
+
+    async def ping(self, model: str, lane: int) -> dict:
+        from ..apiroute import call_routed
+
+        return await call_routed(self.router, lambda target: self._ping(target, model, lane))
 
     async def aclose(self) -> None:
         for c in self._clients.values():

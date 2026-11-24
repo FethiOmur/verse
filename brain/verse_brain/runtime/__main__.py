@@ -19,6 +19,8 @@ matcher (EmbeddingGemma, LiteRT-LM) off; without it the matcher loads at `start`
 
 Verse is online-only: there is no local model. With no connection, no API key or a rejected key the brain says so in a
 `status` event with a `reason` (`no_connection`, `no_api_key`, `invalid_api_key`, `no_credit`; see runtime/engine.py).
+With an API base URL (`VERSE_API_BASE_URL` or api.json, see apiroute.py and docs/api-route.md) those reasons describe the last
+route tried: the direct API (the fallback, with the Anthropic key) when the proxy failed, else the proxy.
 `VERSE_SIMULATE_API=offline|rate_limited|overloaded|auth|credit` makes every API call fail (no key read, no network) to
 exercise those messages live. `VERSE_SIMULATE_STALL_S=N` holds every API call made in the process's first N seconds until
 then (a stalled network at the start of a call: the pre-warm stalls, Swift listens without the brain; live checks and tests).
@@ -195,16 +197,19 @@ async def amain(args) -> int:
 
         transport = FaultTransport(None, sim_fault)
     else:
-        from ..prep.keychain import KeychainError, read_api_key
+        from ..apiroute import load_credentials
+        from ..prep.keychain import KeychainError
         from .transport import AnthropicTransport
 
         try:
-            key = read_api_key()
+            creds = load_credentials()
         except KeychainError as e:
             emitter.status("error", f"No API key: {e}", reason=NO_API_KEY)
             return 2
-        transport = AnthropicTransport(key)
-        del key  # the SDK clients hold the only copy
+        # With an API base URL the pre-warm (the key check) goes to the proxy; a dead or rejecting proxy fails over to the direct
+        # API with the Anthropic key and the call starts normally. Only a failure of the last route reaches the status logic.
+        transport = AnthropicTransport(creds)
+        del creds  # the SDK clients hold the only copies
     stall = os.environ.get("VERSE_SIMULATE_STALL_S", "").strip()
     if stall:
         try:

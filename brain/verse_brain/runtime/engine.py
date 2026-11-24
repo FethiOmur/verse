@@ -818,6 +818,9 @@ class Brain:
         self.room_auto = "off" if msg.get("room_auto") == "off" else "questions"
         self.events.close()
         self.events = EventLog(None if os.environ.get("VERSE_EVENTS") == "0" else self.session.path / "events.jsonl")
+        attach = getattr(self.transport, "set_event_sink", None)
+        if callable(attach):
+            attach(self._ev)     # API route changes (apiroute.py): api_route_fallback / api_route_primary
         self._ev("start", mode=self.mode, route=self.route_kind, lang=self.lang, room_auto=self.room_auto)
         self._snippet_refs = pack_snippet_refs(self.session.pack)
         self._load_me(msg.get("me"))

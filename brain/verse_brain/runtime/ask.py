@@ -15,8 +15,8 @@ brain: that process is latency-critical. One process serves one session's panel.
   mode. Above: chunked mode. The cached block then holds a TRANSCRIPT INDEX and each question carries TRANSCRIPT EXCERPTS, chunks of
   about 6k tokens cut on turn boundaries and ranked by BM25 over accent-folded words of the question plus the previous question. No
   extra model call.
-- Billing: the key is read by `make_client()` through `prep.keychain.read_api_key()` (the Keychain item) and
-  nowhere else; no other credential source is read in this file (a test greps it). The key is never put in an event, a log or the
+- Billing: the key is read by `make_client()` through `prep.keychain.read_api_key()` (the Keychain item; with an API base URL also
+  the proxy's item, apiroute.py) and nowhere else; no other credential source is read in this file (a test greps it). The key is never put in an event, a log or the
   chat file.
 - `chat.jsonl` is written by this runtime only: the question when received, the answer (or the error) when it ends, a `reset` line on
   `control reset`. Nothing is ever deleted.
@@ -342,19 +342,57 @@ def _int_usage(obj) -> dict:
 
 class AnthropicAskClient:
     """The real client (Anthropic SDK). `beta.messages.stream` when the request carries `betas` (Sonnet and Opus: the server-side
-    fallback), `messages.stream` otherwise (Haiku). Errors are mapped with `transport.map_sdk_error`."""
+    fallback), `messages.stream` otherwise (Haiku). Errors are mapped with `transport.map_sdk_error`.
 
-    def __init__(self, api_key: str) -> None:
+    `api_key` is the Anthropic key or an `apiroute.Credentials` (a bare key follows the configured route). With an API base URL a
+    request goes to the proxy first (no SDK retries, short connect timeout) and to the direct API, with the Anthropic key, when the
+    proxy fails;
+    a stream is restarted there only while no text has reached the panel (apiroute.RoutedStream)."""
+
+    def __init__(self, api_key) -> None:
         import anthropic
         import httpx2
 
-        http = anthropic.DefaultAsyncHttpxClient(
-            http2=True, limits=httpx2.Limits(max_connections=4, max_keepalive_connections=4, keepalive_expiry=300))
-        self._client = anthropic.AsyncAnthropic(api_key=api_key, http_client=http,
-                                                timeout=anthropic.Timeout(120.0, connect=10.0))
+        from ..apiroute import PROXY, PROXY_CONNECT_TIMEOUT_S, credentials_for
+
+        creds = credentials_for(api_key)
+        self._router = creds.router()
+        self._clients: dict[str, object] = {}
+        for target, (key, url) in creds.targets().items():
+            http = anthropic.DefaultAsyncHttpxClient(
+                http2=True, limits=httpx2.Limits(max_connections=4, max_keepalive_connections=4, keepalive_expiry=300))
+            kw = {} if url is None else {"base_url": url}
+            if target == PROXY and creds.has_fallback:
+                kw["max_retries"] = 0
+            connect = PROXY_CONNECT_TIMEOUT_S if target == PROXY and creds.has_fallback else 10.0
+            self._clients[target] = anthropic.AsyncAnthropic(api_key=key, http_client=http,
+                                                             timeout=anthropic.Timeout(120.0, connect=connect), **kw)
+        self._client = self._clients[self._router.primary]
+        del creds
+
+    def set_event_sink(self, sink) -> None:
+        self._router.sink = sink
 
     async def stream(self, request: dict) -> AsyncIterator[AskEv]:
-        ns = self._client.beta.messages if request.get("betas") else self._client.messages
+        from ..apiroute import RoutedStream
+
+        if not self._router.base_url:
+            async for ev in self._stream_on(self._client, request):
+                yield ev
+            return
+
+        async def open_route(target: str):
+            return self._stream_on(self._clients[target], request)
+
+        routed = RoutedStream(self._router, open_route)
+        try:
+            async for ev in routed:
+                yield ev
+        finally:
+            await routed.aclose()
+
+    async def _stream_on(self, client, request: dict) -> AsyncIterator[AskEv]:
+        ns = client.beta.messages if request.get("betas") else client.messages
         usage: dict = {}
         stop_reason = None
         try:
@@ -378,24 +416,33 @@ class AnthropicAskClient:
         yield AskEv("stop", stop_reason=stop_reason, usage=usage)
 
     async def count_tokens(self, model: str, system: list[dict], messages: list[dict]) -> int:
-        try:
-            r = await self._client.messages.count_tokens(model=model, system=system, messages=messages)
-        except Exception as e:  # noqa: BLE001
-            raise map_sdk_error(e) from None
-        return int(r.input_tokens)
+        from ..apiroute import call_routed
+
+        async def on(target: str) -> int:
+            try:
+                r = await self._clients[target].messages.count_tokens(model=model, system=system, messages=messages)
+            except Exception as e:  # noqa: BLE001
+                raise map_sdk_error(e) from None
+            return int(r.input_tokens)
+
+        return await call_routed(self._router, on)
 
     async def aclose(self) -> None:
-        try:
-            await self._client.close()
-        except Exception:  # noqa: BLE001
-            pass
+        for c in self._clients.values():
+            try:
+                await c.close()
+            except Exception:  # noqa: BLE001
+                pass
 
 
 def make_client(fake: bool = False) -> AskClient:
-    """The Keychain key (prep/keychain.py, service verse-anthropic) is the only credential. Raises KeychainError when it is missing."""
+    """The Keychain keys (prep/keychain.py) are the only credentials: `read_api_key` (service verse-anthropic) and, with an API base
+    URL, the optional proxy item (apiroute.load_credentials). Raises KeychainError when verse-anthropic is missing."""
     if fake:
         return FakeAskClient()
-    return AnthropicAskClient(read_api_key())
+    from ..apiroute import load_credentials
+
+    return AnthropicAskClient(load_credentials(read_api_key))
 
 
 # ---------------------------------------------------------------- fake client (tests, --fake)

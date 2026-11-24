@@ -125,9 +125,12 @@ class AnthropicSimModel(AnthropicPrepModel):
     for the same posting and CV (another type, difficulty or length) reads them from the cache."""
 
     async def generate_sim(self, system: str, sources: str, params: str, max_tokens: int) -> ModelOutput:
+        return await self._routed(lambda c: self._generate_sim_on(c, system, sources, params, max_tokens))
+
+    async def _generate_sim_on(self, client, system: str, sources: str, params: str, max_tokens: int) -> ModelOutput:
         parts: list[str] = []
         shown = 0
-        async with self._client.messages.stream(
+        async with client.messages.stream(
             model=self.model,
             max_tokens=max_tokens,
             system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],

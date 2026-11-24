@@ -1,7 +1,8 @@
 """Model access for the prep stage: Sonnet 5.5 at effort high, streaming, plus free token counting.
 
 Client setup follows bench/api/bench_api.py (SDK 1.x runs on httpx2). Prep is not latency-bound, so the SDK's
-default retries stay on. The API key is passed to the SDK client and nowhere else.
+default retries stay on (except on a proxy that has a fallback: apiroute.py). The API keys are passed to the SDK clients and
+nowhere else.
 """
 
 from __future__ import annotations
@@ -69,26 +70,50 @@ class PrepModel(Protocol):
 
 
 class AnthropicPrepModel:
-    def __init__(self, api_key: str, model: str = PREP_MODEL, progress: bool = False) -> None:
+    """`api_key` is the Anthropic key or an `apiroute.Credentials`; a bare key follows the configured route
+    (apiroute.credentials_for). With a base URL each request is tried on the proxy (SDK retries off, short connect timeout) and,
+    when the proxy fails, made again from scratch on the direct API with the Anthropic key: prep keeps the whole answer before using it, so a stream that broke
+    half way is simply restarted. Subclasses run their own requests through `_routed(fn)`."""
+
+    def __init__(self, api_key, model: str = PREP_MODEL, progress: bool = False) -> None:
         import anthropic
         import httpx2
 
-        http = anthropic.DefaultAsyncHttpxClient(
-            http2=True,
-            limits=httpx2.Limits(max_connections=10, max_keepalive_connections=10, keepalive_expiry=300),
-        )
-        self._client = anthropic.AsyncAnthropic(
-            api_key=api_key, http_client=http, max_retries=2, timeout=anthropic.Timeout(600.0, connect=10.0)
-        )
+        from ..apiroute import DIRECT, PROXY, PROXY_CONNECT_TIMEOUT_S, credentials_for
+
+        creds = credentials_for(api_key)
+        self._router = creds.router()
+        self._clients: dict[str, object] = {}
+        for target, (key, url) in creds.targets().items():
+            http = anthropic.DefaultAsyncHttpxClient(
+                http2=True,
+                limits=httpx2.Limits(max_connections=10, max_keepalive_connections=10, keepalive_expiry=300),
+            )
+            proxy = target == PROXY and creds.has_fallback   # a dead proxy must fail over, not burn the SDK's retries
+            self._clients[target] = anthropic.AsyncAnthropic(
+                api_key=key, base_url=url, http_client=http, max_retries=0 if proxy else 2,
+                timeout=anthropic.Timeout(600.0, connect=PROXY_CONNECT_TIMEOUT_S if proxy else 10.0))
+        self._client = self._clients.get(DIRECT) or self._clients[PROXY]   # the primary route's client
+        del creds
         self.model = model
         self._progress = progress
 
+    async def _routed(self, fn):
+        """`await fn(client)` on the route the router picks; a proxy failure is retried from scratch on the fallback."""
+        from ..apiroute import call_routed
+
+        primary = self._router.primary
+        return await call_routed(self._router, lambda t: fn(self._client if t == primary else self._clients[t]))
+
     async def generate(self, system: str, user: str, max_tokens: int, effort: str = "high") -> ModelOutput:
+        return await self._routed(lambda c: self._generate_on(c, system, user, max_tokens, effort))
+
+    async def _generate_on(self, client, system: str, user: str, max_tokens: int, effort: str) -> ModelOutput:
         # Adaptive thinking has no token budget parameter (SDK 1.13: ThinkingConfigAdaptiveParam is type/display only), so
         # `effort` is the lever that keeps thinking from eating max_tokens; the prep pipeline asks for "medium".
         parts: list[str] = []
         shown = 0
-        async with self._client.messages.stream(
+        async with client.messages.stream(
             model=self.model,
             max_tokens=max_tokens,
             system=system,
@@ -119,15 +144,15 @@ class AnthropicPrepModel:
         # The pack is read by Haiku (S/F) and Sonnet (D): size it for the larger count.
         counts = []
         for m in (HAIKU, self.model):
-            r = await self._client.messages.count_tokens(model=m, messages=[{"role": "user", "content": text}])
+            r = await self._routed(lambda c, m=m: c.messages.count_tokens(model=m, messages=[{"role": "user", "content": text}]))
             counts.append(r.input_tokens)
         return max(counts)
 
     async def count_request_tokens(self, system: str, user: str) -> int:
-        r = await self._client.messages.count_tokens(
-            model=self.model, system=system, messages=[{"role": "user", "content": user}]
-        )
+        r = await self._routed(lambda c: c.messages.count_tokens(
+            model=self.model, system=system, messages=[{"role": "user", "content": user}]))
         return r.input_tokens
 
     async def aclose(self) -> None:
-        await self._client.close()
+        for c in {id(c): c for c in (self._client, *self._clients.values())}.values():
+            await c.close()

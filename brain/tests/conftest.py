@@ -12,6 +12,10 @@ import pytest
 
 PINNED_OWNER_FILE = Path(__file__).parent / "fixtures" / "owner" / "pinned.json"
 os.environ["VERSE_OWNER_FILE"] = str(PINNED_OWNER_FILE)
+# The API route (apiroute.py) is pinned the same way: no base URL, so no test (or brain process a test spawns) reads the machine's
+# api.json or the fallback Keychain item. Tests of the route set these themselves.
+os.environ["VERSE_API_CONFIG_FILE"] = str(Path(__file__).parent / "fixtures" / "api" / "absent.json")
+os.environ.pop("VERSE_API_BASE_URL", None)
 
 
 @pytest.fixture(autouse=True)

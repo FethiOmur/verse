@@ -189,7 +189,7 @@ def collect_sources(content: list[Any]) -> Collected:
 class AnthropicConversationModel(AnthropicPrepModel):
     """Sonnet through the prep client. `extract` is the plain prep call; `research` adds the web_search server tool."""
 
-    def __init__(self, api_key: str, model: str = PREP_MODEL, progress: bool = False) -> None:
+    def __init__(self, api_key, model: str = PREP_MODEL, progress: bool = False) -> None:
         super().__init__(api_key, model, progress)
 
     async def generate(self, system: str, user: str, max_tokens: int) -> ModelOutput:
@@ -200,8 +200,11 @@ class AnthropicConversationModel(AnthropicPrepModel):
 
     async def _stream_turn(self, system: str, messages: list[dict], tools: list[dict], max_tokens: int):
         """One streaming request with the research tools; returns the final message."""
+        return await self._routed(lambda c: self._stream_turn_on(c, system, messages, tools, max_tokens))
+
+    async def _stream_turn_on(self, client, system: str, messages: list[dict], tools: list[dict], max_tokens: int):
         self._stream_started = False
-        async with self._client.messages.stream(
+        async with client.messages.stream(
             model=self.model, max_tokens=max_tokens, system=system, messages=messages, tools=tools,
             thinking={"type": "adaptive"}, output_config={"effort": "high"},
         ) as stream:
