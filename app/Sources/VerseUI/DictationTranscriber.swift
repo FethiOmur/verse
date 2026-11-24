@@ -8,11 +8,18 @@ import VerseSpeech
 /// `DictationController`.
 @MainActor
 public protocol DictationTranscribing: AnyObject {
-    /// Opens the microphone and starts transcribing in `lang` ("en", "it" or "tr"). Throws when it cannot start (permission,
-    /// engine). `onFailure` is called when transcription stops by itself while recording (the controller reports it once).
-    func begin(lang: String, onFailure: @escaping @MainActor (String) -> Void) async throws
-    /// Stops the microphone, lets the engine settle the last words and returns the whole transcript.
-    func finish() async throws -> String
+    /// Opens the microphone and starts transcribing in `lang` ("en", "it" or "tr"), with `vocabulary` as the engine's hints
+    /// (see `AppleDictationTranscriber.config`). Throws when it cannot start (permission, engine). `onFailure` is called when
+    /// transcription stops by itself while recording (the controller reports it once).
+    func begin(lang: String, vocabulary: [String], onFailure: @escaping @MainActor (String) -> Void) async throws
+    /// What the microphone delivered since `begin`: peak, seconds of audio and callbacks. The silent-microphone check.
+    var inputLevel: DictationInputLevel { get }
+    /// The RMS of the microphone samples since the previous call (nil: none arrived). One release-tail frame.
+    func takeFrameRMS() -> Float?
+    /// Stops the microphone, lets the engine settle the last words and returns the whole transcript. `onCaptureClosed` is
+    /// called (on the main actor) once the microphone's capture has stopped, before the engine has settled: no sound played
+    /// from then on can reach the transcript.
+    func finish(onCaptureClosed: @escaping @MainActor @Sendable () -> Void) async throws -> String
     /// Stops the microphone at once and drops everything. Safe at any time, also while `begin` is still under way.
     func cancel() async
 }
@@ -63,9 +70,11 @@ struct DictationTranscript: Sendable, Equatable {
 /// The on-device Apple engine on the microphone alone, through the same `ListenSession` the meeting uses (the shape the
 /// teleprompter's script mode already uses: no remote source, the microphone as the `me` channel). The engine is the
 /// language's Apple engine (`SpeechTranscriber` for en/it, `DictationTranscriber` for tr): never Nemotron, so dictation
-/// loads no large model and never unloads the meeting's.
+/// loads no large model and never unloads the meeting's. The microphone source is wrapped (`MeteredCaptureSource`) so the
+/// controller can read its level and learn when its capture has stopped.
 @MainActor
 final class AppleDictationTranscriber: DictationTranscribing {
+    private let meter = DictationInputMeter()
     private var session: ListenSession?
     private var collector: Task<String, Never>?
     private var issueWatch: Task<Void, Never>?
@@ -73,23 +82,46 @@ final class AppleDictationTranscriber: DictationTranscribing {
     private var cancelled = false
 
     /// The listen configuration of a dictation in `lang`.
-    nonisolated static func config(lang: String) -> ListenConfig {
+    ///
+    /// The vocabulary (gap G3) goes to the engine as the analyzer's contextual strings only where it has an effect: measured
+    /// 2026-11-12 on macOS 26.6 (`ListenConfig.contextualStrings`), `DictationTranscriber` (the Turkish engine) uses them and
+    /// `SpeechTranscriber` (English and Italian) ignores them. So it is passed for Turkish only; for English and Italian the
+    /// field has no effect (Settings says so). No accuracy gain was measured for dictation itself.
+    nonisolated static func config(lang: String, vocabulary: [String] = []) -> ListenConfig {
         var c = ListenConfig(lang: lang, remoteBundleIDs: [], micEnabled: true, source: .live)
-        c.engineKind = EngineFactory.defaultKind(for: lang)
+        let kind = EngineFactory.defaultKind(for: lang)
+        c.engineKind = kind
         c.statusSink = nil
         c.releaseIdleModelsOnStop = false
+        if vocabularyTakesEffect(kind) {
+            c.contextualStrings = Array(vocabulary.prefix(DictationSettings.vocabularyCap))
+        }
         return c
     }
 
-    /// The system environment without a remote source: only the microphone opens.
-    nonisolated static var environment: ListenEnvironment {
-        var e = ListenEnvironment.system
+    /// Whether an engine honours contextual strings (see `config`).
+    nonisolated static func vocabularyTakesEffect(_ kind: EngineKind) -> Bool { kind == .dictationTranscriber }
+
+    /// Whether the vocabulary reaches the engine of a dictation in `lang`.
+    nonisolated static func vocabularyTakesEffect(lang: String) -> Bool {
+        vocabularyTakesEffect(EngineFactory.defaultKind(for: lang))
+    }
+
+    /// The system environment without a remote source: only the microphone opens, metered by `meter`.
+    nonisolated static func environment(meter: DictationInputMeter) -> ListenEnvironment {
+        let base = ListenEnvironment.system
+        var e = base
         e.makeRemoteSource = { _ in nil }
+        e.makeMicSource = { cfg in try base.makeMicSource(cfg).map { MeteredCaptureSource(inner: $0, meter: meter) } }
         return e
     }
 
-    func begin(lang: String, onFailure: @escaping @MainActor (String) -> Void) async throws {
-        let s = ListenSession(config: Self.config(lang: lang), environment: Self.environment)
+    var inputLevel: DictationInputLevel { meter.level }
+
+    func takeFrameRMS() -> Float? { meter.takeFrameRMS() }
+
+    func begin(lang: String, vocabulary: [String], onFailure: @escaping @MainActor (String) -> Void) async throws {
+        let s = ListenSession(config: Self.config(lang: lang, vocabulary: vocabulary), environment: Self.environment(meter: meter))
         session = s
         let stream = try await s.start()
         // Cancelled while the engine loaded: a stop() issued then found nothing open yet, so close what has opened since.
@@ -110,8 +142,14 @@ final class AppleDictationTranscriber: DictationTranscribing {
         }
     }
 
-    func finish() async throws -> String {
-        guard let s = session else { return "" }
+    func finish(onCaptureClosed: @escaping @MainActor @Sendable () -> Void) async throws -> String {
+        guard let s = session else {
+            onCaptureClosed()
+            return ""
+        }
+        meter.whenCaptureCloses {
+            DispatchQueue.main.async { MainActor.assumeIsolated { onCaptureClosed() } }
+        }
         await stop(s)
         let text = await collector?.value ?? ""
         issueWatch?.cancel()

@@ -3501,6 +3501,22 @@
         }
       }
     },
+    "Clear recent dictations": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancella le dettature recenti"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son dikteleri temizle"
+          }
+        }
+      }
+    },
     "Clear this chat?": {
       "localizations": {
         "it": {
@@ -3833,6 +3849,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yanıtı kopyala"
+          }
+        }
+      }
+    },
+    "Copy last dictation": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copia l'ultima dettatura"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son dikteyi kopyala"
           }
         }
       }
@@ -4267,6 +4299,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dikte"
+          }
+        }
+      }
+    },
+    "Dictation cancelled": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dettatura annullata"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikte iptal edildi"
           }
         }
       }
@@ -4715,6 +4763,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hata"
+          }
+        }
+      }
+    },
+    "Esc cancels a dictation under way, nothing is typed. Like %@, it needs the Accessibility permission.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esc annulla una dettatura in corso e non viene scritto nulla. Come %@, richiede il permesso Accessibilità."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esc devam eden bir dikteyi iptal eder, hiçbir şey yazılmaz. %@ gibi Erişilebilirlik izni gerektirir."
           }
         }
       }
@@ -6823,6 +6887,22 @@
         }
       }
     },
+    "Names and terms dictation should know, one per line (up to %lld).": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nomi e termini che la dettatura deve conoscere, uno per riga (fino a %lld)."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diktenin bilmesi gereken adlar ve terimler, her satıra bir tane (en fazla %lld)."
+          }
+        }
+      }
+    },
     "Needs access": {
       "localizations": {
         "it": {
@@ -7613,6 +7693,38 @@
         }
       }
     },
+    "No sound from the microphone. Is it muted?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun suono dal microfono. È disattivato?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofondan ses gelmiyor. Sessize mi alınmış?"
+          }
+        }
+      }
+    },
+    "No sound from the microphone: nothing was inserted. Is it muted?": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessun suono dal microfono: non è stato inserito nulla. È disattivato?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mikrofondan ses gelmedi: hiçbir şey eklenmedi. Sessize mi alınmış?"
+          }
+        }
+      }
+    },
     "No source could be read. Add a file under Sources, then try again.": {
       "localizations": {
         "it": {
@@ -8093,6 +8205,22 @@
         }
       }
     },
+    "One term per line": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un termine per riga"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her satıra bir terim"
+          }
+        }
+      }
+    },
     "Only .pptx speaker notes can be imported.": {
       "localizations": {
         "it": {
@@ -8105,6 +8233,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yalnızca .pptx konuşmacı notları içe aktarılabilir."
+          }
+        }
+      }
+    },
+    "Only Turkish dictation uses them: the English and Italian engine ignores them.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo la dettatura in turco li usa: il motore per inglese e italiano li ignora."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bunları yalnızca Türkçe dikte kullanır: İngilizce ve İtalyanca motoru bunları yok sayar."
           }
         }
       }
@@ -8441,6 +8585,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yapıştır"
+          }
+        }
+      }
+    },
+    "Paste last dictation": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incolla l'ultima dettatura"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son dikteyi yapıştır"
           }
         }
       }
@@ -12361,6 +12521,22 @@
         }
       }
     },
+    "Turkish dictation uses them as hints.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dettatura in turco li usa come suggerimenti."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Türkçe dikte bunları ipucu olarak kullanır."
+          }
+        }
+      }
+    },
     "Turn on": {
       "localizations": {
         "it": {
@@ -13191,6 +13367,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Verse %2$@ içinde %1$@ yazdı"
+          }
+        }
+      }
+    },
+    "Vocabulary": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vocabolario"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sözlük"
           }
         }
       }

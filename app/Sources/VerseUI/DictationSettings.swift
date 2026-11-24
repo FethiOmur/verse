@@ -30,6 +30,28 @@ public final class DictationSettings: ObservableObject {
     /// The short start and stop cues (`DictationSound`). On by default.
     @Published public var sounds: Bool { didSet { defaults.set(sounds, forKey: "dictationSounds") } }
 
+    /// The custom vocabulary as typed in Settings: one term per line (gap G3). `vocabularyTerms` is what the engine gets.
+    @Published public var vocabulary: String { didSet { defaults.set(vocabulary, forKey: "dictationVocabulary") } }
+
+    /// At most this many terms reach the engine (TypeWhisper's SpeechAnalyzer plugin uses the same cap).
+    nonisolated public static let vocabularyCap = 100
+
+    /// The vocabulary's terms: one per line, trimmed, empty lines dropped, the first spelling of a repeated term kept
+    /// (case-insensitive), at most `vocabularyCap`.
+    nonisolated public static func terms(fromVocabulary text: String) -> [String] {
+        var seen = Set<String>()
+        var out: [String] = []
+        for line in text.split(whereSeparator: \.isNewline) {
+            let term = line.trimmingCharacters(in: .whitespaces)
+            guard !term.isEmpty, seen.insert(term.lowercased()).inserted else { continue }
+            out.append(term)
+            if out.count == vocabularyCap { break }
+        }
+        return out
+    }
+
+    public var vocabularyTerms: [String] { Self.terms(fromVocabulary: vocabulary) }
+
     public init(defaults: UserDefaults? = nil, preferredLanguages: [String] = Locale.preferredLanguages) {
         let d = defaults ?? (Bundle.main.bundleIdentifier == AppSettings.suiteName ? .standard
                                                                                  : UserDefaults(suiteName: AppSettings.suiteName) ?? .standard)
@@ -40,5 +62,6 @@ public final class DictationSettings: ObservableObject {
         language = Self.languages.contains(stored) ? stored : fallback
         accessibilityPrompted = d.bool(forKey: "dictationAXPrompted")
         sounds = d.object(forKey: "dictationSounds") as? Bool ?? true
+        vocabulary = d.string(forKey: "dictationVocabulary") ?? ""
     }
 }

@@ -72,6 +72,8 @@ struct VerseMenu: View {
                             watcher: controller.calendarWatcher, meetingSettings: controller.meeting.settings, sim: sim)
         }
         Divider()
+        // The last dictation, while dictation is on and one is kept (rows and their divider, or nothing).
+        DictationMenuItems(dictation: controller.dictation)
         Button { HomeRouter.shared.show(HomeRouter.shared.page, openWindow: openWindow) } label: { Text("Open Verse", bundle: L10n.bundle) }
         Button {
             HomeRouter.shared.show(.settings, openWindow: openWindow)

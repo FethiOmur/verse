@@ -32,14 +32,19 @@ final class DictationTests: XCTestCase {
         private(set) var installs = 0
         private(set) var removes = 0
         private(set) var onToggle: (@MainActor @Sendable () -> Void)?
+        private(set) var onCancel: (@MainActor @Sendable () -> Void)?
+        /// Every change of the Esc arming, in order.
+        private(set) var armed: [Bool] = []
         var isInstalled: Bool { onToggle != nil }
-        func install(onToggle: @escaping @MainActor @Sendable () -> Void) -> Bool {
+        func install(onToggle: @escaping @MainActor @Sendable () -> Void, onCancel: @escaping @MainActor @Sendable () -> Void) -> Bool {
             installs += 1
             guard permitted else { return false }
             self.onToggle = onToggle
+            self.onCancel = onCancel
             return true
         }
-        func remove() { removes += 1; onToggle = nil }
+        func setCancelArmed(_ on: Bool) { armed.append(on) }
+        func remove() { removes += 1; onToggle = nil; onCancel = nil }
     }
 
     struct Boom: Error, CustomStringConvertible { var description: String }
@@ -51,6 +56,17 @@ final class DictationTests: XCTestCase {
         var holdBegin = false
         var holdFinish = false
         private(set) var began: [String] = []
+        private(set) var vocabularies: [[String]] = []
+        /// The peak `inputLevel` reports once audio flows (a real microphone in a quiet room is far above the silence floor).
+        var peak: Float = 0.05
+        /// Seconds of audio delivered: nil follows the clock from the open (audio flows all along); 0 = no callbacks at all.
+        var audioSeconds: TimeInterval?
+        /// The rig's clock.
+        var now: () -> TimeInterval = { 0 }
+        private var openedAt: TimeInterval = 0
+        /// The RMS of each `takeFrameRMS` call by its index (0 is the drain at the stop press); nil = no audio.
+        var frame: (Int) -> Float? = { _ in nil }
+        private(set) var frameCalls = 0
         private(set) var finishCalls = 0
         private(set) var cancelCalls = 0
         private(set) var onFailure: (@MainActor (String) -> Void)?
@@ -59,14 +75,30 @@ final class DictationTests: XCTestCase {
         var beginHeld: Bool { beginGate != nil }
         var finishHeld: Bool { finishGate != nil }
 
-        func begin(lang: String, onFailure: @escaping @MainActor (String) -> Void) async throws {
+        func begin(lang: String, vocabulary: [String], onFailure: @escaping @MainActor (String) -> Void) async throws {
             began.append(lang)
+            vocabularies.append(vocabulary)
             self.onFailure = onFailure
             if holdBegin { await withCheckedContinuation { beginGate = $0 } }
             if let beginError { throw beginError }
+            openedAt = now()
         }
-        func finish() async throws -> String {
+        var inputLevel: DictationInputLevel {
+            let secs = audioSeconds ?? max(0, now() - openedAt)
+            guard secs > 0 else { return DictationInputLevel(peak: 0, audioSeconds: 0, chunks: 0) }
+            return DictationInputLevel(peak: peak, audioSeconds: secs, chunks: max(1, Int(secs * 100)))
+        }
+        func takeFrameRMS() -> Float? {
+            defer { frameCalls += 1 }
+            return frame(frameCalls)
+        }
+        /// The capture closes at once (as `ListenSession.stop` stops the source first), then the engine settles.
+        /// The capture-closed report arrives late (the real one is a main-queue hop): kept until the test calls it.
+        var reportCaptureLate = false
+        private(set) var lateCaptureReport: (@MainActor @Sendable () -> Void)?
+        func finish(onCaptureClosed: @escaping @MainActor @Sendable () -> Void) async throws -> String {
             finishCalls += 1
+            if reportCaptureLate { lateCaptureReport = onCaptureClosed } else { onCaptureClosed() }
             if holdFinish { await withCheckedContinuation { finishGate = $0 } }
             if let finishError { throw finishError }
             return finishText
@@ -153,14 +185,28 @@ final class DictationTests: XCTestCase {
         func fire() { for t in Array(ticks.values) { t() } }
     }
 
-    private func defaults() -> UserDefaults {
+    /// The controller's clock: time moves only when the controller sleeps (or a test sets it). `onSleep` runs after each
+    /// sleep with the number of sleeps so far.
+    @MainActor
+    final class FakeClock {
+        var t: TimeInterval = 0
+        private(set) var sleeps: [Duration] = []
+        var onSleep: ((Int) -> Void)?
+        func sleep(_ d: Duration) {
+            sleeps.append(d)
+            t += Double(d.components.seconds) + Double(d.components.attoseconds) / 1e18
+            onSleep?(sleeps.count)
+        }
+    }
+
+    func defaults() -> UserDefaults {
         let name = "verse.dictation.tests.\(UUID().uuidString)"
         let d = UserDefaults(suiteName: name)!
         addTeardownBlock { d.removePersistentDomain(forName: name) }
         return d
     }
 
-    private struct Rig {
+    struct Rig {
         let controller: DictationController
         let settings: DictationSettings
         let registrar: FakeRegistrar
@@ -172,27 +218,37 @@ final class DictationTests: XCTestCase {
         let ax: FakeAccessibility
         let ticker: FakeTicker
         let logs: Box<[String]>
+        let clock: FakeClock
+        let history: DictationHistory
+        let pasteboard: FakePasteboard
+        let frontApp: Box<String?>
         var last: FakeTranscriber? { made.value.last }
     }
 
     /// A controller with every dependency faked. `prepare` configures each transcriber as it is made.
-    private func rig(enabled: Bool = true, lang: String = "en", inserter: (any DictationTextInserting)? = nil,
-                     prepare: @escaping (FakeTranscriber) -> Void = { _ in }) -> Rig {
+    func rig(enabled: Bool = true, lang: String = "en", inserter: (any DictationTextInserting)? = nil,
+             history: DictationHistory? = nil,
+             prepare: @escaping (FakeTranscriber) -> Void = { _ in }) -> Rig {
         let settings = DictationSettings(defaults: defaults())
         settings.enabled = enabled
         settings.language = lang
         let reg = FakeRegistrar(), tap = FakeKeyTap(), fakeInserter = FakeInserter(), notifier = FakeNotifier()
         let made = Box<[FakeTranscriber]>([])
         let sounds = FakeSounds(), ax = FakeAccessibility(trusted: false), ticker = FakeTicker(), logs = Box<[String]>([])
+        let clock = FakeClock(), store = history ?? DictationHistory(fileURL: nil), pb = FakePasteboard()
+        let frontApp = Box<String?>("Notes")
         let c = DictationController(settings: settings, registrar: reg, keyTap: tap, makeTranscriber: {
             let t = FakeTranscriber()
+            t.now = { clock.t }
             prepare(t)
             made.value.append(t)
             return t
         }, inserter: inserter ?? fakeInserter, notifier: notifier, sounds: sounds, accessibility: ax,
-           ticker: { ticker.make($0, $1) }, log: { logs.value.append($0) })
+           ticker: { ticker.make($0, $1) }, history: store, pasteboard: pb, frontAppName: { frontApp.value },
+           now: { clock.t }, sleep: { d in await clock.sleep(d) }, log: { logs.value.append($0) })
         return Rig(controller: c, settings: settings, registrar: reg, keyTap: tap, inserter: fakeInserter, notifier: notifier,
-                   made: made, sounds: sounds, ax: ax, ticker: ticker, logs: logs)
+                   made: made, sounds: sounds, ax: ax, ticker: ticker, logs: logs, clock: clock, history: store, pasteboard: pb,
+                   frontApp: frontApp)
     }
 
     private func waitUntil(_ what: String = "condition", _ cond: () -> Bool) async {
@@ -561,7 +617,8 @@ final class DictationTests: XCTestCase {
             XCTAssertTrue(c.remoteBundleIDs.isEmpty)
             XCTAssertFalse(c.releaseIdleModelsOnStop)
             XCTAssertNil(c.statusSink)
-            XCTAssertNil(try AppleDictationTranscriber.environment.makeRemoteSource(c), "no process tap, no system audio")
+            XCTAssertNil(try AppleDictationTranscriber.environment(meter: DictationInputMeter()).makeRemoteSource(c),
+                         "no process tap, no system audio")
         }
     }
 
@@ -836,7 +893,7 @@ final class DictationTests: XCTestCase {
 
         let stop = Task { await r.controller.press() }
         await waitUntil("finish held") { r.last?.finishHeld == true }
-        XCTAssertEqual(r.sounds.played, [.start, .stop], "at once, before the engine settles")
+        XCTAssertEqual(r.sounds.played, [.start, .stop], "once the capture closed, before the engine settles")
         XCTAssertTrue(r.inserter.calls.isEmpty)
         r.last?.releaseFinish()
         await stop.value
@@ -965,7 +1022,8 @@ final class DictationTests: XCTestCase {
             made.value.append(t)
             return t
         }, inserter: FakeInserter(), notifier: FakeNotifier(), sounds: FakeSounds(),
-           accessibility: FakeAccessibility(trusted: true), ticker: { ticker.make($0, $1) }, log: { _ in })
+           accessibility: FakeAccessibility(trusted: true), ticker: { ticker.make($0, $1) },
+           history: DictationHistory(fileURL: nil), log: { _ in })
         dictation.activate()
 
         let ids = reg.live.values.map(\.id)
