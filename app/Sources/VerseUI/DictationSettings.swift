@@ -74,6 +74,10 @@ public final class DictationSettings: ObservableObject {
     /// read (`DictationSmartInsertion`). On by default.
     @Published public var smartInsertion: Bool { didSet { defaults.set(smartInsertion, forKey: "dictationSmartInsertion") } }
 
+    /// The engine of the final text (`DictationEngine`): Apple (on device) by default. Groq sends the audio to Groq's cloud
+    /// when a dictation stops; it is read at each start.
+    @Published public var engine: DictationEngine { didSet { defaults.set(engine.rawValue, forKey: "dictationEngine") } }
+
     /// Per-app language (gap G12): bundle id -> language code. A dictation that starts while that app is in front listens in
     /// that language; any other app uses `language`.
     @Published public var appLanguages: [String: String] { didSet { defaults.set(appLanguages, forKey: "dictationAppLanguages") } }
@@ -105,6 +109,7 @@ public final class DictationSettings: ObservableObject {
         vocabulary = d.string(forKey: "dictationVocabulary") ?? ""
         corrections = d.string(forKey: "dictationCorrections") ?? ""
         smartInsertion = d.object(forKey: "dictationSmartInsertion") as? Bool ?? true
+        engine = d.string(forKey: "dictationEngine").flatMap(DictationEngine.init(rawValue:)) ?? .apple
         let apps = d.dictionary(forKey: "dictationAppLanguages") as? [String: String] ?? [:]
         appLanguages = apps.filter { Self.languages.contains($0.value) }
     }

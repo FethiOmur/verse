@@ -4,9 +4,8 @@ import VerseSpeech
 
 /// What dictation records and transcribes with. One instance per dictation: `begin`, then `finish` (or `cancel`).
 ///
-/// The on-device Apple engine is the only one now (`AppleDictationTranscriber`). A cloud transcriber (record in `begin`,
-/// upload in `finish`) can be added behind this protocol, with the Apple one as its offline fallback, without changing
-/// `DictationController`.
+/// The on-device Apple engine (`AppleDictationTranscriber`), and the Groq Whisper engine (`GroqDictationTranscriber`): the
+/// Apple one plus an upload in `finish`, with the Apple text as its fallback (`DictationEngine`).
 @MainActor
 public protocol DictationTranscribing: AnyObject {
     /// Opens the microphone and starts transcribing in `lang` ("en", "it" or "tr"), with `vocabulary` as the engine's hints
@@ -23,15 +22,23 @@ public protocol DictationTranscribing: AnyObject {
     func finish(onCaptureClosed: @escaping @MainActor @Sendable () -> Void) async throws -> String
     /// Stops the microphone at once and drops everything. Safe at any time, also while `begin` is still under way.
     func cancel() async
+    /// The synchronous first step of a cancel: the controller calls it on Esc or a run start, before `cancel` runs in a task
+    /// of its own, so work the engine has not started yet (the Groq upload) never starts. Nothing for the Apple engine.
+    func cancelPending()
     /// What has been recognised so far (finals plus the volatile tail): the recording indicator's live text (gap G5).
     var liveText: String { get }
     /// The microphone's RMS since the previous call (nil: no audio arrived): the recording indicator's level (gap G5).
     func takeMeterLevel() -> Float?
+    /// A notice for the controller to show once `finish` has returned (a cloud engine fell back to the on-device text).
+    /// nil for the Apple engine.
+    var finishNotice: DictationNotice? { get }
 }
 
 public extension DictationTranscribing {
     var liveText: String { "" }
     func takeMeterLevel() -> Float? { nil }
+    var finishNotice: DictationNotice? { nil }
+    func cancelPending() {}
 }
 
 /// The live transcript, written by the event collector off the main actor and read by the indicator.
@@ -94,6 +101,8 @@ struct DictationTranscript: Sendable, Equatable {
 final class AppleDictationTranscriber: DictationTranscribing {
     private let meter = DictationInputMeter()
     private let live = DictationLiveText()
+    /// The Groq engine's in-memory copy of the audio; nil for the Apple engine (the capture is then exactly as before).
+    let recorder: DictationAudioRecorder?
     private var session: ListenSession?
     private var collector: Task<String, Never>?
     private var issueWatch: Task<Void, Never>?
@@ -126,12 +135,17 @@ final class AppleDictationTranscriber: DictationTranscribing {
         vocabularyTakesEffect(EngineFactory.defaultKind(for: lang))
     }
 
-    /// The system environment without a remote source: only the microphone opens, metered by `meter`.
-    nonisolated static func environment(meter: DictationInputMeter) -> ListenEnvironment {
+    init(recorder: DictationAudioRecorder? = nil) {
+        self.recorder = recorder
+    }
+
+    /// The system environment without a remote source: only the microphone opens, metered by `meter` (and kept by
+    /// `recorder`, when there is one).
+    nonisolated static func environment(meter: DictationInputMeter, recorder: DictationAudioRecorder? = nil) -> ListenEnvironment {
         let base = ListenEnvironment.system
         var e = base
         e.makeRemoteSource = { _ in nil }
-        e.makeMicSource = { cfg in try base.makeMicSource(cfg).map { MeteredCaptureSource(inner: $0, meter: meter) } }
+        e.makeMicSource = { cfg in try base.makeMicSource(cfg).map { MeteredCaptureSource(inner: $0, meter: meter, recorder: recorder) } }
         return e
     }
 
@@ -144,7 +158,7 @@ final class AppleDictationTranscriber: DictationTranscribing {
     func takeFrameRMS() -> Float? { meter.takeFrameRMS() }
 
     func begin(lang: String, vocabulary: [String], onFailure: @escaping @MainActor (String) -> Void) async throws {
-        let s = ListenSession(config: Self.config(lang: lang, vocabulary: vocabulary), environment: Self.environment(meter: meter))
+        let s = ListenSession(config: Self.config(lang: lang, vocabulary: vocabulary), environment: Self.environment(meter: meter, recorder: recorder))
         session = s
         let stream = try await s.start()
         // Cancelled while the engine loaded: a stop() issued then found nothing open yet, so close what has opened since.

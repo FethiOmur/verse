@@ -22,7 +22,7 @@ struct SettingsDictationSection: View {
     static let keyboardPane = URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension")!
 
     /// The switch's description.
-    static func status(hotKeyRefused: Bool, fnSpaceActive: Bool) -> String {
+    static func status(hotKeyRefused: Bool, fnSpaceActive: Bool, engine: DictationEngine = .apple) -> String {
         let fn = DictationController.fnSpaceLabel, hotKey = DictationController.hotKeyLabel
         if hotKeyRefused && fnSpaceActive {
             return L10n.tr("\(hotKey) is used by another app; \(fn) still works.")
@@ -30,7 +30,25 @@ struct SettingsDictationSection: View {
         if hotKeyRefused {
             return L10n.tr("\(hotKey) is used by another app, so dictation cannot start. Free it there and turn dictation off and on.")
         }
+        if engine == .groq {
+            return L10n.tr("Press \(fn) or \(hotKey), speak, press it again: the text goes where the cursor is. The recording goes to Groq for the final text; never while Verse is listening.")
+        }
         return L10n.tr("Press \(fn) or \(hotKey), speak, press it again: the text goes where the cursor is. On-device; never while Verse is listening.")
+    }
+
+    /// The engine row's help line: where the audio goes (the privacy rule: it leaves the Mac only with Groq selected).
+    static func engineDetail(_ engine: DictationEngine) -> String {
+        switch engine {
+        case .apple:
+            return L10n.tr("On device: the audio never leaves the Mac.")
+        case .groq:
+            return L10n.tr("The live preview stays on device. When you stop, the recording is sent to Groq (Whisper) for the final text, which handles mixed languages better. Without a key or a connection, the on-device text is used.")
+        }
+    }
+
+    /// The Groq key's note, with the Terminal command that saves it the same way.
+    static var groqKeyNote: String {
+        L10n.tr("Kept only in the login Keychain. From Terminal: \(GroqKey.terminalCommand)")
     }
 
     static var shortcutsDetail: String {
@@ -94,7 +112,8 @@ struct SettingsDictationSection: View {
     var body: some View {
         HomeGroup {
             HomeToggleRow("Dictation", verbatimDetail: Self.status(hotKeyRefused: dictation.hotKeyRefused,
-                                                                     fnSpaceActive: dictation.fnSpaceActive),
+                                                                     fnSpaceActive: dictation.fnSpaceActive,
+                                                                     engine: settings.engine),
                           isOn: $settings.enabled)
             HomeRowDivider()
             HomeRow("Dictation shortcuts", verbatimDetail: Self.shortcutsDetail) {
@@ -115,6 +134,24 @@ struct SettingsDictationSection: View {
                           options: DictationSettings.languages.map { HomeOption(verbatim: StartRoutes.languageName($0), $0) })
             }
             .disabled(!settings.enabled)
+            HomeRowDivider()
+            HomeRow("Dictation engine", verbatimDetail: Self.engineDetail(settings.engine)) {
+                HomePopup(selection: $settings.engine,
+                          options: [HomeOption("Apple (on device)", DictationEngine.apple),
+                                    HomeOption("Groq Whisper (cloud)", DictationEngine.groq)])
+            }
+            .disabled(!settings.enabled)
+            if settings.engine == .groq {
+                HomeRowDivider()
+                HomeKeyRows(name: L10n.tr("Groq API key"), placeholder: "gsk_…",
+                            removeNote: L10n.tr("Dictation uses the on-device text until a key is saved again."),
+                            status: { (GroqKey.hasKey, GroqKey.last4) },
+                            save: { try GroqKey.save($0) },
+                            remove: { try GroqKey.remove() })
+                    .padding(.leading, 16)
+                HomeNote(verbatim: Self.groqKeyNote, isError: false).padding(.horizontal, 30).padding(.bottom, 10)
+                    .textSelection(.enabled)
+            }
             HomeRowDivider()
             HomeToggleRow("Dictation sounds", detail: "A short drum when listening starts, a softer one when it stops.",
                           isOn: $settings.sounds)

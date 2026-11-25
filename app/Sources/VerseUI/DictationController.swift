@@ -29,6 +29,10 @@ public enum DictationNotice: Sendable, Equatable {
     case failed(String)
     /// Esc cancelled the dictation: nothing was inserted.
     case cancelled
+    /// The Groq engine could not deliver (network, HTTP error, timeout, empty answer, too long): the on-device text was used.
+    case cloudUnavailable
+    /// The Groq engine is selected but no key is in the Keychain: the on-device text was used.
+    case cloudNoKey
     /// The microphone has been open for a second and delivered nothing but exact silence (muted input, dead route).
     case microphoneSilent
     /// The whole recording was exact silence and nothing was heard: nothing was inserted.
@@ -44,6 +48,8 @@ public enum DictationNotice: Sendable, Equatable {
         case .nothingHeard: return L10n.tr("Dictation heard nothing")
         case .failed(let why): return L10n.tr("Dictation failed: \(why)")
         case .cancelled: return L10n.tr("Dictation cancelled")
+        case .cloudUnavailable: return L10n.tr("Groq unavailable: used the on-device text")
+        case .cloudNoKey: return L10n.tr("No Groq key: used the on-device text")
         case .microphoneSilent: return L10n.tr("No sound from the microphone. Is it muted?")
         case .microphoneSilentNothingInserted: return L10n.tr("No sound from the microphone: nothing was inserted. Is it muted?")
         case .notInserted: return L10n.tr("Not inserted. It is on the clipboard: press ⌘V")
@@ -115,6 +121,10 @@ public protocol DictationNotifying: AnyObject {
 /// - Language (G12): at the start the language is the one set for the app in front (`settings.appLanguages`, by bundle id),
 ///   else the default (`DictationLanguageChoice`). It holds for the whole dictation (a change in the menu meanwhile applies
 ///   to the next one) and shows as a short code in the indicator.
+/// - Engine (setting `engine`, `DictationEngine`): Apple (on device, the default) or Groq Whisper (cloud). With Groq the
+///   Apple engine still gives the live text; `finish` uploads the audio and returns Groq's text, or the Apple text plus
+///   `finishNotice` when Groq could not deliver. The phase stays `.finalising` meanwhile; Esc cancels the upload. Everything
+///   after (corrections, smart insertion, paste check, history) is the same for both.
 /// - Smart insertion (G13, setting `smartInsertion`, on by default): the inserter adjusts the corrected text to the text
 ///   around the caret before the paste (`DictationSmartInsertion`); "Paste last dictation" too, in the language the app in
 ///   front resolves to now. Order: transcript -> corrections -> smart insertion -> paste.
@@ -245,7 +255,7 @@ public final class DictationController: ObservableObject {
         self.sleep = sleep ?? { try? await Task.sleep(for: $0) }
         self.registrar = registrar ?? CarbonRegistrar()
         self.keyTap = keyTap ?? FnSpaceEventTap()
-        self.makeTranscriber = makeTranscriber ?? { AppleDictationTranscriber() }
+        self.makeTranscriber = makeTranscriber ?? { [settings] in DictationEngineFactory.make(settings.engine, log: log) }
         self.inserter = inserter ?? PasteboardTextInserter()
         let notifier = notifier ?? DictationHUD()
         self.notifier = notifier
@@ -652,6 +662,8 @@ public final class DictationController: ObservableObject {
             return
         }
         guard generation == mine, phase == .finalising else { return }
+        // A cloud engine that fell back to the on-device text says so (nil for the Apple engine).
+        if let notice = t.finishNotice { notifier.show(notice) }
         let level = t.inputLevel
         let silent = DictationSilence.isSilent(level)
         if level.chunks == 0 { log("dictation: the microphone delivered no audio") }
@@ -710,6 +722,7 @@ public final class DictationController: ObservableObject {
         guard generation == mine, phase == .recording || phase == .finalising else { return }
         log("dictation: failed: \(why)")
         let t = transcriber
+        t?.cancelPending()
         endDictation()
         notifier.show(.failed(why))
         pendingRelease = Task { await t?.cancel() }
@@ -718,6 +731,8 @@ public final class DictationController: ObservableObject {
     private func cancelCurrent(notice: DictationNotice?) {
         guard phase == .recording || phase == .finalising else { return }
         let t = transcriber
+        // At once, not in the task below: a `finish` that resumes before that task runs must not start the upload.
+        t?.cancelPending()
         endDictation()
         if let notice { notifier.show(notice) }
         pendingRelease = Task { await t?.cancel() }

@@ -245,7 +245,8 @@ final class DictationTests: XCTestCase {
     /// A controller with every dependency faked. `prepare` configures each transcriber as it is made.
     func rig(enabled: Bool = true, lang: String = "en", inserter: (any DictationTextInserting)? = nil,
              history: DictationHistory? = nil, returnKey: (any DictationReturnKeyPosting)? = nil,
-             prepare: @escaping (FakeTranscriber) -> Void = { _ in }) -> Rig {
+             prepare: @escaping (FakeTranscriber) -> Void = { _ in },
+             wrap: ((FakeTranscriber) -> any DictationTranscribing)? = nil) -> Rig {
         let settings = DictationSettings(defaults: defaults())
         settings.enabled = enabled
         settings.language = lang
@@ -261,7 +262,7 @@ final class DictationTests: XCTestCase {
             t.now = { clock.t }
             prepare(t)
             made.value.append(t)
-            return t
+            return wrap?(t) ?? t
         }, inserter: inserter ?? fakeInserter, notifier: notifier, sounds: sounds, accessibility: ax,
            ticker: { ticker.make($0, $1) }, history: store, pasteboard: pb, frontAppName: { frontApp.value },
            now: { clock.t }, sleep: { d in await clock.sleep(d) }, indicatorTicker: { indicatorTicker.make($0, $1) },

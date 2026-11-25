@@ -15922,6 +15922,182 @@
           }
         }
       }
+    },
+    "Groq unavailable: used the on-device text": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groq non disponibile: usato il testo sul dispositivo"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groq kullanılamadı: cihazdaki metin kullanıldı"
+          }
+        }
+      }
+    },
+    "No Groq key: used the on-device text": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna chiave Groq: usato il testo sul dispositivo"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groq anahtarı yok: cihazdaki metin kullanıldı"
+          }
+        }
+      }
+    },
+    "Press %@ or %@, speak, press it again: the text goes where the cursor is. The recording goes to Groq for the final text; never while Verse is listening.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Premi %@ o %@, parla, premilo di nuovo: il testo va dove si trova il cursore. La registrazione va a Groq per il testo finale; mai mentre Verse ascolta."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ veya %@ tuşuna bas, konuş, tekrar bas: metin imlecin olduğu yere gider. Son metin için kayıt Groq'a gönderilir; Verse dinlerken asla."
+          }
+        }
+      }
+    },
+    "On device: the audio never leaves the Mac.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sul dispositivo: l'audio non lascia mai il Mac."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cihaz üzerinde: ses Mac'ten hiç çıkmaz."
+          }
+        }
+      }
+    },
+    "The live preview stays on device. When you stop, the recording is sent to Groq (Whisper) for the final text, which handles mixed languages better. Without a key or a connection, the on-device text is used.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L'anteprima dal vivo resta sul dispositivo. Quando ti fermi, la registrazione viene inviata a Groq (Whisper) per il testo finale, che gestisce meglio le lingue miste. Senza chiave o connessione si usa il testo sul dispositivo."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canlı önizleme cihazda kalır. Durduğunda kayıt son metin için Groq'a (Whisper) gönderilir; karışık dilleri daha iyi işler. Anahtar ya da bağlantı yoksa cihazdaki metin kullanılır."
+          }
+        }
+      }
+    },
+    "Kept only in the login Keychain. From Terminal: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conservata solo nel portachiavi di login. Dal Terminale: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yalnızca giriş Anahtar Zinciri'nde tutulur. Terminal'den: %@"
+          }
+        }
+      }
+    },
+    "Dictation engine": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motore di dettatura"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dikte motoru"
+          }
+        }
+      }
+    },
+    "Apple (on device)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple (sul dispositivo)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple (cihazda)"
+          }
+        }
+      }
+    },
+    "Groq Whisper (cloud)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groq Whisper (cloud)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groq Whisper (bulut)"
+          }
+        }
+      }
+    },
+    "Groq API key": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiave API Groq"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groq API anahtarı"
+          }
+        }
+      }
+    },
+    "Dictation uses the on-device text until a key is saved again.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dettatura usa il testo sul dispositivo finché non salvi di nuovo una chiave."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeniden bir anahtar kaydedilene kadar dikte cihazdaki metni kullanır."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

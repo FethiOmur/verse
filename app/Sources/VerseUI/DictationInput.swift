@@ -108,22 +108,27 @@ public final class DictationInputMeter: @unchecked Sendable {
 }
 
 /// The dictation's microphone source: the system's `MicSource` with every chunk also counted by a `DictationInputMeter`, and
-/// the moment its capture stops reported to it. Everything else is the inner source's.
+/// the moment its capture stops reported to it. Everything else is the inner source's. With the Groq engine every chunk is
+/// also kept by `recorder` (16 kHz 16-bit, in memory); with the Apple engine `recorder` is nil and nothing else changes.
 final class MeteredCaptureSource: AudioCaptureSource {
     let inner: any AudioCaptureSource
     let meter: DictationInputMeter
+    let recorder: DictationAudioRecorder?
 
-    init(inner: any AudioCaptureSource, meter: DictationInputMeter) {
+    init(inner: any AudioCaptureSource, meter: DictationInputMeter, recorder: DictationAudioRecorder? = nil) {
         self.inner = inner
         self.meter = meter
+        self.recorder = recorder
     }
 
     var routeDescription: String { inner.routeDescription }
 
     func start(clock: SessionClock, onChunk: @escaping @Sendable (AudioChunk) -> Void, onEnd: @escaping @Sendable () -> Void) throws {
         let meter = self.meter
+        let recorder = self.recorder
         try inner.start(clock: clock, onChunk: { chunk in
             meter.record(chunk.samples, sampleRate: chunk.sampleRate)
+            recorder?.record(chunk.samples, sampleRate: chunk.sampleRate)
             onChunk(chunk)
         }, onEnd: onEnd)
     }
