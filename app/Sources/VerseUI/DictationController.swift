@@ -256,7 +256,7 @@ public final class DictationController: ObservableObject {
         self.registrar = registrar ?? CarbonRegistrar()
         self.keyTap = keyTap ?? FnSpaceEventTap()
         self.makeTranscriber = makeTranscriber ?? { [settings] in DictationEngineFactory.make(settings.engine, log: log) }
-        self.inserter = inserter ?? PasteboardTextInserter()
+        self.inserter = inserter ?? PasteboardTextInserter(keepOnClipboard: true)
         let notifier = notifier ?? DictationHUD()
         self.notifier = notifier
         if let hud = notifier as? DictationHUD, let panel {

@@ -68,6 +68,20 @@ public enum GroqWhisper {
     /// to `promptTokenBudget` by this count stays under the real limit.
     public static func estimatedTokens(_ s: String) -> Int { (s.utf8.count + 1) / 2 }
 
+    /// Whisper's subtitle-credit hallucination in Turkish ("Altyazı M.K."), which it writes over silence or a trailing
+    /// pause: learned from subtitle files, never something the owner said. Any spelling, anywhere in the text.
+    static let subtitleCredit = try! NSRegularExpression(
+        pattern: #"[(\[]?\s*[Aa][Ll][Tt]\s?[Yy][Aa][Zz][ıiIİ]\s*:?\s*[Mm]\s*\.?\s*[Kk]\b\.?\s*[)\]]?"#)
+
+    /// The transcript without that credit, with the spaces it left behind closed up.
+    public static func strippingArtifacts(_ text: String) -> String {
+        let range = NSRange(text.startIndex..., in: text)
+        var out = subtitleCredit.stringByReplacingMatches(in: text, range: range, withTemplate: " ")
+        while out.contains("  ") { out = out.replacingOccurrences(of: "  ", with: " ") }
+        out = out.replacingOccurrences(of: " .", with: ".").replacingOccurrences(of: " ,", with: ",")
+        return out.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// The vocabulary as a short natural list ("Claude Code, Groq, Whisper."), the form Whisper takes as spelling and context
     /// bias. Terms are added in their order until the next one would pass the budget: a term is never cut in half. nil when
     /// there is no term (the field is then left out).
@@ -341,7 +355,7 @@ final class GroqDictationTranscriber: DictationTranscribing {
             record(.cancelled, audioMs: audioMs, ms: ms)
             return appleText
         }
-        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let clean = GroqWhisper.strippingArtifacts(text)
         guard !clean.isEmpty else { return fallback(.empty, appleText, audioMs: audioMs, ms: ms) }
         record(.ok, audioMs: audioMs, ms: ms)
         return clean

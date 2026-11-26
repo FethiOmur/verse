@@ -99,6 +99,10 @@ public protocol PasteKeystroke: AnyObject {
 /// Smart insertion (gap G13): with `formatting` set, the same snapshot before the paste also reads the text around the caret
 /// (same probe, same time budget) and `DictationSmartInsertion` adjusts the text to it. That adjusted text is what goes on
 /// the pasteboard, is checked, and stays on the clipboard after a miss. Unreadable context: the text as it is.
+///
+/// `keepOnClipboard` (what the app uses): after a delivered paste the previous contents are not put back; the dictated text
+/// as spoken (before smart insertion) stays as the last copied thing, kept by clipboard managers, so a paste that landed in
+/// the wrong place is one ⌘V away. Something copied during the paste is still newer and stays.
 @MainActor
 public final class PasteboardTextInserter: DictationTextInserting {
     /// How long the target app gets to read the pasteboard before the previous contents come back.
@@ -109,12 +113,14 @@ public final class PasteboardTextInserter: DictationTextInserting {
     private let keystroke: any PasteKeystroke
     private let focus: any DictationFocusProbing
     private let restoreDelay: Duration
+    private let keepOnClipboard: Bool
     private let sleep: @Sendable (Duration) async -> Void
     private let log: (String) -> Void
 
     public init(accessibility: (any AccessibilityTrust)? = nil, pasteboard: (any DictationPasteboard)? = nil,
                 keystroke: (any PasteKeystroke)? = nil, focus: (any DictationFocusProbing)? = nil,
                 restoreDelay: Duration = PasteboardTextInserter.defaultRestoreDelay,
+                keepOnClipboard: Bool = false,
                 sleep: @escaping @Sendable (Duration) async -> Void = { try? await Task.sleep(for: $0) },
                 log: @escaping (String) -> Void = { FileLog.shared.write($0) }) {
         self.accessibility = accessibility ?? SystemAccessibilityTrust()
@@ -122,6 +128,7 @@ public final class PasteboardTextInserter: DictationTextInserting {
         self.keystroke = keystroke ?? CGPasteKeystroke()
         self.focus = focus ?? SystemFocusProbe()
         self.restoreDelay = restoreDelay
+        self.keepOnClipboard = keepOnClipboard
         self.sleep = sleep
         self.log = log
     }
@@ -178,7 +185,9 @@ public final class PasteboardTextInserter: DictationTextInserting {
         }
         if waited < restoreDelay { await sleep(restoreDelay - waited) }
         // Something copied meanwhile (by the owner or another app) is newer than what was saved: it stays.
-        if pasteboard.changeCount == ours { pasteboard.restore(saved) }
+        if pasteboard.changeCount == ours {
+            if keepOnClipboard { pasteboard.write(raw, transient: false) } else { pasteboard.restore(saved) }
+        }
         return verdict == .unverifiable(.terminal) ? .pastedIntoTerminal : .pasted
     }
 }

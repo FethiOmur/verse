@@ -301,6 +301,32 @@ extension DictationTests {
                                sleep: { _ in }, log: { logs.value.append($0) })
     }
 
+    func testTheInserterLeavesTheSpokenTextOnTheClipboardWhenAskedTo() async {
+        let pb = FakePasteboard(), keys = FakeKeystroke()
+        pb.externalCopy("old")
+        let focus = FakeFocus(contextField(chars: 13, before: "I went to the", after: ""), .field(chars: 21, at: 21))
+        let inserter = PasteboardTextInserter(accessibility: FakeAccessibility(trusted: true), pasteboard: pb, keystroke: keys,
+                                              focus: focus, keepOnClipboard: true, sleep: { _ in }, log: { _ in })
+        var pasted: String?
+        keys.onPost = { pasted = pb.string }
+        let outcome = await inserter.insert("Market today.", mayPromptForPermission: false,
+                                            formatting: DictationInsertFormatting(language: "en"))
+        XCTAssertEqual(outcome, .pasted)
+        XCTAssertEqual(pasted, " market today.")
+        XCTAssertEqual(pb.string, "Market today.", "the text as spoken stays, not the previous clipboard")
+    }
+
+    func testTheInserterKeepsANewerCopyEvenWhenAskedToLeaveTheText() async {
+        let pb = FakePasteboard(), keys = FakeKeystroke()
+        pb.externalCopy("old")
+        let focus = FakeFocus(contextField(chars: 0, before: "", after: ""), .field(chars: 5, at: 5))
+        let inserter = PasteboardTextInserter(accessibility: FakeAccessibility(trusted: true), pasteboard: pb, keystroke: keys,
+                                              focus: focus, keepOnClipboard: true, sleep: { _ in }, log: { _ in })
+        keys.onPost = { pb.externalCopy("newer") }
+        _ = await inserter.insert("Hello", mayPromptForPermission: false, formatting: nil)
+        XCTAssertEqual(pb.string, "newer")
+    }
+
     func testTheInserterPastesTheTextAdjustedToTheCaret() async {
         let pb = FakePasteboard(), keys = FakeKeystroke(), logs = Box<[String]>([])
         pb.externalCopy("old")

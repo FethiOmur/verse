@@ -537,4 +537,15 @@ final class DictationGroqURLSessionTests: XCTestCase {
             XCTFail("expected an error")
         } catch { XCTAssertEqual(error as? GroqTranscriptionError, .badResponse) }
     }
+
+    func testTheSubtitleCreditHallucinationIsRemoved() {
+        XCTAssertEqual(GroqWhisper.strippingArtifacts("Yarın toplantı var. Altyazı M.K."), "Yarın toplantı var.")
+        XCTAssertEqual(GroqWhisper.strippingArtifacts("Yarın toplantı var Altyazı M.K"), "Yarın toplantı var")
+        XCTAssertEqual(GroqWhisper.strippingArtifacts("altyazı m.k. Merhaba, nasılsın?"), "Merhaba, nasılsın?")
+        XCTAssertEqual(GroqWhisper.strippingArtifacts("Bunu yap ALTYAZI MK. sonra bak."), "Bunu yap sonra bak.")
+        XCTAssertEqual(GroqWhisper.strippingArtifacts("Altyazi M. K."), "")
+        XCTAssertEqual(GroqWhisper.strippingArtifacts(" Altyazı M.K. "), "")
+        XCTAssertEqual(GroqWhisper.strippingArtifacts("Altyazı ekle, MKV dosyasına."), "Altyazı ekle, MKV dosyasına.")
+        XCTAssertEqual(GroqWhisper.strippingArtifacts("Filmin altyazısı yok."), "Filmin altyazısı yok.")
+    }
 }
