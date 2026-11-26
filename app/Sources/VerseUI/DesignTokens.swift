@@ -7,12 +7,12 @@ public enum VT {
     // MARK: Colour
     /// The one accent, lime A (was Verse mint until 16 Oct): live dot, primary action fill, toggle and slider "on" state.
     /// The token names still say "mint"; renaming them would touch every view for no visible change.
-    public static let mint = Color(red: 190 / 255, green: 220 / 255, blue: 76 / 255)       // #BEDC4C
+    public static let mint = Color(red: 200 / 255, green: 245 / 255, blue: 42 / 255)       // #C8F52A
     /// Accent for text and glyphs on light surfaces (5.8:1 on white).
     public static let mintDeep = Color(red: 90 / 255, green: 109 / 255, blue: 11 / 255)    // #5A6D0B
     /// Label colour on an accent fill.
     public static let onMint = Color(red: 29 / 255, green: 40 / 255, blue: 6 / 255)        // #1D2806
-    /// Lime A is weak on white (1.55:1), so light-appearance toggles and slider fills get this neutral hairline.
+    /// Lime A is weak on white (1.3:1), so light-appearance toggles and slider fills get this neutral hairline.
     public static let accentHairline = Color.black.opacity(0.14)
     /// Status only (credit, permission), never decoration.
     public static let amber = Color(red: 1.00, green: 0.71, blue: 0.28)         // #FFB547

@@ -101,7 +101,7 @@ struct Accent: Sendable {
                              deep: Color(red: 0.05, green: 0.50, blue: 0.34),     // #0D8057
                              on: Color(red: 0.02, green: 0.17, blue: 0.11))       // #052B1C
     /// A: brighter key lime.
-    static let limeA = Accent(fill: Color(hex: 0xBEDC4C), deep: Color(hex: 0x5A6D0B), on: Color(hex: 0x1D2806))
+    static let limeA = Accent(fill: Color(hex: 0xC8F52A), deep: Color(hex: 0x5A6D0B), on: Color(hex: 0x1D2806))
     /// B: true lime.
     static let limeB = Accent(fill: Color(hex: 0x9ED13A), deep: Color(hex: 0x477A0C), on: Color(hex: 0x13220A))
     /// C: deeper, olive-leaning lime.
