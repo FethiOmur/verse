@@ -103,6 +103,7 @@ public protocol PasteKeystroke: AnyObject {
 /// `keepOnClipboard` (what the app uses): after a delivered paste the previous contents are not put back; the dictated text
 /// as spoken (before smart insertion) stays as the last copied thing, kept by clipboard managers, so a paste that landed in
 /// the wrong place is one ⌘V away. Something copied during the paste is still newer and stays.
+/// Not after a paste into a password field: the previous contents come back there, as without the option.
 @MainActor
 public final class PasteboardTextInserter: DictationTextInserting {
     /// How long the target app gets to read the pasteboard before the previous contents come back.
@@ -186,7 +187,9 @@ public final class PasteboardTextInserter: DictationTextInserting {
         if waited < restoreDelay { await sleep(restoreDelay - waited) }
         // Something copied meanwhile (by the owner or another app) is newer than what was saved: it stays.
         if pasteboard.changeCount == ours {
-            if keepOnClipboard { pasteboard.write(raw, transient: false) } else { pasteboard.restore(saved) }
+            // A password field: what was dictated into it never stays on the clipboard (or in a clipboard manager).
+            let keep = keepOnClipboard && verdict != .unverifiable(.secureField)
+            if keep { pasteboard.write(raw, transient: false) } else { pasteboard.restore(saved) }
         }
         return verdict == .unverifiable(.terminal) ? .pastedIntoTerminal : .pasted
     }
