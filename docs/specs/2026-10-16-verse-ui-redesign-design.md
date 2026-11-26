@@ -34,14 +34,14 @@ The values live in `design/mockups/Sources/VerseMockups/Tokens.swift`; implement
 
 | Token | Value | Use |
 |---|---|---|
-| `mint` (lime A) | `#BEDC4C` | The only accent: live dot, primary action fill, system control "on" (toggles, slider fill). The token name stayed `mint` from the first round (accent study 16 Oct: mint → lime A). |
+| `mint` (lime A) | `#C8F52A` | The only accent: live dot, primary action fill, system control "on" (toggles, slider fill). The token name stayed `mint` from the first round (accent study 16 Oct: mint → lime A). |
 | `mintDeep` | `#5A6D0B` | The accent for text/glyphs on light surfaces (5.8 : 1 on white). |
 | `onMint` | `#1D2806` | Label on an accent fill (10.0 : 1). |
-| `accentHairline` | black 14 % | A 0.5 pt edge on accent fills that sit on a light surface (toggle "on" track, slider fill). Lime A is 1.55 : 1 on white, so the fill alone does not separate from a light window. Dark appearance: none. |
+| `accentHairline` | black 14 % | A 0.5 pt edge on accent fills that sit on a light surface (toggle "on" track, slider fill). Lime A is 1.3 : 1 on white, so the fill alone does not separate from a light window. Dark appearance: none. |
 | `amber` | `#FFB547` | Status only: credit, permission. |
 | `coral` | `#FF6B5E` | Status only: errors. |
 | Island text | white 100 / 80 / 56 / 36 % | SAY (said words) / points / meta / struck or hint. |
-| `Island.question` | `mint` (#BEDC4C) at 75 % | The heard question (or "Following you") above the SAY, in the accent at 75 % (the owner, 16 Oct; ≈ 7:1 on the island glass). 55 % was rejected: 4.3:1, under AA for 13 pt. |
+| `Island.question` | `mint` (#C8F52A) at 75 % | The heard question (or "Following you") above the SAY, in the accent at 75 % (the owner, 16 Oct; ≈ 7:1 on the island glass). 55 % was rejected: 4.3:1, under AA for 13 pt. |
 | SAY unspoken | white 55 % | Words of the SAY line he has not said yet. Increase Contrast: 78 %. |
 | Island fills | white 11 % (chips, secondary), 17 % (secondary button) | |
 | Window text | light: black 86 / 54 / 34 %; dark: white 92 / 58 / 36 % | primary / secondary / tertiary. |
@@ -189,7 +189,7 @@ the system glass.
 | Island translucency | Smoked Regular glass with a user floor, not clear glass. Measured legible at the minimum (2.4). |
 | Window glass | One Regular glass sheet for the whole window, like ChatGPT's `vibrancy: menu`, but native (`NSGlassEffectView`, behind-window) with a user opacity and a solid fallback. |
 | Glass on glass | Never. Everything on glass is a fill. |
-| Accent | One: lime A (`#BEDC4C`, label `#1D2806`, deep `#5A6D0B`; chosen 16 Oct over mint and lime B/C). Status colours only for status. Selection is neutral. Light toggles and slider fills carry a black 14 % hairline because the fill is weak on white. |
+| Accent | One: lime A (`#C8F52A`, label `#1D2806`, deep `#5A6D0B`; chosen 16 Oct over mint and lime B/C). Status colours only for status. Selection is neutral. Light toggles and slider fills carry a black 14 % hairline because the fill is weak on white. |
 | Buttons | 9 pt continuous rounded rectangles, not pills. One primary per surface. |
 | Wings | Content aligned to the card's text axis (36 pt), not hugging the camera. |
 | Teleprompter | Three lines, current line split into spoken / unspoken by brightness, no colour highlight. |
