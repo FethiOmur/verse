@@ -188,7 +188,10 @@ public final class PasteboardTextInserter: DictationTextInserting {
         // Something copied meanwhile (by the owner or another app) is newer than what was saved: it stays.
         if pasteboard.changeCount == ours {
             // A password field: what was dictated into it never stays on the clipboard (or in a clipboard manager).
-            let keep = keepOnClipboard && verdict != .unverifiable(.secureField)
+            // Judged on the focused element itself: the check's verdict names a web view or a terminal before it looks
+            // at the subrole, so a password field inside a browser would otherwise pass.
+            let secure = before.subrole == "AXSecureTextField" || verdict == .unverifiable(.secureField)
+            let keep = keepOnClipboard && !secure
             if keep { pasteboard.write(raw, transient: false) } else { pasteboard.restore(saved) }
         }
         return verdict == .unverifiable(.terminal) ? .pastedIntoTerminal : .pasted

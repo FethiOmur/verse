@@ -332,6 +332,18 @@ extension DictationTests {
         XCTAssertEqual(pb.string, "old", "the previous clipboard is back")
     }
 
+    func testAPasswordFieldInsideAWebPageIsTreatedTheSame() async {
+        let pb = FakePasteboard(), keys = FakeKeystroke()
+        pb.externalCopy("old")
+        var secure = contextField(chars: 0, before: nil, after: nil)
+        secure.subrole = "AXSecureTextField"
+        secure.web = true
+        let inserter = PasteboardTextInserter(accessibility: FakeAccessibility(trusted: true), pasteboard: pb, keystroke: keys,
+                                              focus: FakeFocus(secure), keepOnClipboard: true, sleep: { _ in }, log: { _ in })
+        _ = await inserter.insert("hunter two", mayPromptForPermission: false, formatting: nil)
+        XCTAssertEqual(pb.string, "old", "the previous clipboard is back")
+    }
+
     func testTheInserterKeepsANewerCopyEvenWhenAskedToLeaveTheText() async {
         let pb = FakePasteboard(), keys = FakeKeystroke()
         pb.externalCopy("old")
