@@ -73,6 +73,9 @@ public final class VerseController: ObservableObject {
     @Published public private(set) var meConflicts: [MeConflict] = []
     /// `start.me` named files that do not exist: the session ran without the layer.
     @Published public private(set) var meLayerMissing = false
+    /// The rehearsal running now ("Rehearse a line…"), nil during a real call and when idle. While it is set, `running` is true
+    /// too: the rehearsal is a session of its own, on a temporary copy of the prepared folder, with no audio.
+    @Published public private(set) var rehearsal: RehearsalRun?
 
     public let settings: AppSettings
     public let overlay: OverlayModel
@@ -108,6 +111,9 @@ public final class VerseController: ObservableObject {
     @Published public private(set) var routeChoice: AudioRoute?
     /// A route or language change of the running call is under way (one at a time).
     private(set) var switching = false
+    /// Whether the running call may still move from an automatically picked room route to the meeting route when a meeting app
+    /// takes the microphone (set by `launchSession`).
+    private(set) var routeUpgrade = QuickStart.MeetingRouteUpgrade(autoPicked: false, rehearsal: false)
     /// The clock the double-press stop uses; tests replace it.
     public var clock: () -> Date = { Date() }
     /// The calendar the pickers' "Today 14:00" labels are made in; tests pin the time zone.
@@ -344,7 +350,7 @@ public final class VerseController: ObservableObject {
     }
 
     /// The folder name of the session being recorded right now, nil when none is (Ask this meeting waits for the call to end).
-    public var recordingSessionName: String? { running ? runSessionDir?.lastPathComponent : nil }
+    public var recordingSessionName: String? { running && rehearsal == nil ? runSessionDir?.lastPathComponent : nil }
 
     /// What the running call records into (G12): the run's own folder, "Unprepared call" for an adhoc one. Not running: the
     /// selected session.
@@ -362,7 +368,7 @@ public final class VerseController: ObservableObject {
         if stopping { return L10n.tr("Stopping…") }
         if running {
             var s = L10n.tr("Listening · \(runLabel)")
-            if testFile != nil { s += L10n.tr(" (test file)") }
+            if rehearsal != nil { s += L10n.tr(" (rehearsal)") } else if testFile != nil { s += L10n.tr(" (test file)") }
             if fakeBrain { s += L10n.tr(" · fake brain") }
             return s
         }
@@ -485,14 +491,17 @@ public final class VerseController: ObservableObject {
         refreshSessions()
         let now = clock()
         let choice: QuickStart.SessionChoice = unpreparedOnly ? .adhoc : startChoice(now: now)
+        // No Audio source override: the route is the automatic pick, which a meeting app joining later may correct.
+        let autoRoute = routeChoice == nil
         do {
             let plan = try QuickStart.plan(choice: choice, now: now, facts: routeFacts(), lang: settings.defaultCallLanguage,
                                            root: sessionsRoot, routeOverride: routeChoice, useGeneralPrep: settings.useGeneralPrep)
             routeChoice = nil
             refreshSessions()
             if plan.mode == .prepared { settings.sessionName = plan.session }
-            log("start now route=\(plan.route.rawValue) mode=\(plan.mode.rawValue) session=\(plan.session)")
-            launchSession(name: plan.session, mode: plan.mode, route: plan.route, lang: plan.lang, anytimeStart: true)
+            log("start now route=\(plan.route.rawValue) auto_route=\(autoRoute) mode=\(plan.mode.rawValue) session=\(plan.session)")
+            launchSession(name: plan.session, mode: plan.mode, route: plan.route, lang: plan.lang, anytimeStart: true,
+                          autoRoute: autoRoute)
         } catch {
             log("start now failed: \(error)")
             overlay.showError(L10n.tr("Could not create a session folder: \(error.localizedDescription)"))
@@ -502,26 +511,37 @@ public final class VerseController: ObservableObject {
 
     /// `anytimeStart`: the session came from Start now (or a route/language change of one), so the island shows the start
     /// card with its route chip.
-    private func launchSession(name: String, mode: SessionMode, route: AudioRoute, lang requested: String, anytimeStart: Bool = false) {
-        let request = LaunchRequest(name: name, mode: mode, route: route, lang: requested, anytimeStart: anytimeStart,
-                                    remoteFile: remoteFileOverride)
-        retryPlan = .launch(request)
-        if let launchOverride { launchOverride(request); return }
-        let dir = SessionCatalog.url(name, root: sessionsRoot)
+    /// `rehearsal`: "Rehearse a line…" runs the session from its temporary copy with typed lines instead of audio (no
+    /// microphone, no process tap, no test file); everything after the recognizer is the same as a real call's.
+    /// `autoRoute`: `route` is the automatic pick (no override by hand); see `QuickStart.MeetingRouteUpgrade`.
+    private func launchSession(name: String, mode: SessionMode, route: AudioRoute, lang requested: String, anytimeStart: Bool = false,
+                               autoRoute: Bool = false, rehearsal rehearsalRun: RehearsalRun? = nil) {
+        if let rehearsalRun {
+            retryPlan = .rehearsal(rehearsalRun.session)
+        } else {
+            let request = LaunchRequest(name: name, mode: mode, route: route, lang: requested, anytimeStart: anytimeStart,
+                                        remoteFile: remoteFileOverride, autoRoute: autoRoute)
+            retryPlan = .launch(request)
+            if let launchOverride { launchOverride(request); return }
+        }
+        let dir = rehearsalRun?.workspace ?? SessionCatalog.url(name, root: sessionsRoot)
         // Auto starts in the session's prepared language (else English) and lets the call's own speech pick it from then on; the
         // cards follow the call's dominant language, which starts there too (owner decisions 7 and 8).
         let start = CallLanguage.start(requested: requested, prepared: CallLanguage.prepared(sessionDir: dir))
-        let auto = start.auto
+        // A rehearsal has no audio for AUTO to judge: it runs in the language Auto would start in.
+        let auto = rehearsalRun == nil && start.auto
         let lang = start.engine
-        var o = Self.runOptions(sessionDir: dir, settings: settings, fakeBrain: fakeBrain, testFile: testFile,
-                                micWithFile: remoteFileOverride != nil, follow: meeting.settings.followMyAnswer,
+        var o = Self.runOptions(sessionDir: dir, settings: settings, fakeBrain: fakeBrain, testFile: rehearsalRun == nil ? testFile : nil,
+                                micWithFile: rehearsalRun == nil && remoteFileOverride != nil, follow: meeting.settings.followMyAnswer,
                                 mode: mode, route: route, lang: lang)
         o.autoLanguage = auto
         o.answerLangHint = start.hint
         o.onAutoLanguage = { [weak self] picked in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.autoSwitched(to: picked) } }
         }
-        log("start session=\(name) lang=\(lang) mode=\(mode.rawValue) route=\(route.rawValue) me=\(o.me != nil) fake=\(fakeBrain) file=\(testFile ?? "-") live_seconds=\(o.seconds.map { String(Int($0)) } ?? "file")")
+        rehearsalRun?.feed.apply(to: &o)
+        rehearsal = rehearsalRun
+        log("start session=\(name) lang=\(lang) mode=\(mode.rawValue) route=\(route.rawValue) me=\(o.me != nil) fake=\(fakeBrain) file=\(rehearsalRun == nil ? testFile ?? "-" : "-") rehearsal=\(rehearsalRun != nil) live_seconds=\(o.seconds.map { String(Int($0)) } ?? "file")")
         lastLogLine = nil
         o.sink = { [weak self] e in
             // One FIFO hop to the main thread keeps the runner's order.
@@ -536,7 +556,7 @@ public final class VerseController: ObservableObject {
         })
         overlay.bank = BankOpener.load(sessionDir: dir)
         overlay.config = settings.overlayConfig
-        overlay.sessionStarting(lang: lang, session: name, app: route == .meeting ? Self.meetingAppName() : nil,
+        overlay.sessionStarting(lang: lang, session: name, app: route == .meeting && rehearsalRun == nil ? Self.meetingAppName() : nil,
                                 route: anytimeStart ? route : nil, unprepared: mode == .unprepared, auto: auto)
         overlay.setCallCue(CallCue.load(sessionDir: dir))
         overlay.startClock()
@@ -548,6 +568,7 @@ public final class VerseController: ObservableObject {
         answersOff = nil
         lastRunNote = nil
         self.route = route
+        routeUpgrade = QuickStart.MeetingRouteUpgrade(autoPicked: autoRoute, rehearsal: rehearsalRun != nil)
         sessionMode = mode
         callLanguage = lang
         autoLanguage = auto
@@ -754,6 +775,8 @@ public final class VerseController: ObservableObject {
     public func chooseRoute(_ r: AudioRoute?) {
         if running {
             guard let r else { return }
+            // A route he picks during the call is his: a meeting app joining later never changes it.
+            routeUpgrade.routeChosenByHand()
             Task { await switchListening(route: r) }
         } else {
             routeChoice = r.map(QuickStart.runnableRoute)
@@ -807,6 +830,16 @@ public final class VerseController: ObservableObject {
         overlay.listeningChanged(route: route, lang: lang, app: route == .meeting ? Self.meetingAppName() : nil, auto: autoLanguage)
     }
 
+    /// A meeting app took the microphone while this call runs (the meeting coordinator tells it; no prompt is shown then). A call
+    /// that the automatic pick started on the room route moves to the meeting route in place: same session folder, brain and
+    /// transcript (`switchListening`; the brain gets `control route`). See `QuickStart.MeetingRouteUpgrade` for what stays put.
+    public func meetingDetectedDuringRun(appName: String) {
+        guard running, !stopping else { return }
+        guard routeUpgrade.meetingDetected(route: route, switching: switching) else { return }
+        log("meeting detected in \(appName) while the call runs on the automatically picked room route: switching to the meeting route")
+        Task { await switchListening(route: .meeting) }
+    }
+
     /// ⌥⌘↩: answer the latest remote/room turn at once.
     public func cardNow() {
         guard running, !stopping, let r = runner else { return }
@@ -825,6 +858,61 @@ public final class VerseController: ObservableObject {
         remoteFileOverride = url
         start()
         if !running { remoteFileOverride = nil }
+    }
+
+    // MARK: rehearse a line
+
+    /// Starts a rehearsal of the prepared session `session`: the real session pipeline and brain on a temporary copy of its
+    /// folder, fed by typed lines (`rehearse`) instead of audio. nil when it started (or this session's rehearsal already runs);
+    /// otherwise why not. A real call, a practice interview or another session's rehearsal is never touched.
+    @discardableResult
+    public func startRehearsal(session: String) -> RehearsalRefusal? {
+        if let r = rehearsal {
+            return r.session == session && !stopping ? nil : .otherRehearsal(r.session)
+        }
+        guard !running, !stopping, !switching else {
+            log("rehearsal refused: a call is running (running=\(running) stopping=\(stopping) switching=\(switching))")
+            return .callRunning
+        }
+        guard !startBlocked() else {
+            log("rehearsal refused: the practice interview is running")
+            return .practiceRunning
+        }
+        refreshSessions()
+        guard sessions.contains(session) else { return .noSuchSession(session) }
+        let original = SessionCatalog.url(session, root: sessionsRoot)
+        // Copies a killed app left behind go first; one rehearsal runs at a time.
+        let swept = RehearsalWorkspace.sweep()
+        if swept > 0 { log("rehearsal: removed \(swept) leftover temporary copies") }
+        let workspace: URL
+        do {
+            workspace = try RehearsalWorkspace.make(copying: original)
+        } catch {
+            log("rehearsal: cannot copy the session folder: \(error)")
+            return .copyFailed(error.localizedDescription)
+        }
+        log("rehearsal of \(session) in a temporary copy")
+        launchSession(name: session, mode: .prepared, route: .meeting, lang: settings.defaultCallLanguage,
+                      rehearsal: RehearsalRun(session: session, original: original, workspace: workspace, feed: RehearsalFeed()))
+        return nil
+    }
+
+    /// Says `text` as `speaker` in the running rehearsal, where recognised speech would enter. nil when it was sent.
+    @discardableResult
+    public func rehearse(_ speaker: RehearsalSpeaker, _ text: String) -> RehearsalRefusal? {
+        guard let r = rehearsal, running, !stopping else { return running ? .callRunning : .notStarted }
+        let line = RehearsalFeed.clean(text)
+        guard !line.isEmpty else { return .emptyLine }
+        log("rehearsal line as \(speaker.rawValue): \(line.split(separator: " ").count) words")
+        r.feed.say(speaker, line)
+        return nil
+    }
+
+    /// Ends the running rehearsal (the brain writes its summary into the temporary copy, which is then removed). A real call is
+    /// never stopped from here.
+    public func endRehearsal() async {
+        guard rehearsal != nil, running else { return }
+        await stop()
     }
 
     /// Stops listening; the runner shuts the brain down. Returns when the run is over.
@@ -879,7 +967,15 @@ public final class VerseController: ObservableObject {
         persistSpend()
         monthSpend = SpendLedger.thisMonth()
         log("run ended code=\(code)")
-        if let dir = runSessionDir {
+        // A rehearsal is not a call: no vault offer, no after-call work, no answers-off note. Its temporary copy goes now (the
+        // brain has exited: `run()` returns after it).
+        let rehearsed = rehearsal
+        rehearsal = nil
+        if let rehearsed {
+            let removed = RehearsalWorkspace.remove(rehearsed.workspace)
+            log("rehearsal of \(rehearsed.session) ended; temporary copy removed: \(removed)")
+        }
+        if rehearsed == nil, let dir = runSessionDir {
             let finished = FinishedRun(code: code, sessionName: dir.lastPathComponent, sessionDir: dir, startedAt: runStartedAt,
                                        isTest: runWasFake || remoteFileOverride != nil || testFile != nil)
             meeting.runFinished(finished)
@@ -888,7 +984,7 @@ public final class VerseController: ObservableObject {
         remoteFileOverride = nil
         // A brain given up on mid-call is a normal end (the runner exits 0): the transcript is complete, answers were off for the
         // rest of the call. The error it showed then goes; a note says what happened instead.
-        if code == 0, let off = answersOff, let dir = runSessionDir {
+        if code == 0, rehearsed == nil, let off = answersOff, let dir = runSessionDir {
             if overlay.state.status == .error(off.message) { overlay.dismissStatus() }
             let note = RunEndNote.answersOff(since: off.at, summaryWritten: RunEndNote.summaryWritten(sessionDir: dir, since: runStartedAt))
             lastRunNote = note.title + " " + note.detail
@@ -951,6 +1047,12 @@ public final class VerseController: ObservableObject {
     private func persistSpend() {
         // The fake brain reports made-up costs; they never reach the ledger.
         guard let dir = runSessionDir, sessionSpend > 0, !runWasFake else { return }
+        // A rehearsal's real spend counts in the month under the prepared session, as its own kind (not a call run); its
+        // temporary copy would take the record away with it.
+        if let r = rehearsal {
+            SpendLedger.record(sessionDir: r.original, startedAt: runStartedAt, costUSD: sessionSpend, kind: RehearsalRun.spendKind)
+            return
+        }
         SpendLedger.record(sessionDir: dir, startedAt: runStartedAt, costUSD: sessionSpend)
     }
 
@@ -970,11 +1072,15 @@ public final class VerseController: ObservableObject {
         case nil, .prepared?: start()
         case .now?: startNow()
         case .unprepared?: startUnprepared()
+        case .rehearsal(let name)?:
+            log("retry rehearsal session=\(name)")
+            if let refusal = startRehearsal(session: name) { overlay.showError(refusal.message) }
         case .launch(let r)?:
             log("retry session=\(r.name) mode=\(r.mode.rawValue) route=\(r.route.rawValue)")
             remoteFileOverride = r.remoteFile
             if r.mode == .prepared { settings.sessionName = r.name }
-            launchSession(name: r.name, mode: r.mode, route: r.route, lang: r.lang, anytimeStart: r.anytimeStart)
+            launchSession(name: r.name, mode: r.mode, route: r.route, lang: r.lang, anytimeStart: r.anytimeStart,
+                          autoRoute: r.autoRoute)
             if !running { remoteFileOverride = nil }
         }
     }
@@ -1053,6 +1159,8 @@ struct LaunchRequest: Equatable, Sendable {
     var anytimeStart: Bool
     /// "Play as remote…": the file that was the remote channel.
     var remoteFile: URL?
+    /// The route was the automatic pick (no Audio source override).
+    var autoRoute = false
 }
 
 /// What the error panel's Retry does (review U4).
@@ -1065,4 +1173,6 @@ enum RetryPlan: Equatable, Sendable {
     case unprepared
     /// A launched run failed: launch the same one again.
     case launch(LaunchRequest)
+    /// A rehearsal failed: rehearse the same session again (never a real call, which would open the microphone).
+    case rehearsal(String)
 }

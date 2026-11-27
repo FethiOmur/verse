@@ -151,8 +151,33 @@ final class IslandTests: XCTestCase {
         case .prompter: return "prompter"
         case .startup: return "startup"
         case .topics: return "topics"
+        case .nudge: return "nudge"
         case .card: return "card"
         }
+    }
+
+    /// Live nudges: with no card open the nudge is the body, above the start-up panel and the topic row; a card, the prompter, a
+    /// practice interview and a status panel all come first (with a card open the nudge is the card's strip).
+    func testNudgeKindSitsBelowThePrompterAndAboveStartupAndTopics() {
+        var s = OverlayState()
+        s.running = true
+        s.nudge = OverlayNudge(id: "n001", title: "Pay story", lines: ["Lead with the range."])
+        XCTAssertEqual(kindName(IslandKind.resolve(s, prompterOpen: false)), "nudge")
+        s.topics = [OverlayChip(text: "ETA", source: "glossary", kind: "topic")]
+        XCTAssertEqual(kindName(IslandKind.resolve(s, prompterOpen: false)), "nudge", "a nudge beats the topic row")
+        s.startup = StartupPanel(phase: .ready, session: "x", app: nil)
+        XCTAssertEqual(kindName(IslandKind.resolve(s, prompterOpen: false)), "nudge", "a nudge beats the start-up panel")
+        s.card = OverlayCard(turnID: "r1", question: "Q?")
+        XCTAssertEqual(kindName(IslandKind.resolve(s, prompterOpen: false)), "card", "a card open: the nudge is its first point")
+        s.card = nil
+        XCTAssertEqual(kindName(IslandKind.resolve(s, prompterOpen: true)), "prompter")
+        s.sim = SimOverlay(startedAt: Date(), voice: "text", showCaption: false)
+        XCTAssertEqual(kindName(IslandKind.resolve(s, prompterOpen: false)), "sim")
+        s.sim = nil
+        s.status = .creditExhausted("x")
+        XCTAssertEqual(kindName(IslandKind.resolve(s, prompterOpen: false)), "status")
+        s.status = .offline
+        XCTAssertEqual(kindName(IslandKind.resolve(s, prompterOpen: false)), "nudge", "Offline is a wing, not a panel")
     }
 
     func testWidthsFollowTheStateTable() {
@@ -188,6 +213,12 @@ final class IslandTests: XCTestCase {
         sim.sim = SimOverlay(startedAt: Date(), voice: "text", showCaption: false)
         XCTAssertEqual(w(sim), 520)
         XCTAssertEqual(IslandWidth.width(kind: .sim(sim.sim!), state: sim, metrics: m, cardWidth: 600, forcePracticeCapsule: true), 442)
+        var nudge = idle
+        nudge.nudge = OverlayNudge(id: "n001", title: "Pay story", lines: ["Lead with the range."])
+        XCTAssertEqual(w(nudge), 480, "the nudge body is as wide as the other panels")
+        nudge.card = OverlayCard(turnID: "r", question: "q")
+        XCTAssertEqual(w(nudge), 600, "the amber point never changes the card's width")
+        XCTAssertEqual(w(nudge, card: 420), 420)
     }
 
     func testCapsuleWidthsScaleWithTheNotch() {

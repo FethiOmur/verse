@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .conflicts import Conflict, conflict_phrase
 from .ground import Dropped
+from .nudges import review_lines
 
 
 def _q(quote: str) -> str:
@@ -36,7 +37,9 @@ def _conflict_section(conflicts: list[Conflict]) -> list[str]:
 
 
 def render_review(meta: dict, bank: list[dict], facts: list[dict], glossary: list[dict], snippets: list[dict],
-                  dropped: list[Dropped], warnings: list[str], conflicts: list[Conflict] | None = None) -> str:
+                  dropped: list[Dropped], warnings: list[str], conflicts: list[Conflict] | None = None,
+                  nudges: list[dict] | None = None) -> str:
+    """`nudges`: the compiled live nudges (prep/nudges.py); None or empty leaves the text exactly as before."""
     st = meta["stats"]
     L: list[str] = []
     L.append(f"# Verse prep review: {meta['session_id']}")
@@ -72,6 +75,7 @@ def render_review(meta: dict, bank: list[dict], facts: list[dict], glossary: lis
             L.append(f"- ⚠ _Deep:_ {b['deep']}  _(facts in conflict: {', '.join(marks['deep'])})_" if "deep" in marks
                      else f"- _Deep:_ {b['deep']}")
         L.append("- Sources: " + "; ".join(f"`{s['ref']}` \"{_q(s['quote'])}\"" for s in b["sources"]))
+    L += review_lines(nudges or [])
     L.append("")
     L.append("## Fact sheet")
     for f in facts:

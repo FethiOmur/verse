@@ -23,11 +23,15 @@ public protocol MeetingHost: AnyObject {
     /// The session he picked by hand that still holds, if any: a prompt for a meeting without a session uses it instead of an
     /// unprepared call (the default has none).
     func manualSessionForStart() -> String?
+    /// A meeting app took the microphone while a session runs (no prompt is shown then). The controller moves a call that the
+    /// automatic pick started on the room route to the meeting route (`QuickStart.MeetingRouteUpgrade`); the default does nothing.
+    func meetingDetectedDuringRun(appName: String)
 }
 
 public extension MeetingHost {
     func sessionSidecars() -> [String: EventSidecar] { [:] }
     func manualSessionForStart() -> String? { nil }
+    func meetingDetectedDuringRun(appName: String) {}
 }
 
 /// A flag the detector's lookup closure (Sendable, off the main actor) can read.
@@ -221,6 +225,8 @@ public final class MeetingCoordinator: ObservableObject {
             }
             guard !busy else {
                 host.log("meeting detected in \(info.appName) while a session runs: no prompt")
+                // A call that started on the room route before the meeting app took the microphone may move to the meeting route.
+                if host.running, !host.stopping { host.meetingDetectedDuringRun(appName: info.appName) }
                 return
             }
             let plan = startPlan(for: info.event, host: host)

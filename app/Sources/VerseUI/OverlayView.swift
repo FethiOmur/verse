@@ -107,6 +107,8 @@ struct IslandBand: View {
             }
         case .topics:
             IslandDot(activity: state.activity)
+        case .nudge:
+            IslandDot(.amber)
         case .card(let c):
             IslandDot(busyDot)
             if c.say == nil {
@@ -138,7 +140,7 @@ struct IslandBand: View {
             Text(s.shortTitle)
         case .startup:
             if state.unprepared { Text("Unprepared", bundle: .module).foregroundStyle(VT.Island.tertiary) }
-        case .prompt, .topics:
+        case .prompt, .topics, .nudge:
             EmptyView()
         case .sim(let sim):
             if sim.closing {
@@ -347,6 +349,9 @@ public struct OverlayView: View {
         case .prompter:
             // The teleprompter takes the card's place (a status message or a practice interview still comes first).
             PrompterPanelView(model: prompter, settings: prompter.settings, width: width, scale: scale)
+        case .nudge(let n):
+            // A cue from the prep note, no card open: a tap dismisses only the nudge.
+            NudgeBodyView(nudge: n, scale: scale, onDismiss: { model.dismissNudge() })
         case .startup(let p):
             StartupPanelView(panel: p, onAction: { model.startChipAction($0) })
         case .topics:
@@ -360,7 +365,7 @@ public struct OverlayView: View {
                 .overlay(alignment: .bottomTrailing) { stopRow }
         case .card(let card):
             LiveCardView(card: card, scale: scale, maxHeight: max(maxIslandHeight - metrics.capsuleHeight, 120), reading: prompter.cardReading,
-                         marker: model.history.marker)
+                         marker: model.history.marker, nudge: state.nudge, onDismissNudge: { model.dismissNudge() })
                 .overlay(alignment: .bottom) {
                     // Centred, unless the control row (Back, Forward, Regenerate, Bad, Stop) would cover it at a narrow card.
                     let buttons = CardControlRow.buttons(canGoForward: model.history.canGoForward, hasAnswer: model.answerOnScreen != nil)

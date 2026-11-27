@@ -106,6 +106,7 @@ public final class NotchPanelController {
                 MainActor.assumeIsolated {
                     guard let self else { return }
                     self.panel.sharingType = Self.sharingType(hideFromShare: hide)
+                    self.model.setPrompterOpen(open)
                     if open {
                         self.show()
                     } else {

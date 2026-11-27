@@ -2998,6 +2998,22 @@
         }
       }
     },
+    "CUE": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "SPUNTO"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İPUCU"
+          }
+        }
+      }
+    },
     "CV": {
       "localizations": {
         "it": {
@@ -4475,6 +4491,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Konuşulanlar"
+          }
+        }
+      }
+    },
+    "Dismisses the cue": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chiude lo spunto"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İpucunu kapatır"
           }
         }
       }
@@ -16095,6 +16127,294 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yeniden bir anahtar kaydedilene kadar dikte cihazdaki metni kullanır."
+          }
+        }
+      }
+    },
+    "Rehearse a line…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prova una battuta…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir repliği prova et…"
+          }
+        }
+      }
+    },
+    "Rehearse a line": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prova una battuta"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir repliği prova et"
+          }
+        }
+      }
+    },
+    " (rehearsal)": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (prova)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " (prova)"
+          }
+        }
+      }
+    },
+    "A call is running. Rehearsing waits until it has ended.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "È in corso una chiamata. La prova attende che finisca."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir görüşme sürüyor. Prova, görüşme bitene kadar bekler."
+          }
+        }
+      }
+    },
+    "The practice interview is running. End it to rehearse.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il colloquio di prova è in corso. Terminalo per provare una battuta."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deneme mülakatı sürüyor. Prova için önce onu bitir."
+          }
+        }
+      }
+    },
+    "A rehearsal of %@ is running. End it first.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "È in corso la prova di %@. Terminala prima."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ için bir prova sürüyor. Önce onu bitir."
+          }
+        }
+      }
+    },
+    "No prepared session is called %@.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna sessione preparata si chiama %@."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ adında hazırlanmış bir oturum yok."
+          }
+        }
+      }
+    },
+    "No rehearsal is running. Pick a session and send a line.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna prova in corso. Scegli una sessione e invia una battuta."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Süren bir prova yok. Bir oturum seç ve bir replik gönder."
+          }
+        }
+      }
+    },
+    "Type a line first.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scrivi prima una battuta."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önce bir replik yaz."
+          }
+        }
+      }
+    },
+    "Could not copy the session folder: %@": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossibile copiare la cartella della sessione: %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oturum klasörü kopyalanamadı: %@"
+          }
+        }
+      }
+    },
+    "Who says it": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chi la dice"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kim söylüyor"
+          }
+        }
+      }
+    },
+    "Them": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loro"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karşı taraf"
+          }
+        }
+      }
+    },
+    "End rehearsal": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Termina la prova"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Provayı bitir"
+          }
+        }
+      }
+    },
+    "What they say, then Return": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ciò che dicono, poi Invio"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karşı tarafın sözü, sonra Return"
+          }
+        }
+      }
+    },
+    "What you say, then Return": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ciò che dici, poi Invio"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Senin sözün, sonra Return"
+          }
+        }
+      }
+    },
+    "Ending the rehearsal…": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fine della prova…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prova bitiriliyor…"
+          }
+        }
+      }
+    },
+    "Rehearsing %@. No audio, nothing saved to the session.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prova di %@ in corso. Nessun audio, niente viene salvato nella sessione."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ prova ediliyor. Ses yok, oturuma hiçbir şey kaydedilmiyor."
+          }
+        }
+      }
+    },
+    "Lines run through the real session on a copy of its folder. Closing this window ends the rehearsal.": {
+      "localizations": {
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le battute passano dalla sessione vera, su una copia della sua cartella. Chiudere questa finestra termina la prova."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replikler gerçek oturumdan, klasörünün bir kopyası üzerinde geçer. Bu pencereyi kapatmak provayı bitirir."
           }
         }
       }

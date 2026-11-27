@@ -78,16 +78,19 @@ enum IslandKind {
     case prompt(MeetingPrompt)
     case sim(SimOverlay)
     case prompter
+    /// A live nudge with no card open (with a card open, the nudge is the card's first point, in amber).
+    case nudge(OverlayNudge)
     case startup(StartupPanel)
     case topics
     case card(OverlayCard)
 
     static func resolve(_ s: OverlayState, prompterOpen: Bool) -> IslandKind {
         // A per-call error in a running session gives way to an answer card (review H6); everything else keeps its panel.
-        if let st = s.status, st.needsPanel, !(st.yieldsToCard && s.running && s.card != nil) { return .statusPanel(st) }
+        if let st = s.status, s.statusPanelShowing { return .statusPanel(st) }
         if let p = s.meetingPrompt { return .prompt(p) }
         if let sim = s.sim { return .sim(sim) }
         if prompterOpen { return .prompter }
+        if s.card == nil, let n = s.nudge { return .nudge(n) }
         if s.card == nil, let p = s.startup { return .startup(p) }
         if s.card == nil, !s.topics.isEmpty { return .topics }
         if let c = s.card { return .card(c) }
@@ -104,6 +107,7 @@ enum IslandWidth {
     static let prompt: CGFloat = 480
     static let startup: CGFloat = 480
     static let topics: CGFloat = 480
+    static let nudge: CGFloat = 480
     static let practice: CGFloat = 520
     /// The teleprompter is 40 pt wider than the card.
     static let prompterExtra: CGFloat = 40
@@ -120,6 +124,7 @@ enum IslandWidth {
         case .prompt: return prompt
         case .startup: return startup
         case .topics: return topics
+        case .nudge: return nudge
         case .sim:
             if forcePracticeCapsule { return metrics.capsuleWidth(wide: true) }
             return state.card != nil ? max(practice, cardWidth) : practice
@@ -326,10 +331,31 @@ struct PointList: View {
     var struck: Set<Int> = []
     /// Left inset: 0 under the prompter-style SAY (no bar to clear).
     var leading: CGFloat = 0
+    /// A live nudge on the card: the first point, dot and text in amber, same layout and type, wrapping like any point. A tap
+    /// on it dismisses only the nudge. `struck` keeps counting the points after it.
+    var nudge: String? = nil
+    var onDismissNudge: () -> Void = {}
     @Environment(\.islandContrast) private var contrast
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
+            if let nudge {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    Circle().fill(VT.amber).frame(width: 4.5, height: 4.5)
+                        .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 4.5 }
+                    Text(verbatim: nudge)
+                        .font(VT.Font.point(scale))
+                        .foregroundStyle(VT.amber)
+                        .lineSpacing(Self.lineSpacing)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onDismissNudge)
+                .accessibilityElement(children: .combine)
+                .accessibilityHint(Text("Dismisses the cue", bundle: .module))
+                .accessibilityAction { onDismissNudge() }
+                .accessibilityIdentifier("verse.nudgePoint")
+            }
             ForEach(Array(points.enumerated()), id: \.offset) { i, p in
                 let done = struck.contains(i)
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -428,6 +454,9 @@ struct CardView: View {
     var struck: IndexSet?
     /// An earlier answer is on screen (`AnswerHistory.marker`): one quiet line above it says so.
     var marker: String? = nil
+    /// A live nudge: the first point, in amber. It is in every height variant, so the deep points give way first.
+    var nudge: OverlayNudge? = nil
+    var onDismissNudge: () -> Void = {}
 
     var body: some View {
         if let maxHeight {
@@ -464,8 +493,9 @@ struct CardView: View {
                 }
                 SayLine(text: say, scale: scale, spokenWords: spokenWords, struck: struck, corrected: card.sayCorrected)
                     .padding(.top, 8)
-                if !card.bullets.isEmpty {
-                    PointList(points: card.bullets, scale: scale, struck: card.struck).padding(.top, 14)
+                if !card.bullets.isEmpty || nudge != nil {
+                    PointList(points: card.bullets, scale: scale, struck: card.struck, nudge: nudge?.pointText, onDismissNudge: onDismissNudge)
+                        .padding(.top, 14)
                 }
                 if !card.chips.isEmpty {
                     ChipRow(chips: card.chips, scale: scale).padding(.top, 12)
@@ -477,8 +507,9 @@ struct CardView: View {
             } else {
                 // Hearing: Verse has the question and the answer is on its way.
                 CardHearingLine(text: card.question.isEmpty ? L10n.tr("Listening to the question…") : "“\(card.question)”", scale: scale)
-                if !card.bullets.isEmpty {
-                    PointList(points: card.bullets, scale: scale, struck: card.struck).padding(.top, 12)
+                if !card.bullets.isEmpty || nudge != nil {
+                    PointList(points: card.bullets, scale: scale, struck: card.struck, nudge: nudge?.pointText, onDismissNudge: onDismissNudge)
+                        .padding(.top, 12)
                 }
                 if !card.chips.isEmpty {
                     ChipRow(chips: card.chips, scale: scale).padding(.top, 12)
@@ -558,10 +589,12 @@ struct LiveCardView: View {
     var maxHeight: CGFloat?
     @ObservedObject var reading: CardReading
     var marker: String? = nil
+    var nudge: OverlayNudge? = nil
+    var onDismissNudge: () -> Void = {}
 
     var body: some View {
         CardView(card: card, scale: scale, maxHeight: maxHeight, spokenWords: reading.spoken(for: card.say),
-                 struck: reading.struckWords(for: card.say), marker: marker)
+                 struck: reading.struckWords(for: card.say), marker: marker, nudge: nudge, onDismissNudge: onDismissNudge)
     }
 }
 

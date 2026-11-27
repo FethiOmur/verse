@@ -34,6 +34,38 @@ public enum QuickStart {
         route == .phone ? .room : route
     }
 
+    /// A call started on the room route because no meeting app held the microphone when Start was pressed, and a meeting app
+    /// takes it afterwards (joined a few seconds late): the call moves to the meeting route in place (`switchListening`), so the
+    /// other side is captured and the turns are `me` / `remote` again. One value per run, kept by the controller.
+    ///
+    /// Moves only a room route that the automatic pick chose: a route picked by hand (the Audio source override before Start, or
+    /// a route change during the call) is never changed, a call already on the meeting route is left alone, and a rehearsal
+    /// (typed lines, no audio) is not a call. At most one move per run, so a detection that fires again (a mic pause, a second
+    /// meeting app) never loops; a detection while another route or language change is under way is skipped without using it up.
+    public struct MeetingRouteUpgrade: Sendable, Equatable {
+        /// The run's route came from the automatic pick, and nothing was picked by hand since.
+        public private(set) var autoPicked: Bool
+        public let rehearsal: Bool
+        /// The one move of this run was asked for.
+        public private(set) var attempted = false
+
+        public init(autoPicked: Bool, rehearsal: Bool) {
+            self.autoPicked = autoPicked
+            self.rehearsal = rehearsal
+        }
+
+        /// He changed the route during the call himself: from then on it is his.
+        public mutating func routeChosenByHand() { autoPicked = false }
+
+        /// A meeting app was detected while the call runs on `route`. True: switch the call to the meeting route now (and this
+        /// run's one move is used). `switching`: a route or language change is already under way.
+        public mutating func meetingDetected(route: AudioRoute, switching: Bool = false) -> Bool {
+            guard autoPicked, !rehearsal, !attempted, route == .room, !switching else { return false }
+            attempted = true
+            return true
+        }
+    }
+
     /// True when a process that is a known meeting app has microphone input running. Reads Core Audio flags only.
     public static func meetingAppHoldsMic(_ processes: [AudioProcessInfo], apps: [MeetingApp] = MeetingApp.known) -> Bool {
         processes.contains { p in p.isRunningInput && apps.contains { $0.matches(p) } }

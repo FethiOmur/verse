@@ -117,6 +117,14 @@ HISTORY_MAX_CHARS = 240_000
 HISTORY_SPEAKERS = {"remote", "me", "room"}
 ADDRESSEES = {"me", "other", "unknown"}
 IN_TYPES |= HISTORY_IN_TYPES
+# Live nudges (docs/specs/2026-11-27-live-nudges-plan.md; runtime/nudges.py, engine tier K), additive. No change to `start` or to
+# any Swift -> brain message: a session folder with a `nudges.jsonl` (prep/nudges.py) turns them on, VERSE_NUDGES=0 keeps them off.
+# Brain -> Swift: `nudge{id,title,lines,turn_id,ttl_s}` (a prepared suggestion whose moment has come, shown verbatim: `lines` are
+# the note's `Say` lines, `turn_id` the final turn that triggered it, a string like every turn id, `ttl_s` its lifetime in seconds,
+# 25) and `nudge_clear{id}` (take that nudge down now: its `Until: number` condition was met). A nudge never replaces or delays a
+# card and never enters answer history. Metric stages: tier "K" on the usual call stages, and `nudge_error{where,reason}` once when
+# an error turned nudges off for the session. Older apps ignore both types.
+NUDGE_OUT_TYPES = {"nudge", "nudge_clear"}
 
 
 class Emitter:

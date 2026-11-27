@@ -22,6 +22,7 @@ from .conflicts import apply_conflicts
 from .git_digest import Commit, GitError, read_commits
 from .ground import Grounded, ground
 from .model import MAX_OUTPUT_TOKENS, PREP_MODEL, PRICES, ModelOutput, PrepError, PrepModel, Usage, spend_usd
+from .nudges import model_lines, model_note, parse_nudges, write_nudges
 from .pack import TOKEN_CAP, fit_pack
 from .parse import parse_output
 from .prompt import SYSTEM, render_user
@@ -121,7 +122,7 @@ def _collect(prep_note: Path, repos: list[Path], vault: Vault | None, warnings: 
     records: dict[str, VaultRecord] = {}
     if vault is not None:
         failures = 0
-        queries = seed_queries(note, repos)
+        queries = seed_queries(model_note(note), repos)   # a nudge heading is not a vault query
         for q in queries:
             try:
                 for rec in vault.search(q, limit=3, budget_chars=2500):
@@ -191,7 +192,7 @@ class _Spend:
 async def _run_section(
     sec: Section, n_sections: int, header: list[tuple[int, str]], *, model: PrepModel, book: SourceBook,
     handles: dict, commits: dict, langs: list[str], max_questions: int, spend: _Spend, first_call: bool,
-    warnings: list[str],
+    warnings: list[str], prep_lines: list[str] | None = None,
 ) -> tuple[Grounded | None, dict]:
     """One section: generate, ground, and when the output hit the limit retry once with half the quota at low effort
     (the first attempt's complete blocks are kept and merged). Returns (grounded | None if no call could start, record)."""
@@ -206,7 +207,8 @@ async def _run_section(
             user = render_user(sec.lines, handles, commits, langs, quota, section=(sec.index, n_sections, *sec.span),
                                header=header)
         else:
-            user = render_user(book.prep_lines, handles, commits, langs, quota)
+            # `prep_lines`: the note with its nudge blocks blanked (the book keeps them for grounding)
+            user = render_user(book.prep_lines if prep_lines is None else prep_lines, handles, commits, langs, quota)
         in_tokens = await model.count_request_tokens(SYSTEM, user)
         max_tokens = spend.plan(in_tokens, call_max_tokens(quota, len(langs)))
         if max_tokens is None:
@@ -262,8 +264,12 @@ async def build_async(
     now = now or datetime.now(timezone.utc)
     note, commits, handles = _collect(prep_note, repos, vault, warnings)
     book = SourceBook(prep_lines=note.splitlines(), vault=handles, commits=commits)
+    # Live nudges (prep/nudges.py): compiled into nudges.jsonl, blanked in what the model sees (numbering kept), never in the pack
+    nudges = parse_nudges(book.prep_lines)
+    warnings += nudges.warnings
+    gen_lines = model_lines(book.prep_lines, nudges)
 
-    header, sections = split_note(note, max_questions)
+    header, sections = split_note(model_note(note) if nudges.lines else note, max_questions)
     n_sections = len(sections)
     if n_sections == 1:
         sections[0].quota = max_questions
@@ -273,7 +279,7 @@ async def build_async(
     for i, sec in enumerate(sections):
         g_sec, rec = await _run_section(sec, n_sections, header, model=model, book=book, handles=handles, commits=commits,
                                         langs=langs, max_questions=max_questions, spend=spend, first_call=(i == 0),
-                                        warnings=warnings)
+                                        warnings=warnings, prep_lines=gen_lines)
         runs.append(rec)
         if g_sec is not None:
             parts.append(g_sec)
@@ -320,6 +326,7 @@ async def build_async(
         "sections": n_sections, "sections_run": sum(1 for r in runs if r["attempts"]),
         "prep_note_sha256": hashlib.sha256(note.encode()).hexdigest(),
         **({"voice_sha256": sha256_text(voice)} if voice is not None else {}),
+        **({"nudges": len(nudges.records)} if nudges.lines else {}),
     }
     meta = {
         "session_id": sid, "created_at": now.isoformat(timespec="seconds"), "prep_note": str(prep_note),
@@ -342,8 +349,9 @@ async def build_async(
         (tmp / "snippets.jsonl").write_text(_jsonl(snippets), encoding="utf-8")
         (tmp / "pack.md").write_text(pack, encoding="utf-8")
         (tmp / "review.md").write_text(
-            render_review(meta, g.bank, g.facts, g.glossary, snippets, g.dropped, warnings, conflicts),
+            render_review(meta, g.bank, g.facts, g.glossary, snippets, g.dropped, warnings, conflicts, nudges=nudges.records),
             encoding="utf-8")
+        write_nudges(tmp, nudges.records)   # nothing without nudges: the folder is exactly as before
         tmp.rename(final)
     except BaseException:
         shutil.rmtree(tmp, ignore_errors=True)

@@ -77,7 +77,8 @@ from .call import bank_hint
 from .repeat import embed_all, filter_card, his_chunks
 from .size import FOLLOW_POINTS, card_size, points_cap
 from .prompt import (STATEMENT_SAY_WORDS, WARMUP_TAIL, Turn, bank_check, build_request, card_now_tail, deep_tail, fast_tail,
-                     files_block, final_tail, follow_tail, rolling_tail, statement_tail)
+                     files_block, final_tail, follow_tail, nudge_tail, rolling_tail, statement_tail)
+from .nudges import Evaluation, NudgeTracker, load as load_nudges
 from .lang import DominantLanguage
 from .protocol import LANGS, MARKS, REMOTE_SPEAKERS, Emitter, Session, history_turns, load_session, msg_lang, turn_kind
 from .ratelimit import ModelLimiter
@@ -112,6 +113,16 @@ LATE_HIT_WINDOW_S = 3.0
 # verdict, the card stays. max_tokens is a cut, not a choice: the cap reached before the BANK line (a V call whose model put
 # the SAY line first; an older card call with the BANK line last) says nothing about the entry.
 NO_VERDICT_STOPS = ("refusal", "max_tokens")
+
+# Live nudges (docs/specs/2026-11-27-live-nudges-plan.md; runtime/nudges.py). Tier K is the request of another tier with its own
+# tail and output cap, on lane 1, never hedged, silent on error. The judge (VERSE_NUDGE_MODEL, default sonnet): `sonnet` sends D's
+# request (Sonnet, D's tuple, D's system prompt, pack and transcript prefix, so it reads the cache D and the Sonnet pre-warm write;
+# sent on route label "D" because D's tuple carries the beta header the transport sends only for that label); `haiku` sends F's
+# (route label "K"). A session without `nudges.jsonl`, or VERSE_NUDGES=0, never reaches any of it.
+NUDGE_MAX_TOKENS = 100      # one line: an id, a quote of up to 30 words, the speaker
+NUDGE_BUCKET_MIN = 0.5      # skip the K call while the judge model's bucket has less than half left
+NUDGE_JUDGES = {"sonnet": ("D", "D"), "haiku": ("F", "K")}   # judge -> (request tuple, route label)
+_kseq = count(1)            # K ids have their own counter: the S/F/D/C call ids are the same with and without nudges
 
 _WORD = re.compile(r"[\w']+", re.UNICODE)
 
@@ -211,8 +222,9 @@ class Call:
         self.input_tokens = tokens(input_text)
         self.request = request
         self.model = request["model"]
-        self.seq = next(_seq)
+        self.seq = next(_kseq) if tier == "K" else next(_seq)
         self.id = f"{tier.lower()}{self.seq:04d}"
+        self.nudge_eval: Evaluation | None = None   # tier K: what it was asked about (runtime/nudges.py)
         self.buffered = buffered
         self.discarded = False
         self.buffer: list[dict] = []
@@ -252,7 +264,7 @@ class Call:
         self.follow_reason: str | None = None   # tier C: "diverged" | "refresh"
         self.follow_sent = False                # tier C: the `follow` event went out (just before its first delta)
         self.follow_t0: float = 0.0             # tier C: when the divergence / refresh was decided (time.time())
-        self.lane = 1 if tier in ("R", "A") else 0   # summaries keep off the S/F/D connection (lane 0)
+        self.lane = 1 if tier in ("R", "A", "K") else 0   # summaries and nudge checks keep off the S/F/D connection (lane 0)
         self.summary_lines: list[str] = []
         self.t: dict[str, float] = {}
         self.done = asyncio.Event()
@@ -307,7 +319,7 @@ class Call:
 
     # ---- line handling
     def _on_text(self, chunk: str, line_done: bool, line: str) -> None:
-        if self.tier in ("R", "A"):  # summary output becomes `summary`/`actions` events, never deltas
+        if self.tier in ("R", "A", "K"):  # summary output becomes `summary`/`actions` events, a K line a `nudge`: never deltas
             if line_done:
                 self.summary_lines.append(line.strip())
             return
@@ -399,6 +411,8 @@ class Call:
         self.brain._ev("point_dropped", turn=self.turn_id, tier=self.tier, id=self.id, why="meta", text=clip(line, CARD_CHARS))
 
     def _on_control(self, line: str) -> None:
+        if self.tier == "K":
+            return   # a nudge check that writes OPENER_/BANK:/KIND: anyway must never reach the card or its verdicts
         if line.startswith("KIND:"):
             if self.probe and self.kind is None:
                 self.kind = "question" if line[5:].strip().lower().startswith("question") else "statement"
@@ -632,6 +646,10 @@ class Brain:
         # review L3: the pre-warm runs as a task; what arrives meanwhile waits here (None: not warming)
         self._warm_task: asyncio.Task | None = None
         self._warm_queue: list[dict] | None = None
+        # live nudges (runtime/nudges.py): None = off (no nudges.jsonl, VERSE_NUDGES=0, or an error turned them off)
+        self.nudges: NudgeTracker | None = None
+        self._nudge_call: Call | None = None
+        self._nudge_route, self._nudge_label = NUDGE_JUDGES["sonnet"]
 
     # ------------------------------------------------------------------ helpers
     def _spawn(self, coro) -> asyncio.Task:
@@ -832,6 +850,7 @@ class Brain:
             self.lib.start()
         self._follow_want = bool(msg.get("follow", self.config.follow_default))
         self._follow_start(msg)
+        self._nudges_load()
         self._status("warming", f"pre-warming {HAIKU} and {SONNET}")
         # Review L3: the pre-warm can take `prewarm_attempts * prewarm_attempt_s` (36 s) on a stalled network. It runs as a task
         # so the input loop goes on reading: `control stop` ends it, everything else waits in `_warm_queue` until it is over.
@@ -1293,7 +1312,7 @@ class Brain:
         return call
 
     def _hedge_after(self, call: Call) -> float | None:
-        if call.tier in ("R", "A"):   # a duplicate summary is pure cost: no hedging
+        if call.tier in ("R", "A", "K"):   # a duplicate summary or nudge check is pure cost: no hedging
             return None
         return self.config.hedge_after_s_d if call.route == "D" else self.config.hedge_after_s
 
@@ -1395,6 +1414,8 @@ class Brain:
 
     def on_call_error(self, call: Call, e: TransportError) -> None:
         log.warning("call %s (%s) failed: %s", call.id, call.tier, e)
+        if call.tier == "K":
+            return   # a nudge check is silent whatever went wrong (no status, no halt): the answer calls report it themselves
         if isinstance(e, CreditExhausted):
             self._halt("credit_exhausted", "Max API credit used up", reason=NO_CREDIT)
         elif isinstance(e, AuthFailed):
@@ -1424,6 +1445,9 @@ class Brain:
             self.spend += cost
             if call.tier in ("R", "A"):
                 self.summary_spend += cost
+        if call.tier == "K":
+            self._nudge_done(call)   # nothing else: no status, no card log, no summary pass started from here
+            return
         if call.stop_reason == "refusal" and call.tier in ("S", "F", "D") and not call.buffered and not call.discarded:
             self._status("refusal", f"{call.tier} declined this turn", turn_id=call.turn_id, id=call.id)
         self._log_card_done(call)
@@ -1825,6 +1849,8 @@ class Brain:
             ta = it.get("t_audio_end")
             if isinstance(ta, (int, float)) and not isinstance(ta, bool):
                 self._last_audio_end = float(ta) if self._last_audio_end is None else max(self._last_audio_end, float(ta))
+            if self.nudges is not None:
+                self._nudge_observe(it)    # the money rule covers the whole call; nothing is evaluated for history
             added += 1
         if added:
             self._rolled_n += added
@@ -1841,6 +1867,8 @@ class Brain:
                 self._roll_t0 = float(ta)
         self._on_turn(msg)
         self._maybe_roll()     # after the tiers have been launched: a summary only ever runs in a quiet moment
+        if self.nudges is not None:
+            self._nudge_turn(msg)   # after the answer path is done with the turn; never raises
 
     def _on_turn(self, msg: dict) -> None:
         tid = msg["turn_id"]
@@ -2665,6 +2693,144 @@ class Brain:
         st.verdict_sent = False
         self.emitter.metric(tid, "offline_retry")
         self._endpoint(st)
+
+    # ------------------------------------------------------------------ live nudges (tier K; runtime/nudges.py)
+    def _nudge_off(self, where: str, e: BaseException) -> None:
+        """Whatever goes wrong in the nudge path turns nudges off for the session; one `nudge_error` metric says what."""
+        log.exception("live nudges failed in %s; off for this session", where)
+        if self.nudges is not None:
+            self.nudges = None
+            self.emitter.metric("", "nudge_error", where=where, reason=f"{type(e).__name__}: {e}"[:200])
+
+    def _nudges_load(self) -> None:
+        """Tolerant load at start: no file, VERSE_NUDGES=0 or a malformed file all mean no nudges (never BAD_SESSION)."""
+        self.nudges = None
+        self._nudge_call = None
+        if os.environ.get("VERSE_NUDGES") == "0" or self.session is None:
+            return
+        try:
+            items = load_nudges(self.session.path / "nudges.jsonl")
+            if items:
+                judge = os.environ.get("VERSE_NUDGE_MODEL", "sonnet").strip().lower()
+                self._nudge_route, self._nudge_label = NUDGE_JUDGES.get(judge, NUDGE_JUDGES["sonnet"])
+                sweep = os.environ.get("VERSE_NUDGE_SWEEP", "").strip()
+                self.nudges = NudgeTracker(items, clock=lambda: self._clock(),
+                                           **({"sweep_every": max(0, int(sweep))} if sweep.isdigit() else {}))
+        except Exception:  # noqa: BLE001
+            log.exception("nudges.jsonl could not be loaded; no nudges")
+            self.nudges = None
+
+    def _nudge_observe(self, it: dict) -> None:
+        try:
+            tr = self.nudges
+            if tr is None:
+                return
+            for nid in tr.observe(it.get("speaker", ""), str(it.get("text", "")), it.get("t_audio_end")):
+                self._ev("nudge_retire", id=nid, turn=it.get("turn_id"), why="number", cleared=False, history=True)
+        except Exception as e:  # noqa: BLE001
+            self._nudge_off("history", e)
+
+    def _nudge_turn(self, msg: dict) -> None:
+        """A final turn of either speaker: the money rule, stage A and, for candidates, one K call (one at a time: while one
+        is in flight a new evaluation is skipped, not queued)."""
+        try:
+            tr = self.nudges
+            speaker = msg.get("speaker", "remote")
+            if tr is None or speaker not in ("me", "remote") or self.route_kind == "room":
+                return
+            if self.session is None or self.halted or self.closing or self.stopped.is_set():
+                return
+            tid = msg.get("turn_id")
+            res = tr.on_turn(tid, speaker, str(msg.get("text", "")), msg.get("t_audio_end"))
+            for nid in res.retired:
+                self._ev("nudge_retire", id=nid, turn=tid, why="number", cleared=nid in res.clear)
+            for nid in res.clear:
+                self.emitter.emit({"type": "nudge_clear", "id": nid})
+            ev = res.evaluation
+            if ev is None:
+                return
+            if self._nudge_call is not None and not self._nudge_call.done.is_set():
+                tr.defer(ev)          # not dropped: one catch-up runs when the call in flight returns (`_nudge_catch_up`)
+                skip: str | None = "in_flight"
+            else:
+                skip = self._nudge_try(ev)
+            self._ev("nudge_gate", turn=tid, speaker=speaker, candidates=ev.candidates, keys=res.key_hits, reason=ev.reason,
+                     skipped=skip, pending=skip == "in_flight")
+        except Exception as e:  # noqa: BLE001
+            self._nudge_off("turn", e)
+
+    def _nudge_try(self, ev: Evaluation) -> str | None:
+        """Launch the K call for `ev`; the reason it was not launched, or None."""
+        if self.offline:
+            return "offline"
+        if self.limiters[SONNET if self._nudge_route == "D" else HAIKU].fraction_left() < NUDGE_BUCKET_MIN:
+            return "bucket_low"
+        return "not_started" if self._launch_k(ev) is None else None
+
+    def _nudge_catch_up(self) -> None:
+        """After a K call: the evaluations skipped while it was in flight get one catch-up over the window as it is now."""
+        tr = self.nudges
+        if tr is None or tr.pending is None or self.halted or self.closing or self.stopped.is_set():
+            return
+        ev = tr.take_pending()
+        if ev is None:
+            return
+        self._ev("nudge_gate", turn=ev.turn_id, speaker=None, candidates=ev.candidates, keys=[], reason=ev.reason,
+                 skipped=self._nudge_try(ev), pending=False)
+
+    def _launch_k(self, ev: Evaluation) -> Call | None:
+        """The K call: the judge tier's request (tuple, system prompt, pack, transcript) with the nudge tail and NUDGE_MAX_TOKENS."""
+        tr = self.nudges
+        if tr is None or self.session is None or self.halted:
+            return None
+        if self.config.budget_usd is not None and self.spend >= self.config.budget_usd:
+            return None
+        tail = nudge_tail([(nid, tr.nudges[nid].when, tr.nudges[nid].who) for nid in ev.candidates], ev.window,
+                          "en")   # English only in v1
+        route = self._nudge_route
+        req = build_request(route, route_params(route, max_tokens=NUDGE_MAX_TOKENS), self.session.pack_for_model,
+                            list(self.turns), tail, self.about, self._directives(route))
+        est_in = (sum(len(b.get("text", "")) for b in req["messages"][0]["content"]) + len(self.about or "")) // 4
+        if not self.limiters[req["model"]].try_acquire(est_in, req["max_tokens"]):
+            return None
+        call = Call(self, "K", ev.turn_id, " ".join(t for _, t in ev.window), req, buffered=False, route=self._nudge_label)
+        call.nudge_eval = ev
+        tr.launched(ev)
+        self.calls.append(call)
+        self._nudge_call = call
+        call.task = self._spawn(call.run())
+        return call
+
+    def _nudge_done(self, call: Call) -> None:
+        try:
+            tr = self.nudges
+            ev = call.nudge_eval
+            if tr is None or ev is None:
+                return
+            if call.discarded:
+                self._ev("nudge_judge", turn=ev.turn_id, call=call.id, candidates=ev.candidates, result="discarded")
+                return
+            if call.error is not None:
+                self._ev("nudge_judge", turn=ev.turn_id, call=call.id, candidates=ev.candidates,
+                         result=f"error:{call.error.kind}")
+                self._nudge_catch_up()
+                return
+            if self.halted or self.closing or self.stopped.is_set():
+                return
+            out = "\n".join(call.summary_lines)
+            fire, reason, info = tr.judge(ev, out)
+            self._ev("nudge_judge", turn=ev.turn_id, call=call.id, candidates=ev.candidates, result=reason, pick=info.get("id"),
+                     quote=clip(info.get("quote") or "", 160), age_s=info.get("age_s"), stop=call.stop_reason,
+                     raw=clip(out, 300), window=clip(" | ".join(f"{sp}: {t}" for sp, t in ev.window), 900))
+            if fire is not None:
+                n = fire.nudge
+                self.emitter.emit({"type": "nudge", "id": n.id, "title": n.title, "lines": list(n.say), "turn_id": fire.turn_id,
+                                   "ttl_s": tr.ttl_s})
+                self._ev("nudge_fire", id=n.id, turn=fire.turn_id, call=call.id, speaker=fire.speaker,
+                         quote=clip(fire.quote, 160), title=n.title)
+            self._nudge_catch_up()
+        except Exception as e:  # noqa: BLE001
+            self._nudge_off("judge", e)
 
     # ------------------------------------------------------------------ F2: rolling summary (tier R)
     def _roll_due(self) -> bool:

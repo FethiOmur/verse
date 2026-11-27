@@ -446,6 +446,50 @@ def follow_tail(question: str, lang: str, his_words: str, card: list[str], said:
     return text
 
 
+_WHO_NOTE = {"them": " (only the other side's words can show it)",
+             "me": OWNER.fill(" (only {owner}'s own words can show it)")}
+NUDGE_WINDOW_HEADER = "LATEST TURNS (only these count):"     # runtime/nudges.py WINDOW_HEADER / WINDOW_END (the fake judge reads them)
+NUDGE_WINDOW_END = "END OF LATEST TURNS"
+
+
+def nudge_tail(candidates: list[tuple[str, ...]], window: list[tuple[str, str]], lang: str = "en") -> str:
+    """K call (live nudges, runtime/nudges.py): a classification of the latest turns against the candidate nudges. It rides the
+    F request (Haiku judge) or the D request (Sonnet judge); the instructions live in this tail (never cached), so the system
+    prompt and the cached prefix stay byte-identical to that tier's. The output instruction comes last and the tail's final line
+    starts with the words the answer must begin with.
+
+    `candidates`: (id, When) or (id, When, Who) each; `window`: (speaker, text) of the latest turns, oldest first."""
+    lines = [
+        f"Language: {LANG_NAME.get(lang, lang)}",
+        OWNER.fill("NUDGE CHECK. This is a classification task, not a turn of the conversation: every instruction above about "
+                   "answering, SAY lines, points, BANK, OPENER or summaries does not apply here. {Owner} prepared a few "
+                   "suggestions for moments of this call; each candidate below says after When: the moment it was written for."),
+        "CANDIDATES:",
+        *[f"[{c[0]}] When: {' '.join(c[1].split())}{_WHO_NOTE.get(c[2], '') if len(c) > 2 else ''}" for c in candidates],
+        NUDGE_WINDOW_HEADER,
+        *[turn_block_text(Turn("", sp, text)) for sp, text in window],
+        NUDGE_WINDOW_END,
+        "How to decide:",
+        "- Only the turns between LATEST TURNS and END OF LATEST TURNS count; everything earlier in the transcript does not. They "
+        "come from speech recognition: filler words, repeats and misheard words are normal.",
+        "- Read each When word by word: who does what. A candidate fits only when the latest turns show exactly that, in any "
+        "words. When it clearly holds, pick it even if the words differ from the When.",
+        "- Do not pick a candidate for a passing mention (\"we'll get to that later\"), a plan to discuss it later, a past "
+        "event, or a turn that only shares a word or a topic with the When.",
+        "- A word that matches the When in another sense is not the topic: a day of the week or a weekend is not working "
+        "time; a place someone lives or travels to is not a start date.",
+        OWNER.fill("- A question the other side asks about {owner} (his studies, his work, his plans, his availability) is not an "
+                   "invitation for his questions. Inviting his questions means they offer him the chance to ask them something."),
+        "- If no candidate clearly fits, the answer is none. A wrong pick is worse than none.",
+        OWNER.fill("Answer: do not answer the conversation and do not use the SAY format. Write exactly one line: either the id, "
+                   "the words copied from the latest turns that show the moment (3 to 30 words, in quotation marks), and who said "
+                   "those words (them for an [Other side] line, me for a [{Owner}] line), or none:"),
+        "NUDGE: <id> | \"<copied words>\" | <them or me>",
+        "NUDGE: none",
+    ]
+    return "\n".join(lines)
+
+
 def deep_tail(question: str, lang: str, final: bool, shown_opener: str | None, bank: dict | None, files: str = "",
               size: str | None = None) -> str:
     state = "finished" if final else "still being spoken, may be cut off"

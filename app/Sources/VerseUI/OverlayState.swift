@@ -232,8 +232,18 @@ public struct OverlayState: Equatable, Sendable {
     public var majorityLang: String?
     /// A regenerate (the island's button, ⌥⌘R) is on its way and its answer has not finished: another press is ignored.
     public var regenerating = false
+    /// A live nudge from the prep note (`nudge` brain event): the island body while no card is open, the card's first point
+    /// (amber) while one is. Apart from `card`: never in the answer history, Regenerate, the marks or the teleprompter.
+    public var nudge: OverlayNudge?
 
     public init() {}
+
+    /// A status message takes the island's body (the first rule of `IslandKind.resolve`): a per-call error in a running
+    /// session gives way to an answer card (review H6); everything else keeps its panel.
+    var statusPanelShowing: Bool {
+        guard let st = status, st.needsPanel else { return false }
+        return !(st.yieldsToCard && running && card != nil)
+    }
 
     /// `en · for you`, or `practice · Q3/8` during a practice interview.
     public var capsuleTag: String {
@@ -472,6 +482,9 @@ public struct OverlayReducer: Sendable {
     private var lastAudible: TimeInterval = -.infinity
     /// The session's time cue, when its `call.json` has one.
     private var callCue: CallCue?
+    /// The teleprompter is open (`setPrompterOpen`): a nudge that arrives meanwhile is dropped. Not part of a session, so
+    /// `reset` keeps it.
+    private(set) var prompterOpen = false
 
     public init(config: OverlayConfig = OverlayConfig(), bank: [String: BankOpener] = [:]) {
         self.config = config
@@ -511,6 +524,24 @@ public struct OverlayReducer: Sendable {
         noticeUntil = nil
     }
 
+    /// The teleprompter opened or closed. Opening it takes a nudge down (the prompter takes the island's body), and while it
+    /// is open new nudges are dropped.
+    public mutating func setPrompterOpen(_ open: Bool) {
+        prompterOpen = open
+        if open { state.nudge = nil }
+    }
+
+    /// A tap on the nudge (the island body or its amber point on the card): only the nudge goes.
+    public mutating func dismissNudge() {
+        state.nudge = nil
+    }
+
+    /// While the prompter, a practice interview or a status panel is showing, an incoming nudge is dropped (not kept for
+    /// later: it is about this moment of the call).
+    private var nudgeBlocked: Bool {
+        !state.running || prompterOpen || state.sim != nil || state.statusPanelShowing
+    }
+
     /// Sets (or, with nil, removes) the call's time cue. `tick` moves `state.timeCue` with the clock.
     public mutating func setCallCue(_ cue: CallCue?, now: TimeInterval) {
         callCue = cue
@@ -545,6 +576,7 @@ public struct OverlayReducer: Sendable {
             state.regenerating = false
             state.activity = .idle
             state.card = nil
+            state.nudge = nil
             state.topics = []
             state.startup = nil
             state.addresseeTag = nil
@@ -605,11 +637,16 @@ public struct OverlayReducer: Sendable {
         state.startup?.app = app
     }
 
-    /// The user collapsed the open panel or card (click on the capsule).
+    /// The user collapsed the open panel or card (click on the capsule). A nudge goes with it; when the nudge was the body
+    /// (no card open), that click closes only the nudge.
     public mutating func collapse() {
+        let hadNudge = state.nudge != nil
+        state.nudge = nil
         if state.card != nil {
             state.card = nil
             if state.activity == .thinking { state.activity = .listening }
+        } else if hadNudge {
+            return
         } else if !state.topics.isEmpty {
             state.topics = []
             topicSeen = [:]
@@ -823,7 +860,12 @@ public struct OverlayReducer: Sendable {
         }
     }
 
-    private mutating func openCard(turnID tid: String, question: String, addressee who: String, now: TimeInterval) {
+    /// `nudgeTurn`: the turn the card answers, for the nudge rule (nil: `tid`). `keepNudge`: a regenerated card answers an
+    /// earlier card again, so the nudge on screen stays whatever its turn.
+    private mutating func openCard(turnID tid: String, question: String, addressee who: String, now: TimeInterval,
+                                   nudgeTurn: String? = nil, keepNudge: Bool = false) {
+        // A card for a later turn than the one that triggered the nudge takes it down; the same turn's card keeps it.
+        if !keepNudge, let n = state.nudge, n.isOutdated(byCardFor: nudgeTurn ?? tid) { state.nudge = nil }
         statements[tid] = nil
         backgroundCards[tid] = nil
         // A new remote question ends follow mode for the card it replaces.
@@ -925,11 +967,13 @@ public struct OverlayReducer: Sendable {
                     // goes on, so it is not the newest remote turn (a waiting statement or a late bank hit of that one still opens
                     // its card), and the card it takes the island from keeps streaming off screen into the history.
                     if let shown = state.card, shown.turnID != tid { backgroundCards[shown.turnID] = shown }
-                    openCard(turnID: tid, question: q, addressee: "me", now: now)
+                    openCard(turnID: tid, question: q, addressee: "me", now: now, keepNudge: true)
                 } else {
-                    // A plain card-now card answers what was said last: it is the newest turn.
+                    // A plain card-now card answers what was said last: it is the newest turn. For the nudge it is the turn it
+                    // answers (the newest remote one), not its own `now-<n>` id.
+                    let answered = lastRemoteTurnID
                     lastRemoteTurnID = tid
-                    openCard(turnID: tid, question: lastHeard, addressee: "me", now: now)
+                    openCard(turnID: tid, question: lastHeard, addressee: "me", now: now, nudgeTurn: answered)
                 }
             }
             openReclassifiedStatement(turnID: tid, tier: tier, lines: l, now: now)
@@ -997,6 +1041,16 @@ public struct OverlayReducer: Sendable {
             // `me_missing`: the profile files named in `start` do not exist. A status that never covers a card (openCard
             // takes it down). The other notice (`me_conflicts`) is for the Me page, not the island.
             if o[string: "kind"] == "me_missing", state.status == nil { state.status = .meMissing }
+        case "nudge":
+            // A cue from the prep note: replaces the one on screen. An open card keeps its place (the nudge becomes its first,
+            // amber point). No timer: it stays until a newer one, its `nudge_clear`, a tap, collapse, stop, reset, or a card for a
+            // later turn (`openCard`).
+            guard !nudgeBlocked, let n = OverlayNudge(event: o) else { return }
+            state.nudge = n
+        case "nudge_clear":
+            // Only the nudge it names: a clear for an older one never takes down a newer one.
+            guard let id = o[string: "id"], state.nudge?.id == id else { return }
+            state.nudge = nil
         default:
             break   // unknown message types (and unknown fields) are ignored
         }
@@ -1226,6 +1280,7 @@ extension OverlayReducer {
             state.running = false
             state.activity = .idle
             state.card = nil
+            state.nudge = nil
             state.addresseeTag = nil
             if code != 0, state.status == nil { state.status = .error(L10n.tr("The practice interview ended with an error.")) }
             return

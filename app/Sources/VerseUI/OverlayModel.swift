@@ -122,6 +122,18 @@ public final class OverlayModel: ObservableObject {
         publish()
     }
 
+    /// A tap on the nudge (the island body or its amber point on the card): only the nudge goes.
+    public func dismissNudge() {
+        reducer.dismissNudge()
+        publish()
+    }
+
+    /// The teleprompter opened or closed (the notch panel follows `PrompterModel.isOpen`): while it is open, nudges are dropped.
+    public func setPrompterOpen(_ open: Bool) {
+        reducer.setPrompterOpen(open)
+        publish()
+    }
+
     // MARK: earlier answers
 
     /// What the island draws: the live state, or the live state with the pinned earlier answer in place of the card.

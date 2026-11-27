@@ -11,7 +11,7 @@ struct VerseApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            VerseMenu(controller: delegate.controller, settings: delegate.settings, sim: delegate.sim)
+            VerseMenu(controller: delegate.controller, settings: delegate.settings, sim: delegate.sim, rehearsal: delegate.rehearsal)
                 .interfaceLocale()
         } label: {
             MenuBarLabel(controller: delegate.controller, dictation: delegate.controller.dictation)
@@ -63,14 +63,16 @@ struct VerseMenu: View {
     @ObservedObject var controller: VerseController
     @ObservedObject var settings: AppSettings
     @ObservedObject var sim: SimController
+    let rehearsal: RehearsalDesk
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         if controller.running || controller.stopping {
-            RunningMenuSection(controller: controller, prompter: controller.prompter)
+            RunningMenuSection(controller: controller, prompter: controller.prompter, rehearsal: rehearsal)
         } else {
             IdleMenuSection(controller: controller, selector: controller.selector, autoPrep: controller.autoPrep,
-                            watcher: controller.calendarWatcher, meetingSettings: controller.meeting.settings, sim: sim)
+                            watcher: controller.calendarWatcher, meetingSettings: controller.meeting.settings, sim: sim,
+                            rehearsal: rehearsal)
         }
         Divider()
         // The last dictation, while dictation is on and one is kept (rows and their divider, or nothing).
@@ -95,6 +97,7 @@ struct IdleMenuSection: View {
     @ObservedObject var watcher: CalendarWatcher
     @ObservedObject var meetingSettings: MeetingSettings
     @ObservedObject var sim: SimController
+    let rehearsal: RehearsalDesk
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -120,6 +123,9 @@ struct IdleMenuSection: View {
             Button { controller.prepareNextMeeting() } label: { Text("Prepare for this meeting", bundle: L10n.bundle) }
                 .disabled(sim.running)
         }
+        // A typed line through the real session, shown in the island (no audio, nothing saved to the session).
+        Button { rehearsal.showPanel() } label: { Text("Rehearse a line…", bundle: L10n.bundle) }
+            .disabled(sim.running || controller.stopping)
         Divider()
         SessionSubmenu(controller: controller, selector: selector, picker: picker.capped(selected: controller.settings.sessionName))
         AudioSourceSubmenu(controller: controller)
@@ -190,10 +196,14 @@ struct AudioSourceSubmenu: View {
 struct RunningMenuSection: View {
     @ObservedObject var controller: VerseController
     @ObservedObject var prompter: PrompterModel
+    let rehearsal: RehearsalDesk
 
     var body: some View {
         Text(controller.statusLine)
         Divider()
+        if controller.rehearsal != nil {
+            Button { rehearsal.showPanel() } label: { Text("Rehearse a line…", bundle: L10n.bundle) }
+        }
         Button { Task { await controller.stop() } } label: { Text("Stop", bundle: L10n.bundle) }
             .disabled(controller.stopping)
         Button { controller.showEarlierAnswer() } label: { Text("Previous answer \("⌥⌘←")", bundle: L10n.bundle) }
@@ -223,9 +233,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var sim = SimController(settings: settings, simSettings: simSettings, meeting: controller)
     lazy var conversation = ConversationController(settings: settings, meeting: controller)
     lazy var home = HomeContext(settings: settings, controller: controller, simSettings: simSettings, sim: sim, conversation: conversation)
+    /// "Rehearse a line…": the menu's panel and the `verse-rehearse://` URL scheme for scripts.
+    lazy var rehearsal = RehearsalDesk(controller: controller)
     private var quitGate = QuitGate()
     private var testWindow: NSWindow?
     private var signalSources: [DispatchSourceSignal] = []
+
+    /// The `verse-rehearse://` URLs (Info.plist `CFBundleURLTypes`) come in as Apple events. Handled here, before SwiftUI's
+    /// default handling, so a URL never opens a window of its own.
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        NSAppleEventManager.shared().setEventHandler(self, andSelector: #selector(handleGetURL(_:withReplyEvent:)),
+                                                     forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
+    }
+
+    @objc private func handleGetURL(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
+        guard let s = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue, let url = URL(string: s) else { return }
+        if !rehearsal.handle(url: url) { FileLog.shared.write("ignored URL with scheme \(url.scheme ?? "-")") }
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // A write to a child that already exited (the brain, prep, git) must fail with EPIPE, not kill the app (review H3).
